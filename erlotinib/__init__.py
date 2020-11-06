@@ -8,3 +8,5 @@
 from .dummy import (  # noqa
     dummy_function
 )
+
+from . import plots  # noqa
