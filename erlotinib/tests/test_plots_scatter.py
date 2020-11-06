@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-import erlotinib.plots as eplt
+import erlotinib as erlo
 
 
 class TestPDDataPlot(unittest.TestCase):
@@ -30,7 +30,7 @@ class TestPDDataPlot(unittest.TestCase):
             'PD': volumes})
 
         # Create test figure
-        cls.fig = eplt.PDDataPlot()
+        cls.fig = erlo.plots.PDDataPlot()
 
     def test_wrong_data_type(self):
         # Create data of wrong type
