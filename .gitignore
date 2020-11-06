@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Publication list
+references
+
+# Monolix inference
+monolix
+
+# DS Store
+.DS_Store
