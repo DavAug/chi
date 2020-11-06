@@ -5,8 +5,10 @@
 # full license details.
 #
 
-from .dummy import (  # noqa
-    dummy_function
+from ._base import (  # noqa
+    Figure
 )
 
-from . import plots  # noqa
+from ._scatter import (  # noqa
+    PDDataPlot
+)
