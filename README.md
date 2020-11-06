@@ -1,3 +1,7 @@
+[![Unit tests on multiple python versions](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/ErlotinibGefitinib/actions)
+[![Unit tests on multiple operating systems](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/ErlotinibGefitinib/actions)
+[![codecov](https://codecov.io/gh/DavAug/erlotinib/branch/main/graph/badge.svg)](https://codecov.io/gh/DavAug/erlotinib)
+
 # PKPD Modelling of Erlotinib (Tarceva)
 
 Erlotinib is a type of targeted cancer drug, and is also known by its brand name Tarceva. It is used in clinical practice to treat metastatic non small cell lung cancer (NSLC), and in combination with the chemotherapy drug gemcitabine to treat advanced pancreatic cancer [1].
