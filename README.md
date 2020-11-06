@@ -6,7 +6,7 @@ In this repository we are analysing and modelling the pharmacokinetics and pharm
 
 ## Notebooks
 
-To be completed
+To be completed.
 
 ## References
 
