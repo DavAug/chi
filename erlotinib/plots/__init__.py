@@ -5,5 +5,10 @@
 # full license details.
 #
 
-def dummy_function():
-    return 42
+from ._base import (  # noqa
+    Figure
+)
+
+from ._scatter import (  # noqa
+    PDDataPlot
+)
