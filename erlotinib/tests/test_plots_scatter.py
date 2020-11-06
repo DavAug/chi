@@ -64,6 +64,42 @@ class TestPDDataPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <PD>.',
             self.fig.add_data, data)
 
+    def test_id_key_mapping(self):
+        # Rename ID key
+        data = self.data.rename(columns={'ID': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_data(data=data, id_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_data(data=data, id_key='SOME WRONG KEY')
+
+    def test_time_key_mapping(self):
+        # Rename ID key
+        data = self.data.rename(columns={'TIME': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_data(data=data, time_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_data(data=data, time_key='SOME WRONG KEY')
+
+    def test_pd_key_mapping(self):
+        # Rename ID key
+        data = self.data.rename(columns={'PD': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_data(data=data, pd_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_data(data=data, pd_key='SOME WRONG KEY')
+
 
 if __name__ == '__main__':
     unittest.main()
