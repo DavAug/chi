@@ -5,6 +5,10 @@
 # full license details.
 #
 
+from ._data_library_api import (  # noqa
+    DataLibrary
+)
+
 from ._model_library_api import (  # noqa
     ModelLibrary
 )
