@@ -5,4 +5,13 @@
 # full license details.
 #
 
+from ._model_library_api import (  # noqa
+    ModelLibrary
+)
+
+from ._models import (  # noqa
+    Model,
+    PharmacodynamicModel
+)
+
 from . import plots  # noqa
