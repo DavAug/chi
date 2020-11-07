@@ -10,7 +10,7 @@ import os
 
 class ModelLibrary(object):
     """
-    Contains references to SBML models in the pkpd module
+    Contains references to SBML models.
     """
 
     def __init__(self):
