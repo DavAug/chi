@@ -28,6 +28,6 @@ class ModelLibrary(object):
         [1] Koch, G. et al. Modeling of tumor growth and anticancer effects of
         combination therapy. J Pharmacokinet Pharmacodyn 36, 179–197 (2009).
         """
-        file_name = 'TGI_Koch_2009'
+        file_name = 'TGI_Koch_2009.xml'
 
         return self._path + file_name
