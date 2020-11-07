@@ -11,7 +11,7 @@ import pints
 
 def optimise(
         objective_function, optimiser, initial_params, n_runs=1,
-        boundaries=None, max_iterations=None):
+        transform=None, boundaries=None, max_iterations=None):
     """
     A wrapper around a pints.OptimisationController that returns optimal
     parameters.
@@ -20,9 +20,6 @@ def optimise(
         raise ValueError(
             'Objective function has to be an instance of `pints.ErrorMeasure` '
             'or `pints.LogPDF`.')
-    if not issubclass(optimiser, pints.Optimiser):
-        raise ValueError(
-            'Optimiser has to be an instance of `pints.Optimiser`.')
 
     n_parameters = objective_function.n_parameters()
     initial_params = np.asarray(initial_params)
@@ -30,10 +27,6 @@ def optimise(
         raise ValueError(
             'Initial parameters has the wrong shape! Expected shape = '
             '(%d, %d).' % (n_runs, n_parameters))
-    if boundaries is not None:
-        if not isinstance(boundaries, pints.Boundaries):
-            raise ValueError(
-                'Boundaries have to be an instance of `pints.Bouandries`.')
 
     # Define container for estimates and scores
     parameters = np.empty(shape=(n_runs, n_parameters))
@@ -45,6 +38,7 @@ def optimise(
             function=objective_function,
             x0=init_p,
             method=optimiser,
+            transform=transform,
             boundaries=boundaries)
 
         # Configure optimisation routine

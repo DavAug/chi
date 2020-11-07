@@ -42,26 +42,12 @@ class TestOptimise(unittest.TestCase):
             ValueError, 'Objective function has to be',
             erlo.optimise, objective_function, pints.CMAES, self.params)
 
-    def test_bad_optimiser(self):
-        optimiser = pints.LogPDF
-
-        self.assertRaisesRegex(
-            ValueError, 'Optimiser has to be',
-            erlo.optimise, self.error, optimiser, self.params)
-
     def test_bad_parameters(self):
         params = [[1, 2, 3]]
 
         self.assertRaisesRegex(
             ValueError, 'Initial parameters has the wrong shape!',
             erlo.optimise, self.error, pints.CMAES, params)
-
-    def test_bad_boundaries(self):
-        boundaries = 'boundaries'
-
-        self.assertRaisesRegex(
-            ValueError, 'Boundaries have to be',
-            erlo.optimise, self.error, pints.CMAES, self.params, 1, boundaries)
 
     def test_nan_when_fails(self):
         # CMAES return NAN for 1-dim problems
