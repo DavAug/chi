@@ -18,17 +18,14 @@ class TestPharmacodynamicModel(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        path = pkpd.ModelLibrary().get_path('Tumour growth without treatment')
-        cls.model = pkpd.PharmacodynamicModel(path, is_log_transformed=False)
-        cls.model_log_transformed = pkpd.PharmacodynamicModel(path)
+        path = erlo.ModelLibrary().tumour_growth_inhibition_pd_model()
+        cls.model = erlo.PharmacodynamicModel(path)
 
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
-        self.assertEqual(self.model_log_transformed.n_outputs(), 1)
 
     def test_n_parameters(self):
-        self.assertEqual(self.model.n_parameters(), 3)
-        self.assertEqual(self.model_log_transformed.n_parameters(), 3)
+        self.assertEqual(self.model.n_parameters(), 5)
 
     def test_outputs(self):
         outputs = self.model.outputs()
@@ -39,8 +36,10 @@ class TestPharmacodynamicModel(unittest.TestCase):
         parameters = self.model.parameters()
 
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.critical_volume')
-        self.assertEqual(parameters[2], 'myokit.lambda')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
 
     def test_set_outputs(self):
 
@@ -53,7 +52,7 @@ class TestPharmacodynamicModel(unittest.TestCase):
         self.model.set_outputs(outputs)
         self.assertEqual(self.model.outputs(), outputs)
         self.assertEqual(self.model.n_outputs(), 2)
-        output = self.model.simulate([0.1, 2, 1], [0, 1])
+        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
         self.assertEqual(output.shape, (2, 2))
 
         # Set to default again
@@ -61,27 +60,18 @@ class TestPharmacodynamicModel(unittest.TestCase):
         self.model.set_outputs(outputs)
         self.assertEqual(self.model.outputs(), outputs)
         self.assertEqual(self.model.n_outputs(), 1)
-        output = self.model.simulate([0.1, 2, 1], [0, 1])
-        self.assertEqual(output.shape, (2,))
+        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
+        self.assertEqual(output.shape, (1, 2))
 
     def test_simulate(self):
 
         times = [0, 1, 2, 3]
 
         # Test model with bare parameters
-        parameters = [0.1, 1, 1]
+        parameters = [0.1, 1, 1, 1, 1]
         output = self.model.simulate(parameters, times)
         self.assertIsInstance(output, np.ndarray)
-        self.assertEqual(output.shape, (4,))
-
-        # Test model with log-parameters
-        parameters = np.log(parameters)
-        log_output = self.model_log_transformed.simulate(parameters, times)
-        self.assertIsInstance(log_output, np.ndarray)
-        self.assertEqual(log_output.shape, (4,))
-
-        # Compare results to each other
-        np.testing.assert_almost_equal(output, log_output)
+        self.assertEqual(output.shape, (1, 4))
 
 
 if __name__ == '__main__':
