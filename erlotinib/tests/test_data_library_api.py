@@ -5,7 +5,6 @@
 # full license details.
 #
 
-import os
 import unittest
 
 import pandas as pd
