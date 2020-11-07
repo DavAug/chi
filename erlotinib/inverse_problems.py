@@ -78,6 +78,18 @@ class InverseProblem(object):
         # (n_outputs, n_times). We therefore need to transponse the result.
         return output.transpose()
 
+    def evaluateS1(self, parameters):
+        """
+        Runs a simulation using the given parameters, returning the simulated
+        values.
+        The returned data is a tuple of NumPy arrays ``(y, y')``, where ``y``
+        has shape ``(n_times, n_outputs)``, while ``y'`` has shape
+        ``(n_times, n_outputs, n_parameters)``.
+        *This method only works for problems whose model implements the
+        :class:`ForwardModelS1` interface.*
+        """
+        raise NotImplementedError
+
     def n_outputs(self):
         """
         Returns the number of outputs for this problem.
