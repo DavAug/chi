@@ -39,4 +39,4 @@ class DataLibrary(object):
         file_name = 'lxf_control_growth.csv'
         data = pd.read_csv(self._path + file_name)
 
-        return pandas
+        return data
