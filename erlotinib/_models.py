@@ -33,7 +33,7 @@ class Model(object):
     def simulate(self, parameters, times):
         """
         Solves the forward model and returns the outputs as a NumPy.ndarray of
-        shape (n_times, n_outputs).
+        shape (n_outputs, n_times).
         """
         raise NotImplementedError
 
@@ -129,6 +129,9 @@ class PharmacodynamicModel(Model):
         """
         Returns the numerical solution of the model outputs for specified
         parameters and times.
+
+        The result is returned as a 2 dimensional NumPy array of shape
+        (n_outputs, n_times).
         """
         # Reset simulation
         self._sim.reset()
