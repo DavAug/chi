@@ -7,6 +7,8 @@
 
 import os
 
+import pandas as pd
+
 
 class DataLibrary(object):
     """
@@ -20,7 +22,8 @@ class DataLibrary(object):
 
     def lung_cancer_control_group(self):
         """
-        Returns the lung cancer control group data published in [1].
+        Returns the lung cancer control group data published in [1] as a
+        pandas.DataFrame.
 
         The dataset contains the time series data of 8 mice with
         patient-derived lung cancer implants. The tumour volume of each
@@ -34,5 +37,6 @@ class DataLibrary(object):
         Mol Cancer Ther. 2016; 15(12):3110-3119.
         """
         file_name = 'lxf_control_growth.csv'
+        data = pd.read_csv(self._path + file_name)
 
-        return self._path + file_name
+        return pandas
