@@ -5,6 +5,10 @@
 # full license details.
 #
 
+from ._convenience_funcs import (  # noqa
+    optimise
+)
+
 from ._data_library_api import (  # noqa
     DataLibrary
 )
