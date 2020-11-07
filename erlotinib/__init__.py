@@ -18,4 +18,8 @@ from ._models import (  # noqa
     PharmacodynamicModel
 )
 
+from ._problems import (  # noqa
+    InverseProblem
+)
+
 from . import plots  # noqa
