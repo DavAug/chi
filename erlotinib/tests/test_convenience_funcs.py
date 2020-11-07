@@ -52,7 +52,7 @@ class TestOptimise(unittest.TestCase):
     def test_nan_when_fails(self):
         # CMAES return NAN for 1-dim problems
         params, _ = erlo.optimise(
-            self.error, pints.CMAES, self.params, 1, self.boundaries)
+            self.error, pints.CMAES, self.params, 1, None, self.boundaries)
 
         self.assertEqual(params.shape, (1, 1))
         np.testing.assert_equal(params[0, 0], np.nan)
@@ -60,7 +60,8 @@ class TestOptimise(unittest.TestCase):
     def test_call(self):
         # Test single run
         params, _ = erlo.optimise(
-            self.error, pints.XNES, self.params, 1, self.boundaries, 1000)
+            self.error, pints.XNES, self.params, 1, None, self.boundaries,
+            1000)
 
         self.assertEqual(params.shape, (1, 1))
         self.assertAlmostEqual(params[0, 0], self.true_params[0], 1)
@@ -68,7 +69,7 @@ class TestOptimise(unittest.TestCase):
         # Test multiple runs
         initial_params = [[2], [3]]
         params, _ = erlo.optimise(
-            self.error, pints.XNES, initial_params, 2, self.boundaries)
+            self.error, pints.XNES, initial_params, 2, None, self.boundaries)
 
         self.assertEqual(params.shape, (2, 1))
         self.assertAlmostEqual(params[0, 0], self.true_params[0], 1)
