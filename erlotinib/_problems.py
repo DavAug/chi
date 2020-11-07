@@ -37,9 +37,9 @@ class InverseProblem(object):
     def __init__(self, model, times, values):
 
         # Check model
-        if not issubclass(model, erlo.Model):
+        if not isinstance(model, erlo.Model):
             raise TypeError(
-                'The `model` argument has to be a subclass of erlotinib.Model.'
+                'Model has to be an instance of erlotinib.Model.'
             )
         self._model = model
 
@@ -49,11 +49,11 @@ class InverseProblem(object):
         if np.any(self._times < 0):
             raise ValueError('Times cannot be negative.')
         if np.any(self._times[:-1] > self._times[1:]):
-            raise ValueError('Times must be non-decreasing.')
+            raise ValueError('Times must be increasing.')
 
         # Check values, copy so that they can no longer be changed
         values = np.asarray(values)
-        if values.ndims() == 1:
+        if values.ndim == 1:
             np.expand_dims(values, axis=1)
         self._values = pints.matrix2d(values)
 
