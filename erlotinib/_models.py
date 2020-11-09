@@ -10,35 +10,7 @@ import myokit.formats.sbml as sbml
 import numpy as np
 
 
-class Model(object):
-    """
-    A base class for forward models.
-    """
-
-    def __init__(self):
-        super(Model, self).__init__()
-
-    def n_outputs(self):
-        """
-        Returns the number of output dimensions.
-        """
-        raise NotImplementedError
-
-    def n_parameters(self):
-        """
-        Returns the number of model parameters.
-        """
-        raise NotImplementedError
-
-    def simulate(self, parameters, times):
-        """
-        Solves the forward model and returns the outputs as a NumPy.ndarray of
-        shape (n_outputs, n_times).
-        """
-        raise NotImplementedError
-
-
-class PharmacodynamicModel(Model):
+class PharmacodynamicModel(object):
     """
     Converts a pharmacodynamic model specified by an SBML file into forward
     model that can be solved numerically.
