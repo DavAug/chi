@@ -99,12 +99,12 @@ class TestOptimisationController(unittest.TestCase):
 
     def test_run(self):
         # Fix
-        mask = [False, False, False, False, False, False]
-        value = []
+        mask = [False, True, True, False, False, False]
+        value = [0, 0]
         self.optimiser.fix_parameters(mask, value)
 
         self.optimiser.set_n_runs(3)
-        result = self.optimiser.run(n_max_iterations=10)
+        result = self.optimiser.run(n_max_iterations=20)
 
         keys = result.keys()
         self.assertEqual(len(keys), 4)
@@ -114,13 +114,11 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(keys[3], 'Run')
 
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 6)
+        self.assertEqual(len(parameters), 4)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'noise 1')
+        self.assertEqual(parameters[1], 'myokit.lambda_0')
+        self.assertEqual(parameters[2], 'myokit.lambda_1')
+        self.assertEqual(parameters[3], 'noise 1')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
