@@ -4,13 +4,13 @@ Data Library
 
 .. currentmodule:: erlotinib
 
-The data library contains a number of datasets where the
-pharmacokinetic and pharmacodynamic properties of erlotinib
-have been explored.
+The model library contains a number of pharmacokinetic and
+pharmacodynamic models which can be used to model the PK
+as well as the tumour growth inhibiting effects of erlotinib.
 
-Overview:
+The models in this library refer to SBML files, which can be used
+in conjunction with the :class:`PharmacodynamicModel`.
 
-- :class:`DataLibrary`
 
 .. autoclass:: DataLibrary
     :members:
