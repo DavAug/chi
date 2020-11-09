@@ -5,4 +5,24 @@
 # full license details.
 #
 
+from ._data_library_api import (  # noqa
+    DataLibrary
+)
+
+from ._model_library_api import (  # noqa
+    ModelLibrary
+)
+
+from ._models import (  # noqa
+    PharmacodynamicModel
+)
+
+from ._optimisation import (  # noqa
+    OptimisationController
+)
+
+from ._problems import (  # noqa
+    InverseProblem
+)
+
 from . import plots  # noqa
