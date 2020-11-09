@@ -20,7 +20,7 @@ class OptimisationController(object):
     the `pints.LogPrior`.
     """
 
-    def __init__(self, log_posterior, optimiser):
+    def __init__(self, log_posterior):
         super(OptimisationController, self).__init__()
 
         if not isinstance(log_posterior, pints.LogPosterior):
