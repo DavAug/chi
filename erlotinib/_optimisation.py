@@ -27,9 +27,9 @@ class OptimisationController(object):
             )
         self._log_posterior = log_posterior
 
-        if not isinstance(optimiser, pints.Optimiser):
+        if not issubclass(optimiser, pints.Optimiser):
             raise ValueError(
-                'Optimiser has to be an instance of `pints.Optimiser`.'
+                'Optimiser has to be a `pints.Optimiser`.'
             )
         self._optimiser = optimiser
 
@@ -42,7 +42,32 @@ class OptimisationController(object):
         self._initial_params = log_prior.sample(self._n_runs)
 
         # Get parameter names
-        self._parameters = self._log_posterior._model.parameters()
+        self._parameters = self._get_parameter_names()
+
+    def _get_parameter_names(self):
+        """
+        Constructs a NumPy array of the parameter names.
+
+        Gets the myokit names from the model and enumerates the noise
+        parameters as noise 1, noise 2, etc..
+        """
+        # If some parameters have been fixed already, retrieve original
+        # log-posterior.
+        log_posterior = self._log_posterior
+        if isinstance(log_posterior, _PartiallyFixedLogPosterior):
+            log_posterior = log_posterior.log_posterior()
+
+        # Get model parameter names
+        model = log_posterior.log_likelihood()._problem._model
+        model_params = model.parameters()
+
+        # Construct a list of noise parameter names
+        n_noise = log_posterior.n_parameters() - len(model_params)
+        noise_params = ['noise %d' % (index + 1) for index in range(n_noise)]
+
+        parameters = np.array(model_params + noise_params)
+
+        return parameters
 
     def fix_parameters(self, mask, values):
         """
@@ -79,8 +104,8 @@ class OptimisationController(object):
         self._initial_params = transposed[mask].transpose()
 
         # Mask parameter names
-        parameters = log_posterior._model.parameters()
-        self._parameters = np.array(parameters)[mask]
+        parameters = self._get_parameter_names()
+        self._parameters = parameters[mask]
 
     def set_transform(self, transform):
         """
@@ -159,7 +184,7 @@ class OptimisationController(object):
             # Save estimates and score
             container['Estimate'] = estimates
             container['Score'] = [score] * n_parameters
-            container['Run'] = [run_id] * n_parameters
+            container['Run'] = [run_id + 1] * n_parameters
             result = result.append(container)
 
         return result
