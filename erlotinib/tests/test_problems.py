@@ -7,8 +7,6 @@
 
 import unittest
 
-import pints
-
 import erlotinib as erlo
 
 
