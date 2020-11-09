@@ -126,7 +126,6 @@ class OptimisationController(object):
 
             # Configure optimisation routine
             opt.set_log_to_screen(False)
-            opt.set_parallel(True)
             opt.set_max_iterations(iterations=n_max_iterations)
 
             # Find optimal parameters
