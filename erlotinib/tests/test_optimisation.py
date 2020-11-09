@@ -44,9 +44,11 @@ class TestOptimisationController(unittest.TestCase):
         log_posterior = pints.LogPosterior(log_likelihood, log_prior)
 
         # Set up optmisation controller
-        cls.optimiser = erlo.OptimisationController(
-            log_posterior=log_posterior,
-            optimiser=pints.CMAES)
+        cls.optimiser = erlo.OptimisationController(log_posterior)
+
+    def test_call_bad_input(self):
+        with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
+            erlo.OptimisationController('bad log-posterior')
 
     def test_fix_parameters_bad_mask(self):
         # Mask length doesn't match number of parameters
@@ -96,13 +98,13 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(parameters[2], 'noise 1')
 
     def test_run(self):
-        # Unfix all parameters (just to reset possibly fixed parameters)
+        # Fix
         mask = [False, False, False, False, False, False]
         value = []
         self.optimiser.fix_parameters(mask, value)
 
         self.optimiser.set_n_runs(3)
-        result = self.optimiser.run(n_max_iterations=1)
+        result = self.optimiser.run(n_max_iterations=10)
 
         keys = result.keys()
         self.assertEqual(len(keys), 4)
