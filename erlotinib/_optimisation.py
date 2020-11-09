@@ -5,6 +5,8 @@
 # full license details.
 #
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pints
@@ -27,13 +29,8 @@ class OptimisationController(object):
             )
         self._log_posterior = log_posterior
 
-        if not issubclass(optimiser, pints.Optimiser):
-            raise ValueError(
-                'Optimiser has to be a `pints.Optimiser`.'
-            )
-        self._optimiser = optimiser
-
         # Set defaults
+        self._optimiser = pints.CMAES
         self._n_runs = 10
         self._transform = None
 
@@ -51,18 +48,12 @@ class OptimisationController(object):
         Gets the myokit names from the model and enumerates the noise
         parameters as noise 1, noise 2, etc..
         """
-        # If some parameters have been fixed already, retrieve original
-        # log-posterior.
-        log_posterior = self._log_posterior
-        if isinstance(log_posterior, _PartiallyFixedLogPosterior):
-            log_posterior = log_posterior.log_posterior()
-
         # Get model parameter names
-        model = log_posterior.log_likelihood()._problem._model
-        model_params = model.parameters()
+        log_likelihood = self._log_posterior.log_likelihood()
+        model_params = log_likelihood._problem._model.parameters()
 
         # Construct a list of noise parameter names
-        n_noise = log_posterior.n_parameters() - len(model_params)
+        n_noise = log_likelihood.n_parameters() - len(model_params)
         noise_params = ['noise %d' % (index + 1) for index in range(n_noise)]
 
         parameters = np.array(model_params + noise_params)
@@ -82,7 +73,7 @@ class OptimisationController(object):
         # log-posterior.
         log_posterior = self._log_posterior
         if isinstance(log_posterior, _PartiallyFixedLogPosterior):
-            log_posterior = log_posterior.log_posterior()
+            log_posterior = log_posterior._log_posterior
 
         # Fix parameters
         self._log_posterior = _PartiallyFixedLogPosterior(
@@ -91,62 +82,26 @@ class OptimisationController(object):
         # Set transform to None and raise a warning that fixing parameters
         # reverts any previously applied transformations.
         if self._transform:
-            raise Warning(
+            warnings.warn(
                 'Fixing parameters resets any previously applied parameter '
                 'transformations.')
         self._transform = None
-
-        # Mask initial points
-        # Have to transpose so 1d mask can be applied to 2d initial parameters
-        # of shape (n_runs, n_params)
-        mask = self._log_posterior._mask
-        transposed = self._initial_params.transpose()
-        self._initial_params = transposed[mask].transpose()
-
-        # Mask parameter names
-        parameters = self._get_parameter_names()
-        self._parameters = parameters[mask]
-
-    def set_transform(self, transform):
-        """
-        Sets the transformation from the parameter space to the search space
-        that is used for the optimisation.
-
-        Transform has to be an instance of `pints.Transformation` and must have
-        the same dimension as the search space.
-        """
-        if not isinstance(transform, pints.Transformation):
-            raise ValueError(
-                'Transform has to be an instance of `pints.Transformation`.')
-        if transform.n_parameters() != self._log_posterior.n_parameters():
-            raise ValueError(
-                'The dimensionality of the transform does not match the '
-                'dimensionality of the log-posterior.')
-        self._transform = transform
-
-    def set_n_runs(self, n_runs):
-        """
-        Sets how often the optimisation routine is run. Each run starts from a
-        random sample of the log-prior.
-        """
-        self._n_runs = int(n_runs)
 
         # Sample new initial points
         log_prior = self._log_posterior.log_prior()
         initial_params = log_prior.sample(self._n_runs)
 
-        # Mask samples if some parameters have been fixed
-        # I.e. they are not used for the optimisation, and therefore
-        # no intitial parameters are required.
-        if isinstance(self._log_posterior, _PartiallyFixedLogPosterior):
-            mask = self._log_posterior._mask
-            # Have to transpose so 1d mask can be applied to 2d initial
-            # parameters of shape (n_runs, n_params)
-            initial_params = initial_params.transpose()[mask].transpose()
+        # Keep initial points for 'free' parameters
+        # Have to transpose so 1d mask can be applied to 2d initial parameters
+        # of shape (n_runs, n_params)
+        mask = ~np.array(mask)
+        self._initial_params = initial_params.transpose()[mask].transpose()
 
-        self._initial_params = initial_params
+        # Keep parameter names for 'free' parameters
+        parameters = self._get_parameter_names()
+        self._parameters = parameters[mask]
 
-    def run(self):
+    def run(self, n_max_iterations=None):
         """
         Runs the optimisation and returns the maximum a posteriori probability
         parameter estimates.
@@ -172,6 +127,7 @@ class OptimisationController(object):
             # Configure optimisation routine
             opt.set_log_to_screen(False)
             opt.set_parallel(True)
+            opt.set_max_iterations(iterations=n_max_iterations)
 
             # Find optimal parameters
             try:
@@ -189,6 +145,56 @@ class OptimisationController(object):
 
         return result
 
+    def set_n_runs(self, n_runs):
+        """
+        Sets how often the optimisation routine is run. Each run starts from a
+        random sample of the log-prior.
+        """
+        self._n_runs = int(n_runs)
+
+        # Sample new initial points
+        log_prior = self._log_posterior.log_prior()
+        initial_params = log_prior.sample(self._n_runs)
+
+        # Mask samples if some parameters have been fixed
+        # I.e. they are not used for the optimisation, and therefore
+        # no intitial parameters are required.
+        if isinstance(self._log_posterior, _PartiallyFixedLogPosterior):
+            mask = self._log_posterior._mask
+            # Have to transpose so 1d mask can be applied to 2d initial
+            # parameters of shape (n_runs, n_params)
+            initial_params = initial_params.transpose()[mask].transpose()
+
+        self._initial_params = initial_params
+
+    def set_optimiser(self, optimiser):
+        """
+        Sets method that is used to find the maximum a posteiori probability
+        estimates.
+        """
+        if not issubclass(optimiser, pints.Optimiser):
+            raise ValueError(
+                'Optimiser has to be a `pints.Optimiser`.'
+            )
+        self._optimiser = optimiser
+
+    def set_transform(self, transform):
+        """
+        Sets the transformation from the parameter space to the search space
+        that is used for the optimisation.
+
+        Transform has to be an instance of `pints.Transformation` and must have
+        the same dimension as the search space.
+        """
+        if not isinstance(transform, pints.Transformation):
+            raise ValueError(
+                'Transform has to be an instance of `pints.Transformation`.')
+        if transform.n_parameters() != self._log_posterior.n_parameters():
+            raise ValueError(
+                'The dimensionality of the transform does not match the '
+                'dimensionality of the log-posterior.')
+        self._transform = transform
+
 
 class _PartiallyFixedLogPosterior(pints.LogPDF):
     """
@@ -202,10 +208,6 @@ class _PartiallyFixedLogPosterior(pints.LogPDF):
     def __init__(self, log_posterior, mask, values):
         super(_PartiallyFixedLogPosterior, self).__init__()
 
-        if not isinstance(log_posterior, pints.LogPosterior):
-            raise ValueError(
-                'Log-posterior has to be an instance of `pints.LogPosterior`.'
-            )
         self._log_posterior = log_posterior
 
         if len(mask) != self._log_posterior.n_parameters():
@@ -238,14 +240,17 @@ class _PartiallyFixedLogPosterior(pints.LogPDF):
 
         return self._log_posterior(self._parameters)
 
-    def evaluateS1(self, parameters):
-        raise NotImplementedError
+    def log_likelihood(self):
+        """
+        Returns log-likelihood.
+        """
+        return self._log_posterior.log_likelihood()
 
-    def log_posterior(self):
+    def log_prior(self):
         """
-        Returns log-posterior.
+        Returns log-prior.
         """
-        return self._log_posterior
+        return self._log_posterior.log_prior()
 
     def n_parameters(self):
         """
