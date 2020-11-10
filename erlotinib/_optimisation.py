@@ -109,8 +109,8 @@ class OptimisationController(object):
         parameter estimates.
 
         The number of maximal iterations of the optimisation routine can be
-        limited by setting ``n_max_iterations`` to a finite, non-negative integer
-        value.
+        limited by setting ``n_max_iterations`` to a finite, non-negative
+        integer value.
         """
         # Initialise result dataframe
         result = pd.DataFrame(

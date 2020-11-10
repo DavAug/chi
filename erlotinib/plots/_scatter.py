@@ -54,14 +54,7 @@ class PDTimeSeriesPlot(eplt.Figure):
             raise ValueError(
                 'Data has to be pandas.DataFrame.')
 
-        if id_key is None:
-            id_key = 'ID'
-        if time_key is None:
-            time_key = 'TIME'
-        if pd_key is None:
-            pd_key = 'PD'
-
-        for key in [id_key, time_key, pd_key]:
+        for key in [id_key, time_key, data_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
