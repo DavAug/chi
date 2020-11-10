@@ -27,7 +27,7 @@ class TestPDDataPlot(unittest.TestCase):
         cls.data = pd.DataFrame({
             'ID': ids,
             'TIME': times,
-            'PD': volumes})
+            'DATA': volumes})
 
         # Create test figure
         cls.fig = erlo.plots.PDDataPlot()
@@ -56,12 +56,12 @@ class TestPDDataPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <TIME>.',
             self.fig.add_data, data)
 
-    def test_wrong_pd_key(self):
+    def test_wrong_data_key(self):
         # Rename ID key
-        data = self.data.rename(columns={'PD': 'SOME NON-STANDARD KEY'})
+        data = self.data.rename(columns={'DATA': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <PD>.',
+            ValueError, 'Data does not have the key <DATA>.',
             self.fig.add_data, data)
 
     def test_id_key_mapping(self):
@@ -88,17 +88,17 @@ class TestPDDataPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, time_key='SOME WRONG KEY')
 
-    def test_pd_key_mapping(self):
+    def test_data_key_mapping(self):
         # Rename ID key
-        data = self.data.rename(columns={'PD': 'SOME NON-STANDARD KEY'})
+        data = self.data.rename(columns={'DATA': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_data(data=data, pd_key='SOME NON-STANDARD KEY')
+        self.fig.add_data(data=data, data_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_data(data=data, pd_key='SOME WRONG KEY')
+            self.fig.add_data(data=data, biomarker_key='SOME WRONG KEY')
 
 
 if __name__ == '__main__':
