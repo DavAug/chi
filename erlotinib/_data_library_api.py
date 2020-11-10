@@ -11,8 +11,11 @@ import pandas as pd
 
 
 class DataLibrary(object):
-    """
-    Contains references to PKPD datasets.
+    r"""
+    A collection of Erlotinib PKPD datasets.
+
+    Each method corresponds to a separate dataset, which will return
+    the corresponding dataset in form of a :class:`pandas.DataFrame`.
     """
 
     def __init__(self):
@@ -21,20 +24,18 @@ class DataLibrary(object):
         self._path += '/data_library/'
 
     def lung_cancer_control_group(self):
-        """
-        Returns the lung cancer control group data published in [1] as a
-        pandas.DataFrame.
+        r"""
+        Returns the lung cancer control group data published in [1]_ as a
+        :class:`pandas.DataFrame`.
 
         The dataset contains the time series data of 8 mice with
         patient-derived lung cancer implants. The tumour volume of each
         mouse was monitored over a period of 30 days and measured a couple
         times a week.
 
-        References:
-        -----------
-        [1] Eigenmann, M. J. et al., Combining Nonclinical Experiments with
-        Translational PKPD Modeling to Differentiate Erlotinib and Gefitinib,
-        Mol Cancer Ther. 2016; 15(12):3110-3119.
+        .. [1] Eigenmann, M. J. et al., Combining Nonclinical Experiments with
+               Translational PKPD Modeling to Differentiate Erlotinib and
+               Gefitinib, Mol Cancer Ther. 2016; 15(12):3110-3119.
         """
         file_name = 'lxf_control_growth.csv'
         data = pd.read_csv(self._path + file_name)
