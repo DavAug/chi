@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 import erlotinib.plots as eplt
 
 
-class PDDataPlot(eplt.Figure):
+class PDTimeSeriesPlot(eplt.Figure):
     """
     Figure class that visualises pharmacodynamic data.
     """

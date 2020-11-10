@@ -10,5 +10,5 @@ from ._base import (  # noqa
 )
 
 from ._scatter import (  # noqa
-    PDDataPlot
+    PDTimeSeriesPlot
 )
