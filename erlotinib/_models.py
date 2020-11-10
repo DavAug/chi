@@ -15,14 +15,17 @@ class PharmacodynamicModel(object):
     Converts a pharmacodynamic model specified by an SBML file into forward
     model that can be solved numerically.
 
-    Arguments:
-        path -- Absolute path to SBML model file.
+    Parameters
+    ----------
+    sbml_file
+        A path to the SBML model file that specifies the pharmacodynamic model.
+
     """
 
-    def __init__(self, path):
+    def __init__(self, sbml_file):
         super(PharmacodynamicModel, self).__init__()
 
-        model = sbml.SBMLImporter().model(path)
+        model = sbml.SBMLImporter().model(sbml_file)
 
         # Get the number of states and parameters
         self._n_states = model.count_states()

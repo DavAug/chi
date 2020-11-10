@@ -19,8 +19,8 @@ class TestModelLibrary(unittest.TestCase):
     def setUpClass(cls):
         cls.model_library = erlo.ModelLibrary()
 
-    def test_existence_tumour_growth_inhibition_pd_model(self):
-        path = self.model_library.tumour_growth_inhibition_pd_model()
+    def test_existence_tumour_growth_inhibition_model_koch(self):
+        path = self.model_library.tumour_growth_inhibition_model_koch()
 
         self.assertTrue(os.path.exists(path))
 
@@ -30,7 +30,7 @@ class TestTumourGrowthInhibitionPDModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         lib = erlo.ModelLibrary()
-        path = lib.tumour_growth_inhibition_pd_model()
+        path = lib.tumour_growth_inhibition_model_koch()
         importer = sbml.SBMLImporter()
         cls.model = importer.model(path)
 

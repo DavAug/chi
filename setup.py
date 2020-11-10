@@ -29,5 +29,10 @@ setup(
     ],
     dependency_links=[
      "git+git://github.com/pints-team/pints.git#egg=pints-latest",
-    ]
+    ],
+    extras_require={
+        'docs': [
+            'sphinx>=1.5, !=1.7.3',     # For doc generation
+        ],
+    },
 )

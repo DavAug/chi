@@ -12,21 +12,22 @@ import plotly.graph_objects as go
 import erlotinib.plots as eplt
 
 
-class PDDataPlot(eplt.Figure):
+class PDTimeSeriesPlot(eplt.Figure):
     """
-    Figure class that visualises pharmacodynamic data.
+    A figure class that visualises pharmacodynamic data and PD simulation
+    results.
     """
 
     def __init__(self):
-        super(PDDataPlot, self).__init__()
+        super(PDTimeSeriesPlot, self).__init__()
 
-    def _add_trace(self, label, times, pd_data, color):
+    def _add_trace(self, label, times, biomarker, color):
         """
         Adds scatter plot of an indiviudals pharamcodynamics to figure.
         """
         self._fig.add_trace(go.Scatter(
                 x=times,
-                y=pd_data,
+                y=biomarker,
                 name="ID: %d" % label,
                 showlegend=True,
                 mode="markers",
@@ -36,27 +37,37 @@ class PDDataPlot(eplt.Figure):
                     opacity=0.7,
                     line=dict(color='black', width=1))))
 
-    def add_data(self, data, id_key=None, time_key=None, pd_key=None):
+    def add_data(
+            self, data, id_key='ID', time_key='TIME', biom_key='BIOMARKER'):
         """
-        Adds pharmacodynamic data of multiple individuals to figure.
+        Adds pharmacodynamic time series data of (multiple) individuals to
+        the figure.
 
-        Expects a pandas.DataFrame with an `ID`, `TIME` and `PD` column. If the
-        column names differ, column keys can be identifies using the optional
-        key arguments `id_key`, `time_key` and `pd_key`.
+        Expects a :class:`pandas.DataFrame` with an ID, a time and a PD
+        biomarker column, and adds a scatter plot of the biomarker time series
+        to the figure. Each individual receives a unique colour.
+
+        Parameters
+        ----------
+        data
+            A :class:`pandas.DataFrame` with the time series PD data in form of
+            an ID, time, and biomarker column.
+        id_key
+            Key label of the :class:`DataFrame` which specifies the ID column.
+            Defaults to ``'ID'``.
+        time_key
+            Key label of the :class:`DataFrame` which specifies the time
+            column. Defaults to ``'TIME'``.
+        biom_key
+            Key label of the :class:`DataFrame` which specifies the PD
+            biomarker column. Defaults to ``'BIOMARKER'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise ValueError(
                 'Data has to be pandas.DataFrame.')
 
-        if id_key is None:
-            id_key = 'ID'
-        if time_key is None:
-            time_key = 'TIME'
-        if pd_key is None:
-            pd_key = 'PD'
-
-        for key in [id_key, time_key, pd_key]:
+        for key in [id_key, time_key, biom_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
@@ -71,8 +82,8 @@ class PDDataPlot(eplt.Figure):
             # Get individual data
             mask = data[id_key] == label
             times = data[time_key][mask]
-            pd_data = data[pd_key][mask]
+            biomarker = data[biom_key][mask]
             color = colors[index]
 
             # Create Scatter plot
-            self._add_trace(label, times, pd_data, color)
+            self._add_trace(label, times, biomarker, color)

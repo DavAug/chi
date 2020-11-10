@@ -14,10 +14,12 @@ import pints
 
 class OptimisationController(object):
     """
-    Attempts to find the parameter values that maximise a `pints.LogPosterior`.
+    Sets up an optimisation routine that attempts to find the parameter values
+    that maximise a :class:`pints.LogPosterior`.
 
-    By default the optimisation is run 10 times from random points drawn from
-    the `pints.LogPrior`.
+    By default the optimisation is run 10 times from different initial
+    starting points. Starting points are randomly sampled from the
+    specified :class:`pints.LogPrior`.
     """
 
     def __init__(self, log_posterior):
@@ -66,8 +68,8 @@ class OptimisationController(object):
         optimisation.
 
         The fixed parameters are fixed during the optimisation which will
-        reduce the dimensionality of the search at the cost of excluding
-        the fixed parameters from the optimisation.
+        reduce the dimensionality of the search space at the cost of excluding
+        those parameters from the optimisation.
         """
         # If some parameters have been fixed already, retrieve original
         # log-posterior.
@@ -105,6 +107,10 @@ class OptimisationController(object):
         """
         Runs the optimisation and returns the maximum a posteriori probability
         parameter estimates.
+
+        The number of maximal iterations of the optimisation routine can be
+        limited by setting ``n_max_iterations`` to a finite, non-negative
+        integer value.
         """
         # Initialise result dataframe
         result = pd.DataFrame(
@@ -146,8 +152,9 @@ class OptimisationController(object):
 
     def set_n_runs(self, n_runs):
         """
-        Sets how often the optimisation routine is run. Each run starts from a
-        random sample of the log-prior.
+        Sets the number of times the optimisation routine is run.
+
+        Each run starts from a random sample of the log-prior.
         """
         self._n_runs = int(n_runs)
 
@@ -179,11 +186,14 @@ class OptimisationController(object):
 
     def set_transform(self, transform):
         """
-        Sets the transformation from the parameter space to the search space
-        that is used for the optimisation.
+        Sets the transformation that transforms the parameter space into the
+        search space.
 
-        Transform has to be an instance of `pints.Transformation` and must have
-        the same dimension as the search space.
+        Transformations of the search space can significantly improve the
+        performance of the optimisation routine.
+
+        ``transform`` has to be an instance of `pints.Transformation` and must
+        have the same dimension as the parameter space.
         """
         if not isinstance(transform, pints.Transformation):
             raise ValueError(

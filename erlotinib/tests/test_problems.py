@@ -19,7 +19,7 @@ class TestInverseProblem(unittest.TestCase):
         cls.values = [1, 2, 3, 4, 5]
 
         # Set up inverse problem
-        path = erlo.ModelLibrary().tumour_growth_inhibition_pd_model()
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.PharmacodynamicModel(path)
         cls.problem = erlo.InverseProblem(cls.model, cls.times, cls.values)
 
