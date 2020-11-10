@@ -64,7 +64,7 @@ class Figure(object):
 
     def set_axis_labels(self, xlabel, ylabel):
         """
-        Sets the x axis and y axis label.
+        Sets the x axis, and y axis label of the figure.
         """
         self._fig.update_layout(
             xaxis_title=xlabel,
@@ -72,6 +72,6 @@ class Figure(object):
 
     def show(self):
         """
-        Displays figure.
+        Displays the figure.
         """
         self._fig.show()

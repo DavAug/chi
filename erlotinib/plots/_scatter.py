@@ -14,11 +14,12 @@ import erlotinib.plots as eplt
 
 class PDTimeSeriesPlot(eplt.Figure):
     """
-    Figure class that visualises pharmacodynamic data.
+    A figure class that visualises pharmacodynamic data and PD simulation
+    results.
     """
 
     def __init__(self):
-        super(PDDataPlot, self).__init__()
+        super(PDTimeSeriesPlot, self).__init__()
 
     def _add_trace(self, label, times, pd_data, color):
         """
@@ -36,13 +37,17 @@ class PDTimeSeriesPlot(eplt.Figure):
                     opacity=0.7,
                     line=dict(color='black', width=1))))
 
-    def add_data(self, data, id_key=None, time_key=None, pd_key=None):
+    def add_data(self, data, id_key='ID', time_key='TIME', data_key='DATA'):
         """
-        Adds pharmacodynamic data of multiple individuals to figure.
+        Adds pharmacodynamic time series data of (multiple) individuals to
+        the figure.
 
-        Expects a pandas.DataFrame with an `ID`, `TIME` and `PD` column. If the
-        column names differ, column keys can be identifies using the optional
-        key arguments `id_key`, `time_key` and `pd_key`.
+        Expects a :class:`pandas.DataFrame` with an `ID`, `time` and `data`
+        column, and adds a scatter plot of the data values versus time points
+        to the figure. Each individual receives a unique colour.
+
+        By default the column keys for the ID, time and data column are
+        ``'ID'``, ``'TIME'``, and ``'DATA'``, respectively.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):

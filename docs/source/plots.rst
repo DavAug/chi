@@ -6,12 +6,12 @@ Plots
 
 The plots module contains a number of figure classes that allow
 you to easily visualise pharmacokinetic and pharmacodynamic data,
-models, and inference results.
+as well as PKPD modelling results.
 
 Overview:
 
-- :class:`PDDataPlot`
+- :class:`PDTimeSeriesPlot`
 
-.. autoclass:: PDDataPlot
+.. autoclass:: PDTimeSeriesPlot
     :members:
     :inherited-members:
