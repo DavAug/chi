@@ -10,13 +10,10 @@ Problems
 
 Inverse problems in erlotinib_ heavily rely on the inference package pints_.
 
-The :class:`InverseProblem` allows you to easily convert a
-:class:`Pharmacodynamic` into an inverse problem. These inverse problems
-can be used in conjuntion with pints_ log-likelihoods to create a versatile
-range of error models.
-
-For sampling or optimisition pints_ also allows to covert these log-likeilhoods
-into log-posteriors by providing a number of different log-priors.
+An :class:`InverseProblem` allows you to easily convert a
+:class:`PharmacokineticModel`, :class:`PharmacodynamicModel`, or :class:`PKPDModel`
+into an inverse problem. Such an inverse problem can be used in conjuntion with
+pints_ to infer the model parameters of the PK, PD or PKPD model.
 
 
 .. autoclass:: InverseProblem

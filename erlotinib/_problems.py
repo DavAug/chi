@@ -17,14 +17,15 @@ import erlotinib as erlo
 
 class InverseProblem(object):
     """
-    Represents an inference problem where a model is fit to a one or
-    multi-dimensional time series, such as measured from a system with
-    multiple outputs.
+    Represents an inference problem where a model is fit to a
+    one-dimensional or multi-dimensional time series, such as measured in a
+    PKPD study.
 
     Parameters
     ----------
     model
-        A model or model wrapper extending :class:`Model`.
+        An instance of a :class:`PharmacokineticModel`,
+        :class:`PharmacodynamicModel`, or :class:`PKPDModel`.
     times
         A sequence of points in time. Must be non-negative and increasing.
     values
