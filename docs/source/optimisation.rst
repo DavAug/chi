@@ -11,7 +11,7 @@ Optimisation
 Optimisation in erlotinib_ heavily relies on the inference package pints_.
 
 The :class:`OptimisationController` allows you to easily explore different
-optimisation setting, e.g. fixing some parameters, or applying different
+optimisation settings, e.g. fixing some parameters, or applying different
 transformations to the search space.
 
 
