@@ -61,7 +61,7 @@ class TestPDDataPlot(unittest.TestCase):
         data = self.data.rename(columns={'BIOMARKER': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <DATA>.',
+            ValueError, 'Data does not have the key <BIOMARKER>.',
             self.fig.add_data, data)
 
     def test_id_key_mapping(self):
