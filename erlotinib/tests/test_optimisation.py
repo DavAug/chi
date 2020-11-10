@@ -22,7 +22,7 @@ class TestOptimisationController(unittest.TestCase):
         times = data[mask]['TIME in day'].to_numpy()
         observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
 
-        path = erlo.ModelLibrary().tumour_growth_inhibition_pd_model()
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
 
         # Create inverse problem

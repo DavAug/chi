@@ -18,7 +18,7 @@ class TestPharmacodynamicModel(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        path = erlo.ModelLibrary().tumour_growth_inhibition_pd_model()
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.PharmacodynamicModel(path)
 
     def test_n_outputs(self):
