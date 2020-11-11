@@ -54,7 +54,8 @@ class PDTimeSeriesPlot(eplt.Figure):
             an ID, time, and biomarker column.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
-            Defaults to ``'ID'``.
+            The ID refers to the identity of an individual. Defaults to
+            ``'ID'``.
         time_key
             Key label of the :class:`DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
