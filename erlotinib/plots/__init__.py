@@ -9,6 +9,10 @@ from ._base import (  # noqa
     Figure
 )
 
-from ._scatter import (  # noqa
+from ._optimisation import (  # noqa
+    ParameterEstimatePlot
+)
+
+from ._time_series import (  # noqa
     PDTimeSeriesPlot
 )
