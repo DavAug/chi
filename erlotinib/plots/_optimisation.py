@@ -43,32 +43,47 @@ class ParameterEstimatePlot(eplt.Figure):
 
         One figure will only contain the estimates of one parameter.
         """
+        # Get figure
+        fig = self._figs[fig_id]
+
+        # Set y label to parameter name
+        fig.update_layout(
+            yaxis_title=parameter)
+
         # Add trace for each individual
         ids = data[self._id_key].unique()
         for index, individual in enumerate(ids):
             # Get individual data
             mask = data[self._id_key] == individual
             estimates = data[self._est_key][mask]
-            scores = data[self._score_key][mask]
-            runs = data[self._run_key][mask]
+            scores = data[self._score_key][mask].to_numpy()
+            runs = data[self._run_key][mask].to_numpy()
             color = colors[index]
 
-            self._add_trace(fig_id, parameter, estimates, scores, runs, color)
+            self._add_trace(
+                fig_id, individual, estimates, scores, runs, color)
 
-    def _add_trace(self, fig_id, parameter, estimates, scores, runs, color):
+    def _add_trace(
+            self, fig_id, individual, estimates, scores, runs, color):
         """
         Adds a box plot of an individuals estimates across multiple
         optimisation runs to a figure.
         """
+        # Get number of runs
+        n_runs = len(runs)
+
         # Get figure
         fig = self._figs[fig_id]
         fig.add_trace(
             go.Box(
                 y=estimates,
-                name=parameter,
+                name='ID: %d' % individual,
                 hovertemplate=(
-                    'Run: %{runs}<br>'
-                    'Log-posterior score: %{scores:.2f}'),
+                    'Estimate: %{y:.2f}<br>'
+                    '%{text}'),
+                text=[
+                    'Run: %d <br>Log-posterior score: %.2f' % (
+                        runs[i], scores[i]) for i in range(n_runs)],
                 boxpoints='all',
                 jitter=0.2,
                 pointpos=-1.5,
