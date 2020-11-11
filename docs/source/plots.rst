@@ -10,7 +10,12 @@ as well as PKPD modelling results.
 
 Overview:
 
+- :class:`Figure`
 - :class:`PDTimeSeriesPlot`
+
+.. autoclass:: Figure
+    :members:
+    :inherited-members:
 
 .. autoclass:: PDTimeSeriesPlot
     :members:
