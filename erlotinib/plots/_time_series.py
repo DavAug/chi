@@ -38,7 +38,7 @@ class PDTimeSeriesPlot(eplt.Figure):
                     line=dict(color='black', width=1))))
 
     def add_data(
-            self, data, id_key='ID', time_key='TIME', biom_key='BIOMARKER'):
+            self, data, id_key='ID', time_key='Time', biom_key='Biomarker'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
@@ -57,10 +57,10 @@ class PDTimeSeriesPlot(eplt.Figure):
             Defaults to ``'ID'``.
         time_key
             Key label of the :class:`DataFrame` which specifies the time
-            column. Defaults to ``'TIME'``.
+            column. Defaults to ``'Time'``.
         biom_key
             Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'BIOMARKER'``.
+            biomarker column. Defaults to ``'Biomarker'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):

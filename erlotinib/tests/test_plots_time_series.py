@@ -26,8 +26,8 @@ class TestPDDataPlot(unittest.TestCase):
         volumes = [np.nan, 0.3, 0.2, 0.5, 0.1, 0.2, 0.234, 0]
         cls.data = pd.DataFrame({
             'ID': ids,
-            'TIME': times,
-            'BIOMARKER': volumes})
+            'Time': times,
+            'Biomarker': volumes})
 
         # Create test figure
         cls.fig = erlo.plots.PDTimeSeriesPlot()
@@ -50,18 +50,18 @@ class TestPDDataPlot(unittest.TestCase):
 
     def test_wrong_time_key(self):
         # Rename ID key
-        data = self.data.rename(columns={'TIME': 'SOME NON-STANDARD KEY'})
+        data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <TIME>.',
+            ValueError, 'Data does not have the key <Time>.',
             self.fig.add_data, data)
 
     def test_wrong_biom_key(self):
         # Rename ID key
-        data = self.data.rename(columns={'BIOMARKER': 'SOME NON-STANDARD KEY'})
+        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <BIOMARKER>.',
+            ValueError, 'Data does not have the key <Biomarker>.',
             self.fig.add_data, data)
 
     def test_id_key_mapping(self):
@@ -78,7 +78,7 @@ class TestPDDataPlot(unittest.TestCase):
 
     def test_time_key_mapping(self):
         # Rename ID key
-        data = self.data.rename(columns={'TIME': 'SOME NON-STANDARD KEY'})
+        data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
         self.fig.add_data(data=data, time_key='SOME NON-STANDARD KEY')
@@ -90,7 +90,7 @@ class TestPDDataPlot(unittest.TestCase):
 
     def test_biom_key_mapping(self):
         # Rename ID key
-        data = self.data.rename(columns={'BIOMARKER': 'SOME NON-STANDARD KEY'})
+        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
         self.fig.add_data(data=data, biom_key='SOME NON-STANDARD KEY')
