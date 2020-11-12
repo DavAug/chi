@@ -135,8 +135,7 @@ class OptimisationController(object):
             # Configure optimisation routine
             opt.set_log_to_screen(False)
             opt.set_max_iterations(iterations=n_max_iterations)
-            # TODO: Add a method to set this!
-            opt.set_parallel(True)
+            opt.set_parallel(self._parallel_evaluation)
 
             # Find optimal parameters
             try:
