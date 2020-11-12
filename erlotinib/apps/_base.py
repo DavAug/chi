@@ -13,7 +13,7 @@ class BaseApp(object):
     """
     Base class for applications.
     """
-    
+
     def __init__(self, name):
         super(BaseApp, self).__init__()
 
