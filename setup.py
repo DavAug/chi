@@ -20,6 +20,7 @@ setup(
     # List of dependencies
     install_requires=[
         'dash>=1.17.0',
+        'dash-bootstrap-components>=0.10',
         'jupyter==1.0.0',
         'myokit>=1.31',
         'numpy>=1.8',
