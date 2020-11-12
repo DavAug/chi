@@ -103,6 +103,11 @@ class TestOptimisationController(unittest.TestCase):
         value = [0, 0]
         self.optimiser.fix_parameters(mask, value)
 
+        # Set evaluator to sequential, because otherwise codecov
+        # complains that posterior was never evaluated.
+        # (Potentially codecov cannot keep track of multiple CPUs)
+        self.optimiser.set_parallel_evaluation(False)
+
         self.optimiser.set_n_runs(3)
         result = self.optimiser.run(n_max_iterations=20)
 
@@ -183,6 +188,24 @@ class TestOptimisationController(unittest.TestCase):
     def test_set_optimiser_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Optimiser has to be'):
             self.optimiser.set_optimiser(str)
+
+    def test_parallel_evaluation(self):
+        # Set to sequential
+        self.optimiser.set_parallel_evaluation(False)
+        self.assertFalse(self.optimiser._parallel_evaluation)
+
+        # Set to parallel
+        self.optimiser.set_parallel_evaluation(True)
+        self.assertTrue(self.optimiser._parallel_evaluation)
+
+    def test_parallel_evaluation_bad_input(self):
+        # Non-boolean and non-integer
+        with self.assertRaisesRegex(ValueError, '`run_in_parallel` has'):
+            self.optimiser.set_parallel_evaluation(2.2)
+
+        # Negative input
+        with self.assertRaisesRegex(ValueError, '`run_in_parallel` cannot'):
+            self.optimiser.set_parallel_evaluation(-2)
 
     def test_set_transform_bad_transform(self):
         # Try to set transformation that is not a `pints.Transformation`
