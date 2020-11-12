@@ -6,7 +6,8 @@
 #
 
 from ._base import (  # noqa
-    Figure
+    MultiFigure,
+    SingleFigure
 )
 
 from ._optimisation import (  # noqa

@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 import erlotinib.plots as eplt
 
 
-class ParameterEstimatePlot(eplt.Figure):
+class ParameterEstimatePlot(eplt.MultiFigure):
     """
     A figure class that visualises parameter maximum a posteriori probability
     estimates across multiple optimisation runs.
@@ -26,15 +26,12 @@ class ParameterEstimatePlot(eplt.Figure):
     This figure can be used to assess the stability of the optimisation
     results, as well as the variation of parameter estimates across
     individuals.
+
+    Extends :class:`MultiFigure`.
     """
 
     def __init__(self):
         super(ParameterEstimatePlot, self).__init__()
-
-        # Instantiate a list of figures, one figure for each parameter.
-        # At this point only one empty figure, which we can expand in
-        # :meth:`add_data`
-        self._figs = [self._fig]
 
     def _add_box_plots(self, fig_id, parameter, data, colors):
         """
