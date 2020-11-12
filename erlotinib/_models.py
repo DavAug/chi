@@ -112,8 +112,7 @@ class PharmacodynamicModel(object):
         names are assigned to the parameters.
 
         Setting parameter names has no effect on the simulation. Parameter
-        names will however be used by other class in :module:`erlotinib` to
-        refer to the parameters.
+        names may however be used by other classes to refer to the parameters.
 
         Parameters
         ----------
