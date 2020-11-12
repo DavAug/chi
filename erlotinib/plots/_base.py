@@ -8,13 +8,13 @@
 import plotly.graph_objects as go
 
 
-class Figure(object):
+class SingleFigure(object):
     """
-    Base class for figures.
+    Base class for plot classes that generate a single figure.
     """
 
     def __init__(self):
-        super(Figure, self).__init__()
+        super(SingleFigure, self).__init__()
 
         self._fig = go.Figure()
         self._set_layout()
@@ -75,3 +75,67 @@ class Figure(object):
         Displays the figure.
         """
         self._fig.show()
+
+
+class MultiFigure(object):
+    """
+    Base class for plot classes that generate multiple figures.
+    """
+
+    def __init__(self):
+        super(MultiFigure, self).__init__()
+
+        # Create a template figure
+        self._fig = go.Figure()
+        self._set_layout()
+        self._figs = [self._fig]
+
+    def _set_layout(self):
+        """
+        Configures the basic layout of the figure.
+
+        - Size
+        - Template
+        - Log and linear y scale switches
+        """
+        self._fig.update_layout(
+            autosize=True,
+            template="plotly_white",
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    direction="left",
+                    buttons=list([
+                        dict(
+                            args=[{"yaxis.type": "linear"}],
+                            label="Linear y-scale",
+                            method="relayout"
+                        ),
+                        dict(
+                            args=[{"yaxis.type": "log"}],
+                            label="Log y-scale",
+                            method="relayout"
+                        )
+                    ]),
+                    pad={"r": 0, "t": -10},
+                    showactive=True,
+                    x=0.0,
+                    xanchor="left",
+                    y=1.15,
+                    yanchor="top"
+                )
+            ]
+        )
+
+    def add_data(self, data):
+        """
+        Adds data to the figure.
+        """
+        raise NotImplementedError
+
+    def show(self):
+        """
+        Displays the figures.
+        """
+        for fig in self._figs:
+            fig.show()

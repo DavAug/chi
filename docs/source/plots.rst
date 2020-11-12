@@ -8,12 +8,23 @@ The plots module contains a number of figure classes that allow
 you to easily visualise pharmacokinetic and pharmacodynamic data,
 as well as PKPD modelling results.
 
+Base classes:
+
+- :class:`MultiFigure`
+- :class:`SingleFigure`
+
 Overview:
 
-- :class:`Figure`
+- :class:`ParameterEstimatePlot`
 - :class:`PDTimeSeriesPlot`
 
-.. autoclass:: Figure
+.. autoclass:: MultiFigure
+    :members:
+
+.. autoclass:: SingleFigure
+    :members:
+
+.. autoclass:: ParameterEstimatePlot
     :members:
     :inherited-members:
 

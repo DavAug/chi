@@ -14,6 +14,9 @@ import erlotinib as erlo
 
 
 class TestModelLibrary(unittest.TestCase):
+    """
+    Tests the erlotinib.ModelLibrary class.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -25,7 +28,11 @@ class TestModelLibrary(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
 
 
-class TestTumourGrowthInhibitionPDModel(unittest.TestCase):
+class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
+    """
+    Tests the erlotinib.modelLibrary.tumour_growth_inhibition_model_koch
+    method.
+    """
 
     @classmethod
     def setUpClass(cls):

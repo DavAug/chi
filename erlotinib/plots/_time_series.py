@@ -12,10 +12,12 @@ import plotly.graph_objects as go
 import erlotinib.plots as eplt
 
 
-class PDTimeSeriesPlot(eplt.Figure):
+class PDTimeSeriesPlot(eplt.SingleFigure):
     """
     A figure class that visualises pharmacodynamic data and PD simulation
     results.
+
+    Extends :class:`SingleFigure`.
     """
 
     def __init__(self):
@@ -38,7 +40,7 @@ class PDTimeSeriesPlot(eplt.Figure):
                     line=dict(color='black', width=1))))
 
     def add_data(
-            self, data, id_key='ID', time_key='TIME', biom_key='BIOMARKER'):
+            self, data, id_key='ID', time_key='Time', biom_key='Biomarker'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
@@ -54,17 +56,18 @@ class PDTimeSeriesPlot(eplt.Figure):
             an ID, time, and biomarker column.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
-            Defaults to ``'ID'``.
+            The ID refers to the identity of an individual. Defaults to
+            ``'ID'``.
         time_key
             Key label of the :class:`DataFrame` which specifies the time
-            column. Defaults to ``'TIME'``.
+            column. Defaults to ``'Time'``.
         biom_key
             Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'BIOMARKER'``.
+            biomarker column. Defaults to ``'Biomarker'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
-            raise ValueError(
+            raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
         for key in [id_key, time_key, biom_key]:

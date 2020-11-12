@@ -63,6 +63,40 @@ class TestPharmacodynamicModel(unittest.TestCase):
         output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
         self.assertEqual(output.shape, (1, 2))
 
+    def test_set_parameter_names(self):
+        # Set some parameter names
+        names = {
+            'myokit.tumour_volume': 'TV',
+            'myokit.lambda_0': 'Expon. growth rate'}
+        self.model.set_parameter_names(names)
+        parameters = self.model.parameters()
+
+        self.assertEqual(parameters[0], 'TV')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'Expon. growth rate')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+
+        # Reverse parameter names
+        names = {
+            'TV': 'myokit.tumour_volume',
+            'Expon. growth rate': 'myokit.lambda_0'}
+        self.model.set_parameter_names(names)
+        parameters = self.model.parameters()
+
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+
+    def test_set_parameter_names_bad_input(self):
+        # List input is not ok!
+        names = ['TV', 'some name']
+
+        with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
+            self.model.set_parameter_names(names)
+
     def test_simulate(self):
 
         times = [0, 1, 2, 3]

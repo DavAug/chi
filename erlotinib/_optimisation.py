@@ -19,7 +19,8 @@ class OptimisationController(object):
 
     By default the optimisation is run 10 times from different initial
     starting points. Starting points are randomly sampled from the
-    specified :class:`pints.LogPrior`.
+    specified :class:`pints.LogPrior`. The optimisation is run by default in
+    parallel using :class:`pints.ParallelEvaluator`.
     """
 
     def __init__(self, log_posterior):
@@ -32,8 +33,9 @@ class OptimisationController(object):
         self._log_posterior = log_posterior
 
         # Set defaults
-        self._optimiser = pints.CMAES
         self._n_runs = 10
+        self._optimiser = pints.CMAES
+        self._parallel_evaluation = True
         self._transform = None
 
         # Sample initial parameters from log-prior
@@ -133,6 +135,7 @@ class OptimisationController(object):
             # Configure optimisation routine
             opt.set_log_to_screen(False)
             opt.set_max_iterations(iterations=n_max_iterations)
+            opt.set_parallel(self._parallel_evaluation)
 
             # Find optimal parameters
             try:
@@ -183,6 +186,26 @@ class OptimisationController(object):
                 'Optimiser has to be a `pints.Optimiser`.'
             )
         self._optimiser = optimiser
+
+    def set_parallel_evaluation(self, run_in_parallel):
+        """
+        Enables or disables parallel evaluation using either
+        :class:`pints.ParallelEvaluator` or `pints.SequentialEvaluator`.
+
+        If ``run_in_parallel=True``, the method will run using a number of
+        worker processes equal to the detected cpu core count. The number of
+        workers can be set explicitly by setting ``run_in_parallel`` to an
+        integer greater than ``0``. Parallelisation can be disabled by setting
+        ``run_in_parallel`` to ``0`` or ``False``.
+        """
+        if not isinstance(run_in_parallel, (bool, int)):
+            raise ValueError(
+                '`run_in_parallel` has to a boolean or an integer.')
+        if run_in_parallel < 0:
+            raise ValueError(
+                '`run_in_parallel` cannot be negative.')
+
+        self._parallel_evaluation = run_in_parallel
 
     def set_transform(self, transform):
         """

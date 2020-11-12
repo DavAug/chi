@@ -11,6 +11,9 @@ import erlotinib as erlo
 
 
 class TestInverseProblem(unittest.TestCase):
+    """
+    Tests the erlotinib.InverseProblem class.
+    """
 
     @classmethod
     def setUpClass(cls):

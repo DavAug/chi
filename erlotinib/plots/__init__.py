@@ -6,9 +6,14 @@
 #
 
 from ._base import (  # noqa
-    Figure
+    MultiFigure,
+    SingleFigure
 )
 
-from ._scatter import (  # noqa
+from ._optimisation import (  # noqa
+    ParameterEstimatePlot
+)
+
+from ._time_series import (  # noqa
     PDTimeSeriesPlot
 )
