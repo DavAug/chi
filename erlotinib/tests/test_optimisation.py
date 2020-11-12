@@ -13,6 +13,9 @@ import erlotinib as erlo
 
 
 class TestOptimisationController(unittest.TestCase):
+    """
+    Tests the erlotinib.OptimisationController class.
+    """
 
     @classmethod
     def setUpClass(cls):

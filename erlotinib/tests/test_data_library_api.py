@@ -13,6 +13,9 @@ import erlotinib as erlo
 
 
 class TestDataLibrary(unittest.TestCase):
+    """
+    Tests the erlotinib.DataLibrary class.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -25,6 +28,9 @@ class TestDataLibrary(unittest.TestCase):
 
 
 class TestLungCancerControlGroup(unittest.TestCase):
+    """
+    Tests the erlotinib.DataLibrary.lung_cancer_control_group method.
+    """
 
     @classmethod
     def setUpClass(cls):
