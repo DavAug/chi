@@ -41,6 +41,12 @@ class PharmacodynamicModel(object):
         # Set default parameter names
         self._parameter_names = self._state_names + self._const_names
 
+        # Set default pharmacokinetic input variable
+        # (Typically drug concentration)
+        self._pk_input = None
+        if 'myokit.drug_concentration' in self._parameter_names:
+            self._pk_input = 'myokit.drug_concentration'
+
         # Set default outputs
         self._output_names = self._state_names
         self._n_outputs = self._n_states
@@ -84,6 +90,15 @@ class PharmacodynamicModel(object):
         """
         return self._parameter_names
 
+    def pk_input(self):
+        """
+        Returns the pharmacokinetic input variable. In most models this will be
+        the concentration of the drug.
+
+        Defaults to ``None`` or ``myokit.drug_concentration`` if the latter is
+        among the model parameters.
+        """
+
     def set_outputs(self, outputs):
         """
         Sets outputs of the model.
@@ -112,7 +127,8 @@ class PharmacodynamicModel(object):
         names are assigned to the parameters.
 
         Setting parameter names has no effect on the simulation. Parameter
-        names may however be used by other classes to refer to the parameters.
+        names may however be used by other methods to refer to the parameters,
+        e.g. :meth:`set_pk_input`.
 
         Parameters
         ----------
@@ -134,6 +150,19 @@ class PharmacodynamicModel(object):
                 pass
 
         self._parameter_names = parameter_names
+
+    def set_pk_input(self, name):
+        """
+        Sets the pharmacokinetic input variable. In most models this will be
+        the concentration of the drug.
+
+        The name has to match a parameter of the model.
+        """
+        if name not in self._parameter_names:
+            raise ValueError(
+                'The name does not match a model parameter.')
+
+        self._pk_input = name
 
     def simulate(self, parameters, times):
         """
