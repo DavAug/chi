@@ -40,6 +40,12 @@ class PDSimulationController(erlo.apps.BaseApp):
         self._slider_range = (0, 10)
         self._slider_value = 1
 
+    def _add_simulation(self):
+        """
+        Adds trace of simulation results to the figure.
+        """
+        #TODO:
+
     def _create_figure_component(self):
         """
         Returns a figure component.
@@ -119,6 +125,13 @@ class PDSimulationController(erlo.apps.BaseApp):
                 self._create_sliders_component()])],
             style={'marginTop': '5em'})
 
+    def _simulate(parameters, times):
+        """
+        Returns simulation of pharmacodynamic model in standard format, i.e.
+        pandas.DataFrame with 'Time' and 'Biomarker' column.
+        """
+        #TODO:
+
     def add_data(
             self, data, id_key='ID', time_key='Time', biom_key='Biomarker'):
         """
@@ -165,8 +178,8 @@ class PDSimulationController(erlo.apps.BaseApp):
         self._create_sliders(parameters, pk_input)
         self._set_layout()
 
-        # # Add simulation of model to the figure
-        # self._add_simulation()
+        # Add simulation of model to the figure
+        self._add_simulation()
 
     def set_axis_labels(self, xlabel, ylabel):
         """
