@@ -38,6 +38,9 @@ class PharmacodynamicModel(object):
         self._const_names = sorted(
             [var.qname() for var in model.variables(const=True)])
 
+        # Set default parameter names
+        self._parameter_names = self._state_names + self._const_names
+
         # Set default outputs
         self._output_names = self._state_names
         self._n_outputs = self._n_states
@@ -79,14 +82,17 @@ class PharmacodynamicModel(object):
         """
         Returns the parameter names of the model.
         """
-        return self._state_names + self._const_names
+        return self._parameter_names
 
     def set_outputs(self, outputs):
         """
         Sets outputs of the model.
 
-        Outputs has to be a list of quantifiable variable names of the
-        myokit.Model, e.g. `compartment.variable`.
+        Parameters
+        ----------
+        outputs
+            A list of quantifiable variable names of the :class:`myokit.Model`,
+            e.g. `compartment.variable`.
         """
         # Check that outputs are valid
         for output in outputs:
@@ -100,6 +106,36 @@ class PharmacodynamicModel(object):
         self._output_names = outputs
         self._n_outputs = len(outputs)
 
+    def set_parameter_names(self, names):
+        """
+        Assigns names to the parameters. By default the :class:`myokit.Model`
+        names are assigned to the parameters.
+
+        Setting parameter names has no effect on the simulation. Parameter
+        names will however be used by other class in :module:`erlotinib` to
+        refer to the parameters.
+
+        Parameters
+        ----------
+        names
+            A dictionary that maps the current parameter names to new names.
+        """
+        if not isinstance(names, dict):
+            raise TypeError(
+                'Names has to be a dictionary with the current parameter names'
+                'as keys and the new parameter names as values.')
+
+        parameter_names = self._parameter_names
+        for index, parameter in enumerate(self._parameter_names):
+            try:
+                parameter_names[index] = str(names[parameter])
+            except KeyError:
+                # KeyError indicates that a current parameter is not being
+                # replaced.
+                pass
+
+        self._parameter_names = parameter_names
+
     def simulate(self, parameters, times):
         """
         Returns the numerical solution of the model outputs for specified
@@ -107,6 +143,14 @@ class PharmacodynamicModel(object):
 
         The result is returned as a 2 dimensional NumPy array of shape
         (n_outputs, n_times).
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with values for the model parameters.
+        times
+            An array-like object with time points at which the output
+            values are returned.
         """
         # Reset simulation
         self._sim.reset()
