@@ -23,7 +23,6 @@ class BaseApp(object):
 
         self._app.layout = dbc.Container(
             children=[
-                dbc.Row(),
                 dbc.Alert(
                     children="No app content has been added!",
                     color="primary"),
