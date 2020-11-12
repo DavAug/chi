@@ -49,7 +49,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             self.fig.add_data, data)
 
     def test_wrong_time_key(self):
-        # Rename ID key
+        # Rename time key
         data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
@@ -57,7 +57,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             self.fig.add_data, data)
 
     def test_wrong_biom_key(self):
-        # Rename ID key
+        # Rename biomarker key
         data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
@@ -77,7 +77,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             self.fig.add_data(data=data, id_key='SOME WRONG KEY')
 
     def test_time_key_mapping(self):
-        # Rename ID key
+        # Rename time key
         data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
@@ -89,7 +89,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             self.fig.add_data(data=data, time_key='SOME WRONG KEY')
 
     def test_biom_key_mapping(self):
-        # Rename ID key
+        # Rename biomarker key
         data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
