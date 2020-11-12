@@ -98,6 +98,7 @@ class PharmacodynamicModel(object):
         Defaults to ``None`` or ``myokit.drug_concentration`` if the latter is
         among the model parameters.
         """
+        return self._pk_input
 
     def set_outputs(self, outputs):
         """
