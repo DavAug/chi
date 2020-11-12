@@ -18,7 +18,13 @@ Overview:
 - :class:`ParameterEstimatePlot`
 - :class:`PDTimeSeriesPlot`
 
-.. autoclass:: Figure
+.. autoclass:: MultiFigure
+    :members:
+
+.. autoclass:: SingleFigure
+    :members:
+
+.. autoclass:: ParameterEstimatePlot
     :members:
     :inherited-members:
 
