@@ -67,7 +67,7 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
-            raise ValueError(
+            raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
         for key in [id_key, time_key, biom_key]:

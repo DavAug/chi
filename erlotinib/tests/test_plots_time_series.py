@@ -13,9 +13,9 @@ import pandas as pd
 import erlotinib as erlo
 
 
-class TestPDDataPlot(unittest.TestCase):
+class TestPDTimeSeriesPlot(unittest.TestCase):
     """
-    Tests the erlotinib.plots.PDDataPlot class.
+    Tests the erlotinib.plots.PDTimeSeriesPlot class.
     """
 
     @classmethod
@@ -37,7 +37,7 @@ class TestPDDataPlot(unittest.TestCase):
         data = np.ones(shape=(10, 4))
 
         self.assertRaisesRegex(
-            ValueError, 'Data has to be pandas.DataFrame.',
+            TypeError, 'Data has to be pandas.DataFrame.',
             self.fig.add_data, data)
 
     def test_wrong_id_key(self):
