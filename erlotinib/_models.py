@@ -151,6 +151,14 @@ class PharmacodynamicModel(object):
 
         self._parameter_names = parameter_names
 
+        # Rename pk input
+        try:
+            self._pk_input = str(names[self._pk_input])
+        except KeyError:
+            # KeyError indicates that a current parameter is not being
+            # replaced.
+            pass
+
     def set_pk_input(self, name):
         """
         Sets the pharmacokinetic input variable. In most models this will be
