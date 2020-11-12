@@ -124,7 +124,7 @@ class ParameterEstimatePlot(eplt.MultiFigure):
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
-            raise ValueError(
+            raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
         keys = [param_key, id_key, est_key, score_key, run_key]
