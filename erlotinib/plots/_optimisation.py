@@ -151,10 +151,3 @@ class ParameterEstimatePlot(eplt.MultiFigure):
 
             # Add box plots for all individuals
             self._add_box_plots(index, parameter, estimates, colors)
-
-    def show(self):
-        """
-        Displays the figures.
-        """
-        for fig in self._figs:
-            fig.show()
