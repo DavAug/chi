@@ -11,15 +11,21 @@ import plotly.graph_objects as go
 class SingleFigure(object):
     """
     Base class for plot classes that generate a single figure.
+
+    Parameter
+    ---------
+    updatemenu
+        Boolean flag that enables or disables interactive buttons, such as a
+        logarithmic scale switch for the y-axis.
     """
 
-    def __init__(self):
+    def __init__(self, updatemenu=True):
         super(SingleFigure, self).__init__()
 
         self._fig = go.Figure()
-        self._set_layout()
+        self._set_layout(updatemenu)
 
-    def _set_layout(self):
+    def _set_layout(self, updatemenu):
         """
         Configures the basic layout of the figure.
 
@@ -29,32 +35,35 @@ class SingleFigure(object):
         """
         self._fig.update_layout(
             autosize=True,
-            template="plotly_white",
-            updatemenus=[
-                dict(
-                    type="buttons",
-                    direction="left",
-                    buttons=list([
-                        dict(
-                            args=[{"yaxis.type": "linear"}],
-                            label="Linear y-scale",
-                            method="relayout"
-                        ),
-                        dict(
-                            args=[{"yaxis.type": "log"}],
-                            label="Log y-scale",
-                            method="relayout"
-                        )
-                    ]),
-                    pad={"r": 0, "t": -10},
-                    showactive=True,
-                    x=0.0,
-                    xanchor="left",
-                    y=1.15,
-                    yanchor="top"
-                )
-            ]
-        )
+            template="plotly_white")
+
+        if updatemenu:
+            self._fig.update_layout(
+                updatemenus=[
+                    dict(
+                        type="buttons",
+                        direction="left",
+                        buttons=list([
+                            dict(
+                                args=[{"yaxis.type": "linear"}],
+                                label="Linear y-scale",
+                                method="relayout"
+                            ),
+                            dict(
+                                args=[{"yaxis.type": "log"}],
+                                label="Log y-scale",
+                                method="relayout"
+                            )
+                        ]),
+                        pad={"r": 0, "t": -10},
+                        showactive=True,
+                        x=0.0,
+                        xanchor="left",
+                        y=1.15,
+                        yanchor="top"
+                    )
+                ]
+            )
 
     def add_data(self, data):
         """

@@ -18,10 +18,16 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
     results.
 
     Extends :class:`SingleFigure`.
+
+    Parameter
+    ---------
+    updatemenu
+        Boolean flag that enables or disables interactive buttons, such as a
+        logarithmic scale switch for the y-axis.
     """
 
-    def __init__(self):
-        super(PDTimeSeriesPlot, self).__init__()
+    def __init__(self, updatemenu=True):
+        super(PDTimeSeriesPlot, self).__init__(updatemenu)
 
     def _add_trace(self, label, times, biomarker, color):
         """
