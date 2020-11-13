@@ -9,6 +9,7 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
+import pandas as pd
 
 import erlotinib as erlo
 
@@ -41,15 +42,19 @@ class PDSimulationController(erlo.apps.BaseApp):
         """
         Adds trace of simulation results to the figure.
         """
+        # Make sure that parameters and sliders are ordered the same
+        if self._model.parameters() != list(self._sliders.sliders().keys()):
+            raise Warning('Model parameters do not align with slider.')
+
         # Get parameter values
         parameters = []
-        print(self._sliders)
-        for slider_component in self._sliders:
-            _, slider = slider_component
+        for slider in self._sliders.sliders().values():
             value = slider.value
-            parameters += value
+            parameters.append(value)
 
-        print(parameters)
+        # Add simulation to figure
+        result = self._simulate(parameters)
+        self._fig.add_simulation(result)
 
     def _create_figure_component(self):
         """
@@ -65,28 +70,36 @@ class PDSimulationController(erlo.apps.BaseApp):
 
         return figure
 
-    def _create_sliders(self, pk_input, initial_values, parameters):
+    def _create_sliders(self):
         """
         Creates one slider for each parameter, and groups the slider by
         1. Pharmacokinetic input
         2. Initial values (of states)
         3. Parameters
         """
+        parameters = self._model.parameters()
         # Add one slider for each parameter
         for parameter in parameters:
             self._sliders.add_slider(slider_id=parameter)
 
+        # Split parameters into initial values, and parameters
+        n_states = self._model._n_states
+        states = parameters[:n_states]
+        parameters = parameters[n_states:]
+
+        # Group parameters:
         # Create PK input slider group
+        pk_input = self._model.pk_input()
         if pk_input is not None:
             self._sliders.group_sliders(
                 slider_ids=[pk_input], group_id='Pharmacokinetic input')
+
+            # Make sure that pk input is not assigned to two sliders
             parameters.remove(pk_input)
 
         # Create initial values slider group
         self._sliders.group_sliders(
-            slider_ids=initial_values, group_id='Initial values')
-        for state in initial_values:
-            parameters.remove(state)
+            slider_ids=states, group_id='Initial values')
 
         # Create parameters slider group
         self._sliders.group_sliders(
@@ -117,12 +130,18 @@ class PDSimulationController(erlo.apps.BaseApp):
                 self._create_sliders_component()])],
             style={'marginTop': '5em'})
 
-    def _simulate(parameters, times):
+    def _simulate(self, parameters):
         """
         Returns simulation of pharmacodynamic model in standard format, i.e.
         pandas.DataFrame with 'Time' and 'Biomarker' column.
         """
-        #TODO:
+        # Solve the model
+        result = self._model.simulate(parameters, self._times)
+
+        # Rearrange results into a pandas.DataFrame
+        result = pd.DataFrame({'Time': self._times, 'Biomarker': result[0, :]})
+
+        return result
 
     def add_data(
             self, data, id_key='ID', time_key='Time', biom_key='Biomarker'):
@@ -164,15 +183,16 @@ class PDSimulationController(erlo.apps.BaseApp):
                 'Model has to be an instance of '
                 'erlotinib.PharamcodynamicModel.')
 
-        # Add one slider for each parameter to the app
-        pk_input = model.pk_input()
-        state_names = model._state_names
-        parameters = model.parameters()
-        self._create_sliders(pk_input, state_names, parameters)
-        self._set_layout()
+        self._model = model
 
-        # # Add simulation of model to the figure
-        # self._add_simulation()
+        # Add one slider for each parameter to the app
+        self._create_sliders()
+
+        # Add simulation of model to the figure
+        self._add_simulation()
+
+        # Update layout
+        self._set_layout()
 
     def set_axis_labels(self, xlabel, ylabel):
         """
@@ -291,6 +311,13 @@ class _SlidersComponent(object):
 
         self._slider_groups[group_id] = slider_ids
 
+    def sliders(self):
+        """
+        Returns a dictionary of slider objects with the slider ID as key and the
+        slider object as value.
+        """
+        return self._sliders
+
 
 # For simple debugging the app can be launched by executing the python file.
 if __name__ == "__main__":
@@ -298,6 +325,12 @@ if __name__ == "__main__":
     data = erlo.DataLibrary().lung_cancer_control_group(True)
     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
     model = erlo.PharmacodynamicModel(path)
+    model.set_parameter_names(names={
+        'myokit.drug_concentration': 'Drug concentration in mg/L',
+        'myokit.tumour_volume': 'Tumour volume in cm^3',
+        'myokit.kappa': 'Potency in L/mg/day',
+        'myokit.lambda_0': 'Expon. growth rate in 1/day',
+        'myokit.lambda_1': 'Linear growth rate in cm^3/day'})
 
     # Set up demo app
     app = PDSimulationController()
