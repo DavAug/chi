@@ -28,23 +28,28 @@ class PDSimulationController(erlo.apps.BaseApp):
             name='PDSimulationController')
 
         # Instantiate figure and sliders
-        self._fig = erlo.plots.PDTimeSeriesPlot()
-        self._sliders = [dbc.Alert(
-            "No model has been chosen.", color="primary")]
+        self._fig = erlo.plots.PDTimeSeriesPlot(updatemenu=False)
+        self._sliders = _SlidersComponent()
 
         # Create default layout
         self._set_layout()
 
         # Create default simulation and slider settings
         self._times = np.linspace(start=0, stop=30)
-        self._slider_range = (0, 10)
-        self._slider_value = 1
 
     def _add_simulation(self):
         """
         Adds trace of simulation results to the figure.
         """
-        #TODO:
+        # Get parameter values
+        parameters = []
+        print(self._sliders)
+        for slider_component in self._sliders:
+            _, slider = slider_component
+            value = slider.value
+            parameters += value
+
+        print(parameters)
 
     def _create_figure_component(self):
         """
@@ -59,57 +64,38 @@ class PDSimulationController(erlo.apps.BaseApp):
 
         return figure
 
-    def _create_sliders(self, parameters, pk_input):
+    def _create_sliders(self, pk_input, initial_values, parameters):
         """
-        Creates one slider for each parameter.
-
-        The pk_input (typically drug concentration) is visualised in a
-        slightly separate block than the remaining parameters.
+        Creates one slider for each parameter, and groups the slider by
+        1. Pharmacokinetic input
+        2. Initial values (of states)
+        3. Parameters
         """
-        sliders = []
-        lower, upper = self._slider_range
-
-        # Add pharamcokinetic input slider
-        if pk_input is not None:
-            slider = [
-                html.Label('%s' % pk_input),
-                dcc.Slider(
-                    id='%s' % pk_input,
-                    value=self._slider_value,
-                    min=lower,
-                    max=upper,
-                    step=0.1,
-                    marks={
-                        str(lower): str(lower),
-                        str(upper): str(upper)})
-            ]
-            sliders += slider
-
-        # Add sliders for remaining parameter
-        parameters.remove(pk_input)
+        # Add one slider for each parameter
         for parameter in parameters:
-            slider = [
-                html.Label('%s' % parameter),
-                dcc.Slider(
-                    id='%s' % parameter,
-                    value=self._slider_value,
-                    min=lower,
-                    max=upper,
-                    step=0.1,
-                    marks={
-                        str(lower): str(lower),
-                        str(upper): str(upper)})
-            ]
-            sliders += slider
+            self._sliders.add_slider(slider_id=parameter)
 
-        self._sliders = sliders
+        # Create PK input slider group
+        self._sliders.group_sliders(
+            slider_ids=[pk_input], group_id='Pharmacokinetic input')
+        parameters.remove(pk_input)
+
+        # Create initial values slider group
+        self._sliders.group_sliders(
+            slider_ids=initial_values, group_id='Initial values')
+        for state in initial_values:
+            parameters.remove(state)
+
+        # Create parameters slider group
+        self._sliders.group_sliders(
+            slider_ids=parameters, group_id='Parameters')
 
     def _create_sliders_component(self):
         """
         Returns a slider component.
         """
         sliders = dbc.Col(
-            children=self._sliders,
+            children=self._sliders(),
             md=3,
             style={'marginTop': '5em'}
         )
@@ -177,19 +163,131 @@ class PDSimulationController(erlo.apps.BaseApp):
                 'erlotinib.PharamcodynamicModel.')
 
         # Add one slider for each parameter to the app
-        parameters = model.parameters()
         pk_input = model.pk_input()
-        sliders = self._create_sliders(parameters, pk_input)
+        state_names = model._state_names
+        parameters = model.parameters()
+        self._create_sliders(pk_input, state_names, parameters)
         self._set_layout()
 
-        # Add simulation of model to the figure
-        self._add_simulation()
+        # # Add simulation of model to the figure
+        # self._add_simulation()
 
     def set_axis_labels(self, xlabel, ylabel):
         """
         Sets the x axis, and y axis label of the figure.
         """
         self._fig.set_axis_labels(xlabel, ylabel)
+
+
+class _SlidersComponent(object):
+    """
+    A helper class that helps to organise the sliders of the
+    :class:`SimulationController`.
+
+    The sliders are arranged horizontally. Sliders may be grouped by meaning.
+    """
+
+    def __init__(self):
+        # Set defaults
+        self._range = (0, 10)
+        self._value = 1
+        self._sliders = {}
+        self._slider_groups = {}
+
+    def __call__(self):
+        # Returns the contents in form of a list of dash components.
+
+        # If no sliders have been added, print a default message.
+        if not self._sliders:
+            default = [dbc.Alert(
+                "No model has been chosen.", color="primary")]
+            return default
+
+        # If sliders have not been grouped, print a default message.
+        if not self._sliders:
+            default = [dbc.Alert(
+                "Sliders have not been grouped.", color="primary")]
+            return default
+
+        # Group and label sliders
+        contents = self._compose_contents()
+        return contents
+
+    def _compose_contents(self):
+        """
+        Returns the grouped sliders with labels as a list of dash components.
+        """
+        contents = []
+        for group_id in self._slider_groups.keys():
+            # Create label for group
+            group_label = html.Label(group_id)
+
+            # Group sliders
+            group = self._slider_groups[group_id]
+            container = []
+            for slider_id in group:
+                # Create label for slider
+                label = html.Label(slider_id)
+                slider = self._sliders[slider_id]
+
+                # Add label and slider to group container
+                container += [
+                    dbc.Col(children=[label], width=12),
+                    dbc.Col(children=[slider], width=12)]
+
+            # Convert slider group to dash component
+            group = dbc.Row(
+                children=container)
+
+            # Add label and group to contents
+            contents += [group_label, group]
+
+        return contents
+
+    def add_slider(
+            self, slider_id, value=1, min_value=0, max_value=10,
+            step_size=0.1):
+        """
+        Adds a slider.
+
+        Parameters
+        ----------
+        slider_id
+            ID of the slider.
+        value
+            Default value of the slider.
+        min_value
+            Minimal value of slider.
+        max_value
+            Maximal value of slider.
+        step_size
+            Elementary step size of slider.
+        """
+        self._sliders[slider_id] = dcc.Slider(
+            id=slider_id,
+            value=value,
+            min=min_value,
+            max=max_value,
+            step=step_size,
+            marks={
+                str(min_value): str(min_value),
+                str(max_value): str(max_value)})
+
+    def group_sliders(self, slider_ids, group_id):
+        """
+        Visually groups sliders. Group ID will be used as label.
+
+        Each slider can only be in one group.
+        """
+        # Check that incoming sliders do not belong to any group already
+        for index, existing_group in enumerate(self._slider_groups.values()):
+            for slider in slider_ids:
+                if slider in existing_group:
+                    raise ValueError(
+                        'Slider <' + str(slider) + '> exists already in group '
+                        '<' + str(self._slider_groups.keys()[index]) + '>.')
+
+        self._slider_groups[group_id] = slider_ids
 
 
 # For simple debugging the app can be launched by executing the python file.
