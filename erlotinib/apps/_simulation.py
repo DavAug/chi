@@ -58,7 +58,8 @@ class PDSimulationController(erlo.apps.BaseApp):
         figure = dbc.Col(
             children=[dcc.Graph(
                 figure=self._fig._fig,
-                id='fig')],
+                id='fig',
+                style={'height': '67vh'})],
             md=9
         )
 
