@@ -76,9 +76,10 @@ class PDSimulationController(erlo.apps.BaseApp):
             self._sliders.add_slider(slider_id=parameter)
 
         # Create PK input slider group
-        self._sliders.group_sliders(
-            slider_ids=[pk_input], group_id='Pharmacokinetic input')
-        parameters.remove(pk_input)
+        if pk_input is not None:
+            self._sliders.group_sliders(
+                slider_ids=[pk_input], group_id='Pharmacokinetic input')
+            parameters.remove(pk_input)
 
         # Create initial values slider group
         self._sliders.group_sliders(
@@ -227,7 +228,7 @@ class _SlidersComponent(object):
             container = []
             for slider_id in group:
                 # Create label for slider
-                label = html.Label(slider_id)
+                label = html.Label(slider_id, style={'fontSize': '0.8rem'})
                 slider = self._sliders[slider_id]
 
                 # Add label and slider to group container
@@ -237,7 +238,7 @@ class _SlidersComponent(object):
 
             # Convert slider group to dash component
             group = dbc.Row(
-                children=container)
+                children=container, style={'marginBottom': '1em'})
 
             # Add label and group to contents
             contents += [group_label, group]
