@@ -27,12 +27,12 @@ class PDSimulationController(erlo.apps.BaseApp):
         super(PDSimulationController, self).__init__(
             name='PDSimulationController')
 
-        # Instantiate figure
+        # Instantiate figure and sliders
         self._fig = erlo.plots.PDTimeSeriesPlot()
-
-        # Create default layout
         self._sliders = [dbc.Alert(
             "No model has been chosen.", color="primary")]
+
+        # Create default layout
         self._set_layout()
 
         # Create default simulation and slider settings
@@ -79,7 +79,9 @@ class PDSimulationController(erlo.apps.BaseApp):
                     min=lower,
                     max=upper,
                     step=0.1,
-                    marks={str(lower): str(lower), str(upper): str(upper)})
+                    marks={
+                        str(lower): str(lower),
+                        str(upper): str(upper)})
             ]
             sliders += slider
 
@@ -94,7 +96,9 @@ class PDSimulationController(erlo.apps.BaseApp):
                     min=lower,
                     max=upper,
                     step=0.1,
-                    marks={str(lower): str(lower), str(upper): str(upper)})
+                    marks={
+                        str(lower): str(lower),
+                        str(upper): str(upper)})
             ]
             sliders += slider
 
@@ -175,7 +179,7 @@ class PDSimulationController(erlo.apps.BaseApp):
         # Add one slider for each parameter to the app
         parameters = model.parameters()
         pk_input = model.pk_input()
-        self._create_sliders(parameters, pk_input)
+        sliders = self._create_sliders(parameters, pk_input)
         self._set_layout()
 
         # Add simulation of model to the figure
