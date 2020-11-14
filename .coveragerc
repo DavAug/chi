@@ -1,5 +1,6 @@
 [run]
 source = erlotinib
 omit =
+    erlotinib/apps/*
     erlotinib/plots/_base.py
     erlotinib/tests/*
