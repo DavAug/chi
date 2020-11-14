@@ -56,6 +56,10 @@ class PDSimulationController(erlo.apps.BaseApp):
         result = self._simulate(parameters)
         self._fig.add_simulation(result)
 
+        # Remember index of model trace for update callback
+        n_traces = len(self._fig._fig.data)
+        self._model_trace = n_traces - 1
+
     def _create_figure_component(self):
         """
         Returns a figure component.
@@ -200,6 +204,19 @@ class PDSimulationController(erlo.apps.BaseApp):
         """
         self._fig.set_axis_labels(xlabel, ylabel)
 
+    def _update_simulation(self, parameters):
+        """
+        Simulates the model for the provided parameters and replaces the
+        current simulation plot by the new one.
+        """
+        # Solve model
+        result = self._model.simulate(parameters, self._times).flatten()
+
+        # Replace simulation values in plotly.Figure
+        self._fig._fig.data[self._model_trace].y = result
+
+        return self._fig._fig
+
 
 class _SlidersComponent(object):
     """
@@ -211,8 +228,6 @@ class _SlidersComponent(object):
 
     def __init__(self):
         # Set defaults
-        self._range = (0, 10)
-        self._value = 1
         self._sliders = {}
         self._slider_groups = {}
 
@@ -267,8 +282,8 @@ class _SlidersComponent(object):
         return contents
 
     def add_slider(
-            self, slider_id, value=1, min_value=0, max_value=10,
-            step_size=0.1):
+            self, slider_id, value=0.5, min_value=0, max_value=2,
+            step_size=0.01):
         """
         Adds a slider.
 
@@ -293,7 +308,8 @@ class _SlidersComponent(object):
             step=step_size,
             marks={
                 str(min_value): str(min_value),
-                str(max_value): str(max_value)})
+                str(max_value): str(max_value)},
+            updatemode='drag')
 
     def group_sliders(self, slider_ids, group_id):
         """
@@ -313,14 +329,17 @@ class _SlidersComponent(object):
 
     def sliders(self):
         """
-        Returns a dictionary of slider objects with the slider ID as key and the
-        slider object as value.
+        Returns a dictionary of slider objects with the slider ID as key and
+        the slider object as value.
         """
         return self._sliders
 
 
 # For simple debugging the app can be launched by executing the python file.
 if __name__ == "__main__":
+
+    from dash.dependencies import Input, Output
+
     # Get data and model
     data = erlo.DataLibrary().lung_cancer_control_group(True)
     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
@@ -329,12 +348,34 @@ if __name__ == "__main__":
         'myokit.drug_concentration': 'Drug concentration in mg/L',
         'myokit.tumour_volume': 'Tumour volume in cm^3',
         'myokit.kappa': 'Potency in L/mg/day',
-        'myokit.lambda_0': 'Expon. growth rate in 1/day',
+        'myokit.lambda_0': 'Exponential growth rate in 1/day',
         'myokit.lambda_1': 'Linear growth rate in cm^3/day'})
 
     # Set up demo app
     app = PDSimulationController()
     app.add_data(data)
     app.add_model(model)
+
+    # Define a simulation callback
+    # TODO: Call back with all sliders, see whether arguments of function can be left implicit.
+    @app._app.callback(
+        Output('fig', 'figure'),
+        [
+            Input('Tumour volume in cm^3', 'value'),
+            Input('Drug concentration in mg/L', 'value'),
+            Input('Potency in L/mg/day', 'value'),
+            Input('Exponential growth rate in 1/day', 'value'),
+            Input('Linear growth rate in cm^3/day', 'value')])
+    def update_simulation(value_1, value_2, value_3, value_4, value_5):
+        """
+        Simulates the model for the current slider values and updates the
+        model plot in the figure.
+        """
+        parameters = [value_1, value_2, value_3, value_4, value_5]
+        fig = app._update_simulation(parameters)
+        # result = app._simulate(parameters)
+        # app._fig.add_simulation(result)
+
+        return fig
 
     app.start_application(debug=True)
