@@ -2,7 +2,7 @@
 Apps
 ****
 
-.. currentmodule:: erlotinib
+.. currentmodule:: erlotinib.apps
 
 Apps are classes that create interactive Dash apps, which allow the exploration
 of PKPD models and inference results.
