@@ -23,6 +23,30 @@ class PDSimulationController(erlo.apps.BaseApp):
     Parameter sliders can be used to adjust parameter values during
     the simulation.
 
+    Example
+    -------
+
+    ```
+        app = PDSimulationController()
+        app.add_model(model)
+        app.add_data(data)
+
+        # Define a simulation callback that updates the simulation according
+        # to the sliders
+        sliders = app.slider_ids()
+
+        @app._app.callback(
+            Output('fig', 'figure'),
+            [Input(s, 'value') for s in sliders])
+        def update_simulation(*args):
+            parameters = args
+            fig = app.update_simulation(parameters)
+
+            return fig
+
+        app.start_application(debug=True)
+    ```
+
     Extends :class:`BaseApp`.
     """
 
@@ -226,7 +250,7 @@ class PDSimulationController(erlo.apps.BaseApp):
         """
         return list(self._sliders.sliders().keys())
 
-    def _update_simulation(self, parameters):
+    def update_simulation(self, parameters):
         """
         Simulates the model for the provided parameters and replaces the
         current simulation plot by the new one.
@@ -401,7 +425,7 @@ if __name__ == "__main__":
         model plot in the figure.
         """
         parameters = args
-        fig = app._update_simulation(parameters)
+        fig = app.update_simulation(parameters)
 
         return fig
 
