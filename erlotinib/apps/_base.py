@@ -18,10 +18,10 @@ class BaseApp(object):
         super(BaseApp, self).__init__()
 
         # Create basic app
-        self._app = dash.Dash(
+        self.app = dash.Dash(
             name=name, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-        self._app.layout = dbc.Container(
+        self.app.layout = dbc.Container(
             children=[
                 dbc.Alert(
                     children="No app content has been added!",
@@ -30,7 +30,7 @@ class BaseApp(object):
             style={'marginTop': '15em'},)
 
     def start_application(self, debug=False):
-        self._app.run_server(debug=debug)
+        self.app.run_server(debug=debug)
 
 
 # For simple debugging the app can be launched by executing the python file.

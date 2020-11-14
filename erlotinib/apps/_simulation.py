@@ -24,10 +24,14 @@ class PDSimulationController(apps.BaseApp):
     Parameter sliders can be used to adjust parameter values during
     the simulation.
 
+    Extends :class:`BaseApp`.
+
     Example
     -------
 
-    ```
+    ::
+
+        # Set up app with data and model
         app = PDSimulationController()
         app.add_model(model)
         app.add_data(data)
@@ -36,7 +40,7 @@ class PDSimulationController(apps.BaseApp):
         # to the sliders
         sliders = app.slider_ids()
 
-        @app._app.callback(
+        @ap._app.callback(
             Output('fig', 'figure'),
             [Input(s, 'value') for s in sliders])
         def update_simulation(*args):
@@ -45,10 +49,8 @@ class PDSimulationController(apps.BaseApp):
 
             return fig
 
-        app.start_application(debug=True)
-    ```
-
-    Extends :class:`BaseApp`.
+        # Start the app
+        app.strt_application()
     """
 
     def __init__(self):
@@ -156,7 +158,7 @@ class PDSimulationController(apps.BaseApp):
         - Plot of simulation/data on the left.
         - Parameter sliders on the right.
         """
-        self._app.layout = dbc.Container(
+        self.app.layout = dbc.Container(
             children=[dbc.Row([
                 self._create_figure_component(),
                 self._create_sliders_component()])],
@@ -417,7 +419,7 @@ if __name__ == "__main__":
     # Define a simulation callback
     sliders = app.slider_ids()
 
-    @app._app.callback(
+    @app.app.callback(
         Output('fig', 'figure'),
         [Input(s, 'value') for s in sliders])
     def update_simulation(*args):
