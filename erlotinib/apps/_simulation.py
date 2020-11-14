@@ -50,7 +50,7 @@ class PDSimulationController(apps.BaseApp):
             return fig
 
         # Start the app
-        app.strt_application()
+        app.start_application()
     """
 
     def __init__(self):
