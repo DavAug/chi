@@ -115,6 +115,13 @@ class TestPharmacodynamicModel(unittest.TestCase):
 
         self.assertEqual(self.model.pk_input(), pk_input)
 
+    def test_set_pk_input_bad_input(self):
+        # Set pk input variable
+        pk_input = 'SOME NON-EXISTENT VARIABLE'
+
+        with self.assertRaisesRegex(ValueError, 'The name does not'):
+            self.model.set_pk_input(pk_input)
+
     def test_simulate(self):
 
         times = [0, 1, 2, 3]
