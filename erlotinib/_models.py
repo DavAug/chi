@@ -127,10 +127,6 @@ class PharmacodynamicModel(object):
         Assigns names to the parameters. By default the :class:`myokit.Model`
         names are assigned to the parameters.
 
-        Setting parameter names has no effect on the simulation. Parameter
-        names may however be used by other methods to refer to the parameters,
-        e.g. :meth:`set_pk_input`.
-
         Parameters
         ----------
         names
@@ -156,7 +152,7 @@ class PharmacodynamicModel(object):
         try:
             self._pk_input = str(names[self._pk_input])
         except KeyError:
-            # KeyError indicates that a current parameter is not being
+            # KeyError indicates that the current name is not being
             # replaced.
             pass
 

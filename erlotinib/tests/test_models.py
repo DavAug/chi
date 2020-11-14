@@ -41,6 +41,11 @@ class TestPharmacodynamicModel(unittest.TestCase):
         self.assertEqual(parameters[3], 'myokit.lambda_0')
         self.assertEqual(parameters[4], 'myokit.lambda_1')
 
+    def test_pk_input(self):
+        pk_input = self.model.pk_input()
+
+        self.assertEqual(pk_input, 'myokit.drug_concentration')
+
     def test_set_outputs(self):
 
         # Set bad output
@@ -96,6 +101,19 @@ class TestPharmacodynamicModel(unittest.TestCase):
 
         with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
             self.model.set_parameter_names(names)
+
+    def test_set_pk_input(self):
+        # Set pk input variable
+        pk_input = 'myokit.kappa'
+        self.model.set_pk_input(pk_input)
+
+        self.assertEqual(self.model.pk_input(), pk_input)
+
+        # Reset pk input
+        pk_input = 'myokit.drug_concentration'
+        self.model.set_pk_input(pk_input)
+
+        self.assertEqual(self.model.pk_input(), pk_input)
 
     def test_simulate(self):
 
