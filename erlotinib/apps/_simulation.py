@@ -175,7 +175,11 @@ class PDSimulationController(erlo.apps.BaseApp):
             Key label of the :class:`DataFrame` which specifies the PD
             biomarker column. Defaults to ``'Biomarker'``.
         """
+        # Add data to figure
         self._fig.add_data(data, id_key, time_key, biom_key)
+
+        # Set axes labels to time_key and biom_key
+        self._fig.set_axis_labels(xlabel=time_key, ylabel=biom_key)
 
     def add_model(self, model):
         """
@@ -187,7 +191,7 @@ class PDSimulationController(erlo.apps.BaseApp):
         if not isinstance(model, erlo.PharmacodynamicModel):
             raise TypeError(
                 'Model has to be an instance of '
-                'erlotinib.PharamcodynamicModel.')
+                'erlotinib.PharmacodynamicModel.')
 
         self._model = model
 
@@ -358,6 +362,8 @@ if __name__ == "__main__":
 
     # Get data and model
     data = erlo.DataLibrary().lung_cancer_control_group(True)
+    data = data.rename(columns={
+        'Time': 'Time in day', 'Biomarker': 'Tumour volume in cm^3'})
     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
     model = erlo.PharmacodynamicModel(path)
     model.set_parameter_names(names={
@@ -370,7 +376,8 @@ if __name__ == "__main__":
     # Set up demo app
     app = PDSimulationController()
     app.add_model(model)
-    app.add_data(data)
+    app.add_data(
+        data, time_key='Time in day', biom_key='Tumour volume in cm^3')
 
     # Define a simulation callback
     sliders = app.slider_ids()
