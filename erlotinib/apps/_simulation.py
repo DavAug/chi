@@ -241,12 +241,6 @@ class PDSimulationController(apps.BaseApp):
         # Update layout
         self._set_layout()
 
-    def set_axis_labels(self, xlabel, ylabel):
-        """
-        Sets the x axis, and y axis label of the figure.
-        """
-        self._fig.set_axis_labels(xlabel, ylabel)
-
     def slider_ids(self):
         """
         Returns a list of the slider ids.
