@@ -8,3 +8,7 @@
 from ._base import (  # noqa
     BaseApp
 )
+
+from ._simulation import (  # noqa
+    PDSimulationController
+)

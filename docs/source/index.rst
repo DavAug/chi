@@ -31,6 +31,7 @@ Contents
 
 .. toctree::
 
+    apps
     data_library
     model_library
     models
