@@ -19,8 +19,8 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
 
     Extends :class:`SingleFigure`.
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     updatemenu
         Boolean flag that enables or disables interactive buttons, such as a
         logarithmic scale switch for the y-axis.

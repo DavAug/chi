@@ -12,8 +12,8 @@ class SingleFigure(object):
     """
     Base class for plot classes that generate a single figure.
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     updatemenu
         Boolean flag that enables or disables interactive buttons, such as a
         logarithmic scale switch for the y-axis.
