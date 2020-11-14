@@ -22,6 +22,9 @@ Overview:
 
 - :class:`PDSimulationController`
 
+.. autoclass:: BaseApp
+    :members:
+
 .. autoclass:: PDSimulationController
     :members:
     :inherited-members:
