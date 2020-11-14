@@ -25,4 +25,7 @@ from ._problems import (  # noqa
     InverseProblem
 )
 
-from . import plots  # noqa
+from . import (  # noqa
+    apps,
+    plots
+)

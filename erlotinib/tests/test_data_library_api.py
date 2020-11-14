@@ -36,6 +36,7 @@ class TestLungCancerControlGroup(unittest.TestCase):
     def setUpClass(cls):
         lib = erlo.DataLibrary()
         cls.data = lib.lung_cancer_control_group()
+        cls.standardised_data = lib.lung_cancer_control_group(True)
 
     def test_column_keys(self):
         keys = self.data.keys()
@@ -62,6 +63,17 @@ class TestLungCancerControlGroup(unittest.TestCase):
         self.assertEqual(ids[5], 155)
         self.assertEqual(ids[6], 169)
         self.assertEqual(ids[7], 170)
+
+    def test_standardised_column_keys(self):
+        keys = self.standardised_data.keys()
+
+        n_keys = len(keys)
+        self.assertEqual(n_keys, 4)
+
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Biomarker')
+        self.assertEqual(keys[3], 'BODY WEIGHT in g')
 
 
 if __name__ == '__main__':
