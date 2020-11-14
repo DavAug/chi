@@ -14,9 +14,10 @@ import numpy as np
 import pandas as pd
 
 import erlotinib as erlo
+import erlotinib.apps as apps
 
 
-class PDSimulationController(erlo.apps.BaseApp):
+class PDSimulationController(apps.BaseApp):
     """
     Creates an app which simulates a :class:`PharmacodynamicModel`.
 
