@@ -5,6 +5,8 @@
 # full license details.
 #
 
+import warnings
+
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
@@ -306,6 +308,14 @@ class _SlidersComponent(object):
         step_size
             Elementary step size of slider.
         """
+        # Replace "."s by a spaces in slider_ids if present
+        # (plotly doesn't allow "." for slider_ids in callbacks)
+        if '.' in slider_id:
+            warnings.warn(
+                'Dots (.) have been removed in parameter names when creating '
+                'the sliders.')
+            slider_id = slider_id.replace(oldvalue='.', newvalue=' ')
+
         self._sliders[slider_id] = dcc.Slider(
             id=slider_id,
             value=value,
