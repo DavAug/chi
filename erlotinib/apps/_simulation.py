@@ -204,6 +204,12 @@ class PDSimulationController(erlo.apps.BaseApp):
         """
         self._fig.set_axis_labels(xlabel, ylabel)
 
+    def slider_ids(self):
+        """
+        Returns a list of the slider ids.
+        """
+        return list(self._sliders.sliders().keys())
+
     def _update_simulation(self, parameters):
         """
         Simulates the model for the provided parameters and replaces the
@@ -353,25 +359,21 @@ if __name__ == "__main__":
 
     # Set up demo app
     app = PDSimulationController()
-    app.add_data(data)
     app.add_model(model)
+    app.add_data(data)
 
     # Define a simulation callback
-    # TODO: Call back with all sliders, see whether arguments of function can be left implicit.
+    sliders = app.slider_ids()
+
     @app._app.callback(
         Output('fig', 'figure'),
-        [
-            Input('Tumour volume in cm^3', 'value'),
-            Input('Drug concentration in mg/L', 'value'),
-            Input('Potency in L/mg/day', 'value'),
-            Input('Exponential growth rate in 1/day', 'value'),
-            Input('Linear growth rate in cm^3/day', 'value')])
-    def update_simulation(value_1, value_2, value_3, value_4, value_5):
+        [Input(s, 'value') for s in sliders])
+    def update_simulation(*args):
         """
         Simulates the model for the current slider values and updates the
         model plot in the figure.
         """
-        parameters = [value_1, value_2, value_3, value_4, value_5]
+        parameters = args
         fig = app._update_simulation(parameters)
         # result = app._simulate(parameters)
         # app._fig.add_simulation(result)
