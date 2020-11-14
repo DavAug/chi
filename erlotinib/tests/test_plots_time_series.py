@@ -32,7 +32,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
         # Create test figure
         cls.fig = erlo.plots.PDTimeSeriesPlot()
 
-    def test_wrong_data_type(self):
+    def test_add_data_wrong_data_type(self):
         # Create data of wrong type
         data = np.ones(shape=(10, 4))
 
@@ -40,7 +40,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             TypeError, 'Data has to be pandas.DataFrame.',
             self.fig.add_data, data)
 
-    def test_wrong_id_key(self):
+    def test_add_data_wrong_id_key(self):
         # Rename ID key
         data = self.data.rename(columns={'ID': 'SOME NON-STANDARD KEY'})
 
@@ -48,7 +48,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <ID>.',
             self.fig.add_data, data)
 
-    def test_wrong_time_key(self):
+    def test_add_data_wrong_time_key(self):
         # Rename time key
         data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
 
@@ -56,7 +56,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_data, data)
 
-    def test_wrong_biom_key(self):
+    def test_add_data_wrong_biom_key(self):
         # Rename biomarker key
         data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
 
@@ -64,7 +64,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Biomarker>.',
             self.fig.add_data, data)
 
-    def test_id_key_mapping(self):
+    def test_add_data_id_key_mapping(self):
         # Rename ID key
         data = self.data.rename(columns={'ID': 'SOME NON-STANDARD KEY'})
 
@@ -76,7 +76,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, id_key='SOME WRONG KEY')
 
-    def test_time_key_mapping(self):
+    def test_add_data_time_key_mapping(self):
         # Rename time key
         data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
 
@@ -88,7 +88,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, time_key='SOME WRONG KEY')
 
-    def test_biom_key_mapping(self):
+    def test_add_data_biom_key_mapping(self):
         # Rename biomarker key
         data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
 
@@ -99,6 +99,54 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, biom_key='SOME WRONG KEY')
+
+    def test_add_simulation_wrong_data_type(self):
+        # Create data of wrong type
+        data = np.ones(shape=(10, 4))
+
+        self.assertRaisesRegex(
+            TypeError, 'Data has to be pandas.DataFrame.',
+            self.fig.add_simulation, data)
+
+    def test_add_simulation_wrong_time_key(self):
+        # Rename time key
+        data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
+
+        self.assertRaisesRegex(
+            ValueError, 'Data does not have the key <Time>.',
+            self.fig.add_simulation, data)
+
+    def test_add_simulation_wrong_biom_key(self):
+        # Rename biomarker key
+        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+
+        self.assertRaisesRegex(
+            ValueError, 'Data does not have the key <Biomarker>.',
+            self.fig.add_simulation, data)
+
+    def test_add_simulation_time_key_mapping(self):
+        # Rename time key
+        data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_simulation(data=data, time_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_simulation(data=data, time_key='SOME WRONG KEY')
+
+    def test_add_simulation_biom_key_mapping(self):
+        # Rename biomarker key
+        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_simulation(data=data, biom_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_simulation(data=data, biom_key='SOME WRONG KEY')
 
 
 if __name__ == '__main__':
