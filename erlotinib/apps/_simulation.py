@@ -37,7 +37,8 @@ class PDSimulationController(erlo.apps.BaseApp):
         # Create default layout
         self._set_layout()
 
-        # Create default simulation and slider settings
+        # Create defaults
+        self._model = None
         self._times = np.linspace(start=0, stop=30)
 
     def _add_simulation(self):
@@ -188,6 +189,15 @@ class PDSimulationController(erlo.apps.BaseApp):
         One parameter slider is generated for each model parameter, and
         the solution for a default set of parameters is added to the figure.
         """
+        if self._model is not None:
+            # This is a temporary fix! In a future issue we will handle the
+            # simulation of multiple models
+            warnings.warn(
+                'A model has been set previously. The passed model was '
+                'therefore ignored.')
+
+            return None
+
         if not isinstance(model, erlo.PharmacodynamicModel):
             raise TypeError(
                 'Model has to be an instance of '
@@ -392,8 +402,6 @@ if __name__ == "__main__":
         """
         parameters = args
         fig = app._update_simulation(parameters)
-        # result = app._simulate(parameters)
-        # app._fig.add_simulation(result)
 
         return fig
 
