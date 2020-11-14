@@ -40,7 +40,7 @@ class PDSimulationController(apps.BaseApp):
         # to the sliders
         sliders = app.slider_ids()
 
-        @ap._app.callback(
+        @app.app.callback(
             Output('fig', 'figure'),
             [Input(s, 'value') for s in sliders])
         def update_simulation(*args):
