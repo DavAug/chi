@@ -22,7 +22,7 @@ Overview:
 - :class:`SamplingController`
 
 
-.. autoclass:: OptimisationController
+.. autoclass:: InferenceController
     :members:
 
 .. autoclass:: OptimisationController
