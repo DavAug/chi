@@ -33,8 +33,8 @@ Contents
 
     apps
     data_library
+    inference
     model_library
     models
-    optimisation
     plots
     problems
