@@ -75,13 +75,13 @@ class _PartiallyFixedLogPosterior(pints.LogPDF):
         return self._n_parameters
 
 
-class _InferenceController(object):
+class InferenceController(object):
     """
     A base class for inference controllers.
     """
 
     def __init__(self, log_posterior):
-        super(_InferenceController, self).__init__()
+        super(InferenceController, self).__init__()
 
         if not isinstance(log_posterior, pints.LogPosterior):
             raise ValueError(
@@ -163,7 +163,7 @@ class _InferenceController(object):
 
     def set_n_runs(self, n_runs):
         """
-        Sets the number of times the optimisation routine is run.
+        Sets the number of times the inference routine is run.
 
         Each run starts from a random sample of the log-prior.
         """
@@ -186,11 +186,12 @@ class _InferenceController(object):
 
     def set_parallel_evaluation(self, run_in_parallel):
         """
-        Enables or disables parallel evaluation using either
-        :class:`pints.ParallelEvaluator` or `pints.SequentialEvaluator`.
+        Enables or disables parallel evaluation using either a
+        :class:`pints.ParallelEvaluator` or a
+        :class:`pints.SequentialEvaluator`.
 
         If ``run_in_parallel=True``, the method will run using a number of
-        worker processes equal to the detected cpu core count. The number of
+        worker processes equal to the detected CPU core count. The number of
         workers can be set explicitly by setting ``run_in_parallel`` to an
         integer greater than ``0``. Parallelisation can be disabled by setting
         ``run_in_parallel`` to ``0`` or ``False``.
@@ -210,7 +211,7 @@ class _InferenceController(object):
         search space.
 
         Transformations of the search space can significantly improve the
-        performance of the optimisation routine.
+        performance of the inference routine.
 
         ``transform`` has to be an instance of `pints.Transformation` and must
         have the same dimension as the parameter space.
@@ -225,7 +226,7 @@ class _InferenceController(object):
         self._transform = transform
 
 
-class OptimisationController(_InferenceController):
+class OptimisationController(InferenceController):
     """
     Sets up an optimisation routine that attempts to find the parameter values
     that maximise a :class:`pints.LogPosterior`.
@@ -234,6 +235,8 @@ class OptimisationController(_InferenceController):
     starting points. Starting points are randomly sampled from the
     specified :class:`pints.LogPrior`. The optimisation is run by default in
     parallel using :class:`pints.ParallelEvaluator`.
+
+    Extends :class:`InferenceController`.
     """
 
     def __init__(self, log_posterior):
@@ -303,7 +306,7 @@ class OptimisationController(_InferenceController):
         self._optimiser = optimiser
 
 
-class SamplingController(_InferenceController):
+class SamplingController(InferenceController):
     """
     Sets up a sampling routine that attempts to find the posterior
     distribution of parameters defined by a :class:`pints.LogPosterior`.
@@ -312,6 +315,8 @@ class SamplingController(_InferenceController):
     starting points. Starting points are randomly sampled from the
     specified :class:`pints.LogPrior`. The optimisation is run by default in
     parallel using :class:`pints.ParallelEvaluator`.
+
+    Extends :class:`InferenceController`.
     """
 
     def __init__(self, log_posterior):

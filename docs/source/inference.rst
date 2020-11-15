@@ -17,9 +17,13 @@ search space.
 
 Overview:
 
+- :class:`InferenceController`
 - :class:`OptimisationController`
 - :class:`SamplingController`
 
+
+.. autoclass:: OptimisationController
+    :members:
 
 .. autoclass:: OptimisationController
     :members:

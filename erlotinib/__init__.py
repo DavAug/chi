@@ -18,6 +18,7 @@ from ._models import (  # noqa
 )
 
 from ._inference import (  # noqa
+    InferenceController,
     OptimisationController,
     SamplingController
 )
