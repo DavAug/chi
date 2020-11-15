@@ -17,8 +17,10 @@ from ._models import (  # noqa
     PharmacodynamicModel
 )
 
-from ._optimisation import (  # noqa
-    OptimisationController
+from ._inference import (  # noqa
+    InferenceController,
+    OptimisationController,
+    SamplingController
 )
 
 from ._problems import (  # noqa
