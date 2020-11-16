@@ -16,7 +16,7 @@ Base classes:
 
 Overview:
 
-- :class:`MarginalPosteriorPlot
+- :class:`MarginalPosteriorPlot`
 - :class:`ParameterEstimatePlot`
 - :class:`PDTimeSeriesPlot`
 
