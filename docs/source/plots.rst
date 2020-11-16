@@ -20,7 +20,7 @@ Overview:
 - :class:`ParameterEstimatePlot`
 - :class:`PDTimeSeriesPlot`
 
-.. autocalss:: MarginalPosteriorPlot
+.. autoclass:: MarginalPosteriorPlot
     :members:
     :inherited-members:
 
