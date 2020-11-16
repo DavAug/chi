@@ -19,8 +19,8 @@ class ParameterEstimatePlot(eplt.MultiFigure):
     A figure class that visualises parameter maximum a posteriori probability
     estimates across multiple optimisation runs.
 
-    One figure is generated for each parameter, which contains a box plot of the
-    parameter estimates across multiple optmisation runs. The estimates for
+    One figure is generated for each parameter, which contains a box plot of
+    the parameter estimates across multiple optmisation runs. The estimates for
     each indiviudal are plotted next to each other.
 
     This figure can be used to assess the stability of the optimisation
