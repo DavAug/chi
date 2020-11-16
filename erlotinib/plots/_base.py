@@ -6,6 +6,7 @@
 #
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 class SingleFigure(object):
@@ -135,6 +136,55 @@ class MultiFigure(object):
                 )
             ]
         )
+
+    def add_data(self, data):
+        """
+        Adds data to the figure.
+        """
+        raise NotImplementedError
+
+    def show(self):
+        """
+        Displays the figures.
+        """
+        for fig in self._figs:
+            fig.show()
+
+
+class MultiSubplotFigure(MultiFigure):
+    """
+    Base class for plot classes that generate multiple figures with subplots.
+
+    Extends :class:`MultiFigure`.
+    """
+
+    def __init__(self):
+        super(MultiSubplotFigure, self).__init__()
+
+    def _create_template_figure(
+            self, rows, cols, x_title=None, y_title=None, shared_x=False,
+            shared_y=True, spacing=0.05):
+        """
+        Creates a template figure using :meth:`plotly.make_subplots`.
+        """
+        self._fig = make_subplots(
+            rows=rows, cols=cols, shared_xaxes=shared_x, shared_yaxes=shared_y,
+            x_title=x_title, y_title=y_title, horizontal_spacing=spacing,
+            vertical_spacing=spacing)
+
+        # Set layout
+        self._set_layout()
+
+    def _set_layout(self):
+        """
+        Configures the basic layout of the figure.
+
+        - Size
+        - Template
+        """
+        self._fig.update_layout(
+            autosize=True,
+            template="plotly_white")
 
     def add_data(self, data):
         """
