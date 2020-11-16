@@ -108,13 +108,22 @@ class InferenceController(object):
         Gets the myokit names from the model and enumerates the noise
         parameters as noise 1, noise 2, etc..
         """
-        # Get model parameter names
+        # Get model parameter names (not ideal, maybe suggest changes in pints)
         log_likelihood = self._log_posterior.log_likelihood()
-        model_params = log_likelihood._problem._model.parameters()
+        try:
+            model_params = log_likelihood._problem._model.parameters()
+        except AttributeError:
+            if isinstance(log_likelihood, pints.PooledLogPDF):
+                problem = log_likelihood._log_pdfs[0]._problem
+                model_params = problem._model.parameters()
+            else:
+                n_params = log_likelihood.n_parameters()
+                model_params = [
+                    'model param %d' % (index + 1) for index in range(n_params)]
 
         # Construct a list of noise parameter names
         n_noise = log_likelihood.n_parameters() - len(model_params)
-        noise_params = ['noise %d' % (index + 1) for index in range(n_noise)]
+        noise_params = ['noise param %d' % (index + 1) for index in range(n_noise)]
 
         parameters = np.array(model_params + noise_params)
 
@@ -245,7 +254,7 @@ class OptimisationController(InferenceController):
         # Set default optimiser
         self._optimiser = pints.CMAES
 
-    def run(self, n_max_iterations=None):
+    def run(self, n_max_iterations=None, log_to_screen=False):
         """
         Runs the optimisation and returns the maximum a posteriori probability
         parameter estimates in from of a :class:`pandas.DataFrame` with the
@@ -274,7 +283,7 @@ class OptimisationController(InferenceController):
                 transform=self._transform)
 
             # Configure optimisation routine
-            opt.set_log_to_screen(False)
+            opt.set_log_to_screen(log_to_screen)
             opt.set_max_iterations(iterations=n_max_iterations)
             opt.set_parallel(self._parallel_evaluation)
 
