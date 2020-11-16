@@ -49,7 +49,7 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
 
             # TODO: Compute diagnostics
             # diagnostics = self._compute_diagnostics(samples)
-            diagnostics = ['Rhat', 'ESS']
+            diagnostics = ['Rhat']
 
             # Add trace
             color = colors[index]
@@ -66,15 +66,14 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         fig = self._figs[fig_id]
 
         # Add trace
-        rhat, ess = diagnostics
+        rhat, = diagnostics
         fig.add_trace(
             go.Histogram(
                 y=samples,
                 name='ID: %d' % individual,
                 hovertemplate=(
                     'Sample: %{y:.2f}<br>' +
-                    'Rhat: %s<br>' % rhat +
-                    'Effective sample size: %s' % ess),
+                    'Rhat: %s<br>' % rhat),
                 visible=True,
                 marker=dict(color=color),
                 opacity=0.8),
@@ -89,8 +88,29 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
 
     def _compute_diagnostics(self, data):
         """
-        Computes and returns convergence metrics, such as Rhat and ESS.
+        Computes and returns convergence metrics.
+
+        - Rhat
         """
+        # Compute Rhat
+        # Reshape data into shape needed for pints.rhat
+        n_iterations = len(data['Iteration'].unqiue())
+        runs = data['Run'].unique()
+        n_runs = len(runs)
+
+        container = np.empty(shape=(n_runs, n_iterations))
+        for index, run in enumerate(runs):
+            mask = data['Run'] == run
+            container[index, :] = data['Sample'][mask].to_numpy()
+
+        # Compute rhat
+        rhat = pints.rhat(chains=container)
+
+        # Collect diagnostics
+        diagnostics = [rhat]
+
+        return diagnostics
+
 
 
     def add_data(
