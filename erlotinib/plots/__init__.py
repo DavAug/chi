@@ -7,7 +7,12 @@
 
 from ._base import (  # noqa
     MultiFigure,
+    MultiSubplotFigure,
     SingleFigure
+)
+
+from ._sampling import (  # noqa
+    MarginalPosteriorPlot
 )
 
 from ._optimisation import (  # noqa
