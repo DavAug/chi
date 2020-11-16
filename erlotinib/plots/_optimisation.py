@@ -19,8 +19,8 @@ class ParameterEstimatePlot(eplt.MultiFigure):
     A figure class that visualises parameter maximum a posteriori probability
     estimates across multiple optimisation runs.
 
-    One figure is generated for each parameter, which contain a box plot of the
-    parameter estimates across multiple optmisation runs. The estimates for
+    One figure is generated for each parameter, which contains a box plot of
+    the parameter estimates across multiple optmisation runs. The estimates for
     each indiviudal are plotted next to each other.
 
     This figure can be used to assess the stability of the optimisation
@@ -33,20 +33,13 @@ class ParameterEstimatePlot(eplt.MultiFigure):
     def __init__(self):
         super(ParameterEstimatePlot, self).__init__()
 
-    def _add_box_plots(self, fig_id, parameter, data, colors):
+    def _add_box_plots(self, fig_id, data, colors):
         """
         Adds box plots of the parameter estimates for each individual across
         runs to the figure.
 
-        One figure will only contain the estimates of one parameter.
+        One figure only contains the estimates of one parameter.
         """
-        # Get figure
-        fig = self._figs[fig_id]
-
-        # Set y label to parameter name
-        fig.update_layout(
-            yaxis_title=parameter)
-
         # Add trace for each individual
         ids = data[self._id_key].unique()
         for index, individual in enumerate(ids):
@@ -69,7 +62,7 @@ class ParameterEstimatePlot(eplt.MultiFigure):
         # Get number of runs
         n_runs = len(runs)
 
-        # Get figure
+        # Add trace
         fig = self._figs[fig_id]
         fig.add_trace(
             go.Box(
@@ -128,7 +121,7 @@ class ParameterEstimatePlot(eplt.MultiFigure):
                 'Data has to be pandas.DataFrame.')
 
         keys = [param_key, id_key, est_key, score_key, run_key]
-        for key in [id_key, param_key, est_key, score_key, run_key]:
+        for key in keys:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
@@ -145,9 +138,13 @@ class ParameterEstimatePlot(eplt.MultiFigure):
 
         # Add estimates to parameter figures
         for index, parameter in enumerate(parameters):
+            # Set y label of plot to parameter name
+            self._figs[index].update_layout(
+                yaxis_title=parameter)
+
             # Get estimates for this parameter
             mask = data[param_key] == parameter
             estimates = data[mask][[id_key, est_key, score_key, run_key]]
 
             # Add box plots for all individuals
-            self._add_box_plots(index, parameter, estimates, colors)
+            self._add_box_plots(index, estimates, colors)
