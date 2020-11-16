@@ -95,14 +95,14 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         """
         # Compute Rhat
         # Reshape data into shape needed for pints.rhat
-        n_iterations = len(data['Iteration'].unique())
-        runs = data['Run'].unique()
+        n_iterations = len(data[self._iter_key].unique())
+        runs = data[self._run_key].unique()
         n_runs = len(runs)
 
         container = np.empty(shape=(n_runs, n_iterations))
         for index, run in enumerate(runs):
-            mask = data['Run'] == run
-            container[index, :] = data['Sample'][mask].to_numpy()
+            mask = data[self._run_key] == run
+            container[index, :] = data[self._sample_key][mask].to_numpy()
 
         # Compute rhat
         rhat = pints.rhat(chains=container)
@@ -159,7 +159,7 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         self._id_key, self._sample_key, self._iter_key, self._run_key = keys[
             1:]
 
-        if warm_up_iter >= data['Iteration'].max():
+        if warm_up_iter >= data[self._iter_key].max():
             raise ValueError(
                 'The number of warm up iterations has to be smaller than the '
                 'total number of iterations for each run.')
@@ -178,7 +178,7 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         self._figs = [copy.copy(self._fig) for _ in parameters]
 
         # Exclude warm up iterations
-        mask = data['Iteration'] > warm_up_iter
+        mask = data[self._iter_key] > warm_up_iter
         data = data[mask]
 
         # Add estimates to parameter figures
