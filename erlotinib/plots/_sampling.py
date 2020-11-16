@@ -49,9 +49,8 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
             samples = data[
                 [self._sample_key, self._iter_key, self._run_key]][mask]
 
-            # TODO: Compute diagnostics
-            # diagnostics = self._compute_diagnostics(samples)
-            diagnostics = ['Rhat']
+            # Compute diagnostics
+            diagnostics = self._compute_diagnostics(samples)
 
             # Add trace
             color = colors[index]
@@ -75,7 +74,7 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
                 name='ID: %d' % individual,
                 hovertemplate=(
                     'Sample: %{y:.2f}<br>' +
-                    'Rhat: %s<br>' % rhat),
+                    'Rhat: %.02f<br>' % rhat),
                 visible=True,
                 marker=dict(color=color),
                 opacity=0.8),
@@ -96,7 +95,7 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         """
         # Compute Rhat
         # Reshape data into shape needed for pints.rhat
-        n_iterations = len(data['Iteration'].unqiue())
+        n_iterations = len(data['Iteration'].unique())
         runs = data['Run'].unique()
         n_runs = len(runs)
 
@@ -112,8 +111,6 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         diagnostics = [rhat]
 
         return diagnostics
-
-
 
     def add_data(
             self, data, warm_up_iter=0, id_key='ID', param_key='Parameter',
