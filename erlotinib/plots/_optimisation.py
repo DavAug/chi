@@ -67,7 +67,7 @@ class ParameterEstimatePlot(eplt.MultiFigure):
         fig.add_trace(
             go.Box(
                 y=estimates,
-                name='ID: %d' % individual,
+                name='ID: %s' % str(individual),
                 hovertemplate=(
                     'Estimate: %{y:.2f}<br>'
                     '%{text}'),
