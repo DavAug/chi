@@ -193,7 +193,3 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
 
             # Add marginal histograms for all individuals
             self._add_histogram_plots(index, samples, colors)
-
-    # TODO: Check whether plotting works
-    # Ajust styling
-    # Incorporate diagnostics computation
