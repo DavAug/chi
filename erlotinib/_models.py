@@ -12,7 +12,7 @@ import numpy as np
 
 class PharmacodynamicModel(object):
     """
-    Converts a pharmacodynamic model specified by an SBML file into forward
+    Converts a pharmacodynamic model specified by an SBML file into a forward
     model that can be solved numerically.
 
     Parameters
