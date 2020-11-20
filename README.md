@@ -1,5 +1,5 @@
-[![Unit tests on multiple python versions](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/ErlotinibGefitinib/actions)
-[![Unit tests on multiple operating systems](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/ErlotinibGefitinib/actions)
+[![Unit tests on multiple python versions](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
+[![Unit tests on multiple operating systems](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
 [![codecov](https://codecov.io/gh/DavAug/erlotinib/branch/main/graph/badge.svg)](https://codecov.io/gh/DavAug/erlotinib)
 [![Documentation Status](https://readthedocs.org/projects/erlotinib/badge/?version=latest)](https://erlotinib.readthedocs.io/en/latest/?badge=latest)
 
