@@ -98,7 +98,7 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(len(parameters), 3)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.kappa')
-        self.assertEqual(parameters[2], 'noise 1')
+        self.assertEqual(parameters[2], 'noise param 1')
 
     def test_run(self):
         # Fix
@@ -126,7 +126,7 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.lambda_0')
         self.assertEqual(parameters[2], 'myokit.lambda_1')
-        self.assertEqual(parameters[3], 'noise 1')
+        self.assertEqual(parameters[3], 'noise param 1')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -152,7 +152,7 @@ class TestOptimisationController(unittest.TestCase):
 
         parameters = result['Parameter'].unique()
         self.assertEqual(len(parameters), 1)
-        self.assertEqual(parameters[0], 'noise 1')
+        self.assertEqual(parameters[0], 'noise param 1')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -334,7 +334,7 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(len(parameters), 3)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.kappa')
-        self.assertEqual(parameters[2], 'noise 1')
+        self.assertEqual(parameters[2], 'noise param 1')
 
     def test_run(self):
         # Fix
@@ -362,7 +362,7 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.lambda_0')
         self.assertEqual(parameters[2], 'myokit.lambda_1')
-        self.assertEqual(parameters[3], 'noise 1')
+        self.assertEqual(parameters[3], 'noise param 1')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -388,7 +388,7 @@ class TestSamplingController(unittest.TestCase):
 
         parameters = result['Parameter'].unique()
         self.assertEqual(len(parameters), 1)
-        self.assertEqual(parameters[0], 'noise 1')
+        self.assertEqual(parameters[0], 'noise param 1')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
