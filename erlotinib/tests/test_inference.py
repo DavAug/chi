@@ -12,6 +12,24 @@ import pints
 import erlotinib as erlo
 
 
+class _NonStandardLikelihood(pints.LogPDF):
+    """
+    The erlotinib.InferenceController class assumes that the likelihoods have
+    a private attribute `_problem` from which the parameter names defined in
+    the erlotinib models can be recovered.
+
+    I this attribute does not exist, we generate generic names and to test this
+    we create a class here.
+    """
+    def __init__(self):
+        super(_NonStandardLikelihood, self).__init__()
+
+    def n_parameters(self):
+        # Supposed to return the number of parameters
+        # Here fixed to match the toy PKPD + error model used below
+        return 6
+
+
 class TestOptimisationController(unittest.TestCase):
     """
     Tests the erlotinib.OptimisationController class.
@@ -30,21 +48,21 @@ class TestOptimisationController(unittest.TestCase):
 
         # Create inverse problem
         problem = erlo.InverseProblem(model, times, observed_volumes)
-        log_likelihood = pints.GaussianLogLikelihood(problem)
+        cls.log_likelihood = pints.GaussianLogLikelihood(problem)
         log_prior_tumour_volume = pints.UniformLogPrior(1E-3, 1E1)
         log_prior_drug_conc = pints.UniformLogPrior(-1E-3, 1E-3)
         log_prior_kappa = pints.UniformLogPrior(-1E-3, 1E-3)
         log_prior_lambda_0 = pints.UniformLogPrior(1E-3, 1E1)
         log_prior_lambda_1 = pints.UniformLogPrior(1E-3, 1E1)
         log_prior_sigma = pints.HalfCauchyLogPrior(location=0, scale=3)
-        log_prior = pints.ComposedLogPrior(
+        cls.log_prior = pints.ComposedLogPrior(
             log_prior_tumour_volume,
             log_prior_drug_conc,
             log_prior_kappa,
             log_prior_lambda_0,
             log_prior_lambda_1,
             log_prior_sigma)
-        log_posterior = pints.LogPosterior(log_likelihood, log_prior)
+        log_posterior = pints.LogPosterior(cls.log_likelihood, cls.log_prior)
 
         # Set up optmisation controller
         cls.optimiser = erlo.OptimisationController(log_posterior)
@@ -52,6 +70,24 @@ class TestOptimisationController(unittest.TestCase):
     def test_call_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
             erlo.OptimisationController('bad log-posterior')
+
+    def test_call_pooled_log_pdf(self):
+        # Create a pints.PooledLogPDF by dublicating problem
+        log_likelihood = pints.PooledLogPDF(
+            log_pdfs=[self.log_likelihood, self.log_likelihood],
+            pooled=[True]*6)
+
+        # Test that OptimisationController can be instantiate without error
+        log_posterior = pints.LogPosterior(log_likelihood, self.log_prior)
+        erlo.OptimisationController(log_posterior)
+
+    def test_call_nonstandard_log_pdf(self):
+        # Create a pints.PooledLogPDF by dublicating problem
+        log_likelihood = _NonStandardLikelihood()
+
+        # Test that OptimisationController can be instantiate without error
+        log_posterior = pints.LogPosterior(log_likelihood, self.log_prior)
+        erlo.OptimisationController(log_posterior)
 
     def test_fix_parameters_bad_mask(self):
         # Mask length doesn't match number of parameters

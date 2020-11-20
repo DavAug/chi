@@ -119,11 +119,13 @@ class InferenceController(object):
             else:
                 n_params = log_likelihood.n_parameters()
                 model_params = [
-                    'model param %d' % (index + 1) for index in range(n_params)]
+                    'model param %d' % (index + 1)
+                    for index in range(n_params)]
 
         # Construct a list of noise parameter names
         n_noise = log_likelihood.n_parameters() - len(model_params)
-        noise_params = ['noise param %d' % (index + 1) for index in range(n_noise)]
+        noise_params = [
+            'noise param %d' % (index + 1) for index in range(n_noise)]
 
         parameters = np.array(model_params + noise_params)
 
