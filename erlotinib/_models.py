@@ -503,7 +503,7 @@ class PharmacokineticModel(Model):
         """
         if self._administration is None:
             raise ValueError(
-                'The dose input of the model has not been set.')
+                'The route of administration of the dose has not been set.')
 
         # Translate dose to dose rate
         dose_rate = dose / duration
