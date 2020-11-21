@@ -312,6 +312,57 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(parameters[3], 'dose.absorption_rate')
         self.assertEqual(parameters[4], 'myokit.elimination_rate')
 
+    def test_set_administration_bad_input(self):
+        # Bad compartment
+        with self.assertRaisesRegex(ValueError, 'The model does not'):
+            self.model.set_administration(compartment='SOME COMP')
+
+        # Bad amount variable (not existent)
+        with self.assertRaisesRegex(ValueError, 'The drug amount variable'):
+            self.model.set_administration(
+                compartment='central', amount_var='SOME VARIABLE')
+
+        # Bad amount variable (not state)
+        with self.assertRaisesRegex(ValueError, 'The variable <'):
+            self.model.set_administration(
+                compartment='central', amount_var='drug_concentration')
+
+    def test_set_dosing_regimen(self):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+
+        # Administer dose directly to central compartment
+        model.set_administration(compartment='central')
+
+        # Set dosing regimen
+        dose = 10
+        start = 3
+        duration = 0.01
+        period = 5
+        num = 4
+        model.set_dosing_regimen(
+            dose, start, period, duration, num)
+
+        events = model._sim._protocol.events()
+
+        self.assertEqual(len(events), 1)
+
+        event = events[0]
+        self.assertEqual(event.level(), dose/duration)
+        self.assertEqual(event.start(), start)
+        self.assertEqual(event.period(), period)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.multiplier(), num)
+
+    def test_set_dosing_regimen_bad_input(self):
+        # Not setting an administration prior to setting a dosing regimen
+        # should raise an error
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+
+        with self.assertRaisesRegex(ValueError, 'The route of administration'):
+            model.set_dosing_regimen(dose=10, start=3, period=5)
+
     def test_set_outputs(self):
 
         # Set bad output
