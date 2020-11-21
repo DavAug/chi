@@ -57,7 +57,7 @@ class ModelLibrary(object):
 
         return self._path + file_name
 
-    def pk_one_compartment_model(self):
+    def one_compartment_pk_model(self):
         """
         Returns a one compartment pharmacokinetic model.
         """
