@@ -14,7 +14,7 @@ import erlotinib as erlo
 
 class TestPharmacodynamicModel(unittest.TestCase):
     """
-    Tests `pkpd.PharmacodynamicModel`.
+    Tests `erlotinib.PharmacodynamicModel`.
     """
     @classmethod
     def setUpClass(cls):
@@ -128,6 +128,121 @@ class TestPharmacodynamicModel(unittest.TestCase):
 
         # Test model with bare parameters
         parameters = [0.1, 1, 1, 1, 1]
+        output = self.model.simulate(parameters, times)
+        self.assertIsInstance(output, np.ndarray)
+        self.assertEqual(output.shape, (1, 4))
+
+
+class TestPharmacokineticModel(unittest.TestCase):
+    """
+    Tests `erlotinib.PharmacokineticModel`.
+    """
+    @classmethod
+    def setUpClass(cls):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        cls.model = erlo.PharmacokineticModel(path)
+
+    def test_n_outputs(self):
+        self.assertEqual(self.model.n_outputs(), 1)
+
+    def test_n_parameters(self):
+        self.assertEqual(self.model.n_parameters(), 3)
+
+    def test_outputs(self):
+        outputs = self.model.outputs()
+
+        self.assertEqual(outputs, ['central.drug_concentration'])
+
+    def test_parameters(self):
+        parameters = self.model.parameters()
+
+        self.assertEqual(parameters[0], 'central.drug_amount')
+        self.assertEqual(parameters[1], 'central.size')
+        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+
+    def test_pd_output(self):
+        pd_output = self.model.pd_output()
+
+        self.assertEqual(pd_output, 'central.drug_concentration')
+
+    def test_set_outputs(self):
+
+        # Set bad output
+        self.assertRaisesRegex(
+            KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
+
+        # Set two outputs
+        outputs = ['central.drug_amount', 'central.drug_concentration']
+        self.model.set_outputs(outputs)
+        self.assertEqual(self.model.outputs(), outputs)
+        self.assertEqual(self.model.n_outputs(), 2)
+        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
+        self.assertEqual(output.shape, (2, 2))
+
+        # Set to default again
+        outputs = ['central.drug_concentration']
+        self.model.set_outputs(outputs)
+        self.assertEqual(self.model.outputs(), outputs)
+        self.assertEqual(self.model.n_outputs(), 1)
+        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
+        self.assertEqual(output.shape, (1, 2))
+
+    def test_set_parameter_names(self):
+        # Set some parameter names
+        names = {
+            'central.drug_amount': 'A',
+            'myokit.elimination_rate': 'k_e'}
+        self.model.set_parameter_names(names)
+        parameters = self.model.parameters()
+
+        self.assertEqual(parameters[0], 'A')
+        self.assertEqual(parameters[1], 'central.size')
+        self.assertEqual(parameters[2], 'k_e')
+
+        # Reverse parameter names
+        names = {
+            'A': 'central.drug_amount',
+            'k_e': 'myokit.elimination_rate'}
+        self.model.set_parameter_names(names)
+        parameters = self.model.parameters()
+
+        self.assertEqual(parameters[0], 'central.drug_amount')
+        self.assertEqual(parameters[1], 'central.size')
+        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+
+    def test_set_parameter_names_bad_input(self):
+        # List input is not ok!
+        names = ['TV', 'some name']
+
+        with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
+            self.model.set_parameter_names(names)
+
+    def test_set_pd_output(self):
+        # Set pd output variable
+        pd_output = 'central.drug_amount'
+        self.model.set_pd_output(pd_output)
+
+        self.assertEqual(self.model.pd_output(), pd_output)
+
+        # Reset pd output
+        pd_output = 'central.drug_concentration'
+        self.model.set_pd_output(pd_output)
+
+        self.assertEqual(self.model.pd_output(), pd_output)
+
+    def test_set_pd_output_bad_input(self):
+        # Set pd output variable
+        pd_output = 'SOME NON-EXISTENT VARIABLE'
+
+        with self.assertRaisesRegex(ValueError, 'The name does not'):
+            self.model.set_pd_output(pd_output)
+
+    def test_simulate(self):
+
+        times = [0, 1, 2, 3]
+
+        # Test model with bare parameters
+        parameters = [1, 1, 1]
         output = self.model.simulate(parameters, times)
         self.assertIsInstance(output, np.ndarray)
         self.assertEqual(output.shape, (1, 4))
