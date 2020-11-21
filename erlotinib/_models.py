@@ -398,7 +398,7 @@ class PharmacokineticModel(Model):
         """
         return self._administration
 
-    def n_ouputs(self):
+    def n_outputs(self):
         """
         Returns the number of output dimensions.
 
@@ -414,9 +414,8 @@ class PharmacokineticModel(Model):
         Sets the route of administration of the compound.
 
         The compound is administered to the selected compartment either
-        directly or indirectly. If it is administered directly a dose rate
-        variable is added to the rate of change expression of the drug amount
-        variable in the seleceted compartment
+        directly or indirectly. If it is administered directly, a dose rate
+        variable is added to the drug amount's rate of change expression
 
         .. math ::
 
@@ -450,8 +449,8 @@ class PharmacokineticModel(Model):
         Parameters
         ----------
         compartment
-            Compartment to which doses are administered either directly or
-            indirectly.
+            Compartment to which doses are either directly or indirectly
+            administered.
         amount_var
             Drug amount variable in the compartment. By default the drug amount
             variable is assumed to be 'drug_amount'.
@@ -504,7 +503,7 @@ class PharmacokineticModel(Model):
 
         By default the dose is administered as a bolus injection (duration on
         a time scale that is 100 fold smaller than the basic time unit). To
-        model a infusion of the dose over a longer time period, the
+        model an infusion of the dose over a longer time period, the
         ``duration`` can be adjusted to the appropriate time scale.
 
         By default the doses are administered indefinitely at a period
