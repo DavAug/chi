@@ -16,8 +16,18 @@ interface.
 
 Overview:
 
+- :class:`Model`
 - :class:`PharmacodynamicModel`
+- :class:`PharmacokineticModel`
 
+
+.. autoclass:: Model
+    :members:
 
 .. autoclass:: PharmacodynamicModel
     :members:
+    :inherited-members:
+
+.. autoclass:: PharmacokineticModel
+    :members:
+    :inherited-members:
