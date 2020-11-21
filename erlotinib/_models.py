@@ -27,26 +27,11 @@ class Model(object):
 
         model = sbml.SBMLImporter().model(sbml_file)
 
-        # Get the number of states and parameters
-        self._n_states = model.count_states()
-        n_const = model.count_variables(const=True)
-        self._n_parameters = self._n_states + n_const
-
-        # Get constant variable names and state names
-        self._state_names = sorted(
-            [var.qname() for var in model.states()])
-        self._const_names = sorted(
-            [var.qname() for var in model.variables(const=True)])
+        # Set default number and names of states, parameters and outputs.
+        self._set_number_and_names(model)
 
         # Get time unit
         self._time_unit = self._get_time_unit(model)
-
-        # Set default parameter names
-        self._parameter_names = self._state_names + self._const_names
-
-        # Set default outputs
-        self._output_names = self._state_names
-        self._n_outputs = self._n_states
 
         # Create simulator
         self._sim = myokit.Simulation(model)
@@ -70,6 +55,29 @@ class Model(object):
         """
         for id_var, var in enumerate(self._const_names):
             self._sim.set_constant(var, float(parameters[id_var]))
+
+    def _set_number_and_names(self, model):
+        """
+        Sets the number of states, parameters and outputs, as well as their
+        names.
+        """
+        # Get the number of states and parameters
+        self._n_states = model.count_states()
+        n_const = model.count_variables(const=True)
+        self._n_parameters = self._n_states + n_const
+
+        # Get constant variable names and state names
+        self._state_names = sorted(
+            [var.qname() for var in model.states()])
+        self._const_names = sorted(
+            [var.qname() for var in model.variables(const=True)])
+
+        # Set default parameter names
+        self._parameter_names = self._state_names + self._const_names
+
+        # Set default outputs
+        self._output_names = self._state_names
+        self._n_outputs = self._n_states
 
     def n_outputs(self):
         """
@@ -259,7 +267,10 @@ class PharmacokineticModel(Model):
     def __init__(self, sbml_file):
         super(PharmacokineticModel, self).__init__(sbml_file)
 
-        # Set default dose input and regimen
+        # Remember vanilla model (important for administration reset)
+        self._default_model = self._sim._model.clone()
+
+        # Set default dose administration
         self._administration = None
 
         # Set default output variable that interacts with the pharmacodynamic
@@ -269,13 +280,13 @@ class PharmacokineticModel(Model):
         if 'central.drug_concentration' in self._parameter_names:
             self._pd_output = 'central.drug_concentration'
 
-    def _add_dose_compartment(self, drug_amount):
+    def _add_dose_compartment(self, model, drug_amount):
         """
         Adds a dose compartment to the model with a linear absorption rate to
         the connected compartment.
         """
         # Add a dose compartment to the model
-        dose_comp = self._sim._model.add_component_allow_renaming('dose')
+        dose_comp = model.add_component_allow_renaming('dose')
 
         # Create a state variable for the drug amount in the dose compartment
         dose_drug_amount = dose_comp.add_variable('drug_amount')
@@ -309,20 +320,7 @@ class PharmacokineticModel(Model):
         )
 
         # Update number of parameters and parameter names
-        # (Absorption rate and drug amount in dose compartment)
-        self._n_states += 1
-        self._n_parameters += 2
-        self._state_names = sorted(
-            self._state_names + [dose_drug_amount.qname()])
-        self._const_names = sorted(
-            self._const_names + [absorption_rate.qname()])
-
-        # Set default parameter names
-        self._parameter_names = self._state_names + self._const_names
-
-        # Set default outputs
-        self._output_names = self._state_names
-        self._n_outputs = self._n_states
+        self._set_number_and_names(model)
 
         return dose_drug_amount
 
@@ -352,10 +350,6 @@ class PharmacokineticModel(Model):
                 myokit.Name(dose_rate)
             )
         )
-
-        # Update simulator
-        # (otherwise simulator won't know about pace bound variable)
-        self._sim = myokit.Simulation(self._sim._model)
 
     def administration(self):
         """
@@ -402,15 +396,8 @@ class PharmacokineticModel(Model):
             A boolean flag that indicates whether the dose is administered
             directly or indirectly to the compartment.
         """
-        # Raise error when administration has been set already
-        # (At the moment, no methods that can revert changes to the model)
-        if self._administration is not None:
-            raise ValueError(
-                'Dose administration has been set before. To change the '
-                'administration please instantiate the model again.')
-
         # Check inputs
-        model = self._sim._model
+        model = self._default_model.clone()
         if not model.has_component(compartment):
             raise ValueError(
                 'The model does not have a compartment named <'
@@ -431,10 +418,14 @@ class PharmacokineticModel(Model):
         # If administration is indirect, add a dosing compartment and update
         # the drug amount variable to the one in the dosing compartment
         if not direct:
-            drug_amount = self._add_dose_compartment(drug_amount)
+            drug_amount = self._add_dose_compartment(model, drug_amount)
 
         # Add dose rate variable to the right hand side of the drug amount
         self._add_dose_rate(drug_amount)
+
+        # Update simulator
+        # (otherwise simulator won't know about pace bound variable)
+        self._sim = myokit.Simulation(model)
 
         # Remember type of administration
         self._administration = dict(
