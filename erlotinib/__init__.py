@@ -14,7 +14,9 @@ from ._model_library_api import (  # noqa
 )
 
 from ._models import (  # noqa
-    PharmacodynamicModel
+    Model,
+    PharmacodynamicModel,
+    PharmacokineticModel
 )
 
 from ._inference import (  # noqa
