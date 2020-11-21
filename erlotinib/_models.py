@@ -156,14 +156,6 @@ class Model(object):
 
         self._parameter_names = parameter_names
 
-        # Rename pk input
-        try:
-            self._pk_input = str(names[self._pk_input])
-        except KeyError:
-            # KeyError indicates that the current name is not being
-            # replaced.
-            pass
-
     def simulate(self, parameters, times):
         """
         Returns the numerical solution of the model outputs for specified
@@ -223,7 +215,8 @@ class PharmacodynamicModel(Model):
         # Set default pharmacokinetic input variable
         # (Typically drug concentration)
         self._pk_input = None
-        if 'myokit.drug_concentration' in self._parameter_names:
+        model = self._sim._model
+        if model.has_variable('myokit.drug_concentration'):
             self._pk_input = 'myokit.drug_concentration'
 
     def pk_input(self):
@@ -235,6 +228,40 @@ class PharmacodynamicModel(Model):
         among the model parameters.
         """
         return self._pk_input
+
+    def set_parameter_names(self, names):
+        """
+        Assigns names to the parameters. By default the :class:`myokit.Model`
+        names are assigned to the parameters.
+
+        Parameters
+        ----------
+        names
+            A dictionary that maps the current parameter names to new names.
+        """
+        if not isinstance(names, dict):
+            raise TypeError(
+                'Names has to be a dictionary with the current parameter names'
+                'as keys and the new parameter names as values.')
+
+        parameter_names = self._parameter_names
+        for index, parameter in enumerate(self._parameter_names):
+            try:
+                parameter_names[index] = str(names[parameter])
+            except KeyError:
+                # KeyError indicates that a current parameter is not being
+                # replaced.
+                pass
+
+        self._parameter_names = parameter_names
+
+        # Rename pk input
+        try:
+            self._pk_input = str(names[self._pk_input])
+        except KeyError:
+            # KeyError indicates that the current name is not being
+            # replaced.
+            pass
 
     def set_pk_input(self, name):
         """
@@ -277,7 +304,7 @@ class PharmacokineticModel(Model):
         # model
         # (Typically drug concentration in central compartment)
         self._pd_output = None
-        if 'central.drug_concentration' in self._parameter_names:
+        if self._default_model.has_variable('central.drug_concentration'):
             self._pd_output = 'central.drug_concentration'
 
         # Set default output to pd output if not None
@@ -487,6 +514,40 @@ class PharmacokineticModel(Model):
             limit=num)
         self._sim.set_protocol(dosing_regimen)
 
+    def set_parameter_names(self, names):
+        """
+        Assigns names to the parameters. By default the :class:`myokit.Model`
+        names are assigned to the parameters.
+
+        Parameters
+        ----------
+        names
+            A dictionary that maps the current parameter names to new names.
+        """
+        if not isinstance(names, dict):
+            raise TypeError(
+                'Names has to be a dictionary with the current parameter names'
+                'as keys and the new parameter names as values.')
+
+        parameter_names = self._parameter_names
+        for index, parameter in enumerate(self._parameter_names):
+            try:
+                parameter_names[index] = str(names[parameter])
+            except KeyError:
+                # KeyError indicates that a current parameter is not being
+                # replaced.
+                pass
+
+        self._parameter_names = parameter_names
+
+        # Rename pd output
+        try:
+            self._pd_output = str(names[self._pd_output])
+        except KeyError:
+            # KeyError indicates that the current name is not being
+            # replaced.
+            pass
+
     def pd_output(self):
         """
         Returns the variable which interacts with the pharmacodynamic model.
@@ -514,8 +575,13 @@ class PharmacokineticModel(Model):
         :meth:`erlotinib.PharmacodynamicModel.pk_input` variable when a
         :class:`PKPDModel` is instantiated.
         """
-        if name not in self._parameter_names:
+        # Get intermediate variable names
+        inter_names = [
+            var.qname() for var in self._sim._model.variables(inter=True)]
+
+        names = inter_names + self._parameter_names
+        if name not in names:
             raise ValueError(
-                'The name does not match a model parameter.')
+                'The name does not match a model variable.')
 
         self._pd_output = name
