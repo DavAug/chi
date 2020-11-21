@@ -280,6 +280,11 @@ class PharmacokineticModel(Model):
         if 'central.drug_concentration' in self._parameter_names:
             self._pd_output = 'central.drug_concentration'
 
+        # Set default output to pd output if not None
+        if self._pd_output is not None:
+            self._output_names = [self._pd_output]
+            self._n_outputs = 1
+
     def _add_dose_compartment(self, model, drug_amount):
         """
         Adds a dose compartment to the model with a linear absorption rate to
@@ -319,8 +324,13 @@ class PharmacokineticModel(Model):
             )
         )
 
-        # Update number of parameters and parameter names
+        # Update number of parameters and states, as well as their names
         self._set_number_and_names(model)
+
+        # Set default output to pd_output if it is not None
+        if self._pd_output is not None:
+            self._output_names = [self._pd_output]
+            self._n_outputs = 1
 
         return dose_drug_amount
 
