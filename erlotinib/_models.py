@@ -256,7 +256,7 @@ class PharmacokineticModel(Model):
         super(PharmacokineticModel, self).__init__(sbml_file)
 
         # Set default dose input and regimen
-        self._dose_input = None
+        self._administration = None
 
         # Set default output variable that interacts with the pharmacodynamic
         # model
@@ -265,66 +265,23 @@ class PharmacokineticModel(Model):
         if 'central.drug_concentration' in self._parameter_names:
             self._pd_output = 'central.drug_concentration'
 
-    def dose_input(self):
+    def _add_dose_compartment(self, compartment, drug_amount):
         """
-        Returns the dose input variable.
-
-        Any dose is administered directly to this variable.
-
-        By default no dose input variable is set and ``None`` is returned.
-
-        The dose input variable can be set with :meth:`set_dose_input`.
+        Adds a dose compartment to the model with a linear transition rate to
+        the connected compartment.
         """
-        return self._dose_input
 
-    def set_dose_input(self, input_name, dose_rate_name='dose_rate'):
-        r"""
-        Administers the dose to the selected variable, often the drug amount
-        in the central or dose compartment.
-
-        The selected variable :math:`A` has to be a state variable. A dose
-        rate variable :math:`r` will be added to the rate expression of
-        :math:`A`
-
-        .. math::
-
-            \frac{\text{d}A}{\text{d}t} = \text{RHS} + r,
-
-        where :math:`\text{RHS}` symbolises the previous rate expression of
-        :math:`A`.
-
-        The value of :math:`r` is determined by the chosen dosing regimen.
-
-        Parameters
-        ----------
-        name
-            A quantifiable variable name of the :class:`myokit.Model`, e.g.
-            `compartment.variable` to which the dose is administered.
+    def _add_dose_rate(self, drug_amount):
         """
-        if self._dose_input is not None:
-            raise ValueError(
-                'Dose input has been set before. To change the dose input '
-                'please instantiate the model again.')
-
-        # Get variable
-        try:
-            drug_amount = self._sim._model.get(input_name)
-        except KeyError:
-            raise KeyError(
-                'The variable <' + str(input_name) + '> does not exist in the '
-                'model.')
-
-        if not drug_amount.is_state():
-            raise ValueError(
-                'The variable <' + str(drug_amount) + '> is not a state '
-                'variable, and can therefore not be dosed directly.')
-
-        # Register the dose rate variable to the compartment and bind it to
-        # pace, i.e. tells myokit that its value is set by the dosing regimen/
+        Adds a dose rate variable to the state variable, which is bound to the
+        dosing regimen.
+        """
+        # Register a dose rate variable to the compartment and bind it to
+        # pace, i.e. tell myokit that its value is set by the dosing regimen/
         # myokit.Protocol
         compartment = drug_amount.parent()
         dose_rate = compartment.add_variable_allow_renaming(
-            str(dose_rate_name))
+            str('dose_rate'))
         dose_rate.set_binding('pace')
 
         # Set initial value to 0 and unit to unit of drug amount over unit of
@@ -341,12 +298,56 @@ class PharmacokineticModel(Model):
             )
         )
 
-        # Remember the dose input variable and dose rate variable
-        self._dose_input = input_name
-
         # Update simulator
         # (otherwise simulator won't know about pace bound variable)
         self._sim = myokit.Simulation(self._sim._model)
+
+    def set_administration(
+            self, compartment, amount_var='drug_amount', direct=True):
+        """
+        Sets the route of administration of the compound.
+        """
+        # Raise error when administration has been set already
+        # (At the moment, no methods that can revert changes to the model)
+        if self._administration is not None:
+            raise ValueError(
+                'Dose administration has been set before. To change the '
+                'administration please instantiate the model again.')
+
+        # Check inputs
+        model = self._sim._model
+        if not model.has_component(compartment):
+            raise ValueError(
+                'The model does not have a compartment named <'
+                + str(compartment) + '>.')
+        comp = model.get(compartment, class_filter=myokit.Component)
+
+        if not comp.has_variable(amount_var) and not model.has_variable(
+                amount_var):
+            raise ValueError(
+                'The drug amount variable <' + str(amount_var) + '> could not '
+                'be found.')
+        try:
+            drug_amount = comp.get(amount_var)
+        except KeyError:
+            drug_amount = model.get(amount_var, class_filter=myokit.Variable)
+
+        if not drug_amount.is_state():
+            raise ValueError(
+                'The variable <' + str(drug_amount) + '> is not a state '
+                'variable, and can therefore not be dosed.')
+
+        # If administration is indirect, add a dosing compartment and update
+        # the drug amount variable to the one in the dosing compartment
+        if not direct:
+            drug_amount = self._add_dose_compartment(comp, drug_amount)
+
+        # Add dose rate variable to the right hand side of the drug amount
+        self._add_dose_rate(drug_amount)
+
+        # Remember type of administration
+        self._administration = dict(
+            {'compartment': compartment, 'direct': direct})
 
     def set_dosing_regimen(self, dose, start, period, duration=0.01, num=0):
         """
@@ -381,7 +382,7 @@ class PharmacokineticModel(Model):
             Number of administered doses. For ``num=0`` the dose is applied
             indefinitely. By default ``num`` is set to ``0``.
         """
-        if self._dose_input is None:
+        if self._administration is None:
             raise ValueError(
                 'The dose input of the model has not been set.')
 
