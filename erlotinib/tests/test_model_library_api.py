@@ -71,5 +71,51 @@ class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
         self.assertEqual(const_names[3], lambda_1)
 
 
+class TestOneCompartmentPKModel(unittest.TestCase):
+    """
+    Tests the erlotinib.modelLibrary.one_compartment_pk_model method.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        lib = erlo.ModelLibrary()
+        path = lib.one_compartment_pk_model()
+        importer = sbml.SBMLImporter()
+        cls.model = importer.model(path)
+
+    def test_states(self):
+        state_names = sorted(
+            [var.qname() for var in self.model.states()])
+
+        n_states = len(state_names)
+        self.assertTrue(n_states, 1)
+
+        drug_amount = 'central.drug_amount'
+        self.assertEqual(state_names[0], drug_amount)
+
+    def test_constant_variables(self):
+        const_names = sorted(
+            [var.qname() for var in self.model.variables(const=True)])
+
+        n_const = len(const_names)
+        self.assertEqual(n_const, 2)
+
+        volume = 'central.size'
+        self.assertEqual(const_names[0], volume)
+
+        elimination_rate = 'myokit.elimination_rate'
+        self.assertEqual(const_names[1], elimination_rate)
+
+    def test_intermediate_variables(self):
+        inter_names = sorted(
+            [var.qname() for var in self.model.variables(inter=True)])
+
+        n_const = len(inter_names)
+        self.assertEqual(n_const, 1)
+
+        drug_conc = 'central.drug_concentration'
+        self.assertEqual(inter_names[0], drug_conc)
+
+
 if __name__ == '__main__':
     unittest.main()

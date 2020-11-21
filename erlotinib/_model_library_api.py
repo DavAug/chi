@@ -18,6 +18,34 @@ class ModelLibrary(object):
         self._path = os.path.dirname(os.path.abspath(__file__))
         self._path += '/model_library/'
 
+    def one_compartment_pk_model(self):
+        r"""
+        Returns the absolute path to a SBML file, specifying a one compartment
+        pharmacokinetic model.
+
+        In this model the distribution of the drug is modelled by one
+        compartment with a linear elimination rate :math:`k_e`
+
+        .. math ::
+            \frac{\text{d}A}{\text{d}t} = -k_e A \quad C = \frac{A}{V}.
+
+        Here, :math:`A` and :math:`C` are the amount and the concentration of
+        the drug in the body, respectively. :math:`V` is the effective volume
+        of distribution of the drug in the compartment.
+
+        This model may be interpreted as modelling the blood plasma
+        concentration of the drug, with the assumption that the clearance of
+        the drug through the liver may be approximated by an exponential decay
+        with the rate :math:`k_e`.
+
+        With a :class:`erlotinib.PharmacokineticModel` the drug may be either
+        directly administered to :math:`A` or indirectly through a dosing
+        compartment.
+        """
+        file_name = 'pk_one_comp.xml'
+
+        return self._path + file_name
+
     def tumour_growth_inhibition_model_koch(self):
         r"""
         Returns the absolute path to a SBML file, specifying the tumour growth
