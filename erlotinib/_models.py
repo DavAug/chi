@@ -12,8 +12,7 @@ import numpy as np
 
 class Model(object):
     """
-    A base class for models that are specified by sbml files and converted to
-    :class:`myokit.Model`s that can be simulated.
+    A base class for models that are specified by sbml files.
 
     Parameters
     ----------
@@ -394,28 +393,55 @@ class PharmacokineticModel(Model):
 
         The dictionary has the keys 'compartment' and 'direct'. The former
         provides information about which compartment is dosed, and the latter
-        whether the dose administered to the compartment directly or
-        indirectly.
+        whether the dose is administered directly ot indirectly to the
+        compartment.
         """
         return self._administration
 
+    def n_ouputs(self):
+        """
+        Returns the number of output dimensions.
+
+        By default this is the conentration of the drug in the central
+        compartment, i.e. ``1``. If the drug concentration could not be
+        identified this defaults to the number of states in model.
+        """
+        return self._n_outputs
+
     def set_administration(
             self, compartment, amount_var='drug_amount', direct=True):
-        """
+        r"""
         Sets the route of administration of the compound.
 
         The compound is administered to the selected compartment either
         directly or indirectly. If it is administered directly a dose rate
         variable is added to the rate of change expression of the drug amount
-        variable in the seleceted compartment. This dose rate can be set by
-        :meth:`set_dosing_regimen`.
+        variable in the seleceted compartment
+
+        .. math ::
+
+            \frac{\text{d}A}{\text{d}t} = \text{RHS} + r_d,
+
+        where :math:`A` is the drug amount in the selected compartment, RHS is
+        the rate of change of :math:`A` prior to adding the dose rate, and
+        :math:`r_d` is the dose rate.
+
+        The dose rate can be set by :meth:`set_dosing_regimen`.
 
         If the route of administration is indirect, a dosing compartment
         is added to the model, which is connected to the selected compartment.
         The dose rate variable is then added to the rate of change expression
         of the dose amount variable in the dosing compartment. The drug amount
         in the dosing compartment flows at a linear absorption rate into the
-        selected compartment.
+        selected compartment
+
+        .. math ::
+
+            \frac{\text{d}A_d}{\text{d}t} = -k_aA_d + r_d \\
+            \frac{\text{d}A}{\text{d}t} = \text{RHS} + k_aA_d,
+
+        where :math:`A_d` is the amount of drug in the dose compartment and
+        :math:`k_a` is the absorption rate.
 
         Setting an indirect administration route changes the number of
         parameters of the model, and resets the parameter names to their
