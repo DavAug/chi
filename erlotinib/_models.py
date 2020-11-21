@@ -200,6 +200,8 @@ class PharmacodynamicModel(Model):
     Converts a pharmacodynamic model specified by an SBML file into a forward
     model that can be solved numerically.
 
+    Extends :class:`erlotinib.Model`.
+
     Parameters
     ----------
     sbml_file
@@ -245,6 +247,8 @@ class PharmacokineticModel(Model):
     Converts a pharmacokinetic model specified by an SBML file into a forward
     model that can be solved numerically.
 
+    Extends :class:`erlotinib.Model`.
+
     Parameters
     ----------
     sbml_file
@@ -265,11 +269,62 @@ class PharmacokineticModel(Model):
         if 'central.drug_concentration' in self._parameter_names:
             self._pd_output = 'central.drug_concentration'
 
-    def _add_dose_compartment(self, compartment, drug_amount):
+    def _add_dose_compartment(self, drug_amount):
         """
-        Adds a dose compartment to the model with a linear transition rate to
+        Adds a dose compartment to the model with a linear absorption rate to
         the connected compartment.
         """
+        # Add a dose compartment to the model
+        dose_comp = self._sim._model.add_component_allow_renaming('dose')
+
+        # Create a state variable for the drug amount in the dose compartment
+        dose_drug_amount = dose_comp.add_variable('drug_amount')
+        dose_drug_amount.set_rhs(0)
+        dose_drug_amount.set_unit(drug_amount.unit())
+        dose_drug_amount.promote()
+
+        # Create an absorption rate variable
+        absorption_rate = dose_comp.add_variable('absorption_rate')
+        absorption_rate.set_rhs(1)
+        absorption_rate.set_unit(1 / self.time_unit())
+
+        # Add outflow expression to dose compartment
+        dose_drug_amount.set_rhs(
+            myokit.Multiply(
+                myokit.PrefixMinus(myokit.Name(absorption_rate)),
+                myokit.Name(dose_drug_amount)
+                )
+            )
+
+        # Add inflow expression to connected compartment
+        rhs = drug_amount.rhs()
+        drug_amount.set_rhs(
+            myokit.Plus(
+                rhs,
+                myokit.Multiply(
+                    myokit.Name(absorption_rate),
+                    myokit.Name(dose_drug_amount)
+                )
+            )
+        )
+
+        # Update number of parameters and parameter names
+        # (Absorption rate and drug amount in dose compartment)
+        self._n_states += 1
+        self._n_parameters += 2
+        self._state_names = sorted(
+            self._state_names + [dose_drug_amount.qname()])
+        self._const_names = sorted(
+            self._const_names + [absorption_rate.qname()])
+
+        # Set default parameter names
+        self._parameter_names = self._state_names + self._const_names
+
+        # Set default outputs
+        self._output_names = self._state_names
+        self._n_outputs = self._n_states
+
+        return dose_drug_amount
 
     def _add_dose_rate(self, drug_amount):
         """
@@ -302,10 +357,50 @@ class PharmacokineticModel(Model):
         # (otherwise simulator won't know about pace bound variable)
         self._sim = myokit.Simulation(self._sim._model)
 
+    def administration(self):
+        """
+        Returns the mode of administration in form of a dictionary.
+
+        The dictionary has the keys 'compartment' and 'direct'. The former
+        provides information about which compartment is dosed, and the latter
+        whether the dose administered to the compartment directly or
+        indirectly.
+        """
+        return self._administration
+
     def set_administration(
             self, compartment, amount_var='drug_amount', direct=True):
         """
         Sets the route of administration of the compound.
+
+        The compound is administered to the selected compartment either
+        directly or indirectly. If it is administered directly a dose rate
+        variable is added to the rate of change expression of the drug amount
+        variable in the seleceted compartment. This dose rate can be set by
+        :meth:`set_dosing_regimen`.
+
+        If the route of administration is indirect, a dosing compartment
+        is added to the model, which is connected to the selected compartment.
+        The dose rate variable is then added to the rate of change expression
+        of the dose amount variable in the dosing compartment. The drug amount
+        in the dosing compartment flows at a linear absorption rate into the
+        selected compartment.
+
+        Setting an indirect administration route changes the number of
+        parameters of the model, and resets the parameter names to their
+        defaults.
+
+        Parameters
+        ----------
+        compartment
+            Compartment to which doses are administered either directly or
+            indirectly.
+        amount_var
+            Drug amount variable in the compartment. By default the drug amount
+            variable is assumed to be 'drug_amount'.
+        direct
+            A boolean flag that indicates whether the dose is administered
+            directly or indirectly to the compartment.
         """
         # Raise error when administration has been set already
         # (At the moment, no methods that can revert changes to the model)
@@ -322,16 +417,12 @@ class PharmacokineticModel(Model):
                 + str(compartment) + '>.')
         comp = model.get(compartment, class_filter=myokit.Component)
 
-        if not comp.has_variable(amount_var) and not model.has_variable(
-                amount_var):
+        if not comp.has_variable(amount_var):
             raise ValueError(
                 'The drug amount variable <' + str(amount_var) + '> could not '
-                'be found.')
-        try:
-            drug_amount = comp.get(amount_var)
-        except KeyError:
-            drug_amount = model.get(amount_var, class_filter=myokit.Variable)
+                'be found in the compartment.')
 
+        drug_amount = comp.get(amount_var)
         if not drug_amount.is_state():
             raise ValueError(
                 'The variable <' + str(drug_amount) + '> is not a state '
@@ -340,7 +431,7 @@ class PharmacokineticModel(Model):
         # If administration is indirect, add a dosing compartment and update
         # the drug amount variable to the one in the dosing compartment
         if not direct:
-            drug_amount = self._add_dose_compartment(comp, drug_amount)
+            drug_amount = self._add_dose_compartment(drug_amount)
 
         # Add dose rate variable to the right hand side of the drug amount
         self._add_dose_rate(drug_amount)
