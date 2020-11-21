@@ -255,7 +255,7 @@ class PharmacokineticModel(Model):
     def __init__(self, sbml_file):
         super(PharmacokineticModel, self).__init__(sbml_file)
 
-        # Set default dose input
+        # Set default dose input and regimen
         self._dose_input = None
 
         # Set default output variable that interacts with the pharmacodynamic
@@ -341,8 +341,12 @@ class PharmacokineticModel(Model):
             )
         )
 
-        # Remember the dose input variable
-        self._dose_input = dose_rate.qname()
+        # Remember the dose input variable and dose rate variable
+        self._dose_input = input_name
+
+        # Update simulator
+        # (otherwise simulator won't know about pace bound variable)
+        self._sim = myokit.Simulation(self._sim._model)
 
     def set_dosing_regimen(self, dose, start, period, duration=0.01, num=0):
         """
@@ -377,6 +381,18 @@ class PharmacokineticModel(Model):
             Number of administered doses. For ``num=0`` the dose is applied
             indefinitely. By default ``num`` is set to ``0``.
         """
+        if self._dose_input is None:
+            raise ValueError(
+                'The dose input of the model has not been set.')
+
+        # Translate dose to dose rate
+        dose_rate = dose / duration
+
+        # Set dosing regimen
+        dosing_regimen = myokit.pacing.blocktrain(
+            period=period, duration=duration, offset=start, level=dose_rate,
+            limit=num)
+        self._sim.set_protocol(dosing_regimen)
 
     def pd_output(self):
         """
