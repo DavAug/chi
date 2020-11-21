@@ -56,3 +56,11 @@ class ModelLibrary(object):
         file_name = 'TGI_Koch_2009.xml'
 
         return self._path + file_name
+
+    def pk_one_compartment_model(self):
+        """
+        Returns a one compartment pharmacokinetic model.
+        """
+        file_name = 'pk_one_comp.xml'
+
+        return self._path + file_name
