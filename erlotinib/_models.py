@@ -498,18 +498,18 @@ class PharmacokineticModel(Model):
         """
         Sets the dosing regimen with which the compound is administered.
 
-        The route of administration is partially determined by setting the
-        :meth:`dose_input` variable, and by setting the duration of the
-        administration.
+        The route of administration can be set with :meth:`set_administration`.
+        However, the type of administration, e.g. bolus injection or infusion,
+        may be controlled with the duration input.
 
         By default the dose is administered as a bolus injection (duration on
         a time scale that is 100 fold smaller than the basic time unit). To
         model a infusion of the dose over a longer time period, the
         ``duration`` can be adjusted to the appropriate time scale.
 
-        By default the doses are administered periodically indefinitely. If
-        only a finite number of doses are applied, ``num`` can be set to a
-        positive integer.
+        By default the doses are administered indefinitely at a period
+        specified by ``period``. To apply only a finite number of doses,
+        ``num`` can be set to a positive integer.
 
         Parameters
         ----------
