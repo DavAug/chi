@@ -142,6 +142,31 @@ class TestPharmacokineticModel(unittest.TestCase):
         path = erlo.ModelLibrary().one_compartment_pk_model()
         cls.model = erlo.PharmacokineticModel(path)
 
+    def test_administration(self):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+
+        # Test default
+        self.assertIsNone(model.administration())
+
+        # Administer dose directly to central compartment
+        model.set_administration(compartment='central')
+        admin = model.administration()
+
+        self.assertIsInstance(admin, dict)
+        self.assertEqual(len(admin.keys()), 2)
+        self.assertEqual(admin['compartment'], 'central')
+        self.assertTrue(admin['direct'])
+
+        # Administer dose indirectly to central compartment
+        model.set_administration(compartment='central', direct=False)
+        admin = model.administration()
+
+        self.assertIsInstance(admin, dict)
+        self.assertEqual(len(admin.keys()), 2)
+        self.assertEqual(admin['compartment'], 'central')
+        self.assertFalse(admin['direct'])
+
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
 
@@ -164,6 +189,32 @@ class TestPharmacokineticModel(unittest.TestCase):
         pd_output = self.model.pd_output()
 
         self.assertEqual(pd_output, 'central.drug_concentration')
+
+    def test_set_administration(self):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+
+        # Administer dose directly to central compartment
+        model.set_administration(compartment='central')
+        parameters = model.parameters()
+
+        self.assertEqual(len(parameters), 3)
+        self.assertEqual(model.n_parameters(), 3)
+        self.assertEqual(parameters[0], 'central.drug_amount')
+        self.assertEqual(parameters[1], 'central.size')
+        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+
+        # Administer dose indirectly to central compartment
+        model.set_administration(compartment='central', direct=False)
+        parameters = model.parameters()
+
+        self.assertEqual(len(parameters), 5)
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(parameters[0], 'central.drug_amount')
+        self.assertEqual(parameters[1], 'dose.drug_amount')
+        self.assertEqual(parameters[2], 'central.size')
+        self.assertEqual(parameters[3], 'dose.absorption_rate')
+        self.assertEqual(parameters[4], 'myokit.elimination_rate')
 
     def test_set_outputs(self):
 
