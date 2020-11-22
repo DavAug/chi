@@ -442,9 +442,10 @@ class SamplingController(InferenceController):
         parameters = data[param_key].unique()
         for param in parameters:
             if param not in self._parameters:
-                raise ValueError(
+                warnings.warn(
                     'The parameter <' + str(param) + '> could not be '
-                    'associated with a model parameter.')
+                    'associated with a non-fixed model parameter, and was '
+                    'therefore not set.')
 
         # Get estimates with maximum a posteriori probability
         max_prob = data[score_key].max()
@@ -461,11 +462,11 @@ class SamplingController(InferenceController):
         for param in parameters:
             # Get estimate
             mask = data[param_key] == param
-            map_estimate = data[est_key][mask]
+            map_estimate = data[est_key][mask].to_numpy()
 
-            # Set initial value
+            # Set initial value to map estimate for all runs
             mask = self._parameters == param
-            self._initial_params[mask] = map_estimate
+            self._initial_params[:, mask] = map_estimate
 
     def set_sampler(self, sampler):
         """
