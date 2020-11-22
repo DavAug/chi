@@ -7,6 +7,8 @@
 
 import unittest
 
+import numpy as np
+import pandas as pd
 import pints
 
 import erlotinib as erlo
@@ -431,6 +433,111 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(runs[0], 1)
         self.assertEqual(runs[1], 2)
         self.assertEqual(runs[2], 3)
+
+    def test_set_initial_parameters(self):
+        # Unfix all parameters and set to 10 runs
+        mask = [False, False, False, False, False, False]
+        value = []
+        self.sampler.fix_parameters(mask, value)
+        self.sampler.set_n_runs(10)
+
+        # Create test data
+        # First run estimates both params as 1 and second run as 2
+        params = ['myokit.lambda_0', 'noise param 1'] * 2
+        estimates = [1, 1, 2, 2]
+        scores = [0.3, 0.3, 5, 5]
+        runs = [1, 1, 2, 2]
+
+        data = pd.DataFrame({
+            'Parameter': params,
+            'Estimate': estimates,
+            'Score': scores,
+            'Run': runs})
+
+        # Get initial values before setting them
+        default_params = self.sampler._initial_params
+
+        # Set initial values and test behaviour
+        self.sampler.set_initial_parameters(data)
+        new_params = self.sampler._initial_params
+
+        self.assertEqual(default_params.shape, (10, 6))
+        self.assertEqual(new_params.shape, (10, 6))
+
+        # Compare values. All but 3rd and 5th index should coincide.
+        # 3rd and 5th should correspong map estimates
+        self.assertTrue(np.array_equal(new_params[:, 0], default_params[:, 0]))
+        self.assertTrue(np.array_equal(new_params[:, 1], default_params[:, 1]))
+        self.assertTrue(np.array_equal(new_params[:, 2], default_params[:, 2]))
+        self.assertTrue(np.array_equal(new_params[:, 3], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[:, 4], default_params[:, 4]))
+        self.assertTrue(np.array_equal(new_params[:, 5], np.array([2] * 10)))
+
+        # Check that it works fine even if parameter cannot be found
+        data['Parameter'] = ['SOME', 'PARAMETERS'] * 2
+        self.sampler.set_initial_parameters(data)
+        new_params = self.sampler._initial_params
+
+        self.assertEqual(default_params.shape, (10, 6))
+        self.assertEqual(new_params.shape, (10, 6))
+
+        # Compare values. All but 3rd and 5th index should coincide.
+        # 3rd and 5th should correspong map estimates
+        self.assertTrue(np.array_equal(new_params[:, 0], default_params[:, 0]))
+        self.assertTrue(np.array_equal(new_params[:, 1], default_params[:, 1]))
+        self.assertTrue(np.array_equal(new_params[:, 2], default_params[:, 2]))
+        self.assertTrue(np.array_equal(new_params[:, 3], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[:, 4], default_params[:, 4]))
+        self.assertTrue(np.array_equal(new_params[:, 5], np.array([2] * 10)))
+
+    def test_set_initial_parameters_bad_input(self):
+        # Create data of wrong type
+        data = np.ones(shape=(10, 4))
+
+        self.assertRaisesRegex(
+            TypeError, 'Data has to be pandas.DataFrame.',
+            self.sampler.set_initial_parameters, data)
+
+        # Create test data
+        # First run estimates both params as 1 and second run as 2
+        params = ['myokit.lambda_0', 'noise param 1'] * 2
+        estimates = [1, 1, 2, 2]
+        scores = [0.3, 0.3, 5, 5]
+        runs = [1, 1, 2, 2]
+
+        test_data = pd.DataFrame({
+            'Parameter': params,
+            'Estimate': estimates,
+            'Score': scores,
+            'Run': runs})
+
+        # Rename parameter key
+        data = test_data.rename(columns={'Parameter': 'SOME NON-STANDARD KEY'})
+
+        self.assertRaisesRegex(
+            ValueError, 'Data does not have the key <Parameter>.',
+            self.sampler.set_initial_parameters, data)
+
+        # Rename estimate key
+        data = test_data.rename(columns={'Estimate': 'SOME NON-STANDARD KEY'})
+
+        self.assertRaisesRegex(
+            ValueError, 'Data does not have the key <Estimate>.',
+            self.sampler.set_initial_parameters, data)
+
+        # Rename score key
+        data = test_data.rename(columns={'Score': 'SOME NON-STANDARD KEY'})
+
+        self.assertRaisesRegex(
+            ValueError, 'Data does not have the key <Score>.',
+            self.sampler.set_initial_parameters, data)
+
+        # Rename run key
+        data = test_data.rename(columns={'Run': 'SOME NON-STANDARD KEY'})
+
+        self.assertRaisesRegex(
+            ValueError, 'Data does not have the key <Run>.',
+            self.sampler.set_initial_parameters, data)
 
     def test_set_n_runs(self):
         # Unfix all parameters (just to reset possibly fixed parameters)

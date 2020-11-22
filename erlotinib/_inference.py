@@ -345,6 +345,12 @@ class SamplingController(InferenceController):
         The number of iterations of the sampling routine can be set by setting
         ``n_iterations`` to a finite, non-negative integer value. By default
         the routines run for 10000 iterations.
+
+        Parameters
+        ----------
+        n_iterations
+            A non-negative integer number which sets the number of iterations
+            of each MCMC run.
         """
         # Set up sampler
         sampler = pints.MCMCController(
@@ -384,6 +390,83 @@ class SamplingController(InferenceController):
                 result = result.append(container)
 
         return result
+
+    def set_initial_parameters(
+            self, data, param_key='Parameter', est_key='Estimate',
+            score_key='Score', run_key='Run'):
+        """
+        Sets the initial parameter values of the MCMC runs to the parameter set
+        with the maximal a posteriori probability across a number of parameter
+        sets.
+
+        This method is intended to use in conjunction with the results of the
+        :class:`OptimisationController`.
+
+        It expects a :class:`pandas.DataFrame` with the columns 'Parameter',
+        'Estimate', 'Score' and 'Run'. The maximum a posteriori probability
+        values across all estimates is determined and used as initial point
+        for the MCMC runs.
+
+        If multiple parameter sets assume the maximal a posteriori probability
+        value, a parameter set is drawn randomly from them.
+
+        Parameters
+        ----------
+        data
+            A :class:`pandas.DataFrame` with the parameter estimates in form of
+            a parameter, estimate and score column.
+        param_key
+            Key label of the :class:`DataFrame` which specifies the parameter
+            name column. Defaults to ``'Parameter'``.
+        est_key
+            Key label of the :class:`DataFrame` which specifies the parameter
+            estimate column. Defaults to ``'Estimate'``.
+        score_key
+            Key label of the :class:`DataFrame` which specifies the score
+            estimate column. The score refers to the maximum a posteriori
+            probability associated with the estimate. Defaults to ``'Score'``.
+        run_key
+            Key label of the :class:`DataFrame` which specifies the
+            optimisation run column. Defaults to ``'Run'``.
+        """
+        # Check input format
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError(
+                'Data has to be pandas.DataFrame.')
+
+        for key in [param_key, est_key, score_key, run_key]:
+            if key not in data.keys():
+                raise ValueError(
+                    'Data does not have the key <' + str(key) + '>.')
+
+        parameters = data[param_key].unique()
+        for param in parameters:
+            if param not in self._parameters:
+                warnings.warn(
+                    'The parameter <' + str(param) + '> could not be '
+                    'associated with a non-fixed model parameter, and was '
+                    'therefore not set.')
+
+        # Get estimates with maximum a posteriori probability
+        max_prob = data[score_key].max()
+        mask = data[score_key] == max_prob
+        data = data[mask]
+
+        # Find a unique set of parameter values
+        runs = data[run_key].unique()
+        selected_param_set = np.random.choice(runs)
+        mask = data[run_key] == selected_param_set
+        data = data[mask]
+
+        # Set initial parameters to map estimates
+        for param in parameters:
+            # Get estimate
+            mask = data[param_key] == param
+            map_estimate = data[est_key][mask].to_numpy()
+
+            # Set initial value to map estimate for all runs
+            mask = self._parameters == param
+            self._initial_params[:, mask] = map_estimate
 
     def set_sampler(self, sampler):
         """
