@@ -7,5 +7,5 @@ The analysis of the pharamacokinetic and pharmacodynamic properties is organised
 - Treating Lung Cancer with Erlotinib
     - Analysis of the lung cancer growth in the control group
         - [Preparation of the data](https://nbviewer.jupyter.org/github/DavAug/erlotinib/blob/main/analysis/treating_lung_cancer/control_group_analysis/preparing_data.ipynb)
-        - [Infer model parameters for each individual separately](https://nbviewer.jupyter.org/github/DavAug/erlotinib/blob/issue-26-marginal-posterior-plot/analysis/treating_lung_cancer/control_group_analysis/tgi_koch_2009_model/individual_inference.ipynb)
+        - [Infer model parameters for each individual separately](https://nbviewer.jupyter.org/github/DavAug/erlotinib/blob/main/analysis/treating_lung_cancer/control_group_analysis/tgi_koch_2009_model/individual_inference.ipynb)
         - [Infer fully pooled model parameters across individuals](https://nbviewer.jupyter.org/github/DavAug/erlotinib/blob/main/analysis/treating_lung_cancer/control_group_analysis/tgi_koch_2009_model/fully_pooled_inference.ipynb)
