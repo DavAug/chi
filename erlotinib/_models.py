@@ -126,7 +126,7 @@ class Model(object):
                     'The variable <' + str(output) + '> does not exist in the '
                     'model.')
 
-        self._output_names = outputs
+        self._output_names = list(outputs)
         self._n_outputs = len(outputs)
 
     def set_parameter_names(self, names):
