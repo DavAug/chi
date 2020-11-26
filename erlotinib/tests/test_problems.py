@@ -7,7 +7,164 @@
 
 import unittest
 
+import numpy as np
+import pandas as pd
+
 import erlotinib as erlo
+
+
+class TestProblemModellingController(unittest.TestCase):
+    """
+    Tests the erlotinib.ProblemModellingController class.
+    """
+    @classmethod
+    def setUpClass(cls):
+        # Create test dataset
+        ids = [0, 0, 0, 1, 1, 1, 2, 2]
+        times = [0, 1, 2, 2, np.nan, 4, 1, 3]
+        volumes = [np.nan, 0.3, 0.2, 0.5, 0.1, 0.2, 0.234, np.nan]
+        cytokines = [3.4, 0.3, 0.2, 0.5, np.nan, 234, 0.234, 0]
+        cls.data = pd.DataFrame({
+            'ID': ids,
+            'Time': times,
+            'Biomarker': volumes,
+            'Biomarker 1': volumes,
+            'Biomarker 2': cytokines})
+
+        # Create test problem
+        cls.problem = erlo.ProblemModellingController(
+            cls.data, biom_keys=['Biomarker'])
+
+        # Create test model
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        cls.model = erlo.PharmacodynamicModel(path)
+
+    def test_bad_input(self):
+        # Create data of wrong type
+        data = np.ones(shape=(10, 4))
+
+        with self.assertRaisesRegex(ValueError, 'Data has to be'):
+            erlo.ProblemModellingController(data=data)
+
+        # Wrong ID key
+        data = self.data.rename(columns={'ID': 'SOME NON-STANDARD KEY'})
+
+        with self.assertRaisesRegex(ValueError, 'Data does not have'):
+            erlo.ProblemModellingController(data=data)
+
+        # Wrong time key
+        data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
+
+        with self.assertRaisesRegex(ValueError, 'Data does not have'):
+            erlo.ProblemModellingController(data=data)
+
+        # Wrong Biomarker key
+        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+
+        with self.assertRaisesRegex(ValueError, 'Data does not have'):
+            erlo.ProblemModellingController(data=data)
+
+    def test_data_keys(self):
+        # Rename ID key
+        data = self.data.rename(columns={'ID': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        erlo.ProblemModellingController(
+            data=data, id_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            erlo.ProblemModellingController(
+                data=data, id_key='SOME WRONG KEY')
+
+        # Rename time key
+        data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        erlo.ProblemModellingController(
+            data=data, time_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            erlo.ProblemModellingController(
+                data=data, time_key='SOME WRONG KEY')
+
+        # Rename biomarker key
+        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        erlo.ProblemModellingController(
+            data=data, biom_keys=['SOME NON-STANDARD KEY'])
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            erlo.ProblemModellingController(
+                data=data, biom_keys=['SOME WRONG KEY'])
+
+    def test_set_mechanistic_model(self):
+        # Set output biomarker mapping automatically
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker 1'])
+
+        problem.set_mechanistic_model(model=self.model)
+
+        self.assertEqual(problem._mechanistic_model, self.model)
+        outputs = problem._mechanistic_model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(len(problem._biom_keys), 1)
+        self.assertEqual(problem._biom_keys[0], 'Biomarker 1')
+
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
+
+        # Set output biomarker mapping explicitly
+        output_biomarker_map = dict({
+            'myokit.tumour_volume': 'Biomarker 2',
+            'myokit.drug_concentration': 'Biomarker 1'})
+
+        problem.set_mechanistic_model(self.model, output_biomarker_map)
+
+        self.assertEqual(problem._mechanistic_model, self.model)
+        outputs = problem._mechanistic_model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[1], 'myokit.drug_concentration')
+        self.assertEqual(len(problem._biom_keys), 2)
+        self.assertEqual(problem._biom_keys[0], 'Biomarker 2')
+        self.assertEqual(problem._biom_keys[1], 'Biomarker 1')
+
+    def test_set_mechanistic_model_bad_input(self):
+        # Wrong model type
+        model = 'some model'
+
+        with self.assertRaisesRegex(ValueError, 'The model has to be'):
+            self.problem.set_mechanistic_model(model=model)
+
+        # Wrong number of model outputs
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker', 'Biomarker 1', 'Biomarker 2'])
+
+        with self.assertRaisesRegex(ValueError, 'The model does not have'):
+            problem.set_mechanistic_model(model=self.model)
+
+        # Wrong map type
+        output_biomarker_map = 'bad map'
+
+        with self.assertRaisesRegex(ValueError, 'The output-biomarker'):
+            self.problem.set_mechanistic_model(
+                self.model, output_biomarker_map)
+
+        # Map does not contain biomarkers specfied by the dataset
+        output_biomarker_map = dict({'Some variable': 'Some biomarker'})
+
+        with self.assertRaisesRegex(ValueError, 'The provided output'):
+            self.problem.set_mechanistic_model(
+                self.model, output_biomarker_map)
+
 
 
 class TestInverseProblem(unittest.TestCase):
@@ -29,7 +186,7 @@ class TestInverseProblem(unittest.TestCase):
     def test_bad_model_input(self):
         model = 'bad model'
 
-        with self.assertRaisesRegex(TypeError, 'Model has to be an instance'):
+        with self.assertRaisesRegex(ValueError, 'Model has to be an instance'):
             erlo.InverseProblem(model, self.times, self.values)
 
     def test_bad_times_input(self):
