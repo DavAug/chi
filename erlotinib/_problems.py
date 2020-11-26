@@ -90,6 +90,60 @@ class ProblemModellingController(object):
 
         return error_model
 
+    def fix_parameters(self, name_value_dict):
+        """
+        Fixes the value of model parameters, and effectively removes them from
+        the list of model parameters.
+
+        Fixing the value of a parameter at ``None``, sets the parameter free
+        again.
+
+        If a parameter name in the name-value dictionary cannot be found in the
+        model, it is ignored.
+
+        Fixing model parameters resets the log-prior to ``None``.
+
+        Parameters
+        ----------
+
+        name_value_dict
+            A dictionary with model parameters as keys, and the value to be
+            fixed at as values.
+        """
+        if self._mechanistic_model is None:
+            raise ValueError(
+                'The mechanistic model has not been set.')
+
+        if self._error_model is None:
+            raise ValueError(
+                'The error model has not been set.')
+
+        # If no model parameters have been fixed before, instantiate a mask
+        # and values
+        if self._fixed_params_mask is None:
+            self._fixed_params_mask = np.zeros(
+                shape=self._n_parameters, dtype=bool)
+
+        if self._fixed_params_values is None:
+            self._fixed_params_values = np.empty(shape=self._n_parameters)
+
+        # Update the mask and values
+        for index, name in enumerate(self._parameter_names):
+            try:
+                value = name_value_dict[name]
+            except KeyError:
+                # KeyError indicates that parameter name is not being fixed
+                continue
+
+            # Fix parameter if value is not None, else unfix it
+            self._fixed_params_mask[index] = value is not None
+            self._fixed_params_values[index] = value
+
+        # If all parameters are free, set mask and values to None again
+        if np.alltrue(~self._fixed_params_mask):
+            self._fixed_params_mask = None
+            self._fixed_params_values = None
+
     def log_posteriors(self):
         """
         Returns a list of :class:`erlotinib.LogPosterior` instances, defined by
@@ -119,9 +173,9 @@ class ProblemModellingController(object):
             raise ValueError(
                 'The log-prior has not been set.')
 
-        if self._population_model is not None:
-            # Overwrites the log-likelihoods
-            raise NotImplementedError
+        # if self._population_model is not None:
+        #     # Overwrites the log-likelihoods
+        #     raise NotImplementedError
 
         if self._fixed_params_values is not None:
             # Fix model parameters
@@ -142,10 +196,10 @@ class ProblemModellingController(object):
 
         return log_posterior
 
-    def n_parameters(self):
+    def n_parameters(self, exclude_pop_model=False):
         """
         Returns the number of free parameters of the structural model, i.e. the
-        mechanistic model, the error model and optionally the population model.
+        mechanistic model, the error model and, if set, the population model.
 
         Any parameters that have been fixed to a constant value will not be
         included in the number of model parameters.
@@ -155,6 +209,21 @@ class ProblemModellingController(object):
         of parameters for one structural model is returned, as the models are
         structurally the same across individuals.
         """
+        # if exclude_pop_model:
+        #     # Get number of mechanistic model and error model parameters
+        #     n_parameters = self._error_model[0].n_parameters()
+
+        #     # If no parameters have been fixed, return
+        #     if self._fixed_params_mask is None:
+        #         return n_parameters
+
+        #     # If parameters have been fixed, subtract fixed number
+        #     n_fixed_params = int(np.sum(
+        #         self._fixed_params_mask[:n_parameters]))
+
+        #     return n_parameters - n_fixed_params
+
+        # Return all free model parameters (including population model)
         if self._fixed_params_mask is None:
             return self._n_parameters
 
@@ -163,7 +232,7 @@ class ProblemModellingController(object):
 
         return self._n_parameters - n_fixed_params
 
-    def parameter_names(self):
+    def parameter_names(self, exclude_pop_model=False):
         """
         Returns the names of the free structural model parameters, i.e. the
         parameters of the mechanistic model, the error model and optionally
@@ -177,6 +246,7 @@ class ProblemModellingController(object):
         of parameters for one structural model is returned, as the models are
         structurally the same across individuals.
         """
+        # TODO: figure out a way to return pop names and withour piop
         if self._fixed_params_mask is None:
             return self._parameter_names
 
@@ -185,87 +255,6 @@ class ProblemModellingController(object):
             ~self._fixed_params_mask]
 
         return list(parameter_names)
-
-    def set_mechanistic_model(self, model, output_biom_map=None):
-        """
-        Sets the mechanistic model of the PKPD modelling problem.
-
-        A mechanistic model is either an instance of a
-        :class:`PharmacokineticModel`, a :class:`PharmacodynamicModel`, or a
-        :class:`PKPDModel`.
-
-        The model outputs are mapped to the measured biomarkers in the dataset.
-        By default the first output is mapped to the first biomarker, the
-        second output to the second biomarker, and so. The output-biomarker map
-        can alternatively also be explicitly specified by a dictionary, with
-        the model output names as keys, and the biomarker keys as values.
-
-        Setting the mechanistic model, resets the error model, the population
-        model, the prior probability distributions for the model parameters,
-        any fixed model parameters, and parameter names.
-
-        Parameters
-        ----------
-
-        model
-            A mechanistic model of the pharmacokinetics and/or the
-            pharmacodynamics in form of a :class:`PharmacokineticModel`, a
-            :class:`PharmacodynamicModel`, or a :class:`PKPDModel`.
-        output_biom_map
-            A dictionary that maps the model outputs to the measured
-            biomarkers. The keys of the dictionary identify the output names
-            of the model, and the values the corresponding biomarker key in
-            the dataset.
-        """
-        if not isinstance(
-                model, (erlo.PharmacokineticModel, erlo.PharmacodynamicModel)):
-            raise ValueError(
-                'The model has to be an instance of a '
-                'erlotinib.PharmacokineticModel, a '
-                'erlotinib.PharmacodynamicModel or a erlotinib.PKPDModel')
-
-        if output_biom_map is not None:
-            try:
-                outputs = list(output_biom_map.keys())
-                biomarkers = list(output_biom_map.values())
-            except AttributeError:
-                raise ValueError(
-                    'The output-biomarker map has to be a dictionary.')
-
-            if sorted(biomarkers) != sorted(self._biom_keys):
-                ValueError(
-                    'The provided output-biomarker map does not map model '
-                    'outputs to all biomarkers in the dataset.')
-
-            # Set new model outputs
-            model.set_outputs(outputs)
-
-            # Overwrite biomarker keys to have the same order as model outputs
-            self._biom_keys = biomarkers
-
-        # Make sure that there is one model output for each biomarker
-        n_biom = len(self._biom_keys)
-        if model.n_outputs() < n_biom:
-            raise ValueError(
-                'The model does not have enough outputs to model all '
-                'biomarkers in the dataset.')
-
-        # If the model has too many outputs, return only the relevant number
-        # of outputs.
-        outputs = model.outputs()
-        model.set_outputs(outputs[:n_biom])
-
-        # Set mechanistic model
-        self._mechanistic_model = model
-
-        # Reset other settings that depend on the mechanistic model
-        self._error_model = None
-        self._population_model = None
-        self._log_prior = None
-        self._n_parameters = None
-        self._parameter_names = None
-        self._fixed_params_mask = None
-        self._fixed_params_values = None
 
     def set_error_model(self, log_likelihoods, outputs=None):
         """
@@ -340,68 +329,6 @@ class ProblemModellingController(object):
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
-    def set_population_model(self, pop_pdfs, pooled):
-        """
-        - for now: pool parameters
-        - later: set population distribution
-
-        Allow naming only for newly introduced pop. parameters.
-        """
-
-    def fix_parameters(self, name_value_dict):
-        """
-        Fixes the value of model parameters, and effectively removes them from
-        the list of model parameters.
-
-        Fixing the value of a parameter at ``None``, sets the parameter free
-        again.
-
-        If a parameter name in the name-value dictionary cannot be found in the
-        model, it is ignored.
-
-        Fixing model parameters resets the log-prior to ``None``.
-
-        Parameters
-        ----------
-
-        name_value_dict
-            A dictionary with model parameters as keys, and the value to be
-            fixed at as values.
-        """
-        if self._mechanistic_model is None:
-            raise ValueError(
-                'The mechanistic model has not been set.')
-
-        if self._error_model is None:
-            raise ValueError(
-                'The error model has not been set.')
-
-        # If no model parameters have been fixed before, instantiate a mask
-        # and values
-        if self._fixed_params_mask is None:
-            self._fixed_params_mask = np.zeros(
-                shape=self._n_parameters, dtype=bool)
-
-        if self._fixed_params_values is None:
-            self._fixed_params_values = np.empty(shape=self._n_parameters)
-
-        # Update the mask and values
-        for index, name in enumerate(self._parameter_names):
-            try:
-                value = name_value_dict[name]
-            except KeyError:
-                # KeyError indicates that parameter name is not being fixed
-                continue
-
-            # Fix parameter if value is not None, else unfix it
-            self._fixed_params_mask[index] = value is not None
-            self._fixed_params_values[index] = value
-
-        # If all parameters are free, set mask and values to None again
-        if np.alltrue(~self._fixed_params_mask):
-            self._fixed_params_mask = None
-            self._fixed_params_values = None
-
     def set_log_prior(self, marg_log_priors, param_names=None):
         """
         Sets the log-prior probability distribution of the model parameters.
@@ -432,6 +359,16 @@ class ProblemModellingController(object):
             log-priors to the model parameters.
         """
         # Check inputs
+        if self._mechanistic_model is None:
+            raise ValueError(
+                'Before setting log-priors for the model parameters, a '
+                'mechanistic model has to be set.')
+
+        if self._error_model is None:
+            raise ValueError(
+                'Before setting log-priors for the model parameters, an '
+                'error model has to be set.')
+
         if len(marg_log_priors) != self.n_parameters():
             raise ValueError(
                 'One marginal log-prior has to be provided for each parameter.'
@@ -469,12 +406,137 @@ class ProblemModellingController(object):
 
         self._log_prior = pints.ComposedLogPrior(*marg_log_priors)
 
+    def set_mechanistic_model(self, model, output_biom_map=None):
+        """
+        Sets the mechanistic model of the PKPD modelling problem.
 
-    # TODO:
-    # 1. Rewrite OptimisationController to take a list of log-posteriors and loops through the optimisations behind the scene
-    # 2. Implement a erlo.LogPosterior which has a clear interface for everything the OptCOntroller needs.
-    # 4. Implement pooling and see whether the same result for pooling (important but is the parameter names here for partial pooling)
+        A mechanistic model is either an instance of a
+        :class:`PharmacokineticModel`, a :class:`PharmacodynamicModel`, or a
+        :class:`PKPDModel`.
 
+        The model outputs are mapped to the measured biomarkers in the dataset.
+        By default the first output is mapped to the first biomarker, the
+        second output to the second biomarker, and so on. The output-biomarker
+        map can alternatively also be explicitly specified by a dictionary,
+        with the model output names as keys, and the biomarker keys as values.
+
+        Setting the mechanistic model, resets the error model, the population
+        model, the prior probability distributions for the model parameters,
+        any fixed model parameters, and parameter names.
+
+        Parameters
+        ----------
+
+        model
+            A mechanistic model of the pharmacokinetics and/or the
+            pharmacodynamics in form of a :class:`PharmacokineticModel`, a
+            :class:`PharmacodynamicModel`, or a :class:`PKPDModel`.
+        output_biom_map
+            A dictionary that maps the model outputs to the measured
+            biomarkers. The keys of the dictionary identify the output names
+            of the model, and the values the corresponding biomarker key in
+            the dataset.
+        """
+        if not isinstance(
+                model, (erlo.PharmacokineticModel, erlo.PharmacodynamicModel)):
+            raise ValueError(
+                'The model has to be an instance of a '
+                'erlotinib.PharmacokineticModel, a '
+                'erlotinib.PharmacodynamicModel or a erlotinib.PKPDModel')
+
+        if output_biom_map is not None:
+            try:
+                outputs = list(output_biom_map.keys())
+                biomarkers = list(output_biom_map.values())
+            except AttributeError:
+                raise ValueError(
+                    'The output-biomarker map has to be a dictionary.')
+
+            if sorted(biomarkers) != sorted(self._biom_keys):
+                ValueError(
+                    'The provided output-biomarker map does not map model '
+                    'outputs to all biomarkers in the dataset.')
+
+            # Set new model outputs
+            model.set_outputs(outputs)
+
+            # Overwrite biomarker keys to have the same order as model outputs
+            self._biom_keys = biomarkers
+
+        # Make sure that there is one model output for each biomarker
+        n_biom = len(self._biom_keys)
+        if model.n_outputs() < n_biom:
+            raise ValueError(
+                'The model does not have enough outputs to model all '
+                'biomarkers in the dataset.')
+
+        # If the model has too many outputs, return only the relevant number
+        # of outputs.
+        outputs = model.outputs()
+        model.set_outputs(outputs[:n_biom])
+
+        # Set mechanistic model
+        self._mechanistic_model = model
+
+        # Reset other settings that depend on the mechanistic model
+        self._error_model = None
+        self._population_model = None
+        self._log_prior = None
+        self._n_parameters = None
+        self._parameter_names = None
+        self._fixed_params_mask = None
+        self._fixed_params_values = None
+
+    '''
+    def set_population_model(self, pop_models, params=None):
+        """
+        Sets the population model for each model parameter.
+
+        A population model is an instance of a :class:`PopulationModel`. A
+        population model specifies how a model parameter varies across
+        individuals.
+
+        The population models ``pop_model`` are mapped to the model parameters.
+        By default the first population model is mapped to the first model
+        parameter in :meth:`parameter_names`, the second population model to
+        the second model parameter, and so on. By default, one population model
+        has to be provided for each model parameter.
+
+        If not all model parameters need to be modelled by a population model,
+        and can vary independently between individuals, a list of parameter
+        names can be specified with ``params``. The list of parameters has to
+        be of the same length as the list of population models, and specifies
+        the population model-model parameter map.
+
+        Parameters
+        ----------
+
+        pop_models
+            A list of :class:`PopulationModel` instances that specifies the
+            variation of model parameters between individuals. By default
+            the list has to be of the same length as the number of mechanistic
+            and error model parameters. If ``params`` is not ``None``, the list
+            of population models has to be of the same length as ``params``.
+        params
+            A list of model parameter names, which map the population models
+            to the parameter names.
+        """
+        # Check inputs
+        if self._mechanistic_model is None:
+            raise ValueError(
+                'Before setting a population model for the model parameters, '
+                'a mechanistic model has to be set.')
+
+        if self._error_model is None:
+            raise ValueError(
+                'Before setting a population model for the model parameters, '
+                'an error model has to be set.')
+
+        for pop_model in pop_models:
+
+
+        parameter_names = self.parameter_names(exclude_pop_model=True)
+    '''
 
 
 class InverseProblem(object):
@@ -589,13 +651,3 @@ class InverseProblem(object):
         points and ``n_outputs`` is the number of outputs.
         """
         return self._values
-
-
-class LogPosterior(pints.LogPDF):
-    """
-    Largely same as pints.LogPosterior.
-
-    - carries parameter names
-    - prepends ID if population model is applied. population level params,
-    nothing.
-    """
