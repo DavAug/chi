@@ -453,7 +453,7 @@ class ProblemModellingController(object):
                     'The output-biomarker map has to be a dictionary.')
 
             if sorted(biomarkers) != sorted(self._biom_keys):
-                ValueError(
+                raise ValueError(
                     'The provided output-biomarker map does not map model '
                     'outputs to all biomarkers in the dataset.')
 
