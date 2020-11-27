@@ -7,7 +7,7 @@ Apps
 Apps are classes that create interactive Dash apps, which allow the exploration
 of PKPD models and inference results.
 
-At the moment callbacks have to implemented by hand, however methods are provided
+At the moment callbacks have to be implemented by hand, however methods are provided
 which simplify this process. Examples can be found in the docstrings of each app.
 
 For further details on Dash apps, please refer to Dash's documentation.

@@ -19,7 +19,7 @@ import erlotinib.apps as apps
 
 class PDSimulationController(apps.BaseApp):
     """
-    Creates an app which simulates a :class:`PharmacodynamicModel`.
+    Creates an app which simulates a :class:`erlotinib.PharmacodynamicModel`.
 
     Parameter sliders can be used to adjust parameter values during
     the simulation.
@@ -211,7 +211,7 @@ class PDSimulationController(apps.BaseApp):
 
     def add_model(self, model):
         """
-        Adds a :class:`PharmacodynamicModel` to the application.
+        Adds a :class:`erlotinib.PharmacodynamicModel` to the application.
 
         One parameter slider is generated for each model parameter, and
         the solution for a default set of parameters is added to the figure.

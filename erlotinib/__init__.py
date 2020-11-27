@@ -9,6 +9,10 @@ from ._data_library_api import (  # noqa
     DataLibrary
 )
 
+from ._log_pdfs import (  # noqa
+    ReducedLogPDF
+)
+
 from ._model_library_api import (  # noqa
     ModelLibrary
 )
@@ -26,7 +30,8 @@ from ._inference import (  # noqa
 )
 
 from ._problems import (  # noqa
-    InverseProblem
+    InverseProblem,
+    ProblemModellingController
 )
 
 from . import (  # noqa

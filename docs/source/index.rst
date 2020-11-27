@@ -18,8 +18,9 @@ This page provides the API, or developer documentation for
 `erlotinib`, the software used to analyse and model erlonitib's
 PKPD.
 
-While the package may also be used to model the PKPD of any compound, the `erlotinib` package
-provides data and model libraries which are specific to Erlotinib (Tarceva).
+While the package may also be used to model the PKPD of any other compound, the
+`erlotinib` package provides data and model libraries which are specific to
+Erlotinib (Tarceva).
 
 * :ref:`genindex`
 * :ref:`search`
@@ -34,6 +35,7 @@ Contents
     apps
     data_library
     inference
+    log_pdfs
     model_library
     models
     plots
