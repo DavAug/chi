@@ -64,7 +64,8 @@ class ProblemModellingController(object):
         # How we compose likelihoods with possibly different error models for
         # different outputs is not yet implemented.
         if len(log_likelihoods) > 1:
-            raise NotImplementedError
+            raise NotImplementedError(
+                'Fitting multiple outputs has not been implemented yet.')
 
         # This only works for single output problem!
         biom_key = self._biom_keys[0]
@@ -75,6 +76,8 @@ class ProblemModellingController(object):
         ids = self._data[self._id_key].unique()
         for individual in ids:
             # Get data
+            # TODO: what happens if data includes nans? Should we exclude those
+            # rows?
             mask = self._data[self._id_key] == individual
             times = self._data[self._time_key][mask].to_numpy()
             biomarker = self._data[biom_key][mask].to_numpy()
@@ -260,9 +263,8 @@ class ProblemModellingController(object):
         """
         Sets the error model for each observed biomarker.
 
-        An error model is a daughter class of a
-        :class:`pints.ProblemLogLikelihood`, such as the
-        :class:`GaussianLogLikelihood`.
+        An error model is a subclass of a
+        :class:`pints.ProblemLogLikelihood`.
 
         The error models capture the deviations of the measured biomarkers
         from the outputs of the mechanistic model in form of a
@@ -306,11 +308,12 @@ class ProblemModellingController(object):
                     'The specified outputs do not match the model outputs.')
 
             # Sort likelihoods according to outputs
-            order = []
-            for output in outputs:
-                order.append(model_outputs.index(output))
+            ordered = []
+            for output in model_outputs:
+                index = outputs.index(output)
+                ordered.append(log_likelihoods[index])
 
-            log_likelihoods = log_likelihoods[order]
+            log_likelihoods = ordered
 
         # Create one log-likelihood for each individual
         # (likelihoods are identical except for the data)
