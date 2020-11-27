@@ -32,6 +32,10 @@ class ReducedLogPDF(pints.LogPDF):
     def __init__(self, log_pdf, mask, values):
         super(ReducedLogPDF, self).__init__()
 
+        if not isinstance(log_pdf, pints.LogPDF):
+            raise ValueError(
+                'The log-pdf has to be an instance of a pints.LogPDF.')
+
         self._log_pdf = log_pdf
 
         if len(mask) != self._log_pdf.n_parameters():
@@ -47,7 +51,7 @@ class ReducedLogPDF(pints.LogPDF):
         n_fixed = int(np.sum(mask))
         if n_fixed != len(values):
             raise ValueError(
-                'The have to be as many value inputs as the number of '
+                'There have to be as many value inputs as the number of '
                 'fixed parameters.')
 
         # Create a parameter array for later calls of the log-pdf
