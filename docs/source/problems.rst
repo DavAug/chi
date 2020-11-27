@@ -23,8 +23,6 @@ prior distributions.
 
 Overview:
 
-Overview:
-
 - :class:`InverseProblem`
 - :class:`ProblemModellingController`
 

@@ -7,7 +7,7 @@ Log-PDFs
 
 .. currentmodule:: erlotinib
 
-Log-PDFs in erlotinib_ extend the log-pdfs provided in pints for the purpose of
+Log-PDFs in erlotinib_ extend the log-pdfs provided in pints_ for the purpose of
 PKPD modelling.
 
 Overview:
