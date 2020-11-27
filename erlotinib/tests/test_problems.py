@@ -9,6 +9,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
+import pints
 
 import erlotinib as erlo
 
@@ -38,6 +39,7 @@ class TestProblemModellingController(unittest.TestCase):
         # Create test model
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.PharmacodynamicModel(path)
+        cls.log_likelihoods = [pints.GaussianLogLikelihood]
 
     def test_bad_input(self):
         # Create data of wrong type
@@ -104,14 +106,83 @@ class TestProblemModellingController(unittest.TestCase):
             erlo.ProblemModellingController(
                 data=data, biom_keys=['SOME WRONG KEY'])
 
+    def test_set_error_model(self):
+        # Map error model to output automatically
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.log_likelihoods)
+
+        error_models = self.problem._error_model
+        n_ids = 3
+        self.assertEqual(len(error_models), n_ids)
+        self.assertIsInstance(error_models[0], pints.GaussianLogLikelihood)
+        self.assertIsInstance(error_models[1], pints.GaussianLogLikelihood)
+        self.assertIsInstance(error_models[2], pints.GaussianLogLikelihood)
+
+        self.assertEqual(self.problem.n_parameters(), 6)
+        param_names = self.problem.parameter_names()
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Noise param 1')
+
+        # Set error model-output mapping explicitly
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        output_biomarker_map = dict({
+            'myokit.tumour_volume': 'Biomarker 2',
+            'myokit.drug_concentration': 'Biomarker 1'})
+        problem.set_mechanistic_model(model, output_biomarker_map)
+        log_likelihoods = [
+            pints.GaussianLogLikelihood,
+            pints.MultiplicativeGaussianLogLikelihood]
+        outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
+
+        # TODO: To be implemented in complementary PR
+        with self.assertRaisesRegex(NotImplementedError, 'Fitting'):
+            problem.set_error_model(log_likelihoods, outputs)
+
+    def test_set_error_model_bad_input(self):
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
+
+        with self.assertRaisesRegex(ValueError, 'Before setting'):
+            problem.set_error_model(self.log_likelihoods)
+
+        # Log-likelihoods have the wrong type
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        problem.set_mechanistic_model(model)
+
+        likelihoods = [str, float, int]
+        with self.assertRaisesRegex(ValueError, 'The log-likelihoods are'):
+            problem.set_error_model(likelihoods)
+
+        # Number of likelihoods does not match the number of outputs
+        likelihoods = [pints.GaussianLogLikelihood, pints.AR1LogLikelihood]
+        with self.assertRaisesRegex(ValueError, 'The number of log-'):
+            problem.set_error_model(likelihoods)
+
+        # The specified outputs do not match the model outputs
+        likelihoods = [pints.GaussianLogLikelihood]
+        outputs = ['wrong', 'outputs']
+        with self.assertRaisesRegex(ValueError, 'The specified outputs'):
+            problem.set_error_model(likelihoods, outputs)
+
     def test_set_mechanistic_model(self):
         # Set output biomarker mapping automatically
         problem = erlo.ProblemModellingController(
             self.data, biom_keys=['Biomarker 1'])
 
-        problem.set_mechanistic_model(model=self.model)
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        problem.set_mechanistic_model(model=model)
 
-        self.assertEqual(problem._mechanistic_model, self.model)
+        self.assertEqual(problem._mechanistic_model, model)
         outputs = problem._mechanistic_model.outputs()
         self.assertEqual(len(outputs), 1)
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
@@ -126,9 +197,9 @@ class TestProblemModellingController(unittest.TestCase):
             'myokit.tumour_volume': 'Biomarker 2',
             'myokit.drug_concentration': 'Biomarker 1'})
 
-        problem.set_mechanistic_model(self.model, output_biomarker_map)
+        problem.set_mechanistic_model(model, output_biomarker_map)
 
-        self.assertEqual(problem._mechanistic_model, self.model)
+        self.assertEqual(problem._mechanistic_model, model)
         outputs = problem._mechanistic_model.outputs()
         self.assertEqual(len(outputs), 2)
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
@@ -146,7 +217,7 @@ class TestProblemModellingController(unittest.TestCase):
 
         # Wrong number of model outputs
         problem = erlo.ProblemModellingController(
-            self.data, biom_keys=['Biomarker', 'Biomarker 1', 'Biomarker 2'])
+            self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
 
         with self.assertRaisesRegex(ValueError, 'The model does not have'):
             problem.set_mechanistic_model(model=self.model)
