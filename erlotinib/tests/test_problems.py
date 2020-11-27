@@ -440,7 +440,6 @@ class TestProblemModellingController(unittest.TestCase):
                 self.model, output_biomarker_map)
 
 
-
 class TestInverseProblem(unittest.TestCase):
     """
     Tests the erlotinib.InverseProblem class.
