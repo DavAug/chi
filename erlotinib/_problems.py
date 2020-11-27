@@ -332,7 +332,7 @@ class ProblemModellingController(object):
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
-    def set_log_prior(self, marg_log_priors, param_names=None):
+    def set_log_prior(self, log_priors, param_names=None):
         """
         Sets the log-prior probability distribution of the model parameters.
 
@@ -372,19 +372,19 @@ class ProblemModellingController(object):
                 'Before setting log-priors for the model parameters, an '
                 'error model has to be set.')
 
-        if len(marg_log_priors) != self.n_parameters():
-            raise ValueError(
-                'One marginal log-prior has to be provided for each parameter.'
-            )
-
-        for log_prior in marg_log_priors:
+        for log_prior in log_priors:
             if not isinstance(log_prior, pints.LogPrior):
                 raise ValueError(
                     'All marginal log-priors have to be instances of a '
                     'pints.LogPrior.')
 
+        if len(log_priors) != self.n_parameters():
+            raise ValueError(
+                'One marginal log-prior has to be provided for each parameter.'
+            )
+
         n_parameters = 0
-        for log_prior in marg_log_priors:
+        for log_prior in log_priors:
             n_parameters += log_prior.n_parameters()
 
         if n_parameters != self.n_parameters():
@@ -400,14 +400,15 @@ class ProblemModellingController(object):
                     'parameter names.')
 
             # Sort log-priors according to parameter names
-            order = []
+            ordered = []
             names = self.parameter_names()
-            for name in param_names:
-                order.append(names.index(name))
+            for name in names:
+                index = param_names.index(name)
+                ordered.append(log_priors[index])
 
-            marg_log_priors = marg_log_priors[order]
+            log_priors = ordered
 
-        self._log_prior = pints.ComposedLogPrior(*marg_log_priors)
+        self._log_prior = pints.ComposedLogPrior(*log_priors)
 
     def set_mechanistic_model(self, model, output_biom_map=None):
         """
