@@ -11,11 +11,22 @@ import pints
 
 class ReducedLogPDF(pints.LogPDF):
     """
-    A wrapper for a `pints.LogPDF` to fix the values of some model
-    parameters.
+    A wrapper for a :class:`pints.LogPDF` to fix the values of a subset of
+    model parameters.
 
     This allows to reduce the parameter dimensionality of the log-pdf
     at the cost of fixing some parameters at a constant value.
+
+    Parameters
+    ----------
+    log_pdf
+        An instance of a :class:`pints.LogPDF`.
+    mask
+        A boolean array of the length of the number of parameters. ``True``
+        indicates that the parameter is fixed at a constant value, ``False``
+        indicates that the parameter remains free.
+    values
+        A list of values the parameters are fixed at.
     """
 
     def __init__(self, log_pdf, mask, values):
@@ -55,6 +66,6 @@ class ReducedLogPDF(pints.LogPDF):
 
     def n_parameters(self):
         """
-        Returns the number of 'free' parameters of the log-posterior.
+        Returns the number of free parameters of the log-posterior.
         """
         return self._n_parameters

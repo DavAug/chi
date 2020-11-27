@@ -34,6 +34,7 @@ Contents
     apps
     data_library
     inference
+    log_pdfs
     model_library
     models
     plots
