@@ -310,6 +310,11 @@ class TestProblemModellingController(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The specified outputs'):
             problem.set_error_model(likelihoods, outputs)
 
+        # The likelihoods need arguments for instantiation
+        likelihoods = [pints.GaussianKnownSigmaLogLikelihood]
+        with self.assertRaisesRegex(ValueError, 'Only error models'):
+            problem.set_error_model(likelihoods)
+
     def test_set_log_prior(self):
         # Map priors to parameters automatically
         self.problem.set_mechanistic_model(self.model)

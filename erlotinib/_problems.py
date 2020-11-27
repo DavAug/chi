@@ -110,7 +110,7 @@ class ProblemModellingController(object):
             problem = InverseProblem(self._mechanistic_model, times, biomarker)
             try:
                 error_model.append(log_likelihood(problem))
-            except ValueError:
+            except TypeError:
                 raise ValueError(
                     'Only error models for which all parameters can be '
                     'inferred are compatible.')
