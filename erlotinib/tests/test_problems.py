@@ -113,6 +113,89 @@ class TestProblemModellingController(unittest.TestCase):
             erlo.ProblemModellingController(
                 data=data, biom_keys=['SOME WRONG KEY'])
 
+    def test_fix_parameters(self):
+        # Fix model parameters
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.log_likelihoods)
+        name_value_dict = dict({
+            'myokit.drug_concentration': 0,
+            'myokit.kappa': 1})
+
+        self.problem.fix_parameters(name_value_dict)
+
+        self.assertEqual(self.problem.n_parameters(), 4)
+        param_names = self.problem.parameter_names()
+        self.assertEqual(len(param_names), 4)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.lambda_0')
+        self.assertEqual(param_names[2], 'myokit.lambda_1')
+        self.assertEqual(param_names[3], 'Noise param 1')
+
+        param_values = self.problem._fixed_params_values
+        self.assertEqual(len(param_values), 6)
+        self.assertEqual(param_values[1], 0)
+        self.assertEqual(param_values[2], 1)
+
+        # Free kappa and fix lambda_1
+        name_value_dict = dict({
+            'myokit.lambda_1': 2,
+            'myokit.kappa': None})
+
+        self.problem.fix_parameters(name_value_dict)
+
+        self.assertEqual(self.problem.n_parameters(), 4)
+        param_names = self.problem.parameter_names()
+        self.assertEqual(len(param_names), 4)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.kappa')
+        self.assertEqual(param_names[2], 'myokit.lambda_0')
+        self.assertEqual(param_names[3], 'Noise param 1')
+
+        param_values = self.problem._fixed_params_values
+        self.assertEqual(len(param_values), 6)
+        self.assertEqual(param_values[1], 0)
+        self.assertEqual(param_values[4], 2)
+
+        # Free all parameters again
+        name_value_dict = dict({
+            'myokit.lambda_1': None,
+            'myokit.drug_concentration': None})
+
+        self.problem.fix_parameters(name_value_dict)
+
+        self.assertEqual(self.problem.n_parameters(), 6)
+        param_names = self.problem.parameter_names()
+        self.assertEqual(len(param_names), 6)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Noise param 1')
+
+        self.assertIsNone(self.problem._fixed_params_values)
+        self.assertIsNone(self.problem._fixed_params_mask)
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = dict({
+            'myokit.lambda_1': 2,
+            'myokit.kappa': None})
+
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
+
+        with self.assertRaisesRegex(ValueError, 'The mechanistic'):
+            problem.fix_parameters(name_value_dict)
+
+        # No error model set
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        problem.set_mechanistic_model(model)
+
+        with self.assertRaisesRegex(ValueError, 'The error model'):
+            problem.fix_parameters(name_value_dict)
+
     def test_set_error_model(self):
         # Map error model to output automatically
         self.problem.set_mechanistic_model(self.model)
