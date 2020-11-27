@@ -18,12 +18,36 @@ import erlotinib as erlo
 
 class ProblemModellingController(object):
     """
-    A controller class for the modelling of PKPD datasets.
+    A controller class which simplifies the modelling process of a PKPD
+    dataset.
 
-    - data
-    - mechanistic PK, PD, or PKPD model
-    - error model
-    - (optional) Population model
+    The class is instantiated with a PKPD dataset in form of a
+    :class:`pandas.DataFrame`. This dataframe is expected to have an ID column,
+    a time column and possibly several biomarker columns. By default the keys
+    for the columns are assumed to be ``ID``, ``Time``, and (for just one
+    biomarker) ``Biomarker``. If the keys in the dataset deviate from the
+    defaults, they can be specified with the respective key arguments.
+
+    The ProblemModellingController simplifies the process of generating a
+    :class:`LogPosterior` for parameters of a model that describes the PKPD
+    dataset. Such a model consists of a mechanistic model, an error model, and
+    optionally a population model.
+
+    Parameters
+    ----------
+    data
+        A :class:`pandas.DataFrame` with the time series data in form of
+        an ID, time, and (multiple) biomarker columns.
+    id_key
+        Key label of the :class:`DataFrame` which specifies the ID column.
+        The ID refers to the identity of an individual. Defaults to
+        ``'ID'``.
+    time_key
+        Key label of the :class:`DataFrame` which specifies the time
+        column. Defaults to ``'Time'``.
+    biom_keys
+        A list of key labels of the :class:`DataFrame` which specifies the PK
+        or PD biomarker columns. Defaults to ``['Biomarker']``.
     """
 
     def __init__(
@@ -96,13 +120,8 @@ class ProblemModellingController(object):
     def fix_parameters(self, name_value_dict):
         """
         Fixes the value of model parameters, and effectively removes them as a
-        parameter from the model.
-
-        Fixing the value of a parameter at ``None``, sets the parameter free
-        again.
-
-        If a parameter name in the name-value dictionary cannot be found in the
-        model, it is ignored.
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
 
         Fixing model parameters resets the log-prior to ``None``.
 
@@ -149,7 +168,7 @@ class ProblemModellingController(object):
 
     def get_log_posteriors(self):
         """
-        Returns a list of :class:`erlotinib.LogPosterior` instances, defined by
+        Returns a list of :class:`LogPosterior` instances, defined by
         the dataset, the mechanistic model, the error model, the log-prior,
         and optionally the population model and the fixed model parameters.
 
@@ -199,6 +218,43 @@ class ProblemModellingController(object):
 
         return log_posterior
 
+    def get_parameter_names(self, exclude_pop_model=False):
+        """
+        Returns the names of the free structural model parameters, i.e. the
+        free parameters of the mechanistic model, the error model and
+        optionally the population model.
+
+        Any parameters that have been fixed to a constant value will not be
+        included in the list of model parameters.
+
+        If the mechanistic model or the error model have not been set, ``None``
+        is returned. If the population model has not been set, only the names
+        of parameters for one structural model is returned, as the models are
+        structurally the same across individuals.
+
+        If a population model has been set and not all parameters are pooled,
+        the mechanistic and error model parameters appear multiple times (once
+        for each individual). To get the mechanistic and error model parameters
+        prior to setting a population model the ``exlude_pop_model`` flag can
+        be set to ``True``.
+
+        Parameters
+        ----------
+        exclude_pop_model
+            A boolean flag which determines whether the parameter names of the
+            full model are returned, or just the mechanistic and error model
+            parameters prior to setting a population model.
+        """
+        # TODO: figure out a way to return pop names and withour piop
+        if self._fixed_params_mask is None:
+            return self._parameter_names
+
+        # Remove fixed parameters
+        parameter_names = np.array(self._parameter_names)[
+            ~self._fixed_params_mask]
+
+        return list(parameter_names)
+
     def n_parameters(self, exclude_pop_model=False):
         """
         Returns the number of free parameters of the structural model, i.e. the
@@ -207,10 +263,23 @@ class ProblemModellingController(object):
         Any parameters that have been fixed to a constant value will not be
         included in the number of model parameters.
 
-        If the mechanistic model or the error model have not been set ``None``
+        If the mechanistic model or the error model have not been set, ``None``
         is returned. If the population model has not been set, only the number
         of parameters for one structural model is returned, as the models are
         structurally the same across individuals.
+
+        If a population model has been set and not all parameters are pooled,
+        the mechanistic and error model parameters are counted multiple times
+        (once for each individual). To get the number of mechanistic and error
+        model parameters prior to setting a population model the
+        ``exlude_pop_model`` flag can be set to ``True``.
+
+        Parameters
+        ----------
+        exclude_pop_model
+            A boolean flag which determines whether the number of parameters
+            of the full model are returned, or just number of parameters of the
+            mechanistic and error model, prior to setting an error model.
         """
         # if exclude_pop_model:
         #     # Get number of mechanistic model and error model parameters
@@ -235,40 +304,14 @@ class ProblemModellingController(object):
 
         return self._n_parameters - n_fixed_params
 
-    def get_parameter_names(self, exclude_pop_model=False):
-        """
-        Returns the names of the free structural model parameters, i.e. the
-        parameters of the mechanistic model, the error model and optionally
-        the population model.
-
-        Any parameters that have been fixed to a constant value will not be
-        included in the list of model parameters.
-
-        If the mechanistic model or the error model have not been set ``None``
-        is returned. If the population model has not been set, only the names
-        of parameters for one structural model is returned, as the models are
-        structurally the same across individuals.
-        """
-        # TODO: figure out a way to return pop names and withour piop
-        if self._fixed_params_mask is None:
-            return self._parameter_names
-
-        # Remove fixed parameters
-        parameter_names = np.array(self._parameter_names)[
-            ~self._fixed_params_mask]
-
-        return list(parameter_names)
-
     def set_error_model(self, log_likelihoods, outputs=None):
         """
-        Sets the error model for each observed biomarker.
+        Sets the error model for each observed biomarker-model output pair.
 
         An error model is a subclass of a
-        :class:`pints.ProblemLogLikelihood`.
-
-        The error models capture the deviations of the measured biomarkers
-        from the outputs of the mechanistic model in form of a
-        probabilistic model.
+        :class:`pints.ProblemLogLikelihood`. The error models capture the
+        deviations of the measured biomarkers from the outputs of the
+        mechanistic model in form of a probabilistic model.
 
         Setting the error model, resets the population model, the prior
         probability distributions for the model parameters, any fixed model
@@ -278,8 +321,9 @@ class ProblemModellingController(object):
         ----------
 
         log_likelihoods
-            A list of :class:`pints.ProblemLikelihood` daughter classes which
-            specify the error model for each measured biomarker.
+            A list of :class:`pints.ProblemLikelihood` subclasses which
+            specify the error model for each measured biomarker-model output
+            pair.
         outputs
             A list of the model outputs, which maps the error models to the
             model outputs. By default the error models are assumed to be
@@ -349,9 +393,9 @@ class ProblemModellingController(object):
 
         By default the log-priors are assumed to be ordered according to
         :meth:`get_parameter_names`. Alternatively, the mapping of the
-        log-priors can be specified explicitly with `param_names`.
+        log-priors can be specified explicitly with ``param_names``.
 
-        Parameters:
+        Parameters
         ----------
 
         log_priors
@@ -422,7 +466,8 @@ class ProblemModellingController(object):
         By default the first output is mapped to the first biomarker, the
         second output to the second biomarker, and so on. The output-biomarker
         map can alternatively also be explicitly specified by a dictionary,
-        with the model output names as keys, and the biomarker keys as values.
+        with the model output names as keys, and the dataframe's biomarker keys
+        as values.
 
         Setting the mechanistic model, resets the error model, the population
         model, the prior probability distributions for the model parameters,
