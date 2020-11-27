@@ -95,8 +95,8 @@ class ProblemModellingController(object):
 
     def fix_parameters(self, name_value_dict):
         """
-        Fixes the value of model parameters, and effectively removes them from
-        the list of model parameters.
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model.
 
         Fixing the value of a parameter at ``None``, sets the parameter free
         again.
