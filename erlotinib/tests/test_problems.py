@@ -124,7 +124,7 @@ class TestProblemModellingController(unittest.TestCase):
         self.problem.fix_parameters(name_value_dict)
 
         self.assertEqual(self.problem.n_parameters(), 4)
-        param_names = self.problem.parameter_names()
+        param_names = self.problem.get_parameter_names()
         self.assertEqual(len(param_names), 4)
         self.assertEqual(param_names[0], 'myokit.tumour_volume')
         self.assertEqual(param_names[1], 'myokit.lambda_0')
@@ -144,7 +144,7 @@ class TestProblemModellingController(unittest.TestCase):
         self.problem.fix_parameters(name_value_dict)
 
         self.assertEqual(self.problem.n_parameters(), 4)
-        param_names = self.problem.parameter_names()
+        param_names = self.problem.get_parameter_names()
         self.assertEqual(len(param_names), 4)
         self.assertEqual(param_names[0], 'myokit.tumour_volume')
         self.assertEqual(param_names[1], 'myokit.kappa')
@@ -164,7 +164,7 @@ class TestProblemModellingController(unittest.TestCase):
         self.problem.fix_parameters(name_value_dict)
 
         self.assertEqual(self.problem.n_parameters(), 6)
-        param_names = self.problem.parameter_names()
+        param_names = self.problem.get_parameter_names()
         self.assertEqual(len(param_names), 6)
         self.assertEqual(param_names[0], 'myokit.tumour_volume')
         self.assertEqual(param_names[1], 'myokit.drug_concentration')
@@ -196,6 +196,53 @@ class TestProblemModellingController(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The error model'):
             problem.fix_parameters(name_value_dict)
 
+    def test_get_log_posteriors(self):
+        # Create posterior with no fixed parameters
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.log_likelihoods)
+        self.problem.set_log_prior(self.log_priors)
+        posteriors = self.problem.get_log_posteriors()
+
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 6)
+        self.assertEqual(posteriors[1].n_parameters(), 6)
+        self.assertEqual(posteriors[2].n_parameters(), 6)
+
+        # Fixe some parameters
+        name_value_dict = dict({
+            'myokit.drug_concentration': 0,
+            'myokit.kappa': 1})
+        self.problem.fix_parameters(name_value_dict)
+        self.problem.set_log_prior(self.log_priors[:-2])
+        posteriors = self.problem.get_log_posteriors()
+
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 4)
+        self.assertEqual(posteriors[1].n_parameters(), 4)
+        self.assertEqual(posteriors[2].n_parameters(), 4)
+
+    def test_get_log_posteriors_bad_input(self):
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
+
+        with self.assertRaisesRegex(ValueError, 'The mechanistic'):
+            problem.get_log_posteriors()
+
+        # No error model set
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        problem.set_mechanistic_model(model)
+
+        with self.assertRaisesRegex(ValueError, 'The error model'):
+            problem.get_log_posteriors()
+
+        # No log-prior set
+        problem.set_error_model(self.log_likelihoods)
+
+        with self.assertRaisesRegex(ValueError, 'The log-prior'):
+            problem.get_log_posteriors()
+
     def test_set_error_model(self):
         # Map error model to output automatically
         self.problem.set_mechanistic_model(self.model)
@@ -209,7 +256,7 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertIsInstance(error_models[2], pints.GaussianLogLikelihood)
 
         self.assertEqual(self.problem.n_parameters(), 6)
-        param_names = self.problem.parameter_names()
+        param_names = self.problem.get_parameter_names()
         self.assertEqual(param_names[0], 'myokit.tumour_volume')
         self.assertEqual(param_names[1], 'myokit.drug_concentration')
         self.assertEqual(param_names[2], 'myokit.kappa')
