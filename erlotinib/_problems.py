@@ -147,7 +147,7 @@ class ProblemModellingController(object):
             self._fixed_params_mask = None
             self._fixed_params_values = None
 
-    def log_posteriors(self):
+    def get_log_posteriors(self):
         """
         Returns a list of :class:`erlotinib.LogPosterior` instances, defined by
         the dataset, the mechanistic model, the error model, the log-prior,
@@ -235,7 +235,7 @@ class ProblemModellingController(object):
 
         return self._n_parameters - n_fixed_params
 
-    def parameter_names(self, exclude_pop_model=False):
+    def get_parameter_names(self, exclude_pop_model=False):
         """
         Returns the names of the free structural model parameters, i.e. the
         parameters of the mechanistic model, the error model and optionally
@@ -348,8 +348,8 @@ class ProblemModellingController(object):
         for the parameters across all individuals.
 
         By default the log-priors are assumed to be ordered according to
-        :meth:`parameter_names`. Alternatively, the mapping of the log-priors
-        can be specified explicitly with `param_names`.
+        :meth:`get_parameter_names`. Alternatively, the mapping of the
+        log-priors can be specified explicitly with `param_names`.
 
         Parameters:
         ----------
@@ -394,14 +394,14 @@ class ProblemModellingController(object):
                 'multi-dimensional.')
 
         if param_names is not None:
-            if sorted(list(param_names)) != sorted(self.parameter_names()):
+            if sorted(list(param_names)) != sorted(self.get_parameter_names()):
                 raise ValueError(
                     'The specified parameter names do not match the model '
                     'parameter names.')
 
             # Sort log-priors according to parameter names
             ordered = []
-            names = self.parameter_names()
+            names = self.get_parameter_names()
             for name in names:
                 index = param_names.index(name)
                 ordered.append(log_priors[index])
@@ -502,9 +502,9 @@ class ProblemModellingController(object):
 
         The population models ``pop_model`` are mapped to the model parameters.
         By default the first population model is mapped to the first model
-        parameter in :meth:`parameter_names`, the second population model to
-        the second model parameter, and so on. By default, one population model
-        has to be provided for each model parameter.
+        parameter in :meth:`get_parameter_names`, the second population model
+        to the second model parameter, and so on. By default, one population
+        model has to be provided for each model parameter.
 
         If not all model parameters need to be modelled by a population model,
         and can vary independently between individuals, a list of parameter
@@ -539,7 +539,7 @@ class ProblemModellingController(object):
         for pop_model in pop_models:
 
 
-        parameter_names = self.parameter_names(exclude_pop_model=True)
+        parameter_names = self.get_parameter_names(exclude_pop_model=True)
     '''
 
 
