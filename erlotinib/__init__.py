@@ -10,6 +10,7 @@ from ._data_library_api import (  # noqa
 )
 
 from ._log_pdfs import (  # noqa
+    LogPosterior,
     ReducedLogPDF
 )
 
