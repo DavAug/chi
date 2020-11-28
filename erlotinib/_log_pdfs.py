@@ -11,8 +11,11 @@ import pints
 
 class LogPosterior(pints.LogPosterior):
     """
-    A log-posterior class which can be used to find maximum a posteriori
-    estimates of model estimates, or sample from the posterior itself.
+    A log-posterior class which can be used with the
+    :class:`OptimisationController` or the :class:`SamplingController`
+    to find either the maximum a posteriori
+    estimates of the model parameters, or to sample from the posterior
+    probability distribution of the model parameters directly.
 
     Extends :class:`pints.LogPosterior`.
 
@@ -44,7 +47,7 @@ class LogPosterior(pints.LogPosterior):
     def get_parameter_names(self):
         """
         Returns the names of the model parameters. By default the parameters
-        are enumerated and assigned with the name 'Param #'.
+        are enumerated and assigned with the names 'Param #'.
         """
         return self._parameter_names
 
@@ -72,7 +75,7 @@ class LogPosterior(pints.LogPosterior):
         The list of parameters has to match the length of the number of
         parameters. The first parameter name in the list is assigned to the
         first parameter, the second name in the list is assigned to second
-        model parameter, and so on.
+        parameter, and so on.
 
         Parameters
         ----------
