@@ -68,6 +68,7 @@ class ProblemModellingController(object):
         self._id_key, self._time_key = keys[:2]
         self._biom_keys = keys[2:]
         self._data = data[keys]
+        self._ids = self._data[self._id_key].unique()
 
         # Set defaults
         self._mechanistic_model = None
@@ -97,8 +98,7 @@ class ProblemModellingController(object):
 
         # Create a likelihood for each individual
         error_model = []
-        ids = self._data[self._id_key].unique()
-        for individual in ids:
+        for individual in self._ids:
             # Get data
             # TODO: what happens if data includes nans? Should we exclude those
             # rows?
