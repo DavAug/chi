@@ -13,6 +13,54 @@ import pints
 import erlotinib as erlo
 
 
+class TestLogPosterior(unittest.TestCase):
+    """
+    Tests the erlotinib.LogPosterior class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Create test dataset
+        times = [0, 1, 2, 3]
+        values = [10, 11, 12, 13]
+
+        # Create test model
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        problem = erlo.InverseProblem(model, times, values)
+        log_likelihood = pints.GaussianLogLikelihood(problem)
+        log_prior = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1))
+        cls.log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
+
+    def test_set_get_id(self):
+        # Check default
+        self.assertIsNone(self.log_posterior.get_id())
+
+        # Set some id
+        index = 'Test id'
+        self.log_posterior.set_id(index)
+
+        self.assertEqual(self.log_posterior.get_id(), index)
+
+    def test_set_get_parameter_names(self):
+        # Check default
+        default = [
+            'Param 1', 'Param 2', 'Param 3', 'Param 4', 'Param 5', 'Param 6']
+        self.assertEqual(self.log_posterior.get_parameter_names(), default)
+
+        # Set some parameter names
+        names = ['A', 'B', 'C', 'D', 'E', 'F']
+        self.log_posterior.set_parameter_names(names)
+
+        self.assertEqual(self.log_posterior.get_parameter_names(), names)
+
+
 class TestReducedLogPDF(unittest.TestCase):
     """
     Tests the erlotinib.ReducedLogPDF class.
