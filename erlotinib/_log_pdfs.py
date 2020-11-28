@@ -85,7 +85,7 @@ class LogPosterior(pints.LogPosterior):
             to the model parameters.
         """
         if len(names) != self._n_parameters:
-            ValueError(
+            raise ValueError(
                 'The list of parameter names has to match the number of model '
                 'parameters.')
         self._parameter_names = [str(name) for name in names]

@@ -60,6 +60,13 @@ class TestLogPosterior(unittest.TestCase):
 
         self.assertEqual(self.log_posterior.get_parameter_names(), names)
 
+    def test_set_parameter_names_bad_input(self):
+        # Number of names does not match the number of parameters
+        names = ['too', 'few', 'params']
+
+        with self.assertRaisesRegex(ValueError, 'The list of param'):
+            self.log_posterior.set_parameter_names(names)
+
 
 class TestReducedLogPDF(unittest.TestCase):
     """
