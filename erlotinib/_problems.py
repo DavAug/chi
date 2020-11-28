@@ -82,8 +82,9 @@ class ProblemModellingController(object):
 
     def _create_error_model(self, log_likelihoods):
         """
-        Returns a list of log-likelihoods, one for each individual in the
-        dataset.
+        Returns a dict of log-likelihoods, one for each individual in the
+        dataset. The keys are the individual IDs and the values are the
+        log-lieklihoods.
         """
         # Raise error if the model has more than one output.
         # How we compose likelihoods with possibly different error models for
@@ -97,7 +98,7 @@ class ProblemModellingController(object):
         log_likelihood = log_likelihoods[0]
 
         # Create a likelihood for each individual
-        error_model = []
+        error_model = dict()
         for individual in self._ids:
             # Get data
             # TODO: what happens if data includes nans? Should we exclude those
@@ -109,7 +110,8 @@ class ProblemModellingController(object):
             # Create inverse problem
             problem = InverseProblem(self._mechanistic_model, times, biomarker)
             try:
-                error_model.append(log_likelihood(problem))
+                index = str(self._id_key) + ' ' + str(individual)
+                error_model[index] = log_likelihood(problem)
             except TypeError:
                 raise ValueError(
                     'Only error models for which all parameters can be '
@@ -202,21 +204,25 @@ class ProblemModellingController(object):
         if self._fixed_params_values is not None:
             # Fix model parameters
             values = self._fixed_params_values[self._fixed_params_mask]
-            for index, log_likelihood in enumerate(log_likelihoods):
+            for index, log_likelihood in log_likelihoods.items():
                 log_likelihoods[index] = erlo.ReducedLogPDF(
                     log_pdf=log_likelihood,
                     mask=self._fixed_params_mask,
                     values=values)
 
-        # Compose the log-posterior
-        log_posterior = []
-        for log_likelihood in log_likelihoods:
-            log_posterior.append(
-                pints.LogPosterior(log_likelihood, self._log_prior))
+        # Compose the log-posteriors
+        log_posteriors = []
+        for index, log_likelihood in log_likelihoods.items():
+            # Create log-posterior
+            log_posterior = erlo.LogPosterior(log_likelihood, self._log_prior)
 
-            # Set parameter names (with ID tag)
+            # Tag posterior and name parameters
+            log_posterior.set_id(index)
+            log_posterior.set_parameter_names(self.get_parameter_names())
 
-        return log_posterior
+            log_posteriors.append(log_posterior)
+
+        return log_posteriors
 
     def get_parameter_names(self, exclude_pop_model=False):
         """
@@ -364,7 +370,8 @@ class ProblemModellingController(object):
         self._error_model = self._create_error_model(log_likelihoods)
 
         # Update number of parameters and names for each likelihood
-        self._n_parameters = self._error_model[0].n_parameters()
+        log_likelihood = next(iter(self._error_model.values()))
+        self._n_parameters = log_likelihood.n_parameters()
         n_noise_parameters = self._n_parameters \
             - self._mechanistic_model.n_parameters()
         self._parameter_names = self._mechanistic_model.parameters() + [
