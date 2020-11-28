@@ -15,6 +15,15 @@ class LogPosterior(pints.LogPosterior):
     estimates of model estimates, or sample from the posterior itself.
 
     Extends :class:`pints.LogPosterior`.
+
+    Parameters
+    ----------
+
+    log_likelihood
+        An instance of a :class:`pints.LogPDF`.
+    log_prior
+        An instance of a :class:`pints.LogPrior` which represents the prior
+        probability distributions for the parameters of the log-likelihood.
     """
 
     def __init__(self, log_likelihood, log_prior):
