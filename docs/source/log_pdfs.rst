@@ -12,8 +12,13 @@ PKPD modelling.
 
 Overview:
 
+- :class:`LogPosterior`
 - :class:`ReducedLogPDF`
 
+
+.. autoclass:: LogPosterior
+    :members:
+    :inherited-members:
 
 .. autoclass:: ReducedLogPDF
     :members:
