@@ -10,6 +10,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import pints
+from tqdm.notebook import tqdm
 
 import erlotinib as erlo
 
@@ -87,7 +88,7 @@ class InferenceController(object):
     log_posterior
         An instance of a :class:`LogPosterior` or a list of
         :class:`LogPosterior` instances. If multiple log-posteriors are
-        provided, they have to be defined on the same parameters space.
+        provided, they have to be defined on the same parameter space.
     """
 
     def __init__(self, log_posterior):
@@ -245,7 +246,9 @@ class InferenceController(object):
 class OptimisationController(InferenceController):
     """
     Sets up an optimisation routine that attempts to find the parameter values
-    that maximise a :class:`pints.LogPosterior`.
+    that maximise a :class:`pints.LogPosterior`. If multiple log-posteriors are
+    provided, the posteriors are assumed to be structurally identical and only
+    differ due to different data sources.
 
     By default the optimisation is run 10 times from different initial
     starting points. Starting points are randomly sampled from the
@@ -253,6 +256,14 @@ class OptimisationController(InferenceController):
     parallel using :class:`pints.ParallelEvaluator`.
 
     Extends :class:`InferenceController`.
+
+    Parameters
+    ----------
+
+    log_posterior
+        An instance of a :class:`LogPosterior` or a list of
+        :class:`LogPosterior` instances. If multiple log-posteriors are
+        provided, they have to be defined on the same parameter space.
     """
 
     def __init__(self, log_posterior):
@@ -262,15 +273,33 @@ class OptimisationController(InferenceController):
         self._optimiser = pints.CMAES
 
     def run(
-            self, n_max_iterations=None, log_to_screen=False):
+            self, n_max_iterations=10000, show_id_progress_bar=False,
+            show_run_progress_bar=False, log_to_screen=False):
         """
         Runs the optimisation and returns the maximum a posteriori probability
         parameter estimates in from of a :class:`pandas.DataFrame` with the
-        columns 'Parameter', 'Estimate', 'Score' and 'Run'.
+        columns 'ID', 'Parameter', 'Estimate', 'Score' and 'Run'.
 
         The number of maximal iterations of the optimisation routine can be
         limited by setting ``n_max_iterations`` to a finite, non-negative
         integer value.
+
+        Parameters
+        ----------
+
+        n_max_iterations
+            The maximal number of optimisation iterations to find the MAP
+            estimates for each log-posterior. By default the maximal number
+            of iterations is set to 10000.
+        show_id_progress_bar
+            A boolean flag which indicates whether a progress bar for looping
+            through the individual log-posteriors is displayed.
+        show_run_progress_bar
+            A boolean flag which indicates whether a progress bar for looping
+            through the optimisation runs is displayed.
+        log_to_screen
+            A boolean flag which indicates whether the optimiser logging output
+            is displayed.
         """
 
         # Initialise result dataframe
@@ -283,12 +312,15 @@ class OptimisationController(InferenceController):
         run_result['Parameter'] = self._parameters
 
         # Get posterior
-        for log_posterior in self._log_posteriors:
+        for log_posterior in tqdm(
+                self._log_posteriors, disable=not show_id_progress_bar):
             individual_result = pd.DataFrame(
                 columns=['ID', 'Parameter', 'Estimate', 'Score', 'Run'])
 
             # Run optimisation multiple times
-            for run_id, init_p in enumerate(self._initial_params):
+            for run_id, init_p in enumerate(tqdm(
+                    self._initial_params,
+                    disable=not show_run_progress_bar)):
                 opt = pints.OptimisationController(
                     function=log_posterior,
                     x0=init_p,
@@ -335,7 +367,9 @@ class OptimisationController(InferenceController):
 class SamplingController(InferenceController):
     """
     Sets up a sampling routine that attempts to find the posterior
-    distribution of parameters defined by a :class:`pints.LogPosterior`.
+    distribution of parameters defined by a :class:`pints.LogPosterior`. If
+    multiple log-posteriors are provided, the posteriors are assumed to be
+    structurally identical and only differ due to different data sources.
 
     By default the sampling is run 10 times from different initial
     starting points. Starting points are randomly sampled from the
@@ -351,7 +385,9 @@ class SamplingController(InferenceController):
         # Set default sampler
         self._sampler = pints.HaarioACMC
 
-    def run(self, n_iterations=10000):
+    def run(
+            self, n_iterations=10000, show_progress_bar=False,
+            log_to_screen=False):
         """
         Runs the sampling routine and returns the sampled parameter values in
         form of a :class:`pandas.DataFrame` with columns 'Parameter', 'Sample',
@@ -367,42 +403,52 @@ class SamplingController(InferenceController):
             A non-negative integer number which sets the number of iterations
             of each MCMC run.
         """
-        # Set up sampler
-        sampler = pints.MCMCController(
-            log_pdf=self._log_posterior,
-            chains=self._n_runs,
-            x0=self._initial_params,
-            method=self._sampler,
-            transform=self._transform)
-
-        # Configure sampling routine
-        sampler.set_log_to_screen(True)
-        sampler.set_log_interval(iters=500, warm_up=3)
-        sampler.set_max_iterations(iterations=n_iterations)
-        sampler.set_parallel(self._parallel_evaluation)
-
-        # Run sampling routine
-        output = sampler.run()
-
         # Initialise result dataframe
         result = pd.DataFrame(
-            columns=['Parameter', 'Sample', 'Iteration', 'Run'])
+            columns=['ID', 'Parameter', 'Sample', 'Iteration', 'Run'])
 
-        # Initialise intermediate container for individual runs
-        container = pd.DataFrame(
-            columns=['Parameter', 'Sample', 'Iteration', 'Run'])
+        for log_posterior in tqdm(
+                self._log_posteriors, disable=not show_progress_bar):
+            # Set up sampler
+            sampler = pints.MCMCController(
+                log_pdf=log_posterior,
+                chains=self._n_runs,
+                x0=self._initial_params,
+                method=self._sampler,
+                transform=self._transform)
 
-        # Safe sample results to dataframe
-        for run_id, samples in enumerate(output):
-            container['Iteration'] = np.arange(
-                start=1, stop=len(samples)+1)
-            container['Run'] = run_id + 1
+            # Configure sampling routine
+            sampler.set_log_to_screen(log_to_screen)
+            sampler.set_log_interval(iters=500, warm_up=3)
+            sampler.set_max_iterations(iterations=n_iterations)
+            sampler.set_parallel(self._parallel_evaluation)
 
-            for param_id, name in enumerate(self._parameters):
-                container['Parameter'] = name
-                container['Sample'] = samples[:, param_id]
+            # Run sampling routine
+            output = sampler.run()
 
-                result = result.append(container)
+            # Initialise intermediate container for individuals
+            indiviudal_results = pd.DataFrame(
+                columns=['Parameter', 'Sample', 'Iteration', 'Run'])
+
+            # Initialise intermediate container for individual runs
+            run_results = pd.DataFrame(
+                columns=['Parameter', 'Sample', 'Iteration', 'Run'])
+
+            # Sort pints sample output into dataframe format
+            for run_id, samples in enumerate(output):
+                run_results['Iteration'] = np.arange(
+                    start=1, stop=len(samples)+1)
+                run_results['Run'] = run_id + 1
+
+                for param_id, name in enumerate(self._parameters):
+                    run_results['Parameter'] = name
+                    run_results['Sample'] = samples[:, param_id]
+
+                    indiviudal_results = indiviudal_results.append(run_results)
+
+            # Safe sample results to dataframe
+            indiviudal_results['ID'] = log_posterior.get_id()
+            result = result.append(indiviudal_results)
 
         return result
 
