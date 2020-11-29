@@ -248,7 +248,7 @@ class TestProblemModellingController(unittest.TestCase):
         self.problem.set_mechanistic_model(self.model)
         self.problem.set_error_model(self.log_likelihoods)
 
-        error_models = self.problem._error_model
+        error_models = list(self.problem._error_model.values())
         n_ids = 3
         self.assertEqual(len(error_models), n_ids)
         self.assertIsInstance(error_models[0], pints.GaussianLogLikelihood)
