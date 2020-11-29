@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import pints
 
+import erlotinib as erlo
+
 
 class _PartiallyFixedLogPosterior(pints.LogPDF):
     """
@@ -78,16 +80,43 @@ class _PartiallyFixedLogPosterior(pints.LogPDF):
 class InferenceController(object):
     """
     A base class for inference controllers.
+
+    Parameters
+    ----------
+
+    log_posterior
+        An instance of a :class:`LogPosterior` or a list of
+        :class:`LogPosterior` instances. If multiple log-posteriors are
+        provided, they have to be defined on the same parameters space.
     """
 
     def __init__(self, log_posterior):
         super(InferenceController, self).__init__()
 
-        if not isinstance(log_posterior, pints.LogPosterior):
-            raise ValueError(
-                'Log-posterior has to be an instance of `pints.LogPosterior`.'
-            )
-        self._log_posterior = log_posterior
+        # Convert log-posterior to a list of log-posteriors
+        try:
+            log_posteriors = list(log_posterior)
+        except TypeError:
+            # If log-posterior cannot be converted to a list, it likely means
+            # that there is only one log-posterior
+            log_posteriors = [log_posterior]
+
+        for log_posterior in log_posteriors:
+            if not isinstance(log_posterior, erlo.LogPosterior):
+                raise ValueError(
+                    'Log-posterior has to be an instance of a '
+                    '`erlotinib.LogPosterior`.')
+
+        # Check that the log-posteriors have the same number of parameters
+        n_parameters = log_posteriors[0].n_parameters()
+        for log_posterior in log_posteriors:
+            if log_posterior.n_parameters() != n_parameters:
+                raise ValueError(
+                    'All log-posteriors have to be defined on the same '
+                    'parameter space.')
+
+        self._log_posteriors = log_posteriors
+        self._log_prior = self._log_posteriors[0].log_prior()
 
         # Set defaults
         self._n_runs = 10
@@ -95,41 +124,15 @@ class InferenceController(object):
         self._transform = None
 
         # Sample initial parameters from log-prior
-        log_prior = log_posterior.log_prior()
-        self._initial_params = log_prior.sample(self._n_runs)
+        self._initial_params = self._log_prior.sample(self._n_runs)
 
         # Get parameter names
-        self._parameters = self._get_parameter_names()
+        self._all_params = np.array(
+            self._log_posteriors[0].get_parameter_names())
+        self._parameters = list(self._all_params)
 
-    def _get_parameter_names(self):
-        """
-        Constructs a NumPy array of the parameter names.
-
-        Gets the myokit names from the model and enumerates the noise
-        parameters as noise 1, noise 2, etc..
-        """
-        # Get model parameter names (not ideal, maybe suggest changes in pints)
-        log_likelihood = self._log_posterior.log_likelihood()
-        try:
-            model_params = log_likelihood._problem._model.parameters()
-        except AttributeError:
-            if isinstance(log_likelihood, pints.PooledLogPDF):
-                problem = log_likelihood._log_pdfs[0]._problem
-                model_params = problem._model.parameters()
-            else:
-                n_params = log_likelihood.n_parameters()
-                model_params = [
-                    'model param %d' % (index + 1)
-                    for index in range(n_params)]
-
-        # Construct a list of noise parameter names
-        n_noise = log_likelihood.n_parameters() - len(model_params)
-        noise_params = [
-            'noise param %d' % (index + 1) for index in range(n_noise)]
-
-        parameters = np.array(model_params + noise_params)
-
-        return parameters
+        # Get number of parameters
+        self._n_parameters = self._log_posteriors[0].n_parameters()
 
     def fix_parameters(self, mask, values):
         """
@@ -142,13 +145,15 @@ class InferenceController(object):
         """
         # If some parameters have been fixed already, retrieve original
         # log-posterior.
-        log_posterior = self._log_posterior
-        if isinstance(log_posterior, _PartiallyFixedLogPosterior):
-            log_posterior = log_posterior._log_posterior
+        log_posteriors = self._log_posteriors
+        for index, log_posterior in enumerate(log_posteriors):
+            if isinstance(log_posterior, _PartiallyFixedLogPosterior):
+                log_posteriors[index] = log_posterior._log_posterior
 
         # Fix parameters
-        self._log_posterior = _PartiallyFixedLogPosterior(
-            log_posterior, mask, values)
+        for index, log_posterior in enumerate(log_posteriors):
+            self._log_posteriors[index] = _PartiallyFixedLogPosterior(
+                log_posterior, mask, values)
 
         # Set transform to None and raise a warning that fixing parameters
         # reverts any previously applied transformations.
@@ -159,8 +164,7 @@ class InferenceController(object):
         self._transform = None
 
         # Sample new initial points
-        log_prior = self._log_posterior.log_prior()
-        initial_params = log_prior.sample(self._n_runs)
+        initial_params = self._log_prior.sample(self._n_runs)
 
         # Keep initial points for 'free' parameters
         # Have to transpose so 1d mask can be applied to 2d initial parameters
@@ -169,8 +173,7 @@ class InferenceController(object):
         self._initial_params = initial_params.transpose()[mask].transpose()
 
         # Keep parameter names for 'free' parameters
-        parameters = self._get_parameter_names()
-        self._parameters = parameters[mask]
+        self._parameters = list(self._all_params[mask])
 
     def set_n_runs(self, n_runs):
         """
@@ -181,14 +184,16 @@ class InferenceController(object):
         self._n_runs = int(n_runs)
 
         # Sample new initial points
-        log_prior = self._log_posterior.log_prior()
-        initial_params = log_prior.sample(self._n_runs)
+        initial_params = self._log_prior.sample(self._n_runs)
 
         # Mask samples if some parameters have been fixed
         # I.e. they are not used for the optimisation, and therefore
         # no intitial parameters are required.
-        if isinstance(self._log_posterior, _PartiallyFixedLogPosterior):
-            mask = self._log_posterior._mask
+
+        # Get one log-posterior, because all log-posterior are treated the same
+        log_posterior = self._log_posteriors[0]
+        if isinstance(log_posterior, _PartiallyFixedLogPosterior):
+            mask = log_posterior._mask
             # Have to transpose so 1d mask can be applied to 2d initial
             # parameters of shape (n_runs, n_params)
             initial_params = initial_params.transpose()[mask].transpose()
@@ -230,7 +235,7 @@ class InferenceController(object):
         if not isinstance(transform, pints.Transformation):
             raise ValueError(
                 'Transform has to be an instance of `pints.Transformation`.')
-        if transform.n_parameters() != self._log_posterior.n_parameters():
+        if transform.n_parameters() != self._n_parameters:
             raise ValueError(
                 'The dimensionality of the transform does not match the '
                 'dimensionality of the log-posterior.')
@@ -256,7 +261,8 @@ class OptimisationController(InferenceController):
         # Set default optimiser
         self._optimiser = pints.CMAES
 
-    def run(self, n_max_iterations=None, log_to_screen=False):
+    def run(
+            self, n_max_iterations=None, log_to_screen=False):
         """
         Runs the optimisation and returns the maximum a posteriori probability
         parameter estimates in from of a :class:`pandas.DataFrame` with the
@@ -266,42 +272,51 @@ class OptimisationController(InferenceController):
         limited by setting ``n_max_iterations`` to a finite, non-negative
         integer value.
         """
+
         # Initialise result dataframe
         result = pd.DataFrame(
-            columns=['Parameter', 'Estimate', 'Score', 'Run'])
+            columns=['ID', 'Parameter', 'Estimate', 'Score', 'Run'])
 
         # Initialise intermediate container for individual runs
-        container = pd.DataFrame(
+        run_result = pd.DataFrame(
             columns=['Parameter', 'Estimate', 'Score', 'Run'])
-        container['Parameter'] = self._parameters
-        n_parameters = self._log_posterior.n_parameters()
+        run_result['Parameter'] = self._parameters
 
-        # Run optimisation multiple times
-        for run_id, init_p in enumerate(self._initial_params):
-            opt = pints.OptimisationController(
-                function=self._log_posterior,
-                x0=init_p,
-                method=self._optimiser,
-                transform=self._transform)
+        # Get posterior
+        for log_posterior in self._log_posteriors:
+            individual_result = pd.DataFrame(
+                columns=['ID', 'Parameter', 'Estimate', 'Score', 'Run'])
 
-            # Configure optimisation routine
-            opt.set_log_to_screen(log_to_screen)
-            opt.set_max_iterations(iterations=n_max_iterations)
-            opt.set_parallel(self._parallel_evaluation)
+            # Run optimisation multiple times
+            for run_id, init_p in enumerate(self._initial_params):
+                opt = pints.OptimisationController(
+                    function=log_posterior,
+                    x0=init_p,
+                    method=self._optimiser,
+                    transform=self._transform)
 
-            # Find optimal parameters
-            try:
-                estimates, score = opt.run()
-            except Exception:
-                # If inference breaks fill estimates with nan
-                estimates = [np.nan] * n_parameters
-                score = np.nan
+                # Configure optimisation routine
+                opt.set_log_to_screen(log_to_screen)
+                opt.set_max_iterations(iterations=n_max_iterations)
+                opt.set_parallel(self._parallel_evaluation)
 
-            # Save estimates and score
-            container['Estimate'] = estimates
-            container['Score'] = score
-            container['Run'] = run_id + 1
-            result = result.append(container)
+                # Find optimal parameters
+                try:
+                    estimates, score = opt.run()
+                except Exception:
+                    # If inference breaks fill estimates with nan
+                    estimates = [np.nan] * self._n_parameters
+                    score = np.nan
+
+                # Save estimates and score of runs
+                run_result['Estimate'] = estimates
+                run_result['Score'] = score
+                run_result['Run'] = run_id + 1
+                individual_result = individual_result.append(run_result)
+
+            # Save runs for individual
+            individual_result['ID'] = log_posterior.get_id()
+            result = result.append(individual_result)
 
         return result
 
