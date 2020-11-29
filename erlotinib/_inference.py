@@ -124,57 +124,20 @@ class InferenceController(object):
         self._parallel_evaluation = True
         self._transform = None
 
-        # Sample initial parameters from log-prior
-        self._initial_params = self._log_prior.sample(self._n_runs)
-
         # Get parameter names
-        self._all_params = np.array(
+        self._parameters = list(
             self._log_posteriors[0].get_parameter_names())
-        self._parameters = list(self._all_params)
 
         # Get number of parameters
-        self._n_parameters = self._log_posteriors[0].n_parameters()
+        self._n_parameters = self._log_prior.n_parameters()
 
-    def fix_parameters(self, mask, values):
-        """
-        Fixes the value of a subset of log-posterior parameters for the
-        inference.
-
-        The fixed parameters are fixed during the inference which will
-        reduce the dimensionality of the search space at the cost of excluding
-        those parameters from the inference.
-        """
-        # If some parameters have been fixed already, retrieve original
-        # log-posterior.
-        log_posteriors = self._log_posteriors
-        for index, log_posterior in enumerate(log_posteriors):
-            if isinstance(log_posterior, _PartiallyFixedLogPosterior):
-                log_posteriors[index] = log_posterior._log_posterior
-
-        # Fix parameters
-        for index, log_posterior in enumerate(log_posteriors):
-            self._log_posteriors[index] = _PartiallyFixedLogPosterior(
-                log_posterior, mask, values)
-
-        # Set transform to None and raise a warning that fixing parameters
-        # reverts any previously applied transformations.
-        if self._transform:
-            warnings.warn(
-                'Fixing parameters resets any previously applied parameter '
-                'transformations.')
-        self._transform = None
-
-        # Sample new initial points
-        initial_params = self._log_prior.sample(self._n_runs)
-
-        # Keep initial points for 'free' parameters
-        # Have to transpose so 1d mask can be applied to 2d initial parameters
-        # of shape (n_runs, n_params)
-        mask = ~np.array(mask)
-        self._initial_params = initial_params.transpose()[mask].transpose()
-
-        # Keep parameter names for 'free' parameters
-        self._parameters = list(self._all_params[mask])
+        # Sample initial parameters from log-prior
+        self._initial_params = np.empty(shape=(
+            len(self._log_posteriors),
+            self._n_runs,
+            self._n_parameters))
+        for index in range(len(self._log_posteriors)):
+            self._initial_params[index] = self._log_prior.sample(self._n_runs)
 
     def set_n_runs(self, n_runs):
         """
@@ -184,22 +147,13 @@ class InferenceController(object):
         """
         self._n_runs = int(n_runs)
 
-        # Sample new initial points
-        initial_params = self._log_prior.sample(self._n_runs)
-
-        # Mask samples if some parameters have been fixed
-        # I.e. they are not used for the optimisation, and therefore
-        # no intitial parameters are required.
-
-        # Get one log-posterior, because all log-posterior are treated the same
-        log_posterior = self._log_posteriors[0]
-        if isinstance(log_posterior, _PartiallyFixedLogPosterior):
-            mask = log_posterior._mask
-            # Have to transpose so 1d mask can be applied to 2d initial
-            # parameters of shape (n_runs, n_params)
-            initial_params = initial_params.transpose()[mask].transpose()
-
-        self._initial_params = initial_params
+        # Sample initial parameters from log-prior
+        self._initial_params = np.empty(shape=(
+            len(self._log_posteriors),
+            self._n_runs,
+            self._n_parameters))
+        for index in range(len(self._log_posteriors)):
+            self._initial_params[index] = self._log_prior.sample(self._n_runs)
 
     def set_parallel_evaluation(self, run_in_parallel):
         """
@@ -312,18 +266,17 @@ class OptimisationController(InferenceController):
         run_result['Parameter'] = self._parameters
 
         # Get posterior
-        for log_posterior in tqdm(
-                self._log_posteriors, disable=not show_id_progress_bar):
+        for posterior_id, log_posterior in enumerate(tqdm(
+                self._log_posteriors, disable=not show_id_progress_bar)):
             individual_result = pd.DataFrame(
                 columns=['ID', 'Parameter', 'Estimate', 'Score', 'Run'])
 
             # Run optimisation multiple times
-            for run_id, init_p in enumerate(tqdm(
-                    self._initial_params,
-                    disable=not show_run_progress_bar)):
+            for run_id in tqdm(
+                    range(self._n_runs), disable=not show_run_progress_bar):
                 opt = pints.OptimisationController(
                     function=log_posterior,
-                    x0=init_p,
+                    x0=self._initial_params[posterior_id, run_id, :],
                     method=self._optimiser,
                     transform=self._transform)
 
@@ -407,13 +360,13 @@ class SamplingController(InferenceController):
         result = pd.DataFrame(
             columns=['ID', 'Parameter', 'Sample', 'Iteration', 'Run'])
 
-        for log_posterior in tqdm(
-                self._log_posteriors, disable=not show_progress_bar):
+        for posterior_id, log_posterior in enumerate(tqdm(
+                self._log_posteriors, disable=not show_progress_bar)):
             # Set up sampler
             sampler = pints.MCMCController(
                 log_pdf=log_posterior,
                 chains=self._n_runs,
-                x0=self._initial_params,
+                x0=self._initial_params[posterior_id, ...],
                 method=self._sampler,
                 transform=self._transform)
 
@@ -453,20 +406,20 @@ class SamplingController(InferenceController):
         return result
 
     def set_initial_parameters(
-            self, data, param_key='Parameter', est_key='Estimate',
+            self, data, id_key='ID', param_key='Parameter', est_key='Estimate',
             score_key='Score', run_key='Run'):
         """
         Sets the initial parameter values of the MCMC runs to the parameter set
         with the maximal a posteriori probability across a number of parameter
         sets.
 
-        This method is intended to use in conjunction with the results of the
-        :class:`OptimisationController`.
+        This method is intended to be used in conjunction with the results of
+        the :class:`OptimisationController`.
 
-        It expects a :class:`pandas.DataFrame` with the columns 'Parameter',
-        'Estimate', 'Score' and 'Run'. The maximum a posteriori probability
-        values across all estimates is determined and used as initial point
-        for the MCMC runs.
+        It expects a :class:`pandas.DataFrame` with the columns 'ID',
+        'Parameter', 'Estimate', 'Score' and 'Run'. The maximum a posteriori
+        probability values across all estimates is determined and used as
+        initial point for the MCMC runs.
 
         If multiple parameter sets assume the maximal a posteriori probability
         value, a parameter set is drawn randomly from them.
@@ -476,6 +429,9 @@ class SamplingController(InferenceController):
         data
             A :class:`pandas.DataFrame` with the parameter estimates in form of
             a parameter, estimate and score column.
+        id_key
+            Key label of the :class:`DataFrame` which specifies the individual
+            ID column. Defaults to ``'ID'``.
         param_key
             Key label of the :class:`DataFrame` which specifies the parameter
             name column. Defaults to ``'Parameter'``.
@@ -495,10 +451,19 @@ class SamplingController(InferenceController):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [param_key, est_key, score_key, run_key]:
+        for key in [id_key, param_key, est_key, score_key, run_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
+
+        posterior_ids = [p.get_id() for p in self._log_posteriors]
+        ids = data[id_key].unique()
+        for index in ids:
+            if index not in posterior_ids:
+                warnings.warn(
+                    'The ID <' + str(index) + '> could not be '
+                    'associated with a log-posterior, and was '
+                    'therefore ignored.')
 
         parameters = data[param_key].unique()
         for param in parameters:
@@ -508,26 +473,34 @@ class SamplingController(InferenceController):
                     'associated with a non-fixed model parameter, and was '
                     'therefore not set.')
 
-        # Get estimates with maximum a posteriori probability
-        max_prob = data[score_key].max()
-        mask = data[score_key] == max_prob
-        data = data[mask]
+        for index, individual in enumerate(posterior_ids):
+            mask = data[id_key] == individual
+            individual_data = data[mask]
 
-        # Find a unique set of parameter values
-        runs = data[run_key].unique()
-        selected_param_set = np.random.choice(runs)
-        mask = data[run_key] == selected_param_set
-        data = data[mask]
+            # If index doesn't exist, move on to next index
+            if individual_data.empty:
+                continue
 
-        # Set initial parameters to map estimates
-        for param in parameters:
-            # Get estimate
-            mask = data[param_key] == param
-            map_estimate = data[est_key][mask].to_numpy()
+            # Get estimates with maximum a posteriori probability
+            max_prob = individual_data[score_key].max()
+            mask = individual_data[score_key] == max_prob
+            individual_data = individual_data[mask]
 
-            # Set initial value to map estimate for all runs
-            mask = self._parameters == param
-            self._initial_params[:, mask] = map_estimate
+            # Find a unique set of parameter values
+            runs = individual_data[run_key].unique()
+            selected_param_set = np.random.choice(runs)
+            mask = individual_data[run_key] == selected_param_set
+            individual_data = individual_data[mask]
+
+            # Set initial parameters to map estimates
+            for param in parameters:
+                # Get estimate
+                mask = individual_data[param_key] == param
+                map_estimate = individual_data[est_key][mask].to_numpy()
+
+                # Set initial value to map estimate for all runs
+                mask = np.array(self._parameters) == param
+                self._initial_params[index, :, mask] = map_estimate
 
     def set_sampler(self, sampler):
         """
