@@ -110,8 +110,7 @@ class ProblemModellingController(object):
             # Create inverse problem
             problem = InverseProblem(self._mechanistic_model, times, biomarker)
             try:
-                index = str(self._id_key) + ' ' + str(individual)
-                error_model[index] = log_likelihood(problem)
+                error_model[str(individual)] = log_likelihood(problem)
             except TypeError:
                 raise ValueError(
                     'Only error models for which all parameters can be '
