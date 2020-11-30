@@ -14,22 +14,111 @@ import pints
 import erlotinib as erlo
 
 
-class _NonStandardLikelihood(pints.LogPDF):
+class TestInferenceController(unittest.TestCase):
     """
-    The erlotinib.InferenceController class assumes that the likelihoods have
-    a private attribute `_problem` from which the parameter names defined in
-    the erlotinib models can be recovered.
-
-    I this attribute does not exist, we generate generic names and to test this
-    we create a class here.
+    Test the erlotinib.InferenceController base class.
     """
-    def __init__(self):
-        super(_NonStandardLikelihood, self).__init__()
 
-    def n_parameters(self):
-        # Supposed to return the number of parameters
-        # Here fixed to match the toy PKPD + error model used below
-        return 6
+    @classmethod
+    def setUpClass(cls):
+        # Get test data and model
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        individual = 40
+        mask = data['#ID'] == individual  # Arbitrary test id
+        times = data[mask]['TIME in day'].to_numpy()
+        observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
+
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+
+        # Create inverse problem
+        problem = erlo.InverseProblem(model, times, observed_volumes)
+        cls.log_likelihood = pints.GaussianLogLikelihood(problem)
+        log_prior_tumour_volume = pints.UniformLogPrior(1E-3, 1E1)
+        log_prior_drug_conc = pints.UniformLogPrior(-1E-3, 1E-3)
+        log_prior_kappa = pints.UniformLogPrior(-1E-3, 1E-3)
+        log_prior_lambda_0 = pints.UniformLogPrior(1E-3, 1E1)
+        log_prior_lambda_1 = pints.UniformLogPrior(1E-3, 1E1)
+        log_prior_sigma = pints.HalfCauchyLogPrior(location=0, scale=3)
+        cls.log_prior = pints.ComposedLogPrior(
+            log_prior_tumour_volume,
+            log_prior_drug_conc,
+            log_prior_kappa,
+            log_prior_lambda_0,
+            log_prior_lambda_1,
+            log_prior_sigma)
+        log_posterior = erlo.LogPosterior(cls.log_likelihood, cls.log_prior)
+        log_posterior.set_id(individual)
+
+        # Set up optmisation controller
+        cls.controller = erlo.InferenceController(log_posterior)
+
+        cls.n_ids = 1
+        cls.n_params = 6
+
+    def test_call_bad_input(self):
+        # Wrong type of log-posterior
+        log_posterior = 'bad log-posterior'
+
+        with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
+            erlo.InferenceController(log_posterior)
+
+        # Log-posteriors don't have the same number of parameters
+        log_posterior_1 = erlo.LogPosterior(
+            self.log_likelihood, self.log_prior)
+        log_posterior_2 = erlo.LogPosterior(
+            self.log_likelihood, self.log_prior)
+        log_posterior_2._n_parameters = 20
+
+        with self.assertRaisesRegex(ValueError, 'All log-posteriors have to'):
+            erlo.InferenceController([log_posterior_1, log_posterior_2])
+
+    def test_set_n_runs(self):
+        n_runs = 5
+        self.controller.set_n_runs(n_runs)
+
+        self.assertEqual(self.controller._n_runs, n_runs)
+        self.assertEqual(
+            self.controller._initial_params.shape,
+            (self.n_ids, n_runs, self.n_params))
+
+    def test_parallel_evaluation(self):
+        # Set to sequential
+        self.controller.set_parallel_evaluation(False)
+        self.assertFalse(self.controller._parallel_evaluation)
+
+        # Set to parallel
+        self.controller.set_parallel_evaluation(True)
+        self.assertTrue(self.controller._parallel_evaluation)
+
+    def test_parallel_evaluation_bad_input(self):
+        # Non-boolean and non-integer
+        with self.assertRaisesRegex(ValueError, '`run_in_parallel` has'):
+            self.controller.set_parallel_evaluation(2.2)
+
+        # Negative input
+        with self.assertRaisesRegex(ValueError, '`run_in_parallel` cannot'):
+            self.controller.set_parallel_evaluation(-2)
+
+    def test_set_transform(self):
+        # Apply transform
+        transform = pints.LogTransformation(n_parameters=6)
+        self.controller.set_transform(transform)
+
+        self.assertEqual(self.controller._transform, transform)
+
+    def test_set_transform_bad_transform(self):
+        # Try to set transformation that is not a `pints.Transformation`
+        transform = 'bad transform'
+
+        with self.assertRaisesRegex(ValueError, 'Transform has to be an'):
+            self.controller.set_transform(transform)
+
+        # Try to set transformation with the wrong dimension
+        transform = pints.LogTransformation(n_parameters=10)
+
+        with self.assertRaisesRegex(ValueError, 'The dimensionality of the'):
+            self.controller.set_transform(transform)
 
 
 class TestOptimisationController(unittest.TestCase):
@@ -73,28 +162,6 @@ class TestOptimisationController(unittest.TestCase):
 
         cls.n_ids = 1
         cls.n_params = 6
-
-    def test_call_bad_input(self):
-        with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
-            erlo.OptimisationController('bad log-posterior')
-
-    def test_call_pooled_log_pdf(self):
-        # Create a pints.PooledLogPDF by dublicating problem
-        log_likelihood = pints.PooledLogPDF(
-            log_pdfs=[self.log_likelihood, self.log_likelihood],
-            pooled=[True]*self.n_params)
-
-        # Test that OptimisationController can be instantiate without error
-        log_posterior = erlo.LogPosterior(log_likelihood, self.log_prior)
-        erlo.OptimisationController(log_posterior)
-
-    def test_call_nonstandard_log_pdf(self):
-        # Create a pints.PooledLogPDF by dublicating problem
-        log_likelihood = _NonStandardLikelihood()
-
-        # Test that OptimisationController can be instantiate without error
-        log_posterior = erlo.LogPosterior(log_likelihood, self.log_prior)
-        erlo.OptimisationController(log_posterior)
 
     def test_run(self):
         # Set evaluator to sequential, because otherwise codecov
@@ -157,15 +224,6 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(runs[1], 2)
         self.assertEqual(runs[2], 3)
 
-    def test_set_n_runs(self):
-        n_runs = 5
-        self.optimiser.set_n_runs(n_runs)
-
-        self.assertEqual(self.optimiser._n_runs, n_runs)
-        self.assertEqual(
-            self.optimiser._initial_params.shape,
-            (self.n_ids, n_runs, self.n_params))
-
     def test_set_optmiser(self):
         self.optimiser.set_optimiser(pints.PSO)
         self.assertEqual(self.optimiser._optimiser, pints.PSO)
@@ -176,44 +234,6 @@ class TestOptimisationController(unittest.TestCase):
     def test_set_optimiser_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Optimiser has to be'):
             self.optimiser.set_optimiser(str)
-
-    def test_parallel_evaluation(self):
-        # Set to sequential
-        self.optimiser.set_parallel_evaluation(False)
-        self.assertFalse(self.optimiser._parallel_evaluation)
-
-        # Set to parallel
-        self.optimiser.set_parallel_evaluation(True)
-        self.assertTrue(self.optimiser._parallel_evaluation)
-
-    def test_parallel_evaluation_bad_input(self):
-        # Non-boolean and non-integer
-        with self.assertRaisesRegex(ValueError, '`run_in_parallel` has'):
-            self.optimiser.set_parallel_evaluation(2.2)
-
-        # Negative input
-        with self.assertRaisesRegex(ValueError, '`run_in_parallel` cannot'):
-            self.optimiser.set_parallel_evaluation(-2)
-
-    def test_set_transform_bad_transform(self):
-        # Try to set transformation that is not a `pints.Transformation`
-        transform = 'bad transform'
-
-        with self.assertRaisesRegex(ValueError, 'Transform has to be an'):
-            self.optimiser.set_transform(transform)
-
-        # Try to set transformation with the wrong dimension
-        transform = pints.LogTransformation(n_parameters=10)
-
-        with self.assertRaisesRegex(ValueError, 'The dimensionality of the'):
-            self.optimiser.set_transform(transform)
-
-    def test_set_transform(self):
-        # Apply transform
-        transform = pints.LogTransformation(n_parameters=6)
-        self.optimiser.set_transform(transform)
-
-        self.assertEqual(self.optimiser._transform, transform)
 
 
 class TestSamplingController(unittest.TestCase):
@@ -257,10 +277,6 @@ class TestSamplingController(unittest.TestCase):
 
         cls.n_ids = 1
         cls.n_params = 6
-
-    def test_call_bad_input(self):
-        with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
-            erlo.SamplingController('bad log-posterior')
 
     def test_run(self):
         # Set evaluator to sequential, because otherwise codecov
@@ -444,15 +460,6 @@ class TestSamplingController(unittest.TestCase):
             ValueError, 'Data does not have the key <Run>.',
             self.sampler.set_initial_parameters, data)
 
-    def test_set_n_runs(self):
-        n_runs = 5
-        self.sampler.set_n_runs(n_runs)
-
-        self.assertEqual(self.sampler._n_runs, n_runs)
-        self.assertEqual(
-            self.sampler._initial_params.shape,
-            (self.n_ids, n_runs, self.n_params))
-
     def test_set_sampler(self):
         self.sampler.set_sampler(pints.HamiltonianMCMC)
         self.assertEqual(self.sampler._sampler, pints.HamiltonianMCMC)
@@ -463,44 +470,6 @@ class TestSamplingController(unittest.TestCase):
     def test_set_sampler_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Sampler has to be'):
             self.sampler.set_sampler(str)
-
-    def test_parallel_evaluation(self):
-        # Set to sequential
-        self.sampler.set_parallel_evaluation(False)
-        self.assertFalse(self.sampler._parallel_evaluation)
-
-        # Set to parallel
-        self.sampler.set_parallel_evaluation(True)
-        self.assertTrue(self.sampler._parallel_evaluation)
-
-    def test_parallel_evaluation_bad_input(self):
-        # Non-boolean and non-integer
-        with self.assertRaisesRegex(ValueError, '`run_in_parallel` has'):
-            self.sampler.set_parallel_evaluation(2.2)
-
-        # Negative input
-        with self.assertRaisesRegex(ValueError, '`run_in_parallel` cannot'):
-            self.sampler.set_parallel_evaluation(-2)
-
-    def test_set_transform_bad_transform(self):
-        # Try to set transformation that is not a `pints.Transformation`
-        transform = 'bad transform'
-
-        with self.assertRaisesRegex(ValueError, 'Transform has to be an'):
-            self.sampler.set_transform(transform)
-
-        # Try to set transformation with the wrong dimension
-        transform = pints.LogTransformation(n_parameters=10)
-
-        with self.assertRaisesRegex(ValueError, 'The dimensionality of the'):
-            self.sampler.set_transform(transform)
-
-    def test_set_transform(self):
-        # Apply transform
-        transform = pints.LogTransformation(n_parameters=self.n_params)
-        self.sampler.set_transform(transform)
-
-        self.assertEqual(self.sampler._transform, transform)
 
 
 if __name__ == '__main__':
