@@ -225,8 +225,8 @@ class TestSamplingController(unittest.TestCase):
     def setUpClass(cls):
         # Get test data and model
         data = erlo.DataLibrary().lung_cancer_control_group()
-        individual = 40
-        mask = data['#ID'] == individual  # Arbitrary test id
+        cls.individual = 40
+        mask = data['#ID'] == cls.individual  # Arbitrary test id
         times = data[mask]['TIME in day'].to_numpy()
         observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
 
@@ -250,68 +250,19 @@ class TestSamplingController(unittest.TestCase):
             log_prior_lambda_1,
             log_prior_sigma)
         log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
-        log_posterior.set_id(individual)
+        log_posterior.set_id(cls.individual)
 
         # Set up sampling controller
         cls.sampler = erlo.SamplingController(log_posterior)
+
+        cls.n_ids = 1
+        cls.n_params = 6
 
     def test_call_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
             erlo.SamplingController('bad log-posterior')
 
-    def test_fix_parameters_bad_mask(self):
-        # Mask length doesn't match number of parameters
-        mask = [False, True, True]
-        value = [1, 1]
-
-        with self.assertRaisesRegex(ValueError, 'Length of mask'):
-            self.sampler.fix_parameters(mask, value)
-
-        # Mask is not boolean
-        mask = ['False', 'True', 'True', 'False', 'True', 'True']
-        value = [1, 1, 1, 1]
-
-        with self.assertRaisesRegex(ValueError, 'Mask has to be'):
-            self.sampler.fix_parameters(mask, value)
-
-    def test_fix_parameters_bad_values(self):
-        # Number of values doesn't match the number of parameters to fix
-        mask = [False, True, True, False, True, True]
-        value = [1, 1, 1, 1, 1, 1]
-
-        with self.assertRaisesRegex(ValueError, 'Values has to have the same'):
-            self.sampler.fix_parameters(mask, value)
-
-    def test_fix_parameters(self):
-        # Fix all but parameter 1 and 4
-        mask = [False, True, True, False, True, True]
-        value = [1, 1, 1, 1]
-
-        self.sampler.fix_parameters(mask, value)
-
-        parameters = self.sampler._parameters
-        self.assertEqual(len(parameters), 2)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.lambda_0')
-
-        # Fix a different set of parameters
-        mask = [False, True, False, True, True, False]
-        value = [1, 1, 1]
-
-        self.sampler.fix_parameters(mask, value)
-
-        parameters = self.sampler._parameters
-        self.assertEqual(len(parameters), 3)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.kappa')
-        self.assertEqual(parameters[2], 'noise param 1')
-
     def test_run(self):
-        # Fix
-        mask = [False, True, True, False, False, False]
-        value = [0, 0]
-        self.sampler.fix_parameters(mask, value)
-
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
         # (Potentially codecov cannot keep track of multiple CPUs)
@@ -321,44 +272,21 @@ class TestSamplingController(unittest.TestCase):
         result = self.sampler.run(n_iterations=20)
 
         keys = result.keys()
-        self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Parameter')
-        self.assertEqual(keys[1], 'Sample')
-        self.assertEqual(keys[2], 'Iteration')
-        self.assertEqual(keys[3], 'Run')
+        self.assertEqual(len(keys), 5)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Parameter')
+        self.assertEqual(keys[2], 'Sample')
+        self.assertEqual(keys[3], 'Iteration')
+        self.assertEqual(keys[4], 'Run')
 
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 4)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.lambda_0')
-        self.assertEqual(parameters[2], 'myokit.lambda_1')
-        self.assertEqual(parameters[3], 'noise param 1')
-
-        runs = result['Run'].unique()
-        self.assertEqual(len(runs), 3)
-        self.assertEqual(runs[0], 1)
-        self.assertEqual(runs[1], 2)
-        self.assertEqual(runs[2], 3)
-
-        # Check failure of optimisation doesn't interrupt all runs
-        # (CMAES returns NAN for 1-dim problems)
-        mask = [True, True, True, True, True, False]
-        value = [1, 0, 0, 1, 1]
-        self.sampler.fix_parameters(mask, value)
-
-        self.sampler.set_n_runs(3)
-        result = self.sampler.run(n_iterations=10)
-
-        keys = result.keys()
-        self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Parameter')
-        self.assertEqual(keys[1], 'Sample')
-        self.assertEqual(keys[2], 'Iteration')
-        self.assertEqual(keys[3], 'Run')
-
-        parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 1)
-        self.assertEqual(parameters[0], 'noise param 1')
+        self.assertEqual(len(parameters), self.n_params)
+        self.assertEqual(parameters[0], 'Param 1')
+        self.assertEqual(parameters[1], 'Param 2')
+        self.assertEqual(parameters[2], 'Param 3')
+        self.assertEqual(parameters[3], 'Param 4')
+        self.assertEqual(parameters[4], 'Param 5')
+        self.assertEqual(parameters[5], 'Param 6')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -367,60 +295,76 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(runs[2], 3)
 
     def test_set_initial_parameters(self):
-        # Unfix all parameters and set to 10 runs
-        mask = [False, False, False, False, False, False]
-        value = []
-        self.sampler.fix_parameters(mask, value)
-        self.sampler.set_n_runs(10)
+        n_runs = 10
+        self.sampler.set_n_runs(n_runs)
 
         # Create test data
         # First run estimates both params as 1 and second run as 2
-        params = ['myokit.lambda_0', 'noise param 1'] * 2
+        params = ['Param 3', 'Param 5'] * 2
         estimates = [1, 1, 2, 2]
         scores = [0.3, 0.3, 5, 5]
         runs = [1, 1, 2, 2]
 
         data = pd.DataFrame({
+            'ID': self.individual,
             'Parameter': params,
             'Estimate': estimates,
             'Score': scores,
             'Run': runs})
 
         # Get initial values before setting them
-        default_params = self.sampler._initial_params
+        default_params = self.sampler._initial_params.copy()
 
         # Set initial values and test behaviour
         self.sampler.set_initial_parameters(data)
         new_params = self.sampler._initial_params
 
-        self.assertEqual(default_params.shape, (10, 6))
-        self.assertEqual(new_params.shape, (10, 6))
+        self.assertEqual(default_params.shape, (self.n_ids, n_runs, self.n_params))
+        self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
+
+        # Compare values. All but 3rd and 5th parameter should coincide.
+        # 3rd and 5th should correspong map estimates
+        self.assertTrue(np.array_equal(new_params[0, :, 0], default_params[0, :, 0]))
+        self.assertTrue(np.array_equal(new_params[0, :, 1], default_params[0, :, 1]))
+        self.assertTrue(np.array_equal(new_params[0, :, 2], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 3], default_params[0, :, 3]))
+        self.assertTrue(np.array_equal(new_params[0, :, 4], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 5], default_params[0, :, 5]))
+
+        # Check that it works fine even if ID cannot be found
+        data['ID'] = 'Some ID'
+        self.sampler.set_initial_parameters(data)
+        new_params = self.sampler._initial_params
+
+        self.assertEqual(default_params.shape, (self.n_ids, n_runs, self.n_params))
+        self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
 
         # Compare values. All but 3rd and 5th index should coincide.
         # 3rd and 5th should correspong map estimates
-        self.assertTrue(np.array_equal(new_params[:, 0], default_params[:, 0]))
-        self.assertTrue(np.array_equal(new_params[:, 1], default_params[:, 1]))
-        self.assertTrue(np.array_equal(new_params[:, 2], default_params[:, 2]))
-        self.assertTrue(np.array_equal(new_params[:, 3], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[:, 4], default_params[:, 4]))
-        self.assertTrue(np.array_equal(new_params[:, 5], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 0], default_params[0, :, 0]))
+        self.assertTrue(np.array_equal(new_params[0, :, 1], default_params[0, :, 1]))
+        self.assertTrue(np.array_equal(new_params[0, :, 2], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 3], default_params[0, :, 3]))
+        self.assertTrue(np.array_equal(new_params[0, :, 4], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 5], default_params[0, :, 5]))
 
         # Check that it works fine even if parameter cannot be found
+        data['ID'] = self.individual
         data['Parameter'] = ['SOME', 'PARAMETERS'] * 2
         self.sampler.set_initial_parameters(data)
         new_params = self.sampler._initial_params
 
-        self.assertEqual(default_params.shape, (10, 6))
-        self.assertEqual(new_params.shape, (10, 6))
+        self.assertEqual(default_params.shape, (self.n_ids, n_runs, self.n_params))
+        self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
 
         # Compare values. All but 3rd and 5th index should coincide.
         # 3rd and 5th should correspong map estimates
-        self.assertTrue(np.array_equal(new_params[:, 0], default_params[:, 0]))
-        self.assertTrue(np.array_equal(new_params[:, 1], default_params[:, 1]))
-        self.assertTrue(np.array_equal(new_params[:, 2], default_params[:, 2]))
-        self.assertTrue(np.array_equal(new_params[:, 3], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[:, 4], default_params[:, 4]))
-        self.assertTrue(np.array_equal(new_params[:, 5], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 0], default_params[0, :, 0]))
+        self.assertTrue(np.array_equal(new_params[0, :, 1], default_params[0, :, 1]))
+        self.assertTrue(np.array_equal(new_params[0, :, 2], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 3], default_params[0, :, 3]))
+        self.assertTrue(np.array_equal(new_params[0, :, 4], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(new_params[0, :, 5], default_params[0, :, 5]))
 
     def test_set_initial_parameters_bad_input(self):
         # Create data of wrong type
@@ -438,10 +382,18 @@ class TestSamplingController(unittest.TestCase):
         runs = [1, 1, 2, 2]
 
         test_data = pd.DataFrame({
+            'ID': self.individual,
             'Parameter': params,
             'Estimate': estimates,
             'Score': scores,
             'Run': runs})
+
+        # Rename id key
+        data = test_data.rename(columns={'ID': 'SOME NON-STANDARD KEY'})
+
+        self.assertRaisesRegex(
+            ValueError, 'Data does not have the key <ID>.',
+            self.sampler.set_initial_parameters, data)
 
         # Rename parameter key
         data = test_data.rename(columns={'Parameter': 'SOME NON-STANDARD KEY'})
@@ -472,25 +424,12 @@ class TestSamplingController(unittest.TestCase):
             self.sampler.set_initial_parameters, data)
 
     def test_set_n_runs(self):
-        # Unfix all parameters (just to reset possibly fixed parameters)
-        mask = [False, False, False, False, False, False]
-        value = []
-        self.sampler.fix_parameters(mask, value)
+        n_runs = 5
+        self.sampler.set_n_runs(n_runs)
 
-        self.sampler.set_n_runs(5)
-
-        self.assertEqual(self.sampler._n_runs, 5)
-        self.assertEqual(self.sampler._initial_params.shape, (5, 6))
-
-        # Fix parameters
-        mask = [True, True, True, False, False, False]
-        value = [1, 1, 1]
-        self.sampler.fix_parameters(mask, value)
-
-        self.sampler.set_n_runs(20)
-
-        self.assertEqual(self.sampler._n_runs, 20)
-        self.assertEqual(self.sampler._initial_params.shape, (20, 3))
+        self.assertEqual(self.sampler._n_runs, n_runs)
+        self.assertEqual(
+            self.sampler._initial_params.shape, (self.n_ids, n_runs, self.n_params))
 
     def test_set_sampler(self):
         self.sampler.set_sampler(pints.HamiltonianMCMC)
@@ -535,25 +474,8 @@ class TestSamplingController(unittest.TestCase):
             self.sampler.set_transform(transform)
 
     def test_set_transform(self):
-        # Unfix all parameters (just to reset possibly fixed parameters)
-        mask = [False, False, False, False, False, False]
-        value = []
-        self.sampler.fix_parameters(mask, value)
-
         # Apply transform
-        transform = pints.LogTransformation(n_parameters=6)
-        self.sampler.set_transform(transform)
-
-        self.assertEqual(self.sampler._transform, transform)
-
-        # Fix parameters and apply transform again
-        mask = [False, True, True, True, True, True]
-        value = [1, 1, 1, 1, 1]
-        self.sampler.fix_parameters(mask, value)
-
-        self.assertIsNone(self.sampler._transform)
-
-        transform = pints.LogTransformation(n_parameters=1)
+        transform = pints.LogTransformation(n_parameters=self.n_params)
         self.sampler.set_transform(transform)
 
         self.assertEqual(self.sampler._transform, transform)
