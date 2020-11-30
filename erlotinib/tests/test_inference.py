@@ -41,7 +41,8 @@ class TestOptimisationController(unittest.TestCase):
     def setUpClass(cls):
         # Get test data and model
         data = erlo.DataLibrary().lung_cancer_control_group()
-        mask = data['#ID'] == 40  # Arbitrary test id
+        individual = 40
+        mask = data['#ID'] == individual  # Arbitrary test id
         times = data[mask]['TIME in day'].to_numpy()
         observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
 
@@ -64,10 +65,14 @@ class TestOptimisationController(unittest.TestCase):
             log_prior_lambda_0,
             log_prior_lambda_1,
             log_prior_sigma)
-        log_posterior = pints.LogPosterior(cls.log_likelihood, cls.log_prior)
+        log_posterior = erlo.LogPosterior(cls.log_likelihood, cls.log_prior)
+        log_posterior.set_id(individual)
 
         # Set up optmisation controller
         cls.optimiser = erlo.OptimisationController(log_posterior)
+
+        cls.n_ids = 1
+        cls.n_params = 6
 
     def test_call_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
@@ -77,10 +82,10 @@ class TestOptimisationController(unittest.TestCase):
         # Create a pints.PooledLogPDF by dublicating problem
         log_likelihood = pints.PooledLogPDF(
             log_pdfs=[self.log_likelihood, self.log_likelihood],
-            pooled=[True]*6)
+            pooled=[True]*self.n_params)
 
         # Test that OptimisationController can be instantiate without error
-        log_posterior = pints.LogPosterior(log_likelihood, self.log_prior)
+        log_posterior = erlo.LogPosterior(log_likelihood, self.log_prior)
         erlo.OptimisationController(log_posterior)
 
     def test_call_nonstandard_log_pdf(self):
@@ -88,62 +93,10 @@ class TestOptimisationController(unittest.TestCase):
         log_likelihood = _NonStandardLikelihood()
 
         # Test that OptimisationController can be instantiate without error
-        log_posterior = pints.LogPosterior(log_likelihood, self.log_prior)
+        log_posterior = erlo.LogPosterior(log_likelihood, self.log_prior)
         erlo.OptimisationController(log_posterior)
 
-    def test_fix_parameters_bad_mask(self):
-        # Mask length doesn't match number of parameters
-        mask = [False, True, True]
-        value = [1, 1]
-
-        with self.assertRaisesRegex(ValueError, 'Length of mask'):
-            self.optimiser.fix_parameters(mask, value)
-
-        # Mask is not boolean
-        mask = ['False', 'True', 'True', 'False', 'True', 'True']
-        value = [1, 1, 1, 1]
-
-        with self.assertRaisesRegex(ValueError, 'Mask has to be'):
-            self.optimiser.fix_parameters(mask, value)
-
-    def test_fix_parameters_bad_values(self):
-        # Number of values doesn't match the number of parameters to fix
-        mask = [False, True, True, False, True, True]
-        value = [1, 1, 1, 1, 1, 1]
-
-        with self.assertRaisesRegex(ValueError, 'Values has to have the same'):
-            self.optimiser.fix_parameters(mask, value)
-
-    def test_fix_parameters(self):
-        # Fix all but parameter 1 and 4
-        mask = [False, True, True, False, True, True]
-        value = [1, 1, 1, 1]
-
-        self.optimiser.fix_parameters(mask, value)
-
-        parameters = self.optimiser._parameters
-        self.assertEqual(len(parameters), 2)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.lambda_0')
-
-        # Fix a different set of parameters
-        mask = [False, True, False, True, True, False]
-        value = [1, 1, 1]
-
-        self.optimiser.fix_parameters(mask, value)
-
-        parameters = self.optimiser._parameters
-        self.assertEqual(len(parameters), 3)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.kappa')
-        self.assertEqual(parameters[2], 'noise param 1')
-
     def test_run(self):
-        # Fix
-        mask = [False, True, True, False, False, False]
-        value = [0, 0]
-        self.optimiser.fix_parameters(mask, value)
-
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
         # (Potentially codecov cannot keep track of multiple CPUs)
@@ -153,18 +106,21 @@ class TestOptimisationController(unittest.TestCase):
         result = self.optimiser.run(n_max_iterations=20)
 
         keys = result.keys()
-        self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Parameter')
-        self.assertEqual(keys[1], 'Estimate')
-        self.assertEqual(keys[2], 'Score')
-        self.assertEqual(keys[3], 'Run')
+        self.assertEqual(len(keys), 5)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Parameter')
+        self.assertEqual(keys[2], 'Estimate')
+        self.assertEqual(keys[3], 'Score')
+        self.assertEqual(keys[4], 'Run')
 
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 4)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.lambda_0')
-        self.assertEqual(parameters[2], 'myokit.lambda_1')
-        self.assertEqual(parameters[3], 'noise param 1')
+        self.assertEqual(len(parameters), self.n_params)
+        self.assertEqual(parameters[0], 'Param 1')
+        self.assertEqual(parameters[1], 'Param 2')
+        self.assertEqual(parameters[2], 'Param 3')
+        self.assertEqual(parameters[3], 'Param 4')
+        self.assertEqual(parameters[4], 'Param 5')
+        self.assertEqual(parameters[5], 'Param 6')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -174,23 +130,26 @@ class TestOptimisationController(unittest.TestCase):
 
         # Check failure of optimisation doesn't interrupt all runs
         # (CMAES returns NAN for 1-dim problems)
-        mask = [True, True, True, True, True, False]
-        value = [1, 0, 0, 1, 1]
-        self.optimiser.fix_parameters(mask, value)
-
         self.optimiser.set_n_runs(3)
+        self.optimiser._initial_params[0, 0, 0] = -1
         result = self.optimiser.run(n_max_iterations=10)
 
         keys = result.keys()
-        self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Parameter')
-        self.assertEqual(keys[1], 'Estimate')
-        self.assertEqual(keys[2], 'Score')
-        self.assertEqual(keys[3], 'Run')
+        self.assertEqual(len(keys), 5)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Parameter')
+        self.assertEqual(keys[2], 'Estimate')
+        self.assertEqual(keys[3], 'Score')
+        self.assertEqual(keys[4], 'Run')
 
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 1)
-        self.assertEqual(parameters[0], 'noise param 1')
+        self.assertEqual(len(parameters), 6)
+        self.assertEqual(parameters[0], 'Param 1')
+        self.assertEqual(parameters[1], 'Param 2')
+        self.assertEqual(parameters[2], 'Param 3')
+        self.assertEqual(parameters[3], 'Param 4')
+        self.assertEqual(parameters[4], 'Param 5')
+        self.assertEqual(parameters[5], 'Param 6')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -199,25 +158,13 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(runs[2], 3)
 
     def test_set_n_runs(self):
-        # Unfix all parameters (just to reset possibly fixed parameters)
-        mask = [False, False, False, False, False, False]
-        value = []
-        self.optimiser.fix_parameters(mask, value)
+        n_runs = 5
+        self.optimiser.set_n_runs(n_runs)
 
-        self.optimiser.set_n_runs(5)
-
-        self.assertEqual(self.optimiser._n_runs, 5)
-        self.assertEqual(self.optimiser._initial_params.shape, (5, 6))
-
-        # Fix parameters
-        mask = [True, True, True, False, False, False]
-        value = [1, 1, 1]
-        self.optimiser.fix_parameters(mask, value)
-
-        self.optimiser.set_n_runs(20)
-
-        self.assertEqual(self.optimiser._n_runs, 20)
-        self.assertEqual(self.optimiser._initial_params.shape, (20, 3))
+        self.assertEqual(self.optimiser._n_runs, n_runs)
+        self.assertEqual(
+            self.optimiser._initial_params.shape,
+            (self.n_ids, n_runs, self.n_params))
 
     def test_set_optmiser(self):
         self.optimiser.set_optimiser(pints.PSO)
@@ -262,25 +209,8 @@ class TestOptimisationController(unittest.TestCase):
             self.optimiser.set_transform(transform)
 
     def test_set_transform(self):
-        # Unfix all parameters (just to reset possibly fixed parameters)
-        mask = [False, False, False, False, False, False]
-        value = []
-        self.optimiser.fix_parameters(mask, value)
-
         # Apply transform
         transform = pints.LogTransformation(n_parameters=6)
-        self.optimiser.set_transform(transform)
-
-        self.assertEqual(self.optimiser._transform, transform)
-
-        # Fix parameters and apply transform again
-        mask = [False, True, True, True, True, True]
-        value = [1, 1, 1, 1, 1]
-        self.optimiser.fix_parameters(mask, value)
-
-        self.assertIsNone(self.optimiser._transform)
-
-        transform = pints.LogTransformation(n_parameters=1)
         self.optimiser.set_transform(transform)
 
         self.assertEqual(self.optimiser._transform, transform)
@@ -295,7 +225,8 @@ class TestSamplingController(unittest.TestCase):
     def setUpClass(cls):
         # Get test data and model
         data = erlo.DataLibrary().lung_cancer_control_group()
-        mask = data['#ID'] == 40  # Arbitrary test id
+        individual = 40
+        mask = data['#ID'] == individual  # Arbitrary test id
         times = data[mask]['TIME in day'].to_numpy()
         observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
 
@@ -318,7 +249,8 @@ class TestSamplingController(unittest.TestCase):
             log_prior_lambda_0,
             log_prior_lambda_1,
             log_prior_sigma)
-        log_posterior = pints.LogPosterior(log_likelihood, log_prior)
+        log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
+        log_posterior.set_id(individual)
 
         # Set up sampling controller
         cls.sampler = erlo.SamplingController(log_posterior)
