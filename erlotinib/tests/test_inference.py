@@ -198,8 +198,9 @@ class TestOptimisationController(unittest.TestCase):
         # Check failure of optimisation doesn't interrupt all runs
         # (CMAES returns NAN for 1-dim problems)
         self.optimiser.set_n_runs(3)
-        self.optimiser._initial_params[0, 0, 0] = -1
-        result = self.optimiser.run(n_max_iterations=10)
+        self.optimiser.set_optimiser(pints.PSO)
+        self.optimiser._optimiser._almax = 0
+        result = self.optimiser.run(n_max_iterations=100)
 
         keys = result.keys()
         self.assertEqual(len(keys), 5)
