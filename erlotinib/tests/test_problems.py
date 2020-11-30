@@ -205,8 +205,11 @@ class TestProblemModellingController(unittest.TestCase):
 
         self.assertEqual(len(posteriors), 3)
         self.assertEqual(posteriors[0].n_parameters(), 6)
+        self.assertEqual(posteriors[0].get_id(), '0')
         self.assertEqual(posteriors[1].n_parameters(), 6)
+        self.assertEqual(posteriors[1].get_id(), '1')
         self.assertEqual(posteriors[2].n_parameters(), 6)
+        self.assertEqual(posteriors[2].get_id(), '2')
 
         # Fixe some parameters
         name_value_dict = dict({
@@ -218,8 +221,11 @@ class TestProblemModellingController(unittest.TestCase):
 
         self.assertEqual(len(posteriors), 3)
         self.assertEqual(posteriors[0].n_parameters(), 4)
+        self.assertEqual(posteriors[0].get_id(), '0')
         self.assertEqual(posteriors[1].n_parameters(), 4)
+        self.assertEqual(posteriors[1].get_id(), '1')
         self.assertEqual(posteriors[2].n_parameters(), 4)
+        self.assertEqual(posteriors[2].get_id(), '2')
 
     def test_get_log_posteriors_bad_input(self):
         # No mechanistic model set
