@@ -319,34 +319,48 @@ class TestSamplingController(unittest.TestCase):
         self.sampler.set_initial_parameters(data)
         new_params = self.sampler._initial_params
 
-        self.assertEqual(default_params.shape, (self.n_ids, n_runs, self.n_params))
+        self.assertEqual(
+            default_params.shape, (self.n_ids, n_runs, self.n_params))
         self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
 
         # Compare values. All but 3rd and 5th parameter should coincide.
         # 3rd and 5th should correspong map estimates
-        self.assertTrue(np.array_equal(new_params[0, :, 0], default_params[0, :, 0]))
-        self.assertTrue(np.array_equal(new_params[0, :, 1], default_params[0, :, 1]))
-        self.assertTrue(np.array_equal(new_params[0, :, 2], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[0, :, 3], default_params[0, :, 3]))
-        self.assertTrue(np.array_equal(new_params[0, :, 4], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[0, :, 5], default_params[0, :, 5]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 0], default_params[0, :, 0]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 1], default_params[0, :, 1]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 2], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 3], default_params[0, :, 3]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 4], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 5], default_params[0, :, 5]))
 
         # Check that it works fine even if ID cannot be found
         data['ID'] = 'Some ID'
         self.sampler.set_initial_parameters(data)
         new_params = self.sampler._initial_params
 
-        self.assertEqual(default_params.shape, (self.n_ids, n_runs, self.n_params))
+        self.assertEqual(
+            default_params.shape, (self.n_ids, n_runs, self.n_params))
         self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
 
         # Compare values. All but 3rd and 5th index should coincide.
         # 3rd and 5th should correspong map estimates
-        self.assertTrue(np.array_equal(new_params[0, :, 0], default_params[0, :, 0]))
-        self.assertTrue(np.array_equal(new_params[0, :, 1], default_params[0, :, 1]))
-        self.assertTrue(np.array_equal(new_params[0, :, 2], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[0, :, 3], default_params[0, :, 3]))
-        self.assertTrue(np.array_equal(new_params[0, :, 4], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[0, :, 5], default_params[0, :, 5]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 0], default_params[0, :, 0]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 1], default_params[0, :, 1]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 2], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 3], default_params[0, :, 3]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 4], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 5], default_params[0, :, 5]))
 
         # Check that it works fine even if parameter cannot be found
         data['ID'] = self.individual
@@ -354,17 +368,24 @@ class TestSamplingController(unittest.TestCase):
         self.sampler.set_initial_parameters(data)
         new_params = self.sampler._initial_params
 
-        self.assertEqual(default_params.shape, (self.n_ids, n_runs, self.n_params))
+        self.assertEqual(
+            default_params.shape, (self.n_ids, n_runs, self.n_params))
         self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
 
         # Compare values. All but 3rd and 5th index should coincide.
         # 3rd and 5th should correspong map estimates
-        self.assertTrue(np.array_equal(new_params[0, :, 0], default_params[0, :, 0]))
-        self.assertTrue(np.array_equal(new_params[0, :, 1], default_params[0, :, 1]))
-        self.assertTrue(np.array_equal(new_params[0, :, 2], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[0, :, 3], default_params[0, :, 3]))
-        self.assertTrue(np.array_equal(new_params[0, :, 4], np.array([2] * 10)))
-        self.assertTrue(np.array_equal(new_params[0, :, 5], default_params[0, :, 5]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 0], default_params[0, :, 0]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 1], default_params[0, :, 1]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 2], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 3], default_params[0, :, 3]))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 4], np.array([2] * 10)))
+        self.assertTrue(np.array_equal(
+            new_params[0, :, 5], default_params[0, :, 5]))
 
     def test_set_initial_parameters_bad_input(self):
         # Create data of wrong type
@@ -429,7 +450,8 @@ class TestSamplingController(unittest.TestCase):
 
         self.assertEqual(self.sampler._n_runs, n_runs)
         self.assertEqual(
-            self.sampler._initial_params.shape, (self.n_ids, n_runs, self.n_params))
+            self.sampler._initial_params.shape,
+            (self.n_ids, n_runs, self.n_params))
 
     def test_set_sampler(self):
         self.sampler.set_sampler(pints.HamiltonianMCMC)
