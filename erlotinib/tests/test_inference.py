@@ -197,10 +197,29 @@ class TestOptimisationController(unittest.TestCase):
 
         # Check failure of optimisation doesn't interrupt all runs
         # (CMAES returns NAN for 1-dim problems)
-        self.optimiser.set_n_runs(3)
-        self.optimiser.set_optimiser(pints.PSO)
-        self.optimiser._optimiser._almax = 0
-        result = self.optimiser.run(n_max_iterations=100)
+
+        # Get test data and model
+        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        problem = erlo.ProblemModellingController(data)
+
+        # Create inverse problem
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        problem.set_mechanistic_model(model)
+        problem.set_error_model([pints.GaussianLogLikelihood])
+        problem.fix_parameters({
+            'myokit.drug_concentration': 1,
+            'myokit.kappa': 1,
+            'myokit.lambda_0': 1,
+            'myokit.lambda_1': 1,
+            'Noise param 1': 1})
+        problem.set_log_prior([pints.UniformLogPrior(1E-3, 1E1)])
+        log_posteriors = problem.get_log_posteriors()
+
+        # Set up optmisation controller
+        optimiser = erlo.OptimisationController(log_posteriors[0])
+        optimiser.set_n_runs(3)
+        result = optimiser.run(n_max_iterations=10)
 
         keys = result.keys()
         self.assertEqual(len(keys), 5)
@@ -211,13 +230,8 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(keys[4], 'Run')
 
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 6)
-        self.assertEqual(parameters[0], 'Param 1')
-        self.assertEqual(parameters[1], 'Param 2')
-        self.assertEqual(parameters[2], 'Param 3')
-        self.assertEqual(parameters[3], 'Param 4')
-        self.assertEqual(parameters[4], 'Param 5')
-        self.assertEqual(parameters[5], 'Param 6')
+        self.assertEqual(len(parameters), 1)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
