@@ -456,6 +456,9 @@ class SamplingController(InferenceController):
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
+        # Convert dataframe IDs and parameter names to strings
+        data = data.astype({id_key: str, param_key: str})
+
         posterior_ids = [p.get_id() for p in self._log_posteriors]
         ids = data[id_key].unique()
         for index in ids:
