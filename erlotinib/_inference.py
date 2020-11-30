@@ -15,69 +15,6 @@ from tqdm.notebook import tqdm
 import erlotinib as erlo
 
 
-class _PartiallyFixedLogPosterior(pints.LogPDF):
-    """
-    Wrapper class for a `pints.LogPosterior` to fix the values of some
-    parameters.
-
-    This allows to reduce the parameter dimensionality of the log-posterior
-    at the cost of fixing some parameters at a constant value.
-    """
-
-    def __init__(self, log_posterior, mask, values):
-        super(_PartiallyFixedLogPosterior, self).__init__()
-
-        self._log_posterior = log_posterior
-
-        if len(mask) != self._log_posterior.n_parameters():
-            raise ValueError(
-                'Length of mask has to match number of log-posterior '
-                'parameters.')
-
-        mask = np.asarray(mask)
-        if mask.dtype != bool:
-            raise ValueError(
-                'Mask has to be a boolean array.')
-
-        n_fixed = int(np.sum(mask))
-        if n_fixed != len(values):
-            raise ValueError(
-                'Values has to have the same length as the number of '
-                'fixed parameters.')
-
-        # Create a parameter array for later calls of the log-posterior
-        self._parameters = np.empty(shape=len(mask))
-        self._parameters[mask] = np.asarray(values)
-
-        # Update the 'free' number of parameters
-        self._mask = ~mask
-        self._n_parameters = int(np.sum(self._mask))
-
-    def __call__(self, parameters):
-        # Fill in 'free' parameters
-        self._parameters[self._mask] = np.asarray(parameters)
-
-        return self._log_posterior(self._parameters)
-
-    def log_likelihood(self):
-        """
-        Returns log-likelihood.
-        """
-        return self._log_posterior.log_likelihood()
-
-    def log_prior(self):
-        """
-        Returns log-prior.
-        """
-        return self._log_posterior.log_prior()
-
-    def n_parameters(self):
-        """
-        Returns the number of 'free' parameters of the log-posterior.
-        """
-        return self._n_parameters
-
-
 class InferenceController(object):
     """
     A base class for inference controllers.
