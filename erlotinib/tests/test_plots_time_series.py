@@ -258,6 +258,10 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, dose_key='SOME WRONG KEY')
 
+    def test_add_simulation(self):
+        with self.assertRaisesRegex(NotImplementedError):
+            self.fig.add_simulation(self.data)
+
 
 if __name__ == '__main__':
     unittest.main()
