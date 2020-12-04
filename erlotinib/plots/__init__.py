@@ -8,7 +8,8 @@
 from ._base import (  # noqa
     MultiFigure,
     MultiSubplotFigure,
-    SingleFigure
+    SingleFigure,
+    SingleSubplotFigure
 )
 
 from ._sampling import (  # noqa
@@ -20,5 +21,6 @@ from ._optimisation import (  # noqa
 )
 
 from ._time_series import (  # noqa
-    PDTimeSeriesPlot
+    PDTimeSeriesPlot,
+    PKTimeSeriesPlot
 )
