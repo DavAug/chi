@@ -16,6 +16,12 @@ class DataLibrary(object):
 
     Each method corresponds to a separate dataset, which will return
     the corresponding dataset in form of a :class:`pandas.DataFrame`.
+
+    References
+    ----------
+    .. [1] Eigenmann, M. J. et al., Combining Nonclinical Experiments with
+        Translational PKPD Modeling to Differentiate Erlotinib and
+        Gefitinib, Mol Cancer Ther. 2016; 15(12):3110-3119.
     """
 
     def __init__(self):
@@ -25,7 +31,7 @@ class DataLibrary(object):
 
     def lung_cancer_control_group(self, standardised=False):
         r"""
-        Returns the lung cancer control group data published in [1] as a
+        Returns the lung cancer control group data published in [1]_ as a
         :class:`pandas.DataFrame`.
 
         The dataset contains the time series data of 8 mice with
@@ -37,10 +43,6 @@ class DataLibrary(object):
         cm^3'. If ``standardised=True`` those column keys are changed to the
         generic keys 'ID', 'Time', and 'Biomarker', which are also used by
         other classes.
-
-        .. [1] Eigenmann, M. J. et al., Combining Nonclinical Experiments with
-               Translational PKPD Modeling to Differentiate Erlotinib and
-               Gefitinib, Mol Cancer Ther. 2016; 15(12):3110-3119.
 
         Parameters
         ----------
@@ -63,7 +65,7 @@ class DataLibrary(object):
     def lung_cancer_medium_erlotinib_dose_group(self):
         r"""
         Returns the medium erlotinib dose lung cancer treatment group data
-        published in [1] as a :class:`pandas.DataFrame`.
+        published in [1]_ as a :class:`pandas.DataFrame`.
 
         The dataset contains the time series data of 8 mice with
         patient-derived lung cancer implants. Each mouse was treated with
@@ -78,10 +80,6 @@ class DataLibrary(object):
         The column keys are '#ID', 'TIME in day', 'DOSE in mg',
         'PLASMA CONCENTRATION in mg/L', 'TUMOUR VOLUME in cm^3' and
         'BODY WEIGHT in g'.
-
-        .. [1] Eigenmann, M. J. et al., Combining Nonclinical Experiments with
-               Translational PKPD Modeling to Differentiate Erlotinib and
-               Gefitinib, Mol Cancer Ther. 2016; 15(12):3110-3119.
         """
         file_name = 'lxf_medium_erlotinib_dose.csv'
         data = pd.read_csv(self._path + file_name)
