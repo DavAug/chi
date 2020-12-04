@@ -259,7 +259,7 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
             self.fig.add_data(data=data, dose_key='SOME WRONG KEY')
 
     def test_add_simulation(self):
-        with self.assertRaisesRegex(NotImplementedError):
+        with self.assertRaisesRegex(NotImplementedError, ''):
             self.fig.add_simulation(self.data)
 
 
