@@ -305,13 +305,15 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             # Create Scatter plot
             self._add_biom_trace(label, times, biomarker, color)
 
-    def add_simulation(self, data, time_key='Time', biom_key='Biomarker'):
+    def add_simulation(
+            self, data, time_key='Time', biom_key='Biomarker',
+            dose_key='Dose'):
         """
-        Adds a pharmacodynamic time series simulation to the figure.
+        Adds a pharmacokinetic time series simulation to the figure.
 
-        Expects a :class:`pandas.DataFrame` with a time and a PD biomarker
-        column, and adds a line plot of the biomarker time series to the
-        figure.
+        Expects a :class:`pandas.DataFrame` with a time, a PK biomarker,
+        and a dose column. A line plot of the biomarker time series, as well
+        as the dosing regimen is added to the figure.
 
         Parameters
         ----------
