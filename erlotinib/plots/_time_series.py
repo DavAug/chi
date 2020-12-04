@@ -161,11 +161,14 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
         logarithmic scale switch for the y-axis.
     """
 
-    def __init__(self):
+    def __init__(self, updatemenu=True):
         super(PKTimeSeriesPlot, self).__init__()
 
         self._create_template_figure(
             rows=2, cols=1, shared_x=True, row_heights=[0.2, 0.8])
+
+        if updatemenu:
+            self._add_updatemenu()
 
     def _add_dose_trace(self, label, times, dose, color):
         """
@@ -206,6 +209,38 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
                     line=dict(color='black', width=1))),
             row=2,
             col=1)
+
+    def _add_updatemenu(self):
+        """
+        Adds a button to the figure that switches the biomarker scale from
+        linear to logarithmic.
+        """
+        self._fig.update_layout(
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    direction="left",
+                    buttons=list([
+                        dict(
+                            args=[{"yaxis2.type": "linear"}],
+                            label="Linear y-scale",
+                            method="relayout"
+                        ),
+                        dict(
+                            args=[{"yaxis2.type": "log"}],
+                            label="Log y-scale",
+                            method="relayout"
+                        )
+                    ]),
+                    pad={"r": 0, "t": -10},
+                    showactive=True,
+                    x=0.0,
+                    xanchor="left",
+                    y=1.15,
+                    yanchor="top"
+                )
+            ]
+        )
 
     def add_data(
             self, data, id_key='ID', time_key='Time', biom_key='Biomarker',
