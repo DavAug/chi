@@ -25,7 +25,7 @@ class DataLibrary(object):
 
     def lung_cancer_control_group(self, standardised=False):
         r"""
-        Returns the lung cancer control group data published in [1]_ as a
+        Returns the lung cancer control group data published in [1] as a
         :class:`pandas.DataFrame`.
 
         The dataset contains the time series data of 8 mice with
@@ -63,7 +63,7 @@ class DataLibrary(object):
     def lung_cancer_medium_erlotinib_dose_group(self):
         r"""
         Returns the medium erlotinib dose lung cancer treatment group data
-        published in [1]_ as a :class:`pandas.DataFrame`.
+        published in [1] as a :class:`pandas.DataFrame`.
 
         The dataset contains the time series data of 8 mice with
         patient-derived lung cancer implants. Each mouse was treated with
