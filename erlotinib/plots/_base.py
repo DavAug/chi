@@ -87,20 +87,65 @@ class SingleFigure(object):
         self._fig.show()
 
 
+class SingleSubplotFigure(object):
+    """
+    Base class for plot classes that a single figure with subplots.
+    """
+
+    def __init__(self):
+        super(SingleSubplotFigure, self).__init__()
+
+        self._fig = go.Figure()
+        self._set_layout()
+
+    def _create_template_figure(
+            self, rows, cols, x_title=None, y_title=None, shared_x=False,
+            shared_y=False, spacing=0.05, column_widths=None,
+            row_heights=None):
+        """
+        Creates a template figure using :meth:`plotly.make_subplots`.
+        """
+        self._fig = make_subplots(
+            rows=rows, cols=cols, shared_xaxes=shared_x, shared_yaxes=shared_y,
+            x_title=x_title, y_title=y_title, horizontal_spacing=spacing,
+            vertical_spacing=spacing, column_widths=column_widths,
+            row_heights=row_heights)
+
+        # Set layout
+        self._set_layout()
+
+    def _set_layout(self):
+        """
+        Configures the basic layout of the figure.
+
+        - Size
+        - Template
+        """
+        self._fig.update_layout(
+            autosize=True,
+            template="plotly_white")
+
+    def show(self):
+        """
+        Displays the figure.
+        """
+        self._fig.show()
+
+
 class MultiFigure(object):
     """
     Base class for plot classes that generate multiple figures.
     """
 
-    def __init__(self):
+    def __init__(self, updatemenu=True):
         super(MultiFigure, self).__init__()
 
         # Create a template figure
         self._fig = go.Figure()
-        self._set_layout()
+        self._set_layout(updatemenu)
         self._figs = [self._fig]
 
-    def _set_layout(self):
+    def _set_layout(self, updatemenu):
         """
         Configures the basic layout of the figure.
 
@@ -110,32 +155,35 @@ class MultiFigure(object):
         """
         self._fig.update_layout(
             autosize=True,
-            template="plotly_white",
-            updatemenus=[
-                dict(
-                    type="buttons",
-                    direction="left",
-                    buttons=list([
-                        dict(
-                            args=[{"yaxis.type": "linear"}],
-                            label="Linear y-scale",
-                            method="relayout"
-                        ),
-                        dict(
-                            args=[{"yaxis.type": "log"}],
-                            label="Log y-scale",
-                            method="relayout"
-                        )
-                    ]),
-                    pad={"r": 0, "t": -10},
-                    showactive=True,
-                    x=0.0,
-                    xanchor="left",
-                    y=1.15,
-                    yanchor="top"
-                )
-            ]
-        )
+            template="plotly_white")
+
+        if updatemenu:
+            self._fig.update_layout(
+                updatemenus=[
+                    dict(
+                        type="buttons",
+                        direction="left",
+                        buttons=list([
+                            dict(
+                                args=[{"yaxis.type": "linear"}],
+                                label="Linear y-scale",
+                                method="relayout"
+                            ),
+                            dict(
+                                args=[{"yaxis.type": "log"}],
+                                label="Log y-scale",
+                                method="relayout"
+                            )
+                        ]),
+                        pad={"r": 0, "t": -10},
+                        showactive=True,
+                        x=0.0,
+                        xanchor="left",
+                        y=1.15,
+                        yanchor="top"
+                    )
+                ]
+            )
 
     def add_data(self, data):
         """
@@ -159,7 +207,7 @@ class MultiSubplotFigure(MultiFigure):
     """
 
     def __init__(self):
-        super(MultiSubplotFigure, self).__init__()
+        super(MultiSubplotFigure, self).__init__(updatemenu=False)
 
     def _create_template_figure(
             self, rows, cols, x_title=None, y_title=None, shared_x=False,
@@ -173,28 +221,4 @@ class MultiSubplotFigure(MultiFigure):
             vertical_spacing=spacing)
 
         # Set layout
-        self._set_layout()
-
-    def _set_layout(self):
-        """
-        Configures the basic layout of the figure.
-
-        - Size
-        - Template
-        """
-        self._fig.update_layout(
-            autosize=True,
-            template="plotly_white")
-
-    def add_data(self, data):
-        """
-        Adds data to the figure.
-        """
-        raise NotImplementedError
-
-    def show(self):
-        """
-        Displays the figures.
-        """
-        for fig in self._figs:
-            fig.show()
+        self._set_layout(updatemenu=False)

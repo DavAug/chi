@@ -13,12 +13,14 @@ Base classes:
 - :class:`MultiFigure`
 - :class:`MultiSubplotFigure`
 - :class:`SingleFigure`
+- :class:`SingleSubplotFigure`
 
 Overview:
 
 - :class:`MarginalPosteriorPlot`
 - :class:`ParameterEstimatePlot`
 - :class:`PDTimeSeriesPlot`
+- :class:`PKTimeSeriesPlot`
 
 .. autoclass:: MarginalPosteriorPlot
     :members:
@@ -33,10 +35,17 @@ Overview:
 .. autoclass:: SingleFigure
     :members:
 
+.. autoclass:: SingleSubplotFigure
+    :members:
+
 .. autoclass:: ParameterEstimatePlot
     :members:
     :inherited-members:
 
 .. autoclass:: PDTimeSeriesPlot
+    :members:
+    :inherited-members:
+
+.. autoclass:: PKTimeSeriesPlot
     :members:
     :inherited-members:
