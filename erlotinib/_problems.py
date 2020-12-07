@@ -11,6 +11,7 @@
 
 import warnings
 
+import myokit
 import numpy as np
 import pandas as pd
 import pints
@@ -84,7 +85,7 @@ class ProblemModellingController(object):
         # 1. ids can be converted to strings
         # 2. time are numerics or NaN
         # 3. biomarker are numerics or NaN
-        # 4. dose are numerics or NaN, and only one non-NaN dose amount is provided
+        # 4. dose are numerics or NaN
 
         # Set defaults
         self._mechanistic_model = None
@@ -148,7 +149,22 @@ class ProblemModellingController(object):
         Sets the dose of the dosing regimen of an individual model according
         to the provided dataset.
         """
+        # Filter times and dose events for non-NaN entries
+        mask = self._data[self._dose_key].notnull()
+        data = self._data[[self._time_key, self._dose_key]][mask]
+        mask = data[self._time_key].notnull()
+        data = data[mask]
 
+        # Add dose events to dosing regimen
+        regimen = myokit.Protocol()
+        for _, row in data.iterrows():
+            duration = 0.01  # Only support bolus at this point
+            dose_rate = row[self._dose_key] / duration
+            time = row[self._time_key]
+            regimen.add(myokit.ProtocolEvent(dose_rate, time, duration))
+
+        # Set dosing regimen
+        self._mechanistic_model._sim.set_protocol(regimen)
 
     def fix_parameters(self, name_value_dict):
         """
