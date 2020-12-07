@@ -80,6 +80,12 @@ class ProblemModellingController(object):
         self._data = data[keys]
         self._ids = self._data[self._id_key].unique()
 
+        # TODO: Check input data
+        # 1. ids can be converted to strings
+        # 2. time are numerics or NaN
+        # 3. biomarker are numerics or NaN
+        # 4. dose are numerics or NaN, and only one non-NaN dose amount is provided
+
         # Set defaults
         self._mechanistic_model = None
         self._apply_dose = False
@@ -114,6 +120,14 @@ class ProblemModellingController(object):
             # Get data
             # TODO: what happens if data includes nans? Should we exclude those
             # rows?
+
+            #### NEW
+            if self._apply_dose:
+                self._set_dosing_regimen(individual)
+
+            problem = self._create_inverse_problem(individual)
+            #####
+
             mask = self._data[self._id_key] == individual
             times = self._data[self._time_key][mask].to_numpy()
             biomarker = self._data[biom_key][mask].to_numpy()
@@ -128,6 +142,13 @@ class ProblemModellingController(object):
                     'inferred are compatible.')
 
         return error_model
+
+    def _set_dosing_regimen(self, label):
+        """
+        Sets the dose of the dosing regimen of an individual model according
+        to the provided dataset.
+        """
+
 
     def fix_parameters(self, name_value_dict):
         """
