@@ -9,6 +9,8 @@
 # which is distributed under the BSD 3-clause license.
 #
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pints
@@ -48,10 +50,14 @@ class ProblemModellingController(object):
     biom_keys
         A list of key labels of the :class:`DataFrame` which specifies the PK
         or PD biomarker columns. Defaults to ``['Biomarker']``.
+    dose_key
+        Key label of the :class:`DataFrame` which specifies the dose amount
+        column. If ``None`` no dose is administered. Defaults to ``None``.
     """
 
     def __init__(
-            self, data, id_key='ID', time_key='Time', biom_keys=['Biomarker']):
+            self, data, id_key='ID', time_key='Time', biom_keys=['Biomarker'],
+            dose_key=None):
         super(ProblemModellingController, self).__init__()
 
         # Check input format
@@ -60,18 +66,23 @@ class ProblemModellingController(object):
                 'Data has to be pandas.DataFrame.')
 
         keys = [id_key, time_key] + biom_keys
+        if dose_key is not None:
+            keys += [dose_key]
+
         for key in keys:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        self._id_key, self._time_key = keys[:2]
-        self._biom_keys = keys[2:]
+        self._id_key, self._time_key, self._dose_key = [
+            id_key, time_key, dose_key]
+        self._biom_keys = biom_keys
         self._data = data[keys]
         self._ids = self._data[self._id_key].unique()
 
         # Set defaults
         self._mechanistic_model = None
+        self._apply_dose = False
         self._error_model = None
         self._population_model = None
         self._log_prior = None
@@ -250,7 +261,7 @@ class ProblemModellingController(object):
             full model are returned, or just the mechanistic and error model
             parameters prior to setting a population model.
         """
-        # TODO: figure out a way to return pop names and withour piop
+        # TODO: Make exclude_pop_model work
         if self._fixed_params_mask is None:
             return self._parameter_names
 
@@ -532,6 +543,12 @@ class ProblemModellingController(object):
 
         # Set mechanistic model
         self._mechanistic_model = model
+
+        # Check whether dose can be applied if provided
+        self._apply_dose = False
+        if (self._dose_key is not None) and isinstance(
+                model, erlo.PharmacokineticModel):
+            self._apply_dose = True
 
         # Reset other settings that depend on the mechanistic model
         self._error_model = None
