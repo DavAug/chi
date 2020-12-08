@@ -73,18 +73,21 @@ class ProblemModellingController(object):
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        self._id_key, self._time_key, self._dose_key = [
-            id_key, time_key, dose_key]
+        self._id_key, self._time_key = [id_key, time_key]
         self._biom_keys = biom_keys
         self._data = data[keys]
 
         # Make sure data is formatted correctly
-        self._clean_data()
+        self._clean_data(dose_key)
         self._ids = self._data[self._id_key].unique()
+
+        # Extract dosing regimens
+        self._applied_regimens = None
+        if dose_key is not None:
+            self._applied_regimens = self._extract_dosing_regimens(dose_key)
 
         # Set defaults
         self._mechanistic_model = None
-        self._apply_dose = False
         self._log_likelihoods = None
         self._population_model = None
         self._log_prior = None
@@ -93,7 +96,7 @@ class ProblemModellingController(object):
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
-    def _clean_data(self):
+    def _clean_data(self, dose_key):
         """
         Makes sure that the data is formated properly.
 
@@ -104,8 +107,8 @@ class ProblemModellingController(object):
         """
         # Create container for data
         columns = [self._id_key, self._time_key] + self._biom_keys
-        if self._dose_key is not None:
-            columns += [self._dose_key]
+        if dose_key is not None:
+            columns += [dose_key]
         data = pd.DataFrame(columns=columns)
 
         # Convert IDs to strings
@@ -119,9 +122,9 @@ class ProblemModellingController(object):
         for biom_key in self._biom_keys:
             data[biom_key] = pd.to_numeric(self._data[biom_key])
 
-        if self._dose_key is not None:
-            data[self._dose_key] = pd.to_numeric(
-                self._data[self._dose_key])
+        if dose_key is not None:
+            data[dose_key] = pd.to_numeric(
+                self._data[dose_key])
 
         self._data = data
 
@@ -129,13 +132,19 @@ class ProblemModellingController(object):
         """
         Returns a dict of log-likelihoods, one for each individual in the
         dataset. The keys are the individual IDs and the values are the
-        log-lieklihoods.
+        log-likelihoods.
         """
         # Create a likelihood for each individual
         log_likelihoods = dict()
         for individual in self._ids:
-            if self._apply_dose:
-                self._set_dosing_regimen(individual)
+            # Set dosing regimen
+            try:
+                self._mechanistic_model._sim.set_protocol(
+                    self._applied_regimens[individual])
+            except TypeError:
+                # TypeError is raised when applied regimens is still None,
+                # i.e. no doses were defined by the datasets.
+                pass
 
             log_likelihoods[individual] = self._create_inverse_problem(
                 individual, error_models)
@@ -200,32 +209,36 @@ class ProblemModellingController(object):
 
         return log_likelihood
 
-    def _set_dosing_regimen(self, label):
+    def _extract_dosing_regimens(self, dose_key):
         """
-        Sets the dosing regimen of an individual model according to the
-        provided dataset.
+        Converts the dosing regimens defined by the pandas.DataFrame into
+        myokit.Protocols, and returns them as a dictionary with individual
+        IDs as keys, and regimens as values.
 
         For each dose entry in the dataframe a (bolus) dose event is added
         to the myokit.Protocol.
         """
-        # Filter times and dose events for non-NaN entries
-        mask = self._data[self._id_key] == label
-        data = self._data[[self._time_key, self._dose_key]][mask]
-        mask = data[self._dose_key].notnull()
-        data = data[mask]
-        mask = data[self._time_key].notnull()
-        data = data[mask]
+        regimens = dict()
+        for label in self._ids:
+            # Filter times and dose events for non-NaN entries
+            mask = self._data[self._id_key] == label
+            data = self._data[[self._time_key, dose_key]][mask]
+            mask = data[dose_key].notnull()
+            data = data[mask]
+            mask = data[self._time_key].notnull()
+            data = data[mask]
 
-        # Add dose events to dosing regimen
-        regimen = myokit.Protocol()
-        for _, row in data.iterrows():
-            duration = 0.01  # Only support bolus at this point
-            dose_rate = row[self._dose_key] / duration
-            time = row[self._time_key]
-            regimen.add(myokit.ProtocolEvent(dose_rate, time, duration))
+            # Add dose events to dosing regimen
+            regimen = myokit.Protocol()
+            for _, row in data.iterrows():
+                duration = 0.01  # Only support bolus at this point
+                dose_rate = row[dose_key] / duration
+                time = row[self._time_key]
+                regimen.add(myokit.ProtocolEvent(dose_rate, time, duration))
 
-        # Set dosing regimen
-        self._mechanistic_model._sim.set_protocol(regimen)
+            regimens[label] = regimen
+
+        return regimens
 
     def fix_parameters(self, name_value_dict):
         """
@@ -275,6 +288,15 @@ class ProblemModellingController(object):
         if np.alltrue(~self._fixed_params_mask):
             self._fixed_params_mask = None
             self._fixed_params_values = None
+
+    def get_dosing_regimens(self):
+        """
+        Returns a dictionary of dosing regimens in form of myokit.Protocols.
+
+        The dosing regimens are extracted from the dataset if a dose key is
+        provided. If no dose key is provided ``None`` is returned.
+        """
+        return self._applied_regimens
 
     def get_log_posteriors(self):
         """
@@ -641,12 +663,6 @@ class ProblemModellingController(object):
 
         # Set mechanistic model
         self._mechanistic_model = model
-
-        # Check whether dose can be applied if provided
-        self._apply_dose = False
-        if (self._dose_key is not None) and isinstance(
-                model, erlo.PharmacokineticModel):
-            self._apply_dose = True
 
         # Reset other settings that depend on the mechanistic model
         self._log_likelihoods = None
