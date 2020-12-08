@@ -897,26 +897,26 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Only structurally identical'):
             problem.set_error_model(log_likelihoods, outputs)
 
-    # def test_set_log_prior(self):
-    #     # Map priors to parameters automatically
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     priors = self.log_priors
-    #     self.problem.set_log_prior(priors)
+    def test_set_log_prior(self):
+        # Map priors to parameters automatically
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
+        priors = self.log_priors
+        self.problem.set_log_prior(priors)
 
-    #     self.assertIsInstance(self.problem._log_prior, pints.ComposedLogPrior)
+        self.assertIsInstance(self.problem._log_prior, pints.ComposedLogPrior)
 
-    #     # Specify prior parameter map explicitly
-    #     parameters = [
-    #         'myokit.kappa',
-    #         'Noise param 1',
-    #         'myokit.tumour_volume',
-    #         'myokit.lambda_1',
-    #         'myokit.drug_concentration',
-    #         'myokit.lambda_0']
-    #     self.problem.set_log_prior(priors, parameters)
+        # Specify prior parameter map explicitly
+        parameters = [
+            'central.size',
+            'Noise param 1',
+            'myokit.elimination_rate',
+            'central.drug_amount',
+            'dose.absorption_rate',
+            'dose.drug_amount']
+        self.problem.set_log_prior(priors, parameters)
 
-    #     self.assertIsInstance(self.problem._log_prior, pints.ComposedLogPrior)
+        self.assertIsInstance(self.problem._log_prior, pints.ComposedLogPrior)
 
     # def test_set_log_prior_bad_input(self):
     #     # No mechanistic model set
