@@ -609,68 +609,68 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         # Test that it works with no dose key
         erlo.ProblemModellingController(data=data)
 
-    # def test_fix_parameters(self):
-    #     # Fix model parameters
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     name_value_dict = dict({
-    #         'myokit.drug_concentration': 0,
-    #         'myokit.kappa': 1})
+    def test_fix_parameters(self):
+        # Fix model parameters
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
+        name_value_dict = dict({
+            'central.drug_amount': 0,
+            'myokit.elimination_rate': 1})
 
-    #     self.problem.fix_parameters(name_value_dict)
+        self.problem.fix_parameters(name_value_dict)
 
-    #     self.assertEqual(self.problem.n_parameters(), 4)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 4)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[2], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[3], 'Noise param 1')
+        self.assertEqual(self.problem.n_parameters(), 4)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 4)
+        self.assertEqual(param_names[0], 'dose.drug_amount')
+        self.assertEqual(param_names[1], 'central.size')
+        self.assertEqual(param_names[2], 'dose.absorption_rate')
+        self.assertEqual(param_names[3], 'Noise param 1')
 
-    #     param_values = self.problem._fixed_params_values
-    #     self.assertEqual(len(param_values), 6)
-    #     self.assertEqual(param_values[1], 0)
-    #     self.assertEqual(param_values[2], 1)
+        param_values = self.problem._fixed_params_values
+        self.assertEqual(len(param_values), 6)
+        self.assertEqual(param_values[0], 0)
+        self.assertEqual(param_values[4], 1)
 
-    #     # Free kappa and fix lambda_1
-    #     name_value_dict = dict({
-    #         'myokit.lambda_1': 2,
-    #         'myokit.kappa': None})
+        # Free elimination rate and fix dose drug amount
+        name_value_dict = dict({
+            'dose.drug_amount': 0,
+            'myokit.elimination_rate': None})
 
-    #     self.problem.fix_parameters(name_value_dict)
+        self.problem.fix_parameters(name_value_dict)
 
-    #     self.assertEqual(self.problem.n_parameters(), 4)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 4)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.kappa')
-    #     self.assertEqual(param_names[2], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[3], 'Noise param 1')
+        self.assertEqual(self.problem.n_parameters(), 4)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 4)
+        self.assertEqual(param_names[0], 'central.size')
+        self.assertEqual(param_names[1], 'dose.absorption_rate')
+        self.assertEqual(param_names[2], 'myokit.elimination_rate')
+        self.assertEqual(param_names[3], 'Noise param 1')
 
-    #     param_values = self.problem._fixed_params_values
-    #     self.assertEqual(len(param_values), 6)
-    #     self.assertEqual(param_values[1], 0)
-    #     self.assertEqual(param_values[4], 2)
+        param_values = self.problem._fixed_params_values
+        self.assertEqual(len(param_values), 6)
+        self.assertEqual(param_values[0], 0)
+        self.assertEqual(param_values[1], 0)
 
-    #     # Free all parameters again
-    #     name_value_dict = dict({
-    #         'myokit.lambda_1': None,
-    #         'myokit.drug_concentration': None})
+        # Free all parameters again
+        name_value_dict = dict({
+            'dose.drug_amount': None,
+            'central.drug_amount': None})
 
-    #     self.problem.fix_parameters(name_value_dict)
+        self.problem.fix_parameters(name_value_dict)
 
-    #     self.assertEqual(self.problem.n_parameters(), 6)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 6)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Noise param 1')
+        self.assertEqual(self.problem.n_parameters(), 6)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 6)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'dose.drug_amount')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'dose.absorption_rate')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'Noise param 1')
 
-    #     self.assertIsNone(self.problem._fixed_params_values)
-    #     self.assertIsNone(self.problem._fixed_params_mask)
+        self.assertIsNone(self.problem._fixed_params_values)
+        self.assertIsNone(self.problem._fixed_params_mask)
 
     # def test_fix_parameters_bad_input(self):
     #     name_value_dict = dict({
