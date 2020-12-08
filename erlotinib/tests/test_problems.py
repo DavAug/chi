@@ -918,50 +918,51 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
 
         self.assertIsInstance(self.problem._log_prior, pints.ComposedLogPrior)
 
-    # def test_set_log_prior_bad_input(self):
-    #     # No mechanistic model set
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker'])
+    def test_set_log_prior_bad_input(self):
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
 
-    #     with self.assertRaisesRegex(ValueError, 'Before setting'):
-    #         problem.set_log_prior(self.log_priors)
+        with self.assertRaisesRegex(ValueError, 'Before setting'):
+            problem.set_log_prior(self.log_priors)
 
-    #     # No error model set
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model)
+        # No error model set
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central', direct=False)
+        problem.set_mechanistic_model(model)
 
-    #     with self.assertRaisesRegex(ValueError, 'Before setting'):
-    #         problem.set_log_prior(self.log_priors)
+        with self.assertRaisesRegex(ValueError, 'Before setting'):
+            problem.set_log_prior(self.log_priors)
 
-    #     # Wrong log-prior type
-    #     problem.set_error_model(self.error_models)
-    #     priors = ['Wrong', 'type']
-    #     with self.assertRaisesRegex(ValueError, 'All marginal log-priors'):
-    #         problem.set_log_prior(priors)
+        # Wrong log-prior type
+        problem.set_error_model(self.error_models)
+        priors = ['Wrong', 'type']
+        with self.assertRaisesRegex(ValueError, 'All marginal log-priors'):
+            problem.set_log_prior(priors)
 
-    #     # Number of log priors does not match number of parameters
-    #     priors = [pints.GaussianLogPrior(0, 1), pints.HalfCauchyLogPrior(0, 1)]
-    #     with self.assertRaisesRegex(ValueError, 'One marginal log-prior'):
-    #         problem.set_log_prior(priors)
+        # Number of log priors does not match number of parameters
+        priors = [pints.GaussianLogPrior(0, 1), pints.HalfCauchyLogPrior(0, 1)]
+        with self.assertRaisesRegex(ValueError, 'One marginal log-prior'):
+            problem.set_log_prior(priors)
 
-    #     # Dimensionality of joint log-pior does not match number of params
-    #     prior = pints.ComposedLogPrior(
-    #         pints.GaussianLogPrior(0, 1), pints.GaussianLogPrior(0, 1))
-    #     priors = [
-    #         prior,
-    #         pints.UniformLogPrior(0, 1),
-    #         pints.UniformLogPrior(0, 1),
-    #         pints.UniformLogPrior(0, 1),
-    #         pints.UniformLogPrior(0, 1),
-    #         pints.UniformLogPrior(0, 1)]
-    #     with self.assertRaisesRegex(ValueError, 'The joint log-prior'):
-    #         problem.set_log_prior(priors)
+        # Dimensionality of joint log-pior does not match number of params
+        prior = pints.ComposedLogPrior(
+            pints.GaussianLogPrior(0, 1), pints.GaussianLogPrior(0, 1))
+        priors = [
+            prior,
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1)]
+        with self.assertRaisesRegex(ValueError, 'The joint log-prior'):
+            problem.set_log_prior(priors)
 
-    #     # Specified parameter names do not match the model parameters
-    #     params = ['wrong', 'params']
-    #     with self.assertRaisesRegex(ValueError, 'The specified parameter'):
-    #         problem.set_log_prior(self.log_priors, params)
+        # Specified parameter names do not match the model parameters
+        params = ['wrong', 'params']
+        with self.assertRaisesRegex(ValueError, 'The specified parameter'):
+            problem.set_log_prior(self.log_priors, params)
 
     def test_set_mechanistic_model(self):
         # Set output biomarker mapping automatically
