@@ -228,6 +228,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(posteriors[2].n_parameters(), 4)
         self.assertEqual(posteriors[2].get_id(), '2')
 
+    def test_get_dosing_regimens(self):
+        regimens = self.problem.get_dosing_regimens()
+
+        self.assertIsNone(regimens)
+
     def test_get_log_posteriors_bad_input(self):
         # No mechanistic model set
         problem = erlo.ProblemModellingController(
@@ -499,6 +504,7 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
             'ID': ids,
             'Time': times,
             'Biomarker': plasma_conc,
+            'Biomarker 2': plasma_conc,
             'Dose': dose})
 
         # Create test problem
@@ -508,6 +514,7 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         # Create test model
         path = erlo.ModelLibrary().one_compartment_pk_model()
         cls.model = erlo.PharmacokineticModel(path)
+        cls.model.set_administration(compartment='central', direct=False)
         cls.error_models = [pints.GaussianLogLikelihood]
         cls.log_priors = [
             pints.UniformLogPrior(0, 1),
@@ -684,6 +691,58 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
 
     #     with self.assertRaisesRegex(ValueError, 'The error model'):
     #         problem.fix_parameters(name_value_dict)
+
+    def test_get_dosing_regimens(self):
+        regimens = self.problem.get_dosing_regimens()
+
+        n_ids = 3
+        ids = list(regimens.keys())
+        self.assertEqual(len(ids), n_ids)
+        self.assertEqual(ids[0], '0')
+        self.assertEqual(ids[1], '1')
+        self.assertEqual(ids[2], '2')
+
+        ids = [0, 0, 0, 1, 1, 1, 2, 2]
+        times = [0, 1, 2, 2, np.nan, 4, 1, 3]
+        plasma_conc = [np.nan, 0.3, 0.2, 0.5, 0.1, 0.2, 0.234, np.nan]
+        dose = [3.4, np.nan, np.nan, 0.5, 0.5, 0.5, np.nan, np.nan]
+
+        # Check protocols
+        events = regimens['0'].events()
+        self.assertEqual(len(events), 1)
+
+        event = events[0]
+        dose = 3.4
+        duration = 0.01
+        self.assertEqual(event.level(), dose / duration)
+        self.assertEqual(event.start(), 0)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.period(), 0)
+        self.assertEqual(event.multiplier(), 0)
+
+        events = regimens['1'].events()
+        self.assertEqual(len(events), 2)
+
+        event = events[0]
+        dose = 0.5
+        duration = 0.01
+        self.assertEqual(event.level(), dose / duration)
+        self.assertEqual(event.start(), 2)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.period(), 0)
+        self.assertEqual(event.multiplier(), 0)
+
+        event = events[1]
+        dose = 0.5
+        duration = 0.01
+        self.assertEqual(event.level(), dose / duration)
+        self.assertEqual(event.start(), 4)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.period(), 0)
+        self.assertEqual(event.multiplier(), 0)
+
+        events = regimens['2'].events()
+        self.assertEqual(len(events), 0)
 
     # def test_get_log_posteriors(self):
     #     # Create posterior with no fixed parameters
@@ -907,68 +966,68 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
     #     with self.assertRaisesRegex(ValueError, 'The specified parameter'):
     #         problem.set_log_prior(self.log_priors, params)
 
-    # def test_set_mechanistic_model(self):
-    #     # Set output biomarker mapping automatically
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker 1'])
+    def test_set_mechanistic_model(self):
+        # Set output biomarker mapping automatically
+        problem = erlo.ProblemModellingController(
+            self.data, dose_key='Dose')
 
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model=model)
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration(compartment='central', direct=False)
+        problem.set_mechanistic_model(model)
 
-    #     self.assertEqual(problem._mechanistic_model, model)
-    #     outputs = problem._mechanistic_model.outputs()
-    #     self.assertEqual(len(outputs), 1)
-    #     self.assertEqual(outputs[0], 'myokit.tumour_volume')
-    #     self.assertEqual(len(problem._biom_keys), 1)
-    #     self.assertEqual(problem._biom_keys[0], 'Biomarker 1')
+        self.assertEqual(problem._mechanistic_model, model)
+        outputs = problem._mechanistic_model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+        self.assertEqual(len(problem._biom_keys), 1)
+        self.assertEqual(problem._biom_keys[0], 'Biomarker')
 
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
+        # Set output biomarker mapping explicitly
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker', 'Biomarker 2'], dose_key='Dose')
+        output_biomarker_map = dict({
+            'dose.drug_amount': 'Biomarker 2',
+            'central.drug_concentration': 'Biomarker'})
 
-    #     # Set output biomarker mapping explicitly
-    #     output_biomarker_map = dict({
-    #         'myokit.tumour_volume': 'Biomarker 2',
-    #         'myokit.drug_concentration': 'Biomarker 1'})
+        problem.set_mechanistic_model(model, output_biomarker_map)
 
-    #     problem.set_mechanistic_model(model, output_biomarker_map)
+        self.assertEqual(problem._mechanistic_model, model)
+        outputs = problem._mechanistic_model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'dose.drug_amount')
+        self.assertEqual(outputs[1], 'central.drug_concentration')
+        self.assertEqual(len(problem._biom_keys), 2)
+        self.assertEqual(problem._biom_keys[0], 'Biomarker 2')
+        self.assertEqual(problem._biom_keys[1], 'Biomarker')
 
-    #     self.assertEqual(problem._mechanistic_model, model)
-    #     outputs = problem._mechanistic_model.outputs()
-    #     self.assertEqual(len(outputs), 2)
-    #     self.assertEqual(outputs[0], 'myokit.tumour_volume')
-    #     self.assertEqual(outputs[1], 'myokit.drug_concentration')
-    #     self.assertEqual(len(problem._biom_keys), 2)
-    #     self.assertEqual(problem._biom_keys[0], 'Biomarker 2')
-    #     self.assertEqual(problem._biom_keys[1], 'Biomarker 1')
+    def test_set_mechanistic_model_bad_input(self):
+        # Wrong model type
+        model = 'some model'
 
-    # def test_set_mechanistic_model_bad_input(self):
-    #     # Wrong model type
-    #     model = 'some model'
+        with self.assertRaisesRegex(ValueError, 'The model has to be'):
+            self.problem.set_mechanistic_model(model=model)
 
-    #     with self.assertRaisesRegex(ValueError, 'The model has to be'):
-    #         self.problem.set_mechanistic_model(model=model)
+        # Wrong number of model outputs
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker', 'Biomarker 2'])
 
-    #     # Wrong number of model outputs
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
+        with self.assertRaisesRegex(ValueError, 'The model does not have'):
+            problem.set_mechanistic_model(model=self.model)
 
-    #     with self.assertRaisesRegex(ValueError, 'The model does not have'):
-    #         problem.set_mechanistic_model(model=self.model)
+        # Wrong map type
+        output_biomarker_map = 'bad map'
 
-    #     # Wrong map type
-    #     output_biomarker_map = 'bad map'
+        with self.assertRaisesRegex(ValueError, 'The output-biomarker'):
+            self.problem.set_mechanistic_model(
+                self.model, output_biomarker_map)
 
-    #     with self.assertRaisesRegex(ValueError, 'The output-biomarker'):
-    #         self.problem.set_mechanistic_model(
-    #             self.model, output_biomarker_map)
+        # Map does not contain biomarkers specfied by the dataset
+        output_biomarker_map = dict({'Some variable': 'Some biomarker'})
 
-    #     # Map does not contain biomarkers specfied by the dataset
-    #     output_biomarker_map = dict({'Some variable': 'Some biomarker'})
-
-    #     with self.assertRaisesRegex(ValueError, 'The provided output'):
-    #         self.problem.set_mechanistic_model(
-    #             self.model, output_biomarker_map)
+        with self.assertRaisesRegex(ValueError, 'The provided output'):
+            self.problem.set_mechanistic_model(
+                self.model, output_biomarker_map)
 
 
 class TestInverseProblem(unittest.TestCase):
