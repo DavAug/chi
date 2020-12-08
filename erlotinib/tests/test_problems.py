@@ -672,25 +672,25 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         self.assertIsNone(self.problem._fixed_params_values)
         self.assertIsNone(self.problem._fixed_params_mask)
 
-    # def test_fix_parameters_bad_input(self):
-    #     name_value_dict = dict({
-    #         'myokit.lambda_1': 2,
-    #         'myokit.kappa': None})
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = dict({
+            'dose.drug_amount': 0,
+            'myokit.elimination_rate': None})
 
-    #     # No mechanistic model set
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker'])
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
 
-    #     with self.assertRaisesRegex(ValueError, 'The mechanistic'):
-    #         problem.fix_parameters(name_value_dict)
+        with self.assertRaisesRegex(ValueError, 'The mechanistic'):
+            problem.fix_parameters(name_value_dict)
 
-    #     # No error model set
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model)
+        # No error model set
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        problem.set_mechanistic_model(model)
 
-    #     with self.assertRaisesRegex(ValueError, 'The error model'):
-    #         problem.fix_parameters(name_value_dict)
+        with self.assertRaisesRegex(ValueError, 'The error model'):
+            problem.fix_parameters(name_value_dict)
 
     def test_get_dosing_regimens(self):
         regimens = self.problem.get_dosing_regimens()
