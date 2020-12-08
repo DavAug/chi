@@ -702,11 +702,6 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         self.assertEqual(ids[1], '1')
         self.assertEqual(ids[2], '2')
 
-        ids = [0, 0, 0, 1, 1, 1, 2, 2]
-        times = [0, 1, 2, 2, np.nan, 4, 1, 3]
-        plasma_conc = [np.nan, 0.3, 0.2, 0.5, 0.1, 0.2, 0.234, np.nan]
-        dose = [3.4, np.nan, np.nan, 0.5, 0.5, 0.5, np.nan, np.nan]
-
         # Check protocols
         events = regimens['0'].events()
         self.assertEqual(len(events), 1)
@@ -797,58 +792,59 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
     #     with self.assertRaisesRegex(ValueError, 'The log-prior'):
     #         problem.get_log_posteriors()
 
-    # def test_set_error_model(self):
-    #     # Map error model to output automatically
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
+    def test_set_error_model(self):
+        # Map error model to output automatically
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
 
-    #     log_likelihoods = list(self.problem._log_likelihoods.values())
-    #     n_ids = 3
-    #     self.assertEqual(len(log_likelihoods), n_ids)
-    #     self.assertIsInstance(log_likelihoods[0], pints.GaussianLogLikelihood)
-    #     self.assertIsInstance(log_likelihoods[1], pints.GaussianLogLikelihood)
-    #     self.assertIsInstance(log_likelihoods[2], pints.GaussianLogLikelihood)
+        log_likelihoods = list(self.problem._log_likelihoods.values())
+        n_ids = 3
+        self.assertEqual(len(log_likelihoods), n_ids)
+        self.assertIsInstance(log_likelihoods[0], pints.GaussianLogLikelihood)
+        self.assertIsInstance(log_likelihoods[1], pints.GaussianLogLikelihood)
+        self.assertIsInstance(log_likelihoods[2], pints.GaussianLogLikelihood)
 
-    #     self.assertEqual(self.problem.n_parameters(), 6)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Noise param 1')
+        self.assertEqual(self.problem.n_parameters(), 6)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'dose.drug_amount')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'dose.absorption_rate')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'Noise param 1')
 
-    #     # Set error model-output mapping explicitly
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     output_biomarker_map = dict({
-    #         'myokit.tumour_volume': 'Biomarker 2',
-    #         'myokit.drug_concentration': 'Biomarker 1'})
-    #     problem.set_mechanistic_model(model, output_biomarker_map)
-    #     log_likelihoods = [
-    #         pints.GaussianLogLikelihood,
-    #         pints.GaussianLogLikelihood]
-    #     outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
-    #     problem.set_error_model(log_likelihoods, outputs)
+        # Set error model-output mapping explicitly
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker', 'Biomarker 2'])
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central', direct=False)
+        output_biomarker_map = dict({
+            'dose.drug_amount': 'Biomarker 2',
+            'central.drug_concentration': 'Biomarker'})
+        problem.set_mechanistic_model(model, output_biomarker_map)
+        log_likelihoods = [
+            pints.GaussianLogLikelihood,
+            pints.GaussianLogLikelihood]
+        outputs = ['dose.drug_amount', 'central.drug_concentration']
+        problem.set_error_model(log_likelihoods, outputs)
 
-    #     log_likelihoods = list(problem._log_likelihoods.values())
-    #     n_ids = 3
-    #     self.assertEqual(len(log_likelihoods), n_ids)
-    #     self.assertIsInstance(log_likelihoods[0], pints.PooledLogPDF)
-    #     self.assertIsInstance(log_likelihoods[1], pints.PooledLogPDF)
-    #     self.assertIsInstance(log_likelihoods[2], pints.PooledLogPDF)
+        log_likelihoods = list(problem._log_likelihoods.values())
+        n_ids = 3
+        self.assertEqual(len(log_likelihoods), n_ids)
+        self.assertIsInstance(log_likelihoods[0], pints.PooledLogPDF)
+        self.assertIsInstance(log_likelihoods[1], pints.PooledLogPDF)
+        self.assertIsInstance(log_likelihoods[2], pints.PooledLogPDF)
 
-    #     self.assertEqual(problem.n_parameters(), 7)
-    #     param_names = problem.get_parameter_names()
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Noise param 1')
-    #     self.assertEqual(param_names[6], 'Noise param 2')
+        self.assertEqual(problem.n_parameters(), 7)
+        param_names = problem.get_parameter_names()
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'dose.drug_amount')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'dose.absorption_rate')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'Noise param 1')
+        self.assertEqual(param_names[6], 'Noise param 2')
 
     # def test_set_error_model_bad_input(self):
     #     # No mechanistic model set
