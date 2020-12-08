@@ -846,55 +846,56 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         self.assertEqual(param_names[5], 'Noise param 1')
         self.assertEqual(param_names[6], 'Noise param 2')
 
-    # def test_set_error_model_bad_input(self):
-    #     # No mechanistic model set
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker'])
+    def test_set_error_model_bad_input(self):
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
 
-    #     with self.assertRaisesRegex(ValueError, 'Before setting'):
-    #         problem.set_error_model(self.error_models)
+        with self.assertRaisesRegex(ValueError, 'Before setting'):
+            problem.set_error_model(self.error_models)
 
-    #     # Log-likelihoods have the wrong type
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model)
+        # Log-likelihoods have the wrong type
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        problem.set_mechanistic_model(model)
 
-    #     likelihoods = [str, float, int]
-    #     with self.assertRaisesRegex(ValueError, 'The log-likelihoods are'):
-    #         problem.set_error_model(likelihoods)
+        likelihoods = [str, float, int]
+        with self.assertRaisesRegex(ValueError, 'The log-likelihoods are'):
+            problem.set_error_model(likelihoods)
 
-    #     # Number of likelihoods does not match the number of outputs
-    #     likelihoods = [pints.GaussianLogLikelihood, pints.AR1LogLikelihood]
-    #     with self.assertRaisesRegex(ValueError, 'The number of log-'):
-    #         problem.set_error_model(likelihoods)
+        # Number of likelihoods does not match the number of outputs
+        likelihoods = [pints.GaussianLogLikelihood, pints.AR1LogLikelihood]
+        with self.assertRaisesRegex(ValueError, 'The number of log-'):
+            problem.set_error_model(likelihoods)
 
-    #     # The specified outputs do not match the model outputs
-    #     likelihoods = [pints.GaussianLogLikelihood]
-    #     outputs = ['wrong', 'outputs']
-    #     with self.assertRaisesRegex(ValueError, 'The specified outputs'):
-    #         problem.set_error_model(likelihoods, outputs)
+        # The specified outputs do not match the model outputs
+        likelihoods = [pints.GaussianLogLikelihood]
+        outputs = ['wrong', 'outputs']
+        with self.assertRaisesRegex(ValueError, 'The specified outputs'):
+            problem.set_error_model(likelihoods, outputs)
 
-    #     # The likelihoods need arguments for instantiation
-    #     likelihoods = [pints.GaussianKnownSigmaLogLikelihood]
-    #     with self.assertRaisesRegex(ValueError, 'Pints.ProblemLoglikelihoods'):
-    #         problem.set_error_model(likelihoods)
+        # The likelihoods need arguments for instantiation
+        likelihoods = [pints.GaussianKnownSigmaLogLikelihood]
+        with self.assertRaisesRegex(ValueError, 'Pints.ProblemLoglikelihoods'):
+            problem.set_error_model(likelihoods)
 
-    #     # Non-identical error models
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     output_biomarker_map = dict({
-    #         'myokit.tumour_volume': 'Biomarker 2',
-    #         'myokit.drug_concentration': 'Biomarker 1'})
-    #     problem.set_mechanistic_model(model, output_biomarker_map)
-    #     log_likelihoods = [
-    #         pints.GaussianLogLikelihood,
-    #         pints.MultiplicativeGaussianLogLikelihood]
-    #     outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
+        # Non-identical error models
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker', 'Biomarker 2'])
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central', direct=False)
+        output_biomarker_map = dict({
+            'central.drug_concentration': 'Biomarker 2',
+            'dose.drug_amount': 'Biomarker'})
+        problem.set_mechanistic_model(model, output_biomarker_map)
+        log_likelihoods = [
+            pints.GaussianLogLikelihood,
+            pints.MultiplicativeGaussianLogLikelihood]
+        outputs = ['central.drug_concentration', 'dose.drug_amount']
 
-    #     with self.assertRaisesRegex(ValueError, 'Only structurally identical'):
-    #         problem.set_error_model(log_likelihoods, outputs)
+        with self.assertRaisesRegex(ValueError, 'Only structurally identical'):
+            problem.set_error_model(log_likelihoods, outputs)
 
     # def test_set_log_prior(self):
     #     # Map priors to parameters automatically
