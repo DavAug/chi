@@ -9,8 +9,6 @@
 # which is distributed under the BSD 3-clause license.
 #
 
-import warnings
-
 import myokit
 import numpy as np
 import pandas as pd
@@ -79,18 +77,15 @@ class ProblemModellingController(object):
             id_key, time_key, dose_key]
         self._biom_keys = biom_keys
         self._data = data[keys]
-        self._ids = self._data[self._id_key].unique()
 
-        # TODO: Check input data
-        # 1. ids can be converted to strings
-        # 2. time are numerics or NaN
-        # 3. biomarker are numerics or NaN
-        # 4. dose are numerics or NaN
+        # Make sure data is formatted correctly
+        self._clean_data()
+        self._ids = self._data[self._id_key].unique()
 
         # Set defaults
         self._mechanistic_model = None
         self._apply_dose = False
-        self._error_model = None
+        self._log_likelihoods = None
         self._population_model = None
         self._log_prior = None
         self._n_parameters = None
@@ -98,60 +93,126 @@ class ProblemModellingController(object):
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
-    def _create_error_model(self, log_likelihoods):
+    def _clean_data(self):
+        """
+        Makes sure that the data is formated properly.
+
+        1. ids can be converted to strings
+        2. time are numerics or NaN
+        3. biomarker are numerics or NaN
+        4. dose are numerics or NaN
+        """
+        # Create container for data
+        columns = [self._id_key, self._time_key] + self._biom_keys
+        if self._dose_key is not None:
+            columns += [self._dose_key]
+        data = pd.DataFrame(columns=columns)
+
+        # Convert IDs to strings
+        data[self._id_key] = self._data[self._id_key].astype(
+            "string")
+
+        # Convert times to numerics
+        data[self._time_key] = pd.to_numeric(self._data[self._time_key])
+
+        # Convert biomarkers to numerics
+        for biom_key in self._biom_keys:
+            data[biom_key] = pd.to_numeric(self._data[biom_key])
+
+        if self._dose_key is not None:
+            data[self._dose_key] = pd.to_numeric(
+                self._data[self._dose_key])
+
+        self._data = data
+
+    def _create_log_likelihoods(self, error_models):
         """
         Returns a dict of log-likelihoods, one for each individual in the
         dataset. The keys are the individual IDs and the values are the
         log-lieklihoods.
         """
-        # Raise error if the model has more than one output.
-        # How we compose likelihoods with possibly different error models for
-        # different outputs is not yet implemented.
-        if len(log_likelihoods) > 1:
-            raise NotImplementedError(
-                'Fitting multiple outputs has not been implemented yet.')
-
-        # This only works for single output problem!
-        biom_key = self._biom_keys[0]
-        log_likelihood = log_likelihoods[0]
-
         # Create a likelihood for each individual
-        error_model = dict()
+        log_likelihoods = dict()
         for individual in self._ids:
-            # Get data
-            # TODO: what happens if data includes nans? Should we exclude those
-            # rows?
-
-            #### NEW
             if self._apply_dose:
                 self._set_dosing_regimen(individual)
 
-            problem = self._create_inverse_problem(individual)
-            #####
+            log_likelihoods[individual] = self._create_inverse_problem(
+                individual, error_models)
 
-            mask = self._data[self._id_key] == individual
-            times = self._data[self._time_key][mask].to_numpy()
-            biomarker = self._data[biom_key][mask].to_numpy()
+        return log_likelihoods
+
+    def _create_inverse_problem(self, label, error_models):
+        """
+        Ties the observations to the structural model, creates an
+        erlotinib.InverseProblem, and returns the corresponding log-likelihood.
+        """
+        # Get ouputs of the model
+        outputs = self._mechanistic_model.outputs()
+
+        # Get individuals data
+        mask = self._data[self._id_key] == label
+        data = self._data[mask][[self._time_key] + self._biom_keys]
+
+        log_likelihoods = []
+        for output_id, error_model in enumerate(error_models):
+            # Filter times and observations for non-NaN entries
+            biom_key = self._biom_keys[output_id]
+            mask = data[biom_key].notnull()
+            biomarker_data = data[[self._time_key, biom_key]][mask]
+            mask = biomarker_data[self._time_key].notnull()
+            biomarker_data = biomarker_data[mask]
+
+            times = biomarker_data[self._time_key].to_numpy()
+            biomarker = biomarker_data[biom_key].to_numpy()
+
+            # Set model output to relevant output
+            self._mechanistic_model.set_outputs([outputs[output_id]])
 
             # Create inverse problem
             problem = InverseProblem(self._mechanistic_model, times, biomarker)
             try:
-                error_model[str(individual)] = log_likelihood(problem)
+                log_likelihoods.append(error_model(problem))
             except TypeError:
                 raise ValueError(
-                    'Only error models for which all parameters can be '
-                    'inferred are compatible.')
+                    'Pints.ProblemLoglikelihoods with other arguments than the'
+                    ' problem are not supported.')
 
-        return error_model
+        # Reset model outputs to all biomarker-mapped outputs
+        self._mechanistic_model.set_outputs(outputs)
+
+        # If only one model output, return log-likelihood
+        if len(log_likelihoods) == 1:
+            return log_likelihoods[0]
+
+        # Pool structural model parameters across output-likelihoods
+        # TODO: Implement LogLikelihood that allows different error models for
+        # each output.
+        n_struc_params = self._mechanistic_model.n_parameters()
+        n_error_params = log_likelihoods[0].n_parameters() - n_struc_params
+        mask = [True] * n_struc_params + [False] * n_error_params
+        try:
+            log_likelihood = pints.PooledLogPDF(log_likelihoods, mask)
+        except ValueError:
+            raise ValueError(
+                'Only structurally identical error models across outputs are '
+                'supported.')
+
+        return log_likelihood
 
     def _set_dosing_regimen(self, label):
         """
-        Sets the dose of the dosing regimen of an individual model according
-        to the provided dataset.
+        Sets the dosing regimen of an individual model according to the
+        provided dataset.
+
+        For each dose entry in the dataframe a (bolus) dose event is added
+        to the myokit.Protocol.
         """
         # Filter times and dose events for non-NaN entries
-        mask = self._data[self._dose_key].notnull()
+        mask = self._data[self._id_key] == label
         data = self._data[[self._time_key, self._dose_key]][mask]
+        mask = data[self._dose_key].notnull()
+        data = data[mask]
         mask = data[self._time_key].notnull()
         data = data[mask]
 
@@ -185,7 +246,7 @@ class ProblemModellingController(object):
             raise ValueError(
                 'The mechanistic model has not been set.')
 
-        if self._error_model is None:
+        if self._log_likelihoods is None:
             raise ValueError(
                 'The error model has not been set.')
 
@@ -235,10 +296,10 @@ class ProblemModellingController(object):
             raise ValueError(
                 'The mechanistic model has not been set.')
 
-        if self._error_model is None:
+        if self._log_likelihoods is None:
             raise ValueError(
                 'The error model has not been set.')
-        log_likelihoods = self._error_model
+        log_likelihoods = self._log_likelihoods
 
         if self._log_prior is None:
             raise ValueError(
@@ -336,7 +397,7 @@ class ProblemModellingController(object):
         """
         # if exclude_pop_model:
         #     # Get number of mechanistic model and error model parameters
-        #     n_parameters = self._error_model[0].n_parameters()
+        #     n_parameters = self._log_likelihoods[0].n_parameters()
 
         #     # If no parameters have been fixed, return
         #     if self._fixed_params_mask is None:
@@ -357,7 +418,7 @@ class ProblemModellingController(object):
 
         return self._n_parameters - n_fixed_params
 
-    def set_error_model(self, log_likelihoods, outputs=None):
+    def set_error_model(self, error_models, outputs=None):
         """
         Sets the error model for each observed biomarker-model output pair.
 
@@ -373,7 +434,7 @@ class ProblemModellingController(object):
         Parameters
         ----------
 
-        log_likelihoods
+        error_models
             A list of :class:`pints.ProblemLikelihood` subclasses which
             specify the error model for each measured biomarker-model output
             pair.
@@ -387,13 +448,13 @@ class ProblemModellingController(object):
                 'Before setting an error model for the mechanistic model '
                 'outputs, a mechanistic model has to be set.')
 
-        for log_likelihood in log_likelihoods:
-            if not issubclass(log_likelihood, pints.ProblemLogLikelihood):
+        for error_model in error_models:
+            if not issubclass(error_model, pints.ProblemLogLikelihood):
                 raise ValueError(
                     'The log-likelihoods are not subclasses of '
                     'pints.ProblemLogLikelihood.')
 
-        if len(log_likelihoods) != self._mechanistic_model.n_outputs():
+        if len(error_models) != self._mechanistic_model.n_outputs():
             raise ValueError(
                 'The number of log-likelihoods does not match the number of '
                 'model outputs.')
@@ -408,16 +469,16 @@ class ProblemModellingController(object):
             ordered = []
             for output in model_outputs:
                 index = outputs.index(output)
-                ordered.append(log_likelihoods[index])
+                ordered.append(error_models[index])
 
-            log_likelihoods = ordered
+            error_models = ordered
 
         # Create one log-likelihood for each individual
         # (likelihoods are identical except for the data)
-        self._error_model = self._create_error_model(log_likelihoods)
+        self._log_likelihoods = self._create_log_likelihoods(error_models)
 
         # Update number of parameters and names for each likelihood
-        log_likelihood = next(iter(self._error_model.values()))
+        log_likelihood = next(iter(self._log_likelihoods.values()))
         self._n_parameters = log_likelihood.n_parameters()
         n_noise_parameters = self._n_parameters \
             - self._mechanistic_model.n_parameters()
@@ -465,7 +526,7 @@ class ProblemModellingController(object):
                 'Before setting log-priors for the model parameters, a '
                 'mechanistic model has to be set.')
 
-        if self._error_model is None:
+        if self._log_likelihoods is None:
             raise ValueError(
                 'Before setting log-priors for the model parameters, an '
                 'error model has to be set.')
@@ -557,8 +618,8 @@ class ProblemModellingController(object):
 
             if sorted(biomarkers) != sorted(self._biom_keys):
                 raise ValueError(
-                    'The provided output-biomarker map does not map model '
-                    'outputs to all biomarkers in the dataset.')
+                    'The provided output-biomarker map does not assign '
+                    'a model output to each biomarker in the dataset.')
 
             # Set new model outputs
             model.set_outputs(outputs)
@@ -588,7 +649,7 @@ class ProblemModellingController(object):
             self._apply_dose = True
 
         # Reset other settings that depend on the mechanistic model
-        self._error_model = None
+        self._log_likelihoods = None
         self._population_model = None
         self._log_prior = None
         self._n_parameters = None
@@ -636,7 +697,7 @@ class ProblemModellingController(object):
                 'Before setting a population model for the model parameters, '
                 'a mechanistic model has to be set.')
 
-        if self._error_model is None:
+        if self._log_likelihoods is None:
             raise ValueError(
                 'Before setting a population model for the model parameters, '
                 'an error model has to be set.')
@@ -657,8 +718,7 @@ class InverseProblem(object):
     Parameters
     ----------
     model
-        An instance of a :class:`PharmacokineticModel`,
-        :class:`PharmacodynamicModel`, or :class:`PKPDModel`.
+        An instance of a :class:`Model`.
     times
         A sequence of points in time. Must be non-negative and increasing.
     values

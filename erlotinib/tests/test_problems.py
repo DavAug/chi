@@ -39,7 +39,7 @@ class TestProblemModellingController(unittest.TestCase):
         # Create test model
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.PharmacodynamicModel(path)
-        cls.log_likelihoods = [pints.GaussianLogLikelihood]
+        cls.error_models = [pints.GaussianLogLikelihood]
         cls.log_priors = [
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
@@ -116,7 +116,7 @@ class TestProblemModellingController(unittest.TestCase):
     def test_fix_parameters(self):
         # Fix model parameters
         self.problem.set_mechanistic_model(self.model)
-        self.problem.set_error_model(self.log_likelihoods)
+        self.problem.set_error_model(self.error_models)
         name_value_dict = dict({
             'myokit.drug_concentration': 0,
             'myokit.kappa': 1})
@@ -199,7 +199,7 @@ class TestProblemModellingController(unittest.TestCase):
     def test_get_log_posteriors(self):
         # Create posterior with no fixed parameters
         self.problem.set_mechanistic_model(self.model)
-        self.problem.set_error_model(self.log_likelihoods)
+        self.problem.set_error_model(self.error_models)
         self.problem.set_log_prior(self.log_priors)
         posteriors = self.problem.get_log_posteriors()
 
@@ -244,7 +244,7 @@ class TestProblemModellingController(unittest.TestCase):
             problem.get_log_posteriors()
 
         # No log-prior set
-        problem.set_error_model(self.log_likelihoods)
+        problem.set_error_model(self.error_models)
 
         with self.assertRaisesRegex(ValueError, 'The log-prior'):
             problem.get_log_posteriors()
@@ -252,14 +252,14 @@ class TestProblemModellingController(unittest.TestCase):
     def test_set_error_model(self):
         # Map error model to output automatically
         self.problem.set_mechanistic_model(self.model)
-        self.problem.set_error_model(self.log_likelihoods)
+        self.problem.set_error_model(self.error_models)
 
-        error_models = list(self.problem._error_model.values())
+        log_likelihoods = list(self.problem._log_likelihoods.values())
         n_ids = 3
-        self.assertEqual(len(error_models), n_ids)
-        self.assertIsInstance(error_models[0], pints.GaussianLogLikelihood)
-        self.assertIsInstance(error_models[1], pints.GaussianLogLikelihood)
-        self.assertIsInstance(error_models[2], pints.GaussianLogLikelihood)
+        self.assertEqual(len(log_likelihoods), n_ids)
+        self.assertIsInstance(log_likelihoods[0], pints.GaussianLogLikelihood)
+        self.assertIsInstance(log_likelihoods[1], pints.GaussianLogLikelihood)
+        self.assertIsInstance(log_likelihoods[2], pints.GaussianLogLikelihood)
 
         self.assertEqual(self.problem.n_parameters(), 6)
         param_names = self.problem.get_parameter_names()
@@ -281,12 +281,26 @@ class TestProblemModellingController(unittest.TestCase):
         problem.set_mechanistic_model(model, output_biomarker_map)
         log_likelihoods = [
             pints.GaussianLogLikelihood,
-            pints.MultiplicativeGaussianLogLikelihood]
+            pints.GaussianLogLikelihood]
         outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
+        problem.set_error_model(log_likelihoods, outputs)
 
-        # TODO: To be implemented in complementary PR
-        with self.assertRaisesRegex(NotImplementedError, 'Fitting'):
-            problem.set_error_model(log_likelihoods, outputs)
+        log_likelihoods = list(problem._log_likelihoods.values())
+        n_ids = 3
+        self.assertEqual(len(log_likelihoods), n_ids)
+        self.assertIsInstance(log_likelihoods[0], pints.PooledLogPDF)
+        self.assertIsInstance(log_likelihoods[1], pints.PooledLogPDF)
+        self.assertIsInstance(log_likelihoods[2], pints.PooledLogPDF)
+
+        self.assertEqual(problem.n_parameters(), 7)
+        param_names = problem.get_parameter_names()
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Noise param 1')
+        self.assertEqual(param_names[6], 'Noise param 2')
 
     def test_set_error_model_bad_input(self):
         # No mechanistic model set
@@ -294,7 +308,7 @@ class TestProblemModellingController(unittest.TestCase):
             self.data, biom_keys=['Biomarker'])
 
         with self.assertRaisesRegex(ValueError, 'Before setting'):
-            problem.set_error_model(self.log_likelihoods)
+            problem.set_error_model(self.error_models)
 
         # Log-likelihoods have the wrong type
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
@@ -318,13 +332,30 @@ class TestProblemModellingController(unittest.TestCase):
 
         # The likelihoods need arguments for instantiation
         likelihoods = [pints.GaussianKnownSigmaLogLikelihood]
-        with self.assertRaisesRegex(ValueError, 'Only error models'):
+        with self.assertRaisesRegex(ValueError, 'Pints.ProblemLoglikelihoods'):
             problem.set_error_model(likelihoods)
+
+        # Non-identical error models
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        output_biomarker_map = dict({
+            'myokit.tumour_volume': 'Biomarker 2',
+            'myokit.drug_concentration': 'Biomarker 1'})
+        problem.set_mechanistic_model(model, output_biomarker_map)
+        log_likelihoods = [
+            pints.GaussianLogLikelihood,
+            pints.MultiplicativeGaussianLogLikelihood]
+        outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
+
+        with self.assertRaisesRegex(ValueError, 'Only structurally identical'):
+            problem.set_error_model(log_likelihoods, outputs)
 
     def test_set_log_prior(self):
         # Map priors to parameters automatically
         self.problem.set_mechanistic_model(self.model)
-        self.problem.set_error_model(self.log_likelihoods)
+        self.problem.set_error_model(self.error_models)
         priors = self.log_priors
         self.problem.set_log_prior(priors)
 
@@ -359,7 +390,7 @@ class TestProblemModellingController(unittest.TestCase):
             problem.set_log_prior(self.log_priors)
 
         # Wrong log-prior type
-        problem.set_error_model(self.log_likelihoods)
+        problem.set_error_model(self.error_models)
         priors = ['Wrong', 'type']
         with self.assertRaisesRegex(ValueError, 'All marginal log-priors'):
             problem.set_log_prior(priors)
