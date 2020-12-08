@@ -398,16 +398,6 @@ class PharmacokineticModel(Model):
         """
         return self._administration
 
-    def n_outputs(self):
-        """
-        Returns the number of output dimensions.
-
-        By default this is the conentration of the drug in the central
-        compartment, i.e. ``1``. If the drug concentration could not be
-        identified this defaults to the number of states in model.
-        """
-        return self._n_outputs
-
     def set_administration(
             self, compartment, amount_var='drug_amount', direct=True):
         r"""
