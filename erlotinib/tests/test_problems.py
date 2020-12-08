@@ -739,58 +739,58 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         events = regimens['2'].events()
         self.assertEqual(len(events), 0)
 
-    # def test_get_log_posteriors(self):
-    #     # Create posterior with no fixed parameters
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     self.problem.set_log_prior(self.log_priors)
-    #     posteriors = self.problem.get_log_posteriors()
+    def test_get_log_posteriors(self):
+        # Create posterior with no fixed parameters
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
+        self.problem.set_log_prior(self.log_priors)
+        posteriors = self.problem.get_log_posteriors()
 
-    #     self.assertEqual(len(posteriors), 3)
-    #     self.assertEqual(posteriors[0].n_parameters(), 6)
-    #     self.assertEqual(posteriors[0].get_id(), '0')
-    #     self.assertEqual(posteriors[1].n_parameters(), 6)
-    #     self.assertEqual(posteriors[1].get_id(), '1')
-    #     self.assertEqual(posteriors[2].n_parameters(), 6)
-    #     self.assertEqual(posteriors[2].get_id(), '2')
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 6)
+        self.assertEqual(posteriors[0].get_id(), '0')
+        self.assertEqual(posteriors[1].n_parameters(), 6)
+        self.assertEqual(posteriors[1].get_id(), '1')
+        self.assertEqual(posteriors[2].n_parameters(), 6)
+        self.assertEqual(posteriors[2].get_id(), '2')
 
-    #     # Fixe some parameters
-    #     name_value_dict = dict({
-    #         'myokit.drug_concentration': 0,
-    #         'myokit.kappa': 1})
-    #     self.problem.fix_parameters(name_value_dict)
-    #     self.problem.set_log_prior(self.log_priors[:-2])
-    #     posteriors = self.problem.get_log_posteriors()
+        # Fix some parameters
+        name_value_dict = dict({
+            'central.drug_amount': 0,
+            'dose.absorption_rate': 1})
+        self.problem.fix_parameters(name_value_dict)
+        self.problem.set_log_prior(self.log_priors[:-2])
+        posteriors = self.problem.get_log_posteriors()
 
-    #     self.assertEqual(len(posteriors), 3)
-    #     self.assertEqual(posteriors[0].n_parameters(), 4)
-    #     self.assertEqual(posteriors[0].get_id(), '0')
-    #     self.assertEqual(posteriors[1].n_parameters(), 4)
-    #     self.assertEqual(posteriors[1].get_id(), '1')
-    #     self.assertEqual(posteriors[2].n_parameters(), 4)
-    #     self.assertEqual(posteriors[2].get_id(), '2')
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 4)
+        self.assertEqual(posteriors[0].get_id(), '0')
+        self.assertEqual(posteriors[1].n_parameters(), 4)
+        self.assertEqual(posteriors[1].get_id(), '1')
+        self.assertEqual(posteriors[2].n_parameters(), 4)
+        self.assertEqual(posteriors[2].get_id(), '2')
 
-    # def test_get_log_posteriors_bad_input(self):
-    #     # No mechanistic model set
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker'])
+    def test_get_log_posteriors_bad_input(self):
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
 
-    #     with self.assertRaisesRegex(ValueError, 'The mechanistic'):
-    #         problem.get_log_posteriors()
+        with self.assertRaisesRegex(ValueError, 'The mechanistic'):
+            problem.get_log_posteriors()
 
-    #     # No error model set
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model)
+        # No error model set
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        problem.set_mechanistic_model(model)
 
-    #     with self.assertRaisesRegex(ValueError, 'The error model'):
-    #         problem.get_log_posteriors()
+        with self.assertRaisesRegex(ValueError, 'The error model'):
+            problem.get_log_posteriors()
 
-    #     # No log-prior set
-    #     problem.set_error_model(self.error_models)
+        # No log-prior set
+        problem.set_error_model(self.error_models)
 
-    #     with self.assertRaisesRegex(ValueError, 'The log-prior'):
-    #         problem.get_log_posteriors()
+        with self.assertRaisesRegex(ValueError, 'The log-prior'):
+            problem.get_log_posteriors()
 
     def test_set_error_model(self):
         # Map error model to output automatically
