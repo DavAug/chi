@@ -671,9 +671,9 @@ class InverseProblem(object):
     def __init__(self, model, times, values):
 
         # Check model
-        if not isinstance(model, erlo.PharmacodynamicModel):
+        if not isinstance(model, erlo.Model):
             raise ValueError(
-                'Model has to be an instance of erlotinib.Pharmacodynamic.'
+                'Model has to be an instance of a erlotinib.Model.'
             )
         self._model = model
 
