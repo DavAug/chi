@@ -24,10 +24,12 @@ class ProblemModellingController(object):
 
     The class is instantiated with a PKPD dataset in form of a
     :class:`pandas.DataFrame`. This dataframe is expected to have an ID column,
-    a time column and possibly several biomarker columns. By default the keys
-    for the columns are assumed to be ``ID``, ``Time``, and (for just one
-    biomarker) ``Biomarker``. If the keys in the dataset deviate from the
-    defaults, they can be specified with the respective key arguments.
+    a time column, possibly several biomarker columns, and optionally a dose
+    column. By default the keys for the columns are assumed to be ``ID``,
+    ``Time``, and (for just one biomarker) ``Biomarker``. The dose key is by
+    default ``None``, indicating that no dose information is contained in the
+    dataset. If the keys in the dataset deviate from the defaults, they can be
+    specified with the respective key arguments.
 
     The ProblemModellingController simplifies the process of generating a
     :class:`LogPosterior` for parameters of a model that describes the PKPD
