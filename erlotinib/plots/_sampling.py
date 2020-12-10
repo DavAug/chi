@@ -31,8 +31,10 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
     Extends :class:`MultiFigure`.
     """
 
-    def __init__(self):
+    def __init__(self, updatemenu=True):
         super(MarginalPosteriorPlot, self).__init__()
+
+        self._updatemenu = updatemenu
 
     def _add_histogram_plots(self, fig_id, data, colors):
         """
@@ -86,6 +88,38 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
             tickvals=[],
             row=1,
             col=index+1)
+
+    def _add_updatemenu(self):
+        """
+        Adds a button to the figure that switches the parameter scale from
+        linear to logarithmic.
+        """
+        self._fig.update_layout(
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    direction="left",
+                    buttons=list([
+                        dict(
+                            args=[{"yaxis.type": "linear"}],
+                            label="Linear y-scale",
+                            method="relayout"
+                        ),
+                        dict(
+                            args=[{"yaxis.type": "log"}],
+                            label="Log y-scale",
+                            method="relayout"
+                        )
+                    ]),
+                    pad={"r": 0, "t": -10},
+                    showactive=True,
+                    x=0.0,
+                    xanchor="left",
+                    y=1.15,
+                    yanchor="top"
+                )
+            ]
+        )
 
     def _compute_diagnostics(self, data):
         """
@@ -172,6 +206,10 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         # Create a template figure (assigns it to self._fig)
         self._create_template_figure(
             rows=1, cols=n_ids, x_title='Normalised counts', spacing=0.01)
+
+        # Add yscale switch
+        if self._updatemenu:
+            self._add_updatemenu()
 
         # Create one figure for each parameter
         parameters = data[param_key].unique()
