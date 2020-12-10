@@ -9,6 +9,87 @@ import numpy as np
 import pints
 
 
+class HierarchicalLogLikelihood(pints.LogPDF):
+    """
+    A hierarchical log-likelihood class which can be used for population-level
+    inference.
+
+    A hierarchical log-likelihood takes a list of :class:`pints.LogPDF`
+    instances, and a list of :class:`erlotinib.PopulationModel` instances. Each
+    :class:`pints.LogPDF` in the list is expected to model an independent
+    dataset, and must be defined on the same parameter space. For parameter of
+    the :class:`pints.LogPDF` instances, a :class:`erlotinib.PopulationModel`
+    has to be provided which models the distribution of the respective
+    parameter across individuals in the population.
+
+    Parameters
+    ----------
+
+    log_likelihoods
+        A list of :class:`pints.LogPDF` instances defined on the same
+        parameter space.
+    population_models
+        A list of :class:`erlotinib.PopulationModel` instances with one
+        population model for each parameter of the log-likelihoods.
+
+    Extends :class:`pints.LogPDF`.
+    """
+
+    def __init__(self, log_likelihoods, population_models):
+        super(HierarchicalLogLikelihood, self).__init__()
+
+        for log_likelihood in log_likelihoods:
+            if not isinstance(log_likelihood, pints.LogPDF):
+                raise ValueError(
+                    'The log-likelihoods have to be instances of pints.LogPDF.'
+                )
+        self._log_likelihoods = log_likelihoods
+
+        n_parameters = log_likelihoods[0].n_parameters()
+        for log_likelihood in log_likelihoods:
+            if log_likelihood.n_parameters() != n_parameters:
+                raise ValueError(
+                    'All log-likelihoods have to be defined on the same '
+                    'parameter space.')
+
+        if len(population_models) != n_parameters:
+            raise ValueError(
+                'One population model for each log-likelihood parameter has to'
+                ' be provided.')
+
+        for pop_model in population_models:
+            if not isinstance(pop_model, erlo.PopulationModel):
+                raise ValueError(
+                    'The population models have to be instances of '
+                    'erlotinib.PopulationModel')
+        self._population_models = population_models
+
+        # Save number of individuals and number of individual parameters
+        self._n_ids = len(self._log_likelihoods)
+        self._n_ind_params = n_parameters
+
+        # Save total number of parameters
+        n_parameters = 0
+        for pop_model in self._population_models:
+            n_parameters += pop_model.n_population_parameters()
+
+        n_parameters += self._n_ids * self._n_ind_params
+        self._n_parameters = n_parameters
+
+        # Construct a mask for the indiviudal parameters
+        # Parameters will be order as
+        # [[psi_i0], [theta _0k], [psi_i1], [theta _1k], ...]
+        # where [psi_ij] is the jth parameter in the ith likelihood, and
+        # theta_jk is the corresponding kth parameter of the population model.
+        #TODO:
+
+    def __call__(self, parameters):
+        #TODO:
+        # 1. evaluate population model first (cheap), and raise error return if inf similar to posterior
+        # 1.1 Get relevant parameters from limits in
+
+
+
 class LogPosterior(pints.LogPosterior):
     """
     A log-posterior class which can be used with the
