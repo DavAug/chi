@@ -9,6 +9,7 @@ import unittest
 
 import numpy as np
 import pints
+import pints.toy
 
 import erlotinib as erlo
 
@@ -37,6 +38,40 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             erlo.PooledModel(n_ids=cls.n_ids)] * cls.n_individual_params
         cls.hierarchical_model = erlo.HierarchicalLogLikelihood(
             cls.log_likelihoods, cls.population_models)
+
+    def test_bad_instantiation(self):
+        # Log-likelihoods are not pints.LogPDF
+        log_likelihoods = ['bad', 'type']
+        with self.assertRaisesRegex(ValueError, 'The log-likelihoods have'):
+            erlo.HierarchicalLogLikelihood(
+                log_likelihoods, self.population_models)
+
+        # Log-likelihoods are defined on different parameter spaces
+        log_likelihoods = [pints.toy.AnnulusLogPDF(), pints.toy.ConeLogPDF(10)]
+        with self.assertRaisesRegex(ValueError, 'All log-likelihoods have'):
+            erlo.HierarchicalLogLikelihood(
+                log_likelihoods, self.population_models)
+
+        # Population models are not erlotinib.PopulationModel
+        population_models = ['bad', 'type']
+        with self.assertRaisesRegex(ValueError, 'The population models have'):
+            erlo.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models)
+
+        # The population models do not model as many individuals as likelihoods
+        population_models = [
+            erlo.PooledModel(n_ids=2), erlo.PooledModel(n_ids=2)]
+        with self.assertRaisesRegex(ValueError, "Population models' n_ids"):
+            erlo.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models)
+
+        # Not all parameters of the likelihoods are assigned to a pop model
+        population_models = [
+            erlo.PooledModel(n_ids=self.n_ids),
+            erlo.PooledModel(n_ids=self.n_ids)]
+        with self.assertRaisesRegex(ValueError, 'Each likelihood parameter'):
+            erlo.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models)
 
     def test_call(self):
         # Create reference model

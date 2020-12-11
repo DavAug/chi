@@ -63,7 +63,7 @@ class HierarchicalLogLikelihood(pints.LogPDF):
         for pop_model in population_models:
             if pop_model.n_ids() != n_ids:
                 raise ValueError(
-                    'Sum of population models n_ids has to coincide with the '
+                    "Population models' n_ids have to coincide with the "
                     'number of log-likelihoods.')
 
         n_params_per_id = 0
