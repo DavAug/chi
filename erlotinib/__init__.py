@@ -19,8 +19,8 @@ from ._model_library_api import (  # noqa
     ModelLibrary
 )
 
-from ._models import (  # noqa
-    Model,
+from ._mechanistic_models import (  # noqa
+    MechanisticModel,
     PharmacodynamicModel,
     PharmacokineticModel
 )
