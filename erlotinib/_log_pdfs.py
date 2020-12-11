@@ -19,10 +19,11 @@ class HierarchicalLogLikelihood(pints.LogPDF):
     A hierarchical log-likelihood takes a list of :class:`pints.LogPDF`
     instances, and a list of :class:`erlotinib.PopulationModel` instances. Each
     :class:`pints.LogPDF` in the list is expected to model an independent
-    dataset, and must be defined on the same parameter space. For parameter of
-    the :class:`pints.LogPDF` instances, a :class:`erlotinib.PopulationModel`
-    has to be provided which models the distribution of the respective
-    parameter across individuals in the population.
+    dataset, and must be defined on the same parameter space. For each
+    parameter of the :class:`pints.LogPDF` instances, a
+    :class:`erlotinib.PopulationModel` has to be provided which models the
+    distribution of the respective parameter across individuals in the
+    population.
 
     Extends :class:`pints.LogPDF`.
 
@@ -43,8 +44,8 @@ class HierarchicalLogLikelihood(pints.LogPDF):
         for log_likelihood in log_likelihoods:
             if not isinstance(log_likelihood, pints.LogPDF):
                 raise ValueError(
-                    'The log-likelihoods have to be instances of pints.LogPDF.'
-                )
+                    'The log-likelihoods have to be instances of a '
+                    'pints.LogPDF.')
 
         n_parameters = log_likelihoods[0].n_parameters()
         for log_likelihood in log_likelihoods:
