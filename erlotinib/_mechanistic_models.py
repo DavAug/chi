@@ -199,7 +199,7 @@ class PharmacodynamicModel(MechanisticModel):
     Converts a pharmacodynamic model specified by an SBML file into a forward
     model that can be solved numerically.
 
-    Extends :class:`erlotinib.MechanisticModel`.
+    Extends :class:`MechanisticModel`.
 
     Parameters
     ----------
@@ -281,7 +281,7 @@ class PharmacokineticModel(MechanisticModel):
     Converts a pharmacokinetic model specified by an SBML file into a forward
     model that can be solved numerically.
 
-    Extends :class:`erlotinib.MechanisticModel`.
+    Extends :class:`MechanisticModel`.
 
     Parameters
     ----------
