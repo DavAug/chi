@@ -25,12 +25,11 @@ class PopulationModel(object):
         parameter per individual is modelled.
     """
 
-    def __init__(self, n_ids, n_parameters_per_id=None):
+    def __init__(self, n_ids):
         super(PopulationModel, self).__init__()
 
         # This is going to be used to define the number of parameters.
         self._n_ids = n_ids
-        self._n_parameters_per_id = n_parameters_per_id
 
     def __call__(self, parameters):
         """
@@ -67,12 +66,6 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def n_parameters_per_id(self):
-        """
-        Returns the number of parameters that are modelled for each individual.
-        """
-        self._n_parameters_per_id
-
     def n_top_parameters(self):
         """
         Returns the number of top parameters of the population.
@@ -85,9 +78,8 @@ class PopulationModel(object):
         r"""
         Returns `n` random samples from the underlying population distribution.
 
-        The returned value is a numpy array with shape :math:`(n, d)` where
-        :math:`n` is the requested number of samples, and :math:`d` is the
-        dimension of the population model :meth:`n_parameters_per_id`.
+        The returned value is a numpy array with shape :math:`(n, 1)` where
+        :math:`n` is the requested number of samples.
         """
         raise NotImplementedError
 
@@ -105,14 +97,14 @@ class PooledModel(PopulationModel):
     Extends :class:`erlotinib.PopulationModel`.
     """
 
-    def __init__(self, n_ids, n_parameters_per_id=None):
-        super(PooledModel, self).__init__(n_ids, n_parameters_per_id)
+    def __init__(self, n_ids):
+        super(PooledModel, self).__init__(n_ids)
 
         # Set number of input individual parameters
         self._n_bottom_parameters = 0
 
         # Set number of population parameters
-        self._n_top_parameters = n_parameters_per_id
+        self._n_top_parameters = 1
 
         # Set number of parameters
         self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
@@ -144,7 +136,7 @@ class PooledModel(PopulationModel):
         """
         Returns the number of parameters of the population model.
         """
-        self._n_parameters
+        return self._n_parameters
 
     def n_top_parameters(self):
         """
@@ -163,8 +155,7 @@ class PooledModel(PopulationModel):
         individual and are returned :math:`n` times.
 
         The returned value is a numpy array with shape :math:`(n, d)` where
-        :math:`n` is the requested number of samples, and :math:`d` is the
-        dimension of the population model :meth:`n_parameters_per_id`.
+        :math:`n` is the requested number of samples.
         """
         if len(top_parameters) != self._n_top_parameters:
             raise ValueError(
