@@ -14,12 +14,12 @@ import erlotinib as erlo
 
 class TestModel(unittest.TestCase):
     """
-    Tests `erlotinib.Model`.
+    Tests `erlotinib.MechanisticModel`.
     """
     @classmethod
     def setUpClass(cls):
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = erlo.Model(path)
+        cls.model = erlo.MechanisticModel(path)
 
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
