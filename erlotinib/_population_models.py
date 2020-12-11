@@ -50,7 +50,8 @@ class PopulationModel(object):
         """
         Returns the number of bottom-level parameters of the population model.
 
-        This is the total number of parameters that is modelled per individual.
+        This is the total number of input parameters from the individual
+        likelihoods.
         """
         raise NotImplementedError
 
@@ -135,7 +136,8 @@ class PooledModel(PopulationModel):
         """
         Returns the number of bottom-level parameters of the population model.
 
-        This is the total number of parameters that is modelled per individual.
+        This is the total number of input parameters from the individual
+        likelihoods.
         """
         return self._n_bottom_parameters
 
