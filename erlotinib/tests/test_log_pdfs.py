@@ -13,6 +13,49 @@ import pints
 import erlotinib as erlo
 
 
+class TestHierarchicalLogLikelihood(unittest.TestCase):
+    """
+    Tests the erlotinib.HierarchicalLogLikelihood class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Set up toy problem
+        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        cls.n_ids = len(data['ID'].unique())
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+
+        problem = erlo.ProblemModellingController(data)
+        problem.set_mechanistic_model(model)
+        problem.set_error_model([pints.GaussianLogLikelihood])
+
+        # Instantiate HierarchicalLogLikelihood from likelihoods in problem
+        cls.log_likelihoods = list(problem._log_likelihoods.values())
+        cls.n_individual_params = cls.log_likelihoods[0].n_parameters()
+        cls.population_models = [
+            erlo.PooledModel(n_ids=cls.n_ids)] * cls.n_individual_params
+        cls.hierarchical_model = erlo.HierarchicalLogLikelihood(
+            cls.log_likelihoods, cls.population_models)
+
+    def test_call(self):
+        # Create reference model
+        pooled_log_pdf = pints.PooledLogPDF(
+            self.log_likelihoods, pooled=[True]*6)
+
+        # Test case I
+        parameters = [1, 1, 1, 1, 1, 1]
+        score = pooled_log_pdf(parameters)
+
+        self.assertEqual(self.hierarchical_model(parameters), score)
+
+        # Test case II
+        parameters = [10, 1, 0.1, 1, 3, 1]
+        score = pooled_log_pdf(parameters)
+
+        self.assertEqual(self.hierarchical_model(parameters), score)
+
+
 class TestLogPosterior(unittest.TestCase):
     """
     Tests the erlotinib.LogPosterior class.
