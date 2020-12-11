@@ -9,8 +9,91 @@ import unittest
 
 import numpy as np
 import pints
+import pints.toy
 
 import erlotinib as erlo
+
+
+class TestHierarchicalLogLikelihood(unittest.TestCase):
+    """
+    Tests the erlotinib.HierarchicalLogLikelihood class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Set up toy problem
+        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        cls.n_ids = len(data['ID'].unique())
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+
+        problem = erlo.ProblemModellingController(data)
+        problem.set_mechanistic_model(model)
+        problem.set_error_model([pints.GaussianLogLikelihood])
+
+        # Instantiate HierarchicalLogLikelihood from likelihoods in problem
+        cls.log_likelihoods = list(problem._log_likelihoods.values())
+        cls.n_individual_params = cls.log_likelihoods[0].n_parameters()
+        cls.population_models = [
+            erlo.PooledModel(n_ids=cls.n_ids)] * cls.n_individual_params
+        cls.hierarchical_model = erlo.HierarchicalLogLikelihood(
+            cls.log_likelihoods, cls.population_models)
+
+    def test_bad_instantiation(self):
+        # Log-likelihoods are not pints.LogPDF
+        log_likelihoods = ['bad', 'type']
+        with self.assertRaisesRegex(ValueError, 'The log-likelihoods have'):
+            erlo.HierarchicalLogLikelihood(
+                log_likelihoods, self.population_models)
+
+        # Log-likelihoods are defined on different parameter spaces
+        log_likelihoods = [pints.toy.AnnulusLogPDF(), pints.toy.ConeLogPDF(10)]
+        with self.assertRaisesRegex(ValueError, 'All log-likelihoods have'):
+            erlo.HierarchicalLogLikelihood(
+                log_likelihoods, self.population_models)
+
+        # Population models are not erlotinib.PopulationModel
+        population_models = ['bad', 'type']
+        with self.assertRaisesRegex(ValueError, 'The population models have'):
+            erlo.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models)
+
+        # The population models do not model as many individuals as likelihoods
+        population_models = [
+            erlo.PooledModel(n_ids=2), erlo.PooledModel(n_ids=2)]
+        with self.assertRaisesRegex(ValueError, "Population models' n_ids"):
+            erlo.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models)
+
+        # Not all parameters of the likelihoods are assigned to a pop model
+        population_models = [
+            erlo.PooledModel(n_ids=self.n_ids),
+            erlo.PooledModel(n_ids=self.n_ids)]
+        with self.assertRaisesRegex(ValueError, 'Each likelihood parameter'):
+            erlo.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models)
+
+    def test_call(self):
+        # Create reference model
+        pooled_log_pdf = pints.PooledLogPDF(
+            self.log_likelihoods, pooled=[True]*6)
+
+        # Test case I
+        parameters = [1, 1, 1, 1, 1, 1]
+        score = pooled_log_pdf(parameters)
+
+        self.assertEqual(self.hierarchical_model(parameters), score)
+
+        # Test case II
+        parameters = [10, 1, 0.1, 1, 3, 1]
+        score = pooled_log_pdf(parameters)
+
+        self.assertEqual(self.hierarchical_model(parameters), score)
+
+    def test_n_parameters(self):
+        n_parameters = self.log_likelihoods[0].n_parameters()
+        self.assertEqual(
+            self.hierarchical_model.n_parameters(), n_parameters)
 
 
 class TestLogPosterior(unittest.TestCase):

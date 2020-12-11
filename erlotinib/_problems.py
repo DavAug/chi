@@ -17,6 +17,119 @@ import pints
 import erlotinib as erlo
 
 
+class InverseProblem(object):
+    """
+    Represents an inference problem where a model is fit to a
+    one-dimensional or multi-dimensional time series, such as measured in a
+    PKPD study.
+
+    Parameters
+    ----------
+    model
+        An instance of a :class:`MechanisticModel`.
+    times
+        A sequence of points in time. Must be non-negative and increasing.
+    values
+        A sequence of single- or multi-valued measurements. Must have shape
+        ``(n_times, n_outputs)``, where ``n_times`` is the number of points in
+        ``times`` and ``n_outputs`` is the number of outputs in the model. For
+        ``n_outputs = 1``, the data can also have shape ``(n_times, )``.
+    """
+
+    def __init__(self, model, times, values):
+
+        # Check model
+        if not isinstance(model, erlo.MechanisticModel):
+            raise ValueError(
+                'Model has to be an instance of a erlotinib.Model.'
+            )
+        self._model = model
+
+        # Check times, copy so that they can no longer be changed and set them
+        # to read-only
+        self._times = pints.vector(times)
+        if np.any(self._times < 0):
+            raise ValueError('Times cannot be negative.')
+        if np.any(self._times[:-1] > self._times[1:]):
+            raise ValueError('Times must be increasing.')
+
+        # Check values, copy so that they can no longer be changed
+        values = np.asarray(values)
+        if values.ndim == 1:
+            np.expand_dims(values, axis=1)
+        self._values = pints.matrix2d(values)
+
+        # Check dimensions
+        self._n_parameters = int(model.n_parameters())
+        self._n_outputs = int(model.n_outputs())
+        self._n_times = len(self._times)
+
+        # Check for correct shape
+        if self._values.shape != (self._n_times, self._n_outputs):
+            raise ValueError(
+                'Values array must have shape `(n_times, n_outputs)`.')
+
+    def evaluate(self, parameters):
+        """
+        Runs a simulation using the given parameters, returning the simulated
+        values as a NumPy array of shape ``(n_times, n_outputs)``.
+        """
+        output = self._model.simulate(parameters, self._times)
+
+        # The erlotinib.Model.simulate method returns the model output as
+        # (n_outputs, n_times). We therefore need to transponse the result.
+        return output.transpose()
+
+    def evaluateS1(self, parameters):
+        """
+        Runs a simulation using the given parameters, returning the simulated
+        values.
+        The returned data is a tuple of NumPy arrays ``(y, y')``, where ``y``
+        has shape ``(n_times, n_outputs)``, while ``y'`` has shape
+        ``(n_times, n_outputs, n_parameters)``.
+        *This method only works for problems whose model implements the
+        :class:`ForwardModelS1` interface.*
+        """
+        raise NotImplementedError
+
+    def n_outputs(self):
+        """
+        Returns the number of outputs for this problem.
+        """
+        return self._n_outputs
+
+    def n_parameters(self):
+        """
+        Returns the dimension (the number of parameters) of this problem.
+        """
+        return self._n_parameters
+
+    def n_times(self):
+        """
+        Returns the number of sampling points, i.e. the length of the vectors
+        returned by :meth:`times()` and :meth:`values()`.
+        """
+        return self._n_times
+
+    def times(self):
+        """
+        Returns this problem's times.
+        The returned value is a read-only NumPy array of shape
+        ``(n_times, n_outputs)``, where ``n_times`` is the number of time
+        points and ``n_outputs`` is the number of outputs.
+        """
+        return self._times
+
+    def values(self):
+        """
+        Returns this problem's values.
+        The returned value is a read-only NumPy array of shape
+        ``(n_times, n_outputs)``, where ``n_times`` is the number of time
+        points and ``n_outputs`` is the number of outputs.
+        """
+        return self._values
+
+
 class ProblemModellingController(object):
     """
     A controller class which simplifies the modelling process of a PKPD
@@ -597,9 +710,8 @@ class ProblemModellingController(object):
         """
         Sets the mechanistic model of the PKPD modelling problem.
 
-        A mechanistic model is either an instance of a
-        :class:`PharmacokineticModel`, a :class:`PharmacodynamicModel`, or a
-        :class:`PKPDModel`.
+        A mechanistic model is an instance of a
+        :class:`MechanisticModel`.
 
         The model outputs are mapped to the measured biomarkers in the dataset.
         By default the first output is mapped to the first biomarker, the
@@ -617,8 +729,8 @@ class ProblemModellingController(object):
 
         model
             A mechanistic model of the pharmacokinetics and/or the
-            pharmacodynamics in form of a :class:`PharmacokineticModel`, a
-            :class:`PharmacodynamicModel`, or a :class:`PKPDModel`.
+            pharmacodynamics in form of an instance of a
+            :class:`MechanisticModel`.
         output_biom_map
             A dictionary that maps the model outputs to the measured
             biomarkers. The keys of the dictionary identify the output names
@@ -725,116 +837,3 @@ class ProblemModellingController(object):
 
         parameter_names = self.get_parameter_names(exclude_pop_model=True)
     '''
-
-
-class InverseProblem(object):
-    """
-    Represents an inference problem where a model is fit to a
-    one-dimensional or multi-dimensional time series, such as measured in a
-    PKPD study.
-
-    Parameters
-    ----------
-    model
-        An instance of a :class:`Model`.
-    times
-        A sequence of points in time. Must be non-negative and increasing.
-    values
-        A sequence of single- or multi-valued measurements. Must have shape
-        ``(n_times, n_outputs)``, where ``n_times`` is the number of points in
-        ``times`` and ``n_outputs`` is the number of outputs in the model. For
-        ``n_outputs = 1``, the data can also have shape ``(n_times, )``.
-    """
-
-    def __init__(self, model, times, values):
-
-        # Check model
-        if not isinstance(model, erlo.Model):
-            raise ValueError(
-                'Model has to be an instance of a erlotinib.Model.'
-            )
-        self._model = model
-
-        # Check times, copy so that they can no longer be changed and set them
-        # to read-only
-        self._times = pints.vector(times)
-        if np.any(self._times < 0):
-            raise ValueError('Times cannot be negative.')
-        if np.any(self._times[:-1] > self._times[1:]):
-            raise ValueError('Times must be increasing.')
-
-        # Check values, copy so that they can no longer be changed
-        values = np.asarray(values)
-        if values.ndim == 1:
-            np.expand_dims(values, axis=1)
-        self._values = pints.matrix2d(values)
-
-        # Check dimensions
-        self._n_parameters = int(model.n_parameters())
-        self._n_outputs = int(model.n_outputs())
-        self._n_times = len(self._times)
-
-        # Check for correct shape
-        if self._values.shape != (self._n_times, self._n_outputs):
-            raise ValueError(
-                'Values array must have shape `(n_times, n_outputs)`.')
-
-    def evaluate(self, parameters):
-        """
-        Runs a simulation using the given parameters, returning the simulated
-        values as a NumPy array of shape ``(n_times, n_outputs)``.
-        """
-        output = self._model.simulate(parameters, self._times)
-
-        # The erlotinib.Model.simulate method returns the model output as
-        # (n_outputs, n_times). We therefore need to transponse the result.
-        return output.transpose()
-
-    def evaluateS1(self, parameters):
-        """
-        Runs a simulation using the given parameters, returning the simulated
-        values.
-        The returned data is a tuple of NumPy arrays ``(y, y')``, where ``y``
-        has shape ``(n_times, n_outputs)``, while ``y'`` has shape
-        ``(n_times, n_outputs, n_parameters)``.
-        *This method only works for problems whose model implements the
-        :class:`ForwardModelS1` interface.*
-        """
-        raise NotImplementedError
-
-    def n_outputs(self):
-        """
-        Returns the number of outputs for this problem.
-        """
-        return self._n_outputs
-
-    def n_parameters(self):
-        """
-        Returns the dimension (the number of parameters) of this problem.
-        """
-        return self._n_parameters
-
-    def n_times(self):
-        """
-        Returns the number of sampling points, i.e. the length of the vectors
-        returned by :meth:`times()` and :meth:`values()`.
-        """
-        return self._n_times
-
-    def times(self):
-        """
-        Returns this problem's times.
-        The returned value is a read-only NumPy array of shape
-        ``(n_times, n_outputs)``, where ``n_times`` is the number of time
-        points and ``n_outputs`` is the number of outputs.
-        """
-        return self._times
-
-    def values(self):
-        """
-        Returns this problem's values.
-        The returned value is a read-only NumPy array of shape
-        ``(n_times, n_outputs)``, where ``n_times`` is the number of time
-        points and ``n_outputs`` is the number of outputs.
-        """
-        return self._values

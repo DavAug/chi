@@ -10,24 +10,30 @@ from ._data_library_api import (  # noqa
 )
 
 from ._log_pdfs import (  # noqa
+    HierarchicalLogLikelihood,
     LogPosterior,
     ReducedLogPDF
+)
+
+from ._mechanistic_models import (  # noqa
+    MechanisticModel,
+    PharmacodynamicModel,
+    PharmacokineticModel
 )
 
 from ._model_library_api import (  # noqa
     ModelLibrary
 )
 
-from ._models import (  # noqa
-    Model,
-    PharmacodynamicModel,
-    PharmacokineticModel
-)
-
 from ._inference import (  # noqa
     InferenceController,
     OptimisationController,
     SamplingController
+)
+
+from ._population_models import (  # noqa
+    PooledModel,
+    PopulationModel
 )
 
 from ._problems import (  # noqa

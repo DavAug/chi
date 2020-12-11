@@ -12,9 +12,13 @@ PKPD modelling.
 
 Overview:
 
+- :class:`HierarchicalLogLikelihood`
 - :class:`LogPosterior`
 - :class:`ReducedLogPDF`
 
+
+.. autoclass:: HierarchicalLogLikelihood
+    :members:
 
 .. autoclass:: LogPosterior
     :members:

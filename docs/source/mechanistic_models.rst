@@ -1,12 +1,12 @@
 .. _erlotinib: https://github.com/DavAug/erlotinib
 
-******
-Models
-******
+******************
+Mechanistic Models
+******************
 
 .. currentmodule:: erlotinib
 
-Models in erlotinib_ convert SBML files into model
+Mechanistic models in erlotinib_ convert SBML files into model
 classes which can be used to simulate the pharmacokinetics or
 pharmacodynamics of erlotinib.
 
@@ -16,12 +16,12 @@ interface.
 
 Overview:
 
-- :class:`Model`
+- :class:`MechanisticModel`
 - :class:`PharmacodynamicModel`
 - :class:`PharmacokineticModel`
 
 
-.. autoclass:: Model
+.. autoclass:: MechanisticModel
     :members:
 
 .. autoclass:: PharmacodynamicModel
