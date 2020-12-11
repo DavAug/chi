@@ -10,7 +10,9 @@
 
 class PopulationModel(object):
     """
-    To be completed.
+    A base class for population models.
+
+
     """
 
     def __init__(self, n_ids, n_bottom_params=None):
@@ -32,10 +34,11 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def n_bottom_params(self):
+    def n_bottom_parameters(self):
         """
-        Returns number of bottom-level parameters per individual that are
-        modelled by the population model.
+        Returns the number of bottom-level parameters of the population model.
+
+        This is the total number of parameters that is modelled per individual.
         """
         return self._n_bottom_params
 
@@ -49,4 +52,18 @@ class PopulationModel(object):
         """
         Returns the number of parameters of the population model.
         """
-        return self._n_parameters
+        raise NotImplementedError
+
+    def n_top_parameters(self):
+        """
+        Returns the number of top parameters of the population.
+
+        This is the number of population parameters.
+        """
+        raise NotImplementedError
+
+    def sample(self, top_parameters, size=None):
+        """
+        Returns a sample of size ``size`` of the population model.
+        """
+        raise NotImplementedError
