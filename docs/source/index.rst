@@ -36,7 +36,7 @@ Contents
     data_library
     inference
     log_pdfs
+    mechanistic_models
     model_library
-    models
     plots
     problems

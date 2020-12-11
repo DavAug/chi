@@ -15,14 +15,14 @@ from ._log_pdfs import (  # noqa
     ReducedLogPDF
 )
 
-from ._model_library_api import (  # noqa
-    ModelLibrary
-)
-
 from ._mechanistic_models import (  # noqa
     MechanisticModel,
     PharmacodynamicModel,
     PharmacokineticModel
+)
+
+from ._model_library_api import (  # noqa
+    ModelLibrary
 )
 
 from ._inference import (  # noqa
