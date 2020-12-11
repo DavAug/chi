@@ -90,6 +90,11 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertEqual(self.hierarchical_model(parameters), score)
 
+    def test_n_parameters(self):
+        n_parameters = self.log_likelihoods[0].n_parameters()
+        self.assertEqual(
+            self.hierarchical_model.n_parameters(), n_parameters)
+
 
 class TestLogPosterior(unittest.TestCase):
     """
