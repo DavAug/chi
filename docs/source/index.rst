@@ -39,4 +39,5 @@ Contents
     mechanistic_models
     model_library
     plots
+    population_models
     problems
