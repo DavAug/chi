@@ -168,8 +168,8 @@ class PooledModel(PopulationModel):
         """
         if len(top_parameters) != self._n_top_parameters:
             raise ValueError(
-                'One parameter value for each top-level parameter has '
-                'to be provided.')
+                'The number of provided parameters does not match the expected'
+                ' number of top-level parameters.')
 
         # Expand dimension of top level parameters
         top_parameters = np.asarray(top_parameters)

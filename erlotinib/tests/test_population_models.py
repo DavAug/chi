@@ -64,6 +64,13 @@ class TestPooledModel(unittest.TestCase):
         self.assertEqual(sample[2, 0], parameters[0])
         self.assertEqual(sample[3, 0], parameters[0])
 
+    def test_sample_bad_input(self):
+        # Too many paramaters
+        parameters = [1, 1, 1, 1, 1]
+
+        with self.assertRaisesRegex(ValueError, 'The number of provided'):
+            self.pop_model.sample(parameters)
+
 
 class TestPopulationModel(unittest.TestCase):
     """
