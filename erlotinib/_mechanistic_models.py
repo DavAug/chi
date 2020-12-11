@@ -10,7 +10,7 @@ import myokit.formats.sbml as sbml
 import numpy as np
 
 
-class Model(object):
+class MechanisticModel(object):
     """
     A base class for models that are specified by sbml files.
 
@@ -22,7 +22,7 @@ class Model(object):
     """
 
     def __init__(self, sbml_file):
-        super(Model, self).__init__()
+        super(MechanisticModel, self).__init__()
 
         model = sbml.SBMLImporter().model(sbml_file)
 
@@ -194,12 +194,12 @@ class Model(object):
         return self._time_unit
 
 
-class PharmacodynamicModel(Model):
+class PharmacodynamicModel(MechanisticModel):
     """
     Converts a pharmacodynamic model specified by an SBML file into a forward
     model that can be solved numerically.
 
-    Extends :class:`erlotinib.Model`.
+    Extends :class:`erlotinib.MechanisticModel`.
 
     Parameters
     ----------
@@ -276,12 +276,12 @@ class PharmacodynamicModel(Model):
         self._pk_input = name
 
 
-class PharmacokineticModel(Model):
+class PharmacokineticModel(MechanisticModel):
     """
     Converts a pharmacokinetic model specified by an SBML file into a forward
     model that can be solved numerically.
 
-    Extends :class:`erlotinib.Model`.
+    Extends :class:`erlotinib.MechanisticModel`.
 
     Parameters
     ----------
