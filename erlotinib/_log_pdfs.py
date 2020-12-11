@@ -24,6 +24,8 @@ class HierarchicalLogLikelihood(pints.LogPDF):
     has to be provided which models the distribution of the respective
     parameter across individuals in the population.
 
+    Extends :class:`pints.LogPDF`.
+
     Parameters
     ----------
 
@@ -33,8 +35,6 @@ class HierarchicalLogLikelihood(pints.LogPDF):
     population_models
         A list of :class:`erlotinib.PopulationModel` instances with one
         population model for each parameter of the log-likelihoods.
-
-    Extends :class:`pints.LogPDF`.
     """
 
     def __init__(self, log_likelihoods, population_models):
