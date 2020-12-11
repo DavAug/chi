@@ -160,6 +160,12 @@ class HierarchicalLogLikelihood(pints.LogPDF):
 
         return score
 
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the hierarchical log-likelihood.
+        """
+        return self._n_parameters
+
 
 class LogPosterior(pints.LogPosterior):
     """
