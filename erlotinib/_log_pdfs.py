@@ -59,7 +59,7 @@ class HierarchicalLogLikelihood(pints.LogPDF):
                     'The population models have to be instances of '
                     'erlotinib.PopulationModel')
 
-        n_ids = len(self._log_likelihoods)
+        n_ids = len(log_likelihoods)
         for pop_model in population_models:
             if pop_model.n_ids() != n_ids:
                 raise ValueError(
@@ -113,7 +113,7 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             # Increment start index by total number of population model
             # parameters
             start_index += pop_model.n_parameters()
-        
+
         self._individual_params = indices
 
     def __call__(self, parameters):
@@ -148,9 +148,11 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             if end_index is None:
                 # This parameter is pooled. Leverage broadcasting
                 individual_params[:, param_id] = parameters[start_index]
-            else:
-                individual_params[:, param_id] = parameters[
-                    start_index:end_index]
+            # TODO: temporarily commented out, as long no other pop models
+            # exist.
+            # else:
+            #     individual_params[:, param_id] = parameters[
+            #         start_index:end_index]
 
         # Evaluate individual likelihoods
         for index, log_likelihood in enumerate(self._log_likelihoods):
