@@ -66,6 +66,13 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
+    def n_parameters_per_id(self):
+        """
+        Returns the number of parameters per likelihood that are modelled by
+        the population model.
+        """
+        return 1
+
     def n_top_parameters(self):
         """
         Returns the number of top parameters of the population.
