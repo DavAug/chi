@@ -16,13 +16,8 @@ class PopulationModel(object):
 
     Parameters
     ----------
-
     n_ids
         Number of individual bottom level models.
-    n_parameters_per_id
-        Number of parameters that are modelled per individual. By default
-        the value is set to ``None`` and it is assumed that only one
-        parameter per individual is modelled.
     """
 
     def __init__(self, n_ids):
@@ -94,7 +89,7 @@ class PopulationModel(object):
 
 class PooledModel(PopulationModel):
     """
-    A population model that pools the model parameters across indiviudals.
+    A population model that pools the model parameters across individuals.
 
     A pooled model assumes that the parameters across individuals do not vary.
     As a result, all individual parameters are set to the same value.
@@ -103,6 +98,11 @@ class PooledModel(PopulationModel):
     values. We chose this constant to be ``0``.
 
     Extends :class:`erlotinib.PopulationModel`.
+
+    Parameters
+    ----------
+    n_ids
+        Number of individual bottom level models.
     """
 
     def __init__(self, n_ids):
