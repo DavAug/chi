@@ -5,7 +5,7 @@
 # full license details.
 #
 
-#TODO: rename models to mechanistic models
+# TODO: rename models to mechanistic models
 
 import numpy as np
 
