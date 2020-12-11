@@ -736,7 +736,7 @@ class InverseProblem(object):
     Parameters
     ----------
     model
-        An instance of a :class:`Model`.
+        An instance of a :class:`erlotinib.MechanisticModel`.
     times
         A sequence of points in time. Must be non-negative and increasing.
     values
@@ -749,7 +749,7 @@ class InverseProblem(object):
     def __init__(self, model, times, values):
 
         # Check model
-        if not isinstance(model, erlo.Model):
+        if not isinstance(model, erlo.MechanisticModel):
             raise ValueError(
                 'Model has to be an instance of a erlotinib.Model.'
             )
