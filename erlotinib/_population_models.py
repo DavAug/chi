@@ -7,30 +7,43 @@
 
 #TODO: rename models to mechanistic models
 
+import numpy as np
+
 
 class PopulationModel(object):
     """
     A base class for population models.
 
+    Parameters
+    ----------
 
+    n_ids
+        Number of individual bottom level models.
+    n_parameters_per_id
+        Number of parameters that are modelled per individual. By default
+        the value is set to ``None`` and it is assumed that only one
+        parameter per individual is modelled.
     """
 
-    def __init__(self, n_ids, n_bottom_params=None):
+    def __init__(self, n_ids, n_parameters_per_id=None):
         super(PopulationModel, self).__init__()
 
         # This is going to be used to define the number of parameters.
         self._n_ids = n_ids
-        self._n_bottom_params = n_bottom_params
+        self._n_parameters_per_id = n_parameters_per_id
 
     def __call__(self, parameters):
         """
         Returns the log-likelihood score of the population model.
 
         The parameters are expected to be of length :meth:`n_parameters`. The
-        first :meth:`nids` parameters are treated as the 'observations' of the
-        individual model parameters, and the remaining
-        :meth:`n_population_parameters` specify the values of the population
+        first :meth:`n_bottom_parameters` parameters are treated as the
+        'observations' of the individual model parameters, and the remaining
+        :meth:`n_top_parameters` specify the values of the population
         model parameters.
+
+        If ``n_parameters_per_id > 1``, it is assumed that the parameter values
+        of one type of parameter across individuals are grouped together.
         """
         raise NotImplementedError
 
@@ -40,7 +53,7 @@ class PopulationModel(object):
 
         This is the total number of parameters that is modelled per individual.
         """
-        return self._n_bottom_params
+        raise NotImplementedError
 
     def n_ids(self):
         """
@@ -54,6 +67,12 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
+    def n_parameters_per_id(self):
+        """
+        Returns the number of parameters that are modelled for each individual.
+        """
+        self._n_parameters_per_id
+
     def n_top_parameters(self):
         """
         Returns the number of top parameters of the population.
@@ -62,8 +81,102 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def sample(self, top_parameters, size=None):
-        """
-        Returns a sample of size ``size`` of the population model.
+    def sample(self, top_parameters, n=None):
+        r"""
+        Returns `n` random samples from the underlying population distribution.
+
+        The returned value is a numpy array with shape :math:`(n, d)` where
+        :math:`n` is the requested number of samples, and :math:`d` is the
+        dimension of the population model :meth:`n_parameters_per_id`.
         """
         raise NotImplementedError
+
+
+class PooledModel(PopulationModel):
+    """
+    A population model that pools the model parameters across indiviudals.
+
+    A pooled model assumes that the parameters across individuals do not vary.
+    As a result, all individual parameters are set to the same value.
+
+    Calling the PooledModel returns a constant, irrespective of the parameter
+    values. We chose this constant to be ``0``.
+
+    Extends :class:`erlotinib.PopulationModel`.
+    """
+
+    def __init__(self, n_ids, n_parameters_per_id=None):
+        super(PooledModel, self).__init__(n_ids, n_parameters_per_id)
+
+        # Set number of input individual parameters
+        self._n_bottom_parameters = 0
+
+        # Set number of population parameters
+        self._n_top_parameters = n_parameters_per_id
+
+        # Set number of parameters
+        self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
+
+    def __call__(self, parameters):
+        """
+        Returns the log-likelihood score of the population model.
+
+        The log-likelihood score of a PooledModel is independent of the input
+        parameters. We choose to return a score of ``0``.
+
+        The parameters are expected to be of length :meth:`n_parameters`. The
+        first :meth:`nids` parameters are treated as the 'observations' of the
+        individual model parameters, and the remaining
+        :meth:`n_top_parameters` specify the values of the population
+        model parameters.
+        """
+        return 0
+
+    def n_bottom_parameters(self):
+        """
+        Returns the number of bottom-level parameters of the population model.
+
+        This is the total number of parameters that is modelled per individual.
+        """
+        return self._n_bottom_parameters
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the population model.
+        """
+        self._n_parameters
+
+    def n_top_parameters(self):
+        """
+        Returns the number of top parameters of the population.
+
+        This is the number of population parameters.
+        """
+        return self._n_top_parameters
+
+    def sample(self, top_parameters, n=None):
+        r"""
+        Returns :math:`n` random samples from the underlying population
+        distribution.
+
+        For a PooledModel the input top-level parameters are copied for each
+        individual and are returned :math:`n` times.
+
+        The returned value is a numpy array with shape :math:`(n, d)` where
+        :math:`n` is the requested number of samples, and :math:`d` is the
+        dimension of the population model :meth:`n_parameters_per_id`.
+        """
+        if len(top_parameters) != self._n_top_parameters:
+            raise ValueError(
+                'One parameter value for each top-level parameter has '
+                'to be provided.')
+
+        # Expand dimension of top level parameters
+        top_parameters = np.asarray(top_parameters)
+        samples = np.expand_dims(top_parameters, axis=0)
+
+        if n is None:
+            return samples
+
+        samples = np.broadcast_to(samples, shape=(n, self._n_top_parameters))
+        return samples
