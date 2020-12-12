@@ -508,12 +508,9 @@ class ProblemModellingController(object):
             full model are returned, or just the mechanistic and error model
             parameters prior to setting a population model.
         """
-        # TODO: Make exclude_pop_model work
         # If `True`, return the parameter names of an individual model
-        if exclude_pop_model:
-            # Only need to filter names if population model has been set
-            if self._population_models is not None:
-
+        if exclude_pop_model and (self._population_models is not None):
+            return self._individual_parameter_names
 
         if self._fixed_params_mask is None:
             return self._parameter_names
