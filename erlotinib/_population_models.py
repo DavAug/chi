@@ -5,8 +5,6 @@
 # full license details.
 #
 
-# TODO: rename models to mechanistic models
-
 import numpy as np
 
 
@@ -26,6 +24,11 @@ class PopulationModel(object):
         # This is going to be used to define the number of parameters.
         self._n_ids = n_ids
 
+        # Set defaults
+        self._ids = None
+        self._bottom_parameter_name = None
+        self._top_parameter_names = None
+
     def __call__(self, parameters):
         """
         Returns the log-likelihood score of the population model.
@@ -35,11 +38,29 @@ class PopulationModel(object):
         'observations' of the individual model parameters, and the remaining
         :meth:`n_top_parameters` specify the values of the population
         model parameters.
-
-        If ``n_parameters_per_id > 1``, it is assumed that the parameter values
-        of one type of parameter across individuals are grouped together.
         """
         raise NotImplementedError
+
+    def get_bottom_parameter_name(self):
+        """
+        Returns the name of the the modelled bottom parameter. If name was not
+        set, ``None`` is returned.
+        """
+        return self._bottom_parameter_name
+
+    def get_ids(self):
+        """
+        Returns the IDs of the modelled individuals. If IDs were not set,
+        ``None`` is returned.
+        """
+        return self._ids
+
+    def get_top_parameter_name(self):
+        """
+        Returns the name of the the population model parameters. If name were
+        not set, defaults are returned.
+        """
+        return self._bottom_parameter_name
 
     def n_bottom_parameters(self):
         """
@@ -86,6 +107,33 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
+    def set_bottom_parameter_name(self, name):
+        """
+        Sets the name of the input parameter from each individual bottom model.
+        """
+        self._bottom_parameter_name = str(name)
+
+    def set_ids(self, ids):
+        """
+        Sets the IDs of the modelled individuals.
+
+        Parameters
+        ----------
+        ids
+            A list of ids of length ``n_ids``.
+        """
+        if len(ids) != self._n_ids:
+            raise ValueError(
+                'Length of ids does not match n_ids.')
+
+        self._ids = [str(label) for label in ids]
+
+    def set_top_parameter_names(self, names):
+        """
+        Sets the names of the population model parameters.
+        """
+        raise NotImplementedError
+
 
 class PooledModel(PopulationModel):
     """
@@ -116,6 +164,9 @@ class PooledModel(PopulationModel):
 
         # Set number of parameters
         self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
+
+        # Set default top-level parameter names
+        self._top_parameter_names = None
 
     def __call__(self, parameters):
         """
@@ -180,3 +231,13 @@ class PooledModel(PopulationModel):
 
         samples = np.broadcast_to(samples, shape=(n, self._n_top_parameters))
         return samples
+
+    def set_top_parameter_names(self, names):
+        """
+        Sets the names of the population model parameters.
+        """
+        if len(names) != self._n_top_parameters:
+            raise ValueError(
+                'Length of names does not match n_top_parameters.')
+
+        self._top_parameter_names = [str(label) for label in names]
