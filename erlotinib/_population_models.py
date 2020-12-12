@@ -166,7 +166,7 @@ class PooledModel(PopulationModel):
         self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
 
         # Set default top-level parameter names
-        self._top_parameter_names = None
+        self._top_parameter_names = 'Pooled'
 
     def __call__(self, parameters):
         """
