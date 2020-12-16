@@ -121,7 +121,7 @@ class ModelLibrary(object):
 
         .. math::
             V_{\text{crit}} = \frac{\lambda _1}{2\lambda _0} \quad \text{and}
-            \quad \lambda = 2\lambda _1
+            \quad \lambda = 2\lambda _1 .
         """
         file_name = 'tgi_Koch_2009_reparametrised.xml'
 
