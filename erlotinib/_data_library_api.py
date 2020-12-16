@@ -62,6 +62,30 @@ class DataLibrary(object):
 
         return data
 
+    def lung_cancer_low_erlotinib_dose_group(self):
+        r"""
+        Returns the low erlotinib dose lung cancer treatment group data
+        published in [1]_ as a :class:`pandas.DataFrame`.
+
+        The dataset contains the time series data of 8 mice with
+        patient-derived lung cancer implants. Each mouse was treated with
+        an oral dose of erlotinib of :math:`6.25\, \text{mg}` per
+        :math:`\text{g}` body weight. The dose was administered daily from
+        day 3 to day 16.
+
+        The blood plasma concentration of erlotinib was measured on day 10 and
+        16, while the tumour volume of each mouse was monitored over a period
+        of 30 days and measured a couple times a week.
+
+        The column keys are '#ID', 'TIME in day', 'DOSE in mg',
+        'PLASMA CONCENTRATION in mg/L', 'TUMOUR VOLUME in cm^3' and
+        'BODY WEIGHT in g'.
+        """
+        file_name = 'lxf_low_erlotinib_dose.csv'
+        data = pd.read_csv(self._path + file_name)
+
+        return data
+
     def lung_cancer_medium_erlotinib_dose_group(self):
         r"""
         Returns the medium erlotinib dose lung cancer treatment group data
