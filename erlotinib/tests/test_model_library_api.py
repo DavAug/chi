@@ -27,6 +27,13 @@ class TestModelLibrary(unittest.TestCase):
 
         self.assertTrue(os.path.exists(path))
 
+    def test_existence_tumour_growth_inhibition_model_koch_reparametrised(
+            self):
+        lib = self.model_library
+        path = lib.tumour_growth_inhibition_model_koch_reparametrised()
+
+        self.assertTrue(os.path.exists(path))
+
 
 class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
     """
@@ -69,6 +76,50 @@ class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
 
         lambda_1 = 'myokit.lambda_1'
         self.assertEqual(const_names[3], lambda_1)
+
+
+class TestTumourGrowthInhibitionModelKochReparametrised(unittest.TestCase):
+    """
+    Tests the
+    erlotinib.modelLibrary.tumour_growth_inhibition_model_koch_reparametrised
+    method.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        lib = erlo.ModelLibrary()
+        path = lib.tumour_growth_inhibition_model_koch_reparametrised()
+        importer = sbml.SBMLImporter()
+        cls.model = importer.model(path)
+
+    def test_states(self):
+        state_names = sorted(
+            [var.qname() for var in self.model.states()])
+
+        n_states = len(state_names)
+        self.assertTrue(n_states, 1)
+
+        tumour_volume = 'myokit.tumour_volume'
+        self.assertEqual(state_names[0], tumour_volume)
+
+    def test_constant_variables(self):
+        const_names = sorted(
+            [var.qname() for var in self.model.variables(const=True)])
+
+        n_const = len(const_names)
+        self.assertEqual(n_const, 4)
+
+        critical_volume = 'myokit.critical_volume'
+        self.assertEqual(const_names[0], critical_volume)
+
+        drug_conc = 'myokit.drug_concentration'
+        self.assertEqual(const_names[1], drug_conc)
+
+        kappa = 'myokit.kappa'
+        self.assertEqual(const_names[2], kappa)
+
+        growth_rate = 'myokit.lambda'
+        self.assertEqual(const_names[3], growth_rate)
 
 
 class TestOneCompartmentPKModel(unittest.TestCase):

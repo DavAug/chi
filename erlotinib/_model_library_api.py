@@ -91,7 +91,7 @@ class ModelLibrary(object):
 
         return self._path + file_name
 
-    def tumour_growth_inhibition_model_reparametrised(self):
+    def tumour_growth_inhibition_model_koch_reparametrised(self):
         r"""
         Returns the absolute path to a SBML file, specifying the tumour growth
         inhibition pharmacodynamic model introduced by Koch et al. in [1]_ with
