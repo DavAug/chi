@@ -376,9 +376,34 @@ class ProblemModellingController(object):
         Sets the parameter names of the (complete) population model.
 
         Parameters are named as
-        ID: # <mechanistic-error model param name>, if n_bottom_parameter = nids
-        <top_parameter_name>
+            ID: <ID> <mechanistic-error model param name>,
+                if n_bottom_parameter = nids
+            <top_parameter_name> <mechanistic-error model param name>
+                for any top parameter
         """
+        # Get the number of individuals
+        n_ids = len(self._ids)
+
+        # Construct parameter names
+        parameter_names = []
+        for pop_model in self._population_models:
+            # Get mechanistic/error model parameter name
+            name = pop_model.get_bottom_parameter_name()
+
+            # Create names for individual parameters
+            if pop_model.n_bottom_parameters() == n_ids:
+                names = ['ID: %s %s' % (n, name) for n in self._ids]
+                parameter_names += names
+
+            # Create names for population-level parameters
+            if pop_model.n_top_parameters() > 0:
+                top_names = pop_model.get_top_parameter_names()
+                names = [
+                    '%s %s' % (pop_prefix, name) for pop_prefix in top_names]
+                parameter_names += names
+
+        # Save parameter names
+        self._parameter_names = parameter_names
 
     def fix_parameters(self, name_value_dict):
         """
