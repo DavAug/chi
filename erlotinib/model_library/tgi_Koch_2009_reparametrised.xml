@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model id="tumour_growth_inhibition_model" timeUnits="day">
+    <listOfUnitDefinitions>
+      <unitDefinition id="cm_cubed">
+        <listOfUnits>
+          <unit kind="meter" exponent="3" scale="-2" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="day">
+        <listOfUnits>
+          <unit kind="second" exponent="1" scale="0" multiplier="86400"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="per_day">
+        <listOfUnits>
+          <unit kind="second" exponent="-1" scale="0" multiplier="86400"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="cm_cubed_per_day">
+        <listOfUnits>
+          <unit kind="meter" exponent="3" scale="-2" multiplier="1"/>
+          <unit kind="second" exponent="-1" scale="0" multiplier="86400"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="liter_per_mg_per_day">
+        <listOfUnits>
+          <unit kind="liter" exponent="1" scale="0" multiplier="1"/>
+          <unit kind="gram" exponent="-1" scale="-3" multiplier="1"/>
+          <unit kind="second" exponent="-1" scale="0" multiplier="86400"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="mg_per_liter">
+        <listOfUnits>
+          <unit kind="gram" exponent="1" scale="-3" multiplier="1"/>
+          <unit kind="liter" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+    <listOfParameters>
+      <parameter id="tumour_volume" value="1" constant="false" units="cm_cubed"/>
+      <parameter id="lambda" value="1" constant="true" units="per_day"/>
+      <parameter id="critical_volume" value="1" constant="true" units="cm_cubed"/>
+      <parameter id="kappa" value="1" constant="true" units="liter_per_mg_per_day"/>
+      <parameter id="drug_concentration" value="1" constant="true" units="mg_per_liter"/>
+    </listOfParameters>
+    <listOfRules>
+      <rateRule variable="tumour_volume">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <minus/>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> lambda </ci>
+                <ci> critical_volume </ci>
+                <ci> tumour_volume </ci>
+              </apply>
+              <apply>
+                <plus/>
+                <ci> tumour_volume </ci>
+                <ci> critical_volume </ci>
+              </apply>
+            </apply>
+            <apply>
+              <times/>
+              <ci> kappa </ci>
+              <ci> drug_concentration </ci>
+              <ci> tumour_volume </ci>
+            </apply>
+          </apply>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>

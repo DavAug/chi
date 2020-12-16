@@ -1,0 +1,2 @@
+recursive-include erlotinib/data_library *.csv
+recursive-include erlotinib/model_library *.xml
