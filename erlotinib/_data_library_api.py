@@ -73,8 +73,8 @@ class DataLibrary(object):
         :math:`\text{g}` body weight. The dose was administered daily from
         day 3 to day 16, with a treatment break on days 9 to 13.
 
-        The blood plasma concentration of erlotinib was measured on day 10 and
-        16, while the tumour volume of each mouse was monitored over a period
+        The blood plasma concentration of erlotinib was measured on day 14,
+        while the tumour volume of each mouse was monitored over a period
         of 30 days and measured a couple times a week.
 
         The column keys are '#ID', 'TIME in day', 'DOSE in mg',
