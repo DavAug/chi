@@ -26,8 +26,7 @@ class PopulationModel(object):
 
         # Set defaults
         self._ids = None
-        self._bottom_parameter_name = None
-        self._top_parameter_names = None
+        self._bottom_parameter_name = 'Bottom param'
 
     def __call__(self, parameters):
         """
