@@ -371,6 +371,15 @@ class ProblemModellingController(object):
 
         return regimens
 
+    def _set_population_model_parameter_names(self):
+        """
+        Sets the parameter names of the (complete) population model.
+
+        Parameters are named as
+        ID: # <mechanistic-error model param name>, if n_bottom_parameter = nids
+        <top_parameter_name>
+        """
+
     def fix_parameters(self, name_value_dict):
         """
         Fixes the value of model parameters, and effectively removes them as a
@@ -846,15 +855,15 @@ class ProblemModellingController(object):
             parameter_names = list(np.array(parameter_names)[
                 ~self._fixed_params_mask])
         if self._population_models is not None:
-            # If population model has been set before, parameter names is
-            # hierarchical model parameter names
+            # If population model has been set before, parameter names are
+            # not correct
             parameter_names = self._individual_parameter_names
 
         # Sort inputs according to `params` and fill blanks
         n_individual_parameters = len(parameter_names)
         if params is not None:
             # Create default population model container
-            default_pop_model = [
+            default_pop_models = [
                 erlo.HeterogeneousModel] * n_individual_parameters
 
             # Substitute population models for provided parameter names
@@ -865,9 +874,9 @@ class ProblemModellingController(object):
                     raise ValueError(
                         'The provided parameter names could not be identified '
                         'in the model')
-                default_pop_model[index] = pop_models[index]
+                default_pop_models[index] = pop_models[index]
 
-            pop_models = default_pop_model
+            pop_models = default_pop_models
 
         # Make sure that each parameter is assigned to a population model
         if len(pop_models) != n_individual_parameters:
@@ -890,17 +899,19 @@ class ProblemModellingController(object):
         self._individual_parameter_names = parameter_names
 
         # Instantiate population models and set parameter names
+        n_ids = len(self._log_likelihoods)
+        for model_id, pop_model in enumerate(pop_models):
+            # Instantiate population model
+            model = pop_model(n_ids)
 
+            # Set name of modelled parameter
+            name = parameter_names[model_id]
+            model.set_bottom_parameter_name(name)
 
+            # Save model in the list
+            pop_models[model_id] = model
 
-        # Check that each parameter is modelled by population model and set parameter names
-        # (Implement set_parameter_names method for population models that takes individual param name
-        # and automatically adds pop level param names)
-        # Also have method in pop model that remembers the individual param name
+        self._population_models = pop_models
 
         # Update parameter names
-
-
-
-
-        parameter_names = self.get_parameter_names(exclude_pop_model=True)
+        self._set_population_model_parameter_names()
