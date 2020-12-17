@@ -675,41 +675,17 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         pop_models = [str, float, int]
         with self.assertRaisesRegex(ValueError, 'The provided population'):
-            problem.set_error_model(pop_models)
+            problem.set_population_model(pop_models)
 
-        #TODO:
-        # Number of likelihoods does not match the number of outputs
-        likelihoods = [pints.GaussianLogLikelihood, pints.AR1LogLikelihood]
-        with self.assertRaisesRegex(ValueError, 'The number of log-'):
-            problem.set_error_model(likelihoods)
+        # The specified parameters do not match the model parameters
+        pop_models = [erlo.PooledModel, erlo.HeterogeneousModel]
+        params = ['wrong', 'outputs']
+        with self.assertRaisesRegex(ValueError, 'The provided parameter'):
+            problem.set_population_model(pop_models, params)
 
-        # The specified outputs do not match the model outputs
-        likelihoods = [pints.GaussianLogLikelihood]
-        outputs = ['wrong', 'outputs']
-        with self.assertRaisesRegex(ValueError, 'The specified outputs'):
-            problem.set_error_model(likelihoods, outputs)
-
-        # The likelihoods need arguments for instantiation
-        likelihoods = [pints.GaussianKnownSigmaLogLikelihood]
-        with self.assertRaisesRegex(ValueError, 'Pints.ProblemLoglikelihoods'):
-            problem.set_error_model(likelihoods)
-
-        # Non-identical error models
-        problem = erlo.ProblemModellingController(
-            self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        output_biomarker_map = dict({
-            'myokit.tumour_volume': 'Biomarker 2',
-            'myokit.drug_concentration': 'Biomarker 1'})
-        problem.set_mechanistic_model(model, output_biomarker_map)
-        log_likelihoods = [
-            pints.GaussianLogLikelihood,
-            pints.MultiplicativeGaussianLogLikelihood]
-        outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
-
-        with self.assertRaisesRegex(ValueError, 'Only structurally identical'):
-            problem.set_error_model(log_likelihoods, outputs)
+        # Not one population model for each parameter
+        with self.assertRaisesRegex(ValueError, 'If no parameter names are'):
+            problem.set_population_model(pop_models)
 
 
 class TestProblemModellingControllerPKProblem(unittest.TestCase):
