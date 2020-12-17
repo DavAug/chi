@@ -179,6 +179,45 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertIsNone(self.problem._fixed_params_values)
         self.assertIsNone(self.problem._fixed_params_mask)
 
+        # Fix parameters before setting a population model
+        name_value_dict = dict({
+            'myokit.tumour_volume': 1,
+            'myokit.drug_concentration': 0,
+            'myokit.kappa': 1,
+            'myokit.lambda_1': 2})
+        self.problem.fix_parameters(name_value_dict)
+        self.problem.set_population_model(
+            pop_models=[erlo.HeterogeneousModel, erlo.PooledModel])
+
+        n_ids = 3
+        self.assertEqual(self.problem.n_parameters(), n_ids + 1)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 4)  # n_ids + 1
+        self.assertEqual(param_names[0], 'ID 0: myokit.lambda_0')
+        self.assertEqual(param_names[1], 'ID 1: myokit.lambda_0')
+        self.assertEqual(param_names[2], 'ID 2: myokit.lambda_0')
+        self.assertEqual(param_names[3], 'Pooled Noise param 1')
+
+        self.assertIsNone(self.problem._fixed_params_values)
+        self.assertIsNone(self.problem._fixed_params_mask)
+
+        # Fix parameters after setting a population model
+        name_value_dict = dict({
+            'ID 1: myokit.lambda_0': 1,
+            'ID 2: myokit.lambda_0': 4})
+        self.problem.fix_parameters(name_value_dict)
+
+        self.assertEqual(self.problem.n_parameters(), 2)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 2)
+        self.assertEqual(param_names[0], 'ID 0: myokit.lambda_0')
+        self.assertEqual(param_names[1], 'Pooled Noise param 1')
+
+        param_values = self.problem._fixed_params_values
+        self.assertEqual(len(param_values), 4)
+        self.assertEqual(param_values[1], 1)
+        self.assertEqual(param_values[2], 4)
+
     def test_fix_parameters_bad_input(self):
         name_value_dict = dict({
             'myokit.lambda_1': 2,
@@ -515,9 +554,6 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[5], 'Pooled Noise param 1')
 
         # Map population model to parameters explicitly (with blanks)
-        self.problem.set_mechanistic_model(self.model)
-        self.problem.set_error_model(self.error_models)
-
         pop_models = [erlo.PooledModel] * 5  # 6 paramaters in total
         params = [
             'myokit.drug_concentration',
@@ -549,6 +585,61 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
         self.assertEqual(param_names[7], 'Pooled Noise param 1')
+
+    def test_set_population_model_bad_input(self):
+        # No mechanistic model set
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker'])
+
+        with self.assertRaisesRegex(ValueError, 'Before setting'):
+            problem.set_population_model(self.pop_models)
+
+        # No error model set
+        problem.set_mechanistic_model(self.model)
+
+        with self.assertRaisesRegex(ValueError, 'Before setting'):
+            problem.set_population_model(self.pop_models)
+
+        # Population models have the wrong type
+        problem.set_error_model(self.error_models)
+
+        pop_models = [str, float, int]
+        with self.assertRaisesRegex(ValueError, 'The provided population'):
+            problem.set_error_model(pop_models)
+
+        #TODO:
+        # Number of likelihoods does not match the number of outputs
+        likelihoods = [pints.GaussianLogLikelihood, pints.AR1LogLikelihood]
+        with self.assertRaisesRegex(ValueError, 'The number of log-'):
+            problem.set_error_model(likelihoods)
+
+        # The specified outputs do not match the model outputs
+        likelihoods = [pints.GaussianLogLikelihood]
+        outputs = ['wrong', 'outputs']
+        with self.assertRaisesRegex(ValueError, 'The specified outputs'):
+            problem.set_error_model(likelihoods, outputs)
+
+        # The likelihoods need arguments for instantiation
+        likelihoods = [pints.GaussianKnownSigmaLogLikelihood]
+        with self.assertRaisesRegex(ValueError, 'Pints.ProblemLoglikelihoods'):
+            problem.set_error_model(likelihoods)
+
+        # Non-identical error models
+        problem = erlo.ProblemModellingController(
+            self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        output_biomarker_map = dict({
+            'myokit.tumour_volume': 'Biomarker 2',
+            'myokit.drug_concentration': 'Biomarker 1'})
+        problem.set_mechanistic_model(model, output_biomarker_map)
+        log_likelihoods = [
+            pints.GaussianLogLikelihood,
+            pints.MultiplicativeGaussianLogLikelihood]
+        outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
+
+        with self.assertRaisesRegex(ValueError, 'Only structurally identical'):
+            problem.set_error_model(log_likelihoods, outputs)
 
 
 class TestProblemModellingControllerPKProblem(unittest.TestCase):
