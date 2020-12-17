@@ -392,7 +392,7 @@ class ProblemModellingController(object):
 
             # Create names for individual parameters
             if pop_model.n_bottom_parameters() == n_ids:
-                names = ['ID: %s %s' % (n, name) for n in self._ids]
+                names = ['ID %s: %s' % (n, name) for n in self._ids]
                 parameter_names += names
 
             # Create names for population-level parameters
@@ -892,14 +892,14 @@ class ProblemModellingController(object):
                 erlo.HeterogeneousModel] * n_individual_parameters
 
             # Map population models to provided parameter names
-            for name in params:
+            for param_id, name in enumerate(params):
                 try:
                     index = parameter_names.index(name)
                 except ValueError:
                     raise ValueError(
                         'The provided parameter names could not be identified '
                         'in the model')
-                default_pop_models[index] = pop_models[index]
+                default_pop_models[index] = pop_models[param_id]
 
             pop_models = default_pop_models
 
@@ -938,5 +938,6 @@ class ProblemModellingController(object):
 
         self._population_models = pop_models
 
-        # Update parameter names
+        # Update parameter names and number of parameters
         self._set_population_model_parameter_names()
+        self._n_parameters = len(self._parameter_names)
