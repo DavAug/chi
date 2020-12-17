@@ -296,6 +296,76 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The log-prior'):
             problem.get_log_posteriors()
 
+    def test_get_parameter_names(self):
+        # Test with a mechanistic-error model pair only
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
+
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 6)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Noise param 1')
+
+        # Check that also works with exclude pop params flag
+        param_names = self.problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 6)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Noise param 1')
+
+        # Test with fixed parameters
+        name_value_dict = dict({
+            'myokit.drug_concentration': 0,
+            'myokit.kappa': 1})
+        self.problem.fix_parameters(name_value_dict)
+
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 4)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.lambda_0')
+        self.assertEqual(param_names[2], 'myokit.lambda_1')
+        self.assertEqual(param_names[3], 'Noise param 1')
+
+        # Test with setting a population model
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
+        pop_models = [
+            erlo.PooledModel,
+            erlo.PooledModel,
+            erlo.HeterogeneousModel,
+            erlo.PooledModel,
+            erlo.PooledModel,
+            erlo.PooledModel]
+        self.problem.set_population_model(pop_models)
+
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(len(param_names), 2 + 3 + 3)
+        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
+        self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
+        self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
+        self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
+        self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
+        self.assertEqual(param_names[7], 'Pooled Noise param 1')
+
+        # Test whether exclude population model works
+        param_names = self.problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 6)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Noise param 1')
+
     def test_set_error_model(self):
         # Map error model to output automatically
         self.problem.set_mechanistic_model(self.model)
