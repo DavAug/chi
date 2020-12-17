@@ -121,6 +121,23 @@ class TestPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model('some values')
 
+    def test_get_bottom_parameter_name(self):
+        name = 'Bottom param'
+        self.assertEqual(
+            self.pop_model.get_bottom_parameter_name(), name)
+
+    def test_get_set_ids(self):
+        # Set some ids
+        pop_model = erlo.PopulationModel(n_ids=3)
+        ids = ['1', '2', '3']
+        pop_model.set_ids(ids)
+
+        self.assertEqual(pop_model.get_ids(), ids)
+
+    def test_get_top_parameter_names(self):
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.get_top_parameter_names()
+
     def test_n_bottom_parameters(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.n_bottom_parameters()
@@ -142,6 +159,25 @@ class TestPopulationModel(unittest.TestCase):
     def test_sample(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some values')
+
+    def test_set_bottom_parameter_name(self):
+        # Check seeting some name
+        name = 'test name'
+        self.pop_model.set_bottom_parameter_name(name)
+
+        self.assertEqual(
+            self.pop_model.get_bottom_parameter_name(), name)
+
+        # Set back to default
+        name = 'Bottom param'
+        self.pop_model.set_bottom_parameter_name(name)
+
+        self.assertEqual(
+            self.pop_model.get_bottom_parameter_name(), name)
+
+    def test_set_top_parameter_names(self):
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.set_top_parameter_names('some name')
 
 
 if __name__ == '__main__':

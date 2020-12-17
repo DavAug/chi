@@ -59,7 +59,7 @@ class PopulationModel(object):
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
         """
-        return self._bottom_parameter_name
+        raise NotImplementedError
 
     def n_bottom_parameters(self):
         """
@@ -264,6 +264,13 @@ class PooledModel(PopulationModel):
         model parameters.
         """
         return 0
+
+    def get_top_parameter_names(self):
+        """
+        Returns the name of the the population model parameters. If name were
+        not set, defaults are returned.
+        """
+        return self._top_parameter_names
 
     def n_bottom_parameters(self):
         """
