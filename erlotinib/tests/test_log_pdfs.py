@@ -78,17 +78,52 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         pooled_log_pdf = pints.PooledLogPDF(
             self.log_likelihoods, pooled=[True]*6)
 
-        # Test case I
+        # Test case I.1
         parameters = [1, 1, 1, 1, 1, 1]
         score = pooled_log_pdf(parameters)
 
         self.assertEqual(self.hierarchical_model(parameters), score)
 
-        # Test case II
+        # Test case I.2
         parameters = [10, 1, 0.1, 1, 3, 1]
         score = pooled_log_pdf(parameters)
 
         self.assertEqual(self.hierarchical_model(parameters), score)
+
+        # Test case II.1: non-pooled model
+        pop_models = [
+            erlo.HeterogeneousModel(n_ids=self.n_ids)] \
+            * self.n_individual_params
+        likelihood = erlo.HierarchicalLogLikelihood(
+            self.log_likelihoods, pop_models)
+
+        # Compute score from individual likelihoods
+        parameters = [1, 1, 1, 1, 1, 1]
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
+
+        n_parameters = 6
+        n_ids = 8
+        parameters = [1] * n_parameters * n_ids
+        self.assertEqual(likelihood(parameters), score)
+
+        # Test case II.2
+        # Compute score from individual likelihoods
+        parameters = [10, 1, 0.1, 1, 3, 1]
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
+
+        n_ids = 8
+        parameters = \
+            [parameters[0]] * n_ids + \
+            [parameters[1]] * n_ids + \
+            [parameters[2]] * n_ids + \
+            [parameters[3]] * n_ids + \
+            [parameters[4]] * n_ids + \
+            [parameters[5]] * n_ids
+        self.assertEqual(likelihood(parameters), score)
 
     def test_n_parameters(self):
         n_parameters = self.log_likelihoods[0].n_parameters()
