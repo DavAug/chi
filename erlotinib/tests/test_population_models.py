@@ -25,6 +25,9 @@ class TestHeterogeneousModel(unittest.TestCase):
         # regardless
         self.assertEqual(self.pop_model('some values'), 0)
 
+    def test_get_top_parameter_names(self):
+        self.assertIsNone(self.pop_model.get_top_parameter_names())
+
     def test_n_bottom_parameters(self):
         n_individual_input_params = 10
         self.assertEqual(
@@ -43,6 +46,10 @@ class TestHeterogeneousModel(unittest.TestCase):
     def test_sample(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some params')
+
+    def test_set_top_parameter_names(self):
+        with self.assertRaisesRegex(ValueError, 'A heterogeneous population'):
+            self.pop_model.set_top_parameter_names('some params')
 
 
 class TestPooledModel(unittest.TestCase):

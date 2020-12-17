@@ -183,6 +183,13 @@ class HeterogeneousModel(PopulationModel):
         """
         return 0
 
+    def get_top_parameter_names(self):
+        """
+        Returns the name of the the population model parameters. If name were
+        not set, defaults are returned.
+        """
+        return self._top_parameter_names
+
     def n_bottom_parameters(self):
         """
         Returns the number of bottom-level parameters of the population model.
@@ -209,12 +216,12 @@ class HeterogeneousModel(PopulationModel):
     def set_top_parameter_names(self, names):
         """
         Sets the names of the population model parameters.
-        """
-        if len(names) != self._n_top_parameters:
-            raise ValueError(
-                'Length of names does not match n_top_parameters.')
 
-        self._top_parameter_names = [str(label) for label in names]
+        This method raises an error for a heterogenous population model as
+        no top-level model parameter exist.
+        """
+        raise ValueError(
+            'A heterogeneous population model has no top-level parameters.')
 
 
 class PooledModel(PopulationModel):
