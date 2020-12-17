@@ -10,6 +10,41 @@ import unittest
 import erlotinib as erlo
 
 
+class TestHeterogeneousModel(unittest.TestCase):
+    """
+    Tests the erlotinib.PooledModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.n_ids = 10
+        cls.pop_model = erlo.HeterogeneousModel(cls.n_ids)
+
+    def test_call(self):
+        # For efficiency the input is actually not checked, and 0 is returned
+        # regardless
+        self.assertEqual(self.pop_model('some values'), 0)
+
+    def test_n_bottom_parameters(self):
+        n_individual_input_params = 10
+        self.assertEqual(
+            self.pop_model.n_bottom_parameters(),
+            n_individual_input_params)
+
+    def test_n_parameters(self):
+        n_population_params = 10
+        self.assertEqual(self.pop_model.n_parameters(), n_population_params)
+
+    def test_n_top_parameters(self):
+        n_population_params = 0
+        self.assertEqual(
+            self.pop_model.n_top_parameters(), n_population_params)
+
+    def test_sample(self):
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.sample('some params')
+
+
 class TestPooledModel(unittest.TestCase):
     """
     Tests the erlotinib.PooledModel class.
