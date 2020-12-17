@@ -121,6 +121,13 @@ class TestLogPosterior(unittest.TestCase):
             pints.UniformLogPrior(0, 1))
         cls.log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
 
+    def test_set_id_bad_input(self):
+        # Provide the wrong number of labels
+        labels = ['wrong', 'number']
+
+        with self.assertRaisesRegex(ValueError, 'If a list of IDs is'):
+            self.log_posterior.set_id(labels)
+
     def test_set_get_id(self):
         # Check default
         self.assertIsNone(self.log_posterior.get_id())
@@ -130,6 +137,13 @@ class TestLogPosterior(unittest.TestCase):
         self.log_posterior.set_id(index)
 
         self.assertEqual(self.log_posterior.get_id(), index)
+
+        # Set an ID for each parameter individually
+        labels = [
+            'ID 1', 'ID 2', 'ID 3', 'ID 4', 'ID 5', 'ID 6']
+        self.log_posterior.set_id(labels)
+
+        self.assertEqual(self.log_posterior.get_id(), labels)
 
     def test_set_get_parameter_names(self):
         # Check default
