@@ -48,6 +48,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1)]
+        n_params = 6
+        cls.pop_models = [erlo.PooledModel] * n_params
 
     def test_bad_input(self):
         # Create data of wrong type
@@ -486,6 +488,67 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The provided output'):
             self.problem.set_mechanistic_model(
                 self.model, output_biomarker_map)
+
+    def test_set_population_model(self):
+        # Map population model to parameters automatically
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
+        self.problem.set_population_model(self.pop_models)
+
+        pop_models = self.problem._population_models
+        n_parameters = 6
+        self.assertEqual(len(pop_models), n_parameters)
+        self.assertIsInstance(pop_models[0], erlo.PooledModel)
+        self.assertIsInstance(pop_models[1], erlo.PooledModel)
+        self.assertIsInstance(pop_models[2], erlo.PooledModel)
+        self.assertIsInstance(pop_models[3], erlo.PooledModel)
+        self.assertIsInstance(pop_models[4], erlo.PooledModel)
+        self.assertIsInstance(pop_models[5], erlo.PooledModel)
+
+        self.assertEqual(self.problem.n_parameters(), 6)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'Pooled myokit.kappa')
+        self.assertEqual(param_names[3], 'Pooled myokit.lambda_0')
+        self.assertEqual(param_names[4], 'Pooled myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Pooled Noise param 1')
+
+        # Map population model to parameters explicitly (with blanks)
+        self.problem.set_mechanistic_model(self.model)
+        self.problem.set_error_model(self.error_models)
+
+        pop_models = [erlo.PooledModel] * 5  # 6 paramaters in total
+        params = [
+            'myokit.drug_concentration',
+            'myokit.kappa',
+            'myokit.lambda_0',
+            'myokit.lambda_1',
+            'Noise param 1']
+        self.problem.set_population_model(pop_models, params)
+
+        pop_models = self.problem._population_models
+        n_parameters = 6
+        self.assertEqual(len(pop_models), n_parameters)
+        self.assertIsInstance(pop_models[0], erlo.HeterogeneousModel)
+        self.assertIsInstance(pop_models[1], erlo.PooledModel)
+        self.assertIsInstance(pop_models[2], erlo.PooledModel)
+        self.assertIsInstance(pop_models[3], erlo.PooledModel)
+        self.assertIsInstance(pop_models[4], erlo.PooledModel)
+        self.assertIsInstance(pop_models[5], erlo.PooledModel)
+
+        n_ids = 3
+        n_parameters = n_ids + (n_parameters - 1)  # 3 Heterogeneous + 5 Pooled
+        self.assertEqual(self.problem.n_parameters(), 8)
+        param_names = self.problem.get_parameter_names()
+        self.assertEqual(param_names[0], 'ID 0: myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'ID 1: myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'ID 2: myokit.tumour_volume')
+        self.assertEqual(param_names[3], 'Pooled myokit.drug_concentration')
+        self.assertEqual(param_names[4], 'Pooled myokit.kappa')
+        self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
+        self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
+        self.assertEqual(param_names[7], 'Pooled Noise param 1')
 
 
 class TestProblemModellingControllerPKProblem(unittest.TestCase):
