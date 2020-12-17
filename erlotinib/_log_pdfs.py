@@ -230,9 +230,14 @@ class LogPosterior(pints.LogPosterior):
             log-posterior. A valid ID has to be convertable to a string
             object, or be a list of length of IDs of length ``n_parameters``.
         """
-        if isinstance(posterior_id, list) and (
-                len(posterior_id) == self.n_parameters()):
+        if isinstance(posterior_id, list):
+            if len(posterior_id) != self.n_parameters():
+                raise ValueError(
+                    'If a list of IDs is provided, it needs to be of the same '
+                    'length as the number of parameters.')
+
             self._id = [str(label) for label in posterior_id]
+
         else:
             self._id = str(posterior_id)
 
