@@ -12,7 +12,7 @@ import erlotinib as erlo
 
 class TestHeterogeneousModel(unittest.TestCase):
     """
-    Tests the erlotinib.PooledModel class.
+    Tests the erlotinib.HeterogeneousModel class.
     """
 
     @classmethod
@@ -67,6 +67,11 @@ class TestPooledModel(unittest.TestCase):
         # regardless
         self.assertEqual(self.pop_model('some values'), 0)
 
+    def test_get_top_parameter_names(self):
+        names = ['Pooled']
+
+        self.assertEqual(self.pop_model.get_top_parameter_names(), names)
+
     def test_n_bottom_parameters(self):
         n_individual_input_params = 0
         self.assertEqual(
@@ -112,6 +117,27 @@ class TestPooledModel(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, 'The number of provided'):
             self.pop_model.sample(parameters)
+
+    def test_set_top_parameter_names(self):
+        # Test some name
+        names = ['test name']
+        self.pop_model.set_top_parameter_names(names)
+
+        self.assertEqual(
+            self.pop_model.get_top_parameter_names(), names)
+
+        # Set back to default name
+        names = ['Pooled']
+        self.pop_model.set_top_parameter_names(names)
+
+        self.assertEqual(
+            self.pop_model.get_top_parameter_names(), names)
+
+    def test_set_top_parameter_names_bad_input(self):
+        # Wrong number of names
+        names = ['only', 'one', 'is', 'allowed']
+        with self.assertRaisesRegex(ValueError, 'Length of names'):
+            self.pop_model.set_top_parameter_names(names)
 
 
 class TestPopulationModel(unittest.TestCase):
