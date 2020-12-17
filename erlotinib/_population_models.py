@@ -54,7 +54,7 @@ class PopulationModel(object):
         """
         return self._ids
 
-    def get_top_parameter_name(self):
+    def get_top_parameter_names(self):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
