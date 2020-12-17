@@ -208,7 +208,7 @@ class ProblemModellingController(object):
         self._log_prior = None
         self._n_parameters = None
         self._parameter_names = None
-        self._inidividual_parameter_names = None
+        self._individual_parameter_names = None
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
@@ -491,7 +491,7 @@ class ProblemModellingController(object):
             raise ValueError(
                 'The log-prior has not been set.')
 
-        if self._population_modelsis not None:
+        if self._population_models is not None:
             # TODO:
             # Compose HierarchicalLogLikelihood
 
@@ -891,8 +891,8 @@ class ProblemModellingController(object):
             default_pop_models = [
                 erlo.HeterogeneousModel] * n_individual_parameters
 
-            # Substitute population models for provided parameter names
-            for param_id, name in enumerate(params):
+            # Map population models to provided parameter names
+            for name in params:
                 try:
                     index = parameter_names.index(name)
                 except ValueError:
