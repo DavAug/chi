@@ -206,32 +206,6 @@ class HeterogeneousModel(PopulationModel):
         """
         return self._n_top_parameters
 
-    def sample(self, top_parameters, n=None):
-        r"""
-        Returns :math:`n` random samples from the underlying population
-        distribution.
-
-        For a PooledModel the input top-level parameters are copied for each
-        individual and are returned :math:`n` times.
-
-        The returned value is a numpy array with shape :math:`(n, d)` where
-        :math:`n` is the requested number of samples.
-        """
-        if len(top_parameters) != self._n_top_parameters:
-            raise ValueError(
-                'The number of provided parameters does not match the expected'
-                ' number of top-level parameters.')
-
-        # Expand dimension of top level parameters
-        top_parameters = np.asarray(top_parameters)
-        samples = np.expand_dims(top_parameters, axis=0)
-
-        if n is None:
-            return samples
-
-        samples = np.broadcast_to(samples, shape=(n, self._n_top_parameters))
-        return samples
-
     def set_top_parameter_names(self, names):
         """
         Sets the names of the population model parameters.
