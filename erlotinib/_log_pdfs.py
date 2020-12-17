@@ -149,11 +149,9 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             if end_index is None:
                 # This parameter is pooled. Leverage broadcasting
                 individual_params[:, param_id] = parameters[start_index]
-            # TODO: temporarily commented out, as long no other pop models
-            # exist.
-            # else:
-            #     individual_params[:, param_id] = parameters[
-            #         start_index:end_index]
+            else:
+                individual_params[:, param_id] = parameters[
+                    start_index:end_index]
 
         # Evaluate individual likelihoods
         for index, log_likelihood in enumerate(self._log_likelihoods):
