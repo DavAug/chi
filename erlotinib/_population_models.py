@@ -123,7 +123,7 @@ class PopulationModel(object):
         """
         if len(ids) != self._n_ids:
             raise ValueError(
-                'Length of ids does not match n_ids.')
+                'Length of IDs does not match n_ids.')
 
         self._ids = [str(label) for label in ids]
 

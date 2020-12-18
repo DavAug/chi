@@ -167,6 +167,13 @@ class TestPopulationModel(unittest.TestCase):
 
         self.assertEqual(pop_model.get_ids(), ids)
 
+    def test_set_ids_bad_input(self):
+        pop_model = erlo.PopulationModel(n_ids=3)
+        ids = ['wrong', 'number', 'of', 'IDs']
+
+        with self.assertRaisesRegex(ValueError, 'Length of IDs')
+            pop_model.set_ids(ids)
+
     def test_get_top_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.get_top_parameter_names()
