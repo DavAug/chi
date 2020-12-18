@@ -78,17 +78,52 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         pooled_log_pdf = pints.PooledLogPDF(
             self.log_likelihoods, pooled=[True]*6)
 
-        # Test case I
+        # Test case I.1
         parameters = [1, 1, 1, 1, 1, 1]
         score = pooled_log_pdf(parameters)
 
         self.assertEqual(self.hierarchical_model(parameters), score)
 
-        # Test case II
+        # Test case I.2
         parameters = [10, 1, 0.1, 1, 3, 1]
         score = pooled_log_pdf(parameters)
 
         self.assertEqual(self.hierarchical_model(parameters), score)
+
+        # Test case II.1: non-pooled model
+        pop_models = [
+            erlo.HeterogeneousModel(n_ids=self.n_ids)] \
+            * self.n_individual_params
+        likelihood = erlo.HierarchicalLogLikelihood(
+            self.log_likelihoods, pop_models)
+
+        # Compute score from individual likelihoods
+        parameters = [1, 1, 1, 1, 1, 1]
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
+
+        n_parameters = 6
+        n_ids = 8
+        parameters = [1] * n_parameters * n_ids
+        self.assertEqual(likelihood(parameters), score)
+
+        # Test case II.2
+        # Compute score from individual likelihoods
+        parameters = [10, 1, 0.1, 1, 3, 1]
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
+
+        n_ids = 8
+        parameters = \
+            [parameters[0]] * n_ids + \
+            [parameters[1]] * n_ids + \
+            [parameters[2]] * n_ids + \
+            [parameters[3]] * n_ids + \
+            [parameters[4]] * n_ids + \
+            [parameters[5]] * n_ids
+        self.assertEqual(likelihood(parameters), score)
 
     def test_n_parameters(self):
         n_parameters = self.log_likelihoods[0].n_parameters()
@@ -121,6 +156,13 @@ class TestLogPosterior(unittest.TestCase):
             pints.UniformLogPrior(0, 1))
         cls.log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
 
+    def test_set_id_bad_input(self):
+        # Provide the wrong number of labels
+        labels = ['wrong', 'number']
+
+        with self.assertRaisesRegex(ValueError, 'If a list of IDs is'):
+            self.log_posterior.set_id(labels)
+
     def test_set_get_id(self):
         # Check default
         self.assertIsNone(self.log_posterior.get_id())
@@ -130,6 +172,13 @@ class TestLogPosterior(unittest.TestCase):
         self.log_posterior.set_id(index)
 
         self.assertEqual(self.log_posterior.get_id(), index)
+
+        # Set an ID for each parameter individually
+        labels = [
+            'ID 1', 'ID 2', 'ID 3', 'ID 4', 'ID 5', 'ID 6']
+        self.log_posterior.set_id(labels)
+
+        self.assertEqual(self.log_posterior.get_id(), labels)
 
     def test_set_get_parameter_names(self):
         # Check default

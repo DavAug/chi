@@ -204,10 +204,11 @@ class ProblemModellingController(object):
         # Set defaults
         self._mechanistic_model = None
         self._log_likelihoods = None
-        self._population_model = None
+        self._population_models = None
         self._log_prior = None
         self._n_parameters = None
         self._parameter_names = None
+        self._individual_parameter_names = None
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
@@ -310,8 +311,6 @@ class ProblemModellingController(object):
             return log_likelihoods[0]
 
         # Pool structural model parameters across output-likelihoods
-        # TODO: Implement LogLikelihood that allows different error models for
-        # each output.
         n_struc_params = self._mechanistic_model.n_parameters()
         n_error_params = log_likelihoods[0].n_parameters() - n_struc_params
         mask = [True] * n_struc_params + [False] * n_error_params
@@ -323,6 +322,23 @@ class ProblemModellingController(object):
                 'supported.')
 
         return log_likelihood
+
+    def _create_reduced_log_pdfs(self, log_pdfs):
+        """
+        Returns the log-pdfs with fixed model parameters according to the
+        self._fixed_params_values and self._fixed_params_mask.
+
+        The inputs log-pdfs is expected to be a dictionary of ID keys and
+        pints.LogPDF values.
+        """
+        values = self._fixed_params_values[self._fixed_params_mask]
+        for key, log_pdf in log_pdfs.items():
+            log_pdfs[key] = erlo.ReducedLogPDF(
+                log_pdf=log_pdf,
+                mask=self._fixed_params_mask,
+                values=values)
+
+        return log_pdfs
 
     def _extract_dosing_regimens(self, dose_key):
         """
@@ -355,6 +371,64 @@ class ProblemModellingController(object):
 
         return regimens
 
+    def _get_population_model_parameter_ids(self):
+        """
+        Returns the ID (prefix) of each parameter in a population model.
+        """
+        # Get the number of individuals
+        n_ids = len(self._ids)
+
+        # Construct parameter prefixes
+        prefixes = []
+        for pop_model in self._population_models:
+
+            # Create prefix for individual parameters
+            if pop_model.n_bottom_parameters() == n_ids:
+                names = ['ID %s' % n for n in self._ids]
+                prefixes += names
+
+            # Create prefix for population-level parameters
+            if pop_model.n_top_parameters() > 0:
+                top_names = pop_model.get_top_parameter_names()
+                names = ['%s' % pop_prefix for pop_prefix in top_names]
+                prefixes += names
+
+        return prefixes
+
+    def _set_population_model_parameter_names(self):
+        """
+        Sets the parameter names of the (complete) population model.
+
+        Parameters are named as
+            ID: <ID> <mechanistic-error model param name>,
+                if n_bottom_parameter = nids
+            <top_parameter_name> <mechanistic-error model param name>
+                for any top parameter
+        """
+        # Get the number of individuals
+        n_ids = len(self._ids)
+
+        # Construct parameter names
+        parameter_names = []
+        for pop_model in self._population_models:
+            # Get mechanistic/error model parameter name
+            name = pop_model.get_bottom_parameter_name()
+
+            # Create names for individual parameters
+            if pop_model.n_bottom_parameters() == n_ids:
+                names = ['ID %s: %s' % (n, name) for n in self._ids]
+                parameter_names += names
+
+            # Create names for population-level parameters
+            if pop_model.n_top_parameters() > 0:
+                top_names = pop_model.get_top_parameter_names()
+                names = [
+                    '%s %s' % (pop_prefix, name) for pop_prefix in top_names]
+                parameter_names += names
+
+        # Save parameter names
+        self._parameter_names = parameter_names
+
     def fix_parameters(self, name_value_dict):
         """
         Fixes the value of model parameters, and effectively removes them as a
@@ -365,7 +439,6 @@ class ProblemModellingController(object):
 
         Parameters
         ----------
-
         name_value_dict
             A dictionary with model parameters as keys, and the value to be
             fixed at as values.
@@ -436,40 +509,87 @@ class ProblemModellingController(object):
         if self._log_likelihoods is None:
             raise ValueError(
                 'The error model has not been set.')
-        log_likelihoods = self._log_likelihoods
+        log_likelihoods = self._log_likelihoods.copy()
 
         if self._log_prior is None:
             raise ValueError(
                 'The log-prior has not been set.')
 
-        # if self._population_model is not None:
-        #     # Overwrites the log-likelihoods
-        #     raise NotImplementedError
+        if self._population_models is not None:
+            # Get log-likelihoods from dictionary
+            log_likelihoods = list(log_likelihoods.values())
+
+            # Compose HierarchicalLogLikelihoods
+            log_likelihood = erlo.HierarchicalLogLikelihood(
+                log_likelihoods, self._population_models)
+
+            # Replace individual LL by HierarchicalLL
+            log_likelihoods = dict({
+                'HierarchicalLoglikelihood': log_likelihood})
 
         if self._fixed_params_values is not None:
-            # Fix model parameters
-            values = self._fixed_params_values[self._fixed_params_mask]
-            for index, log_likelihood in log_likelihoods.items():
-                log_likelihoods[index] = erlo.ReducedLogPDF(
-                    log_pdf=log_likelihood,
-                    mask=self._fixed_params_mask,
-                    values=values)
+            log_likelihoods = self._create_reduced_log_pdfs(log_likelihoods)
 
         # Compose the log-posteriors
         log_posteriors = []
-        for index, log_likelihood in log_likelihoods.items():
+        for label, log_likelihood in log_likelihoods.items():
             # Create log-posterior
             log_posterior = erlo.LogPosterior(log_likelihood, self._log_prior)
 
-            # Tag posterior and name parameters
-            log_posterior.set_id(index)
-            log_posterior.set_parameter_names(self.get_parameter_names())
+            # Set ID of posterior
+            if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
+                label = self._get_population_model_parameter_ids()
+            log_posterior.set_id(label)
+
+            # Set parameter names
+            log_posterior.set_parameter_names(
+                self.get_parameter_names(exclude_pop_prefix=True))
 
             log_posteriors.append(log_posterior)
 
         return log_posteriors
 
-    def get_parameter_names(self, exclude_pop_model=False):
+    def get_n_parameters(self, exclude_pop_model=False):
+        """
+        Returns the number of free parameters of the structural model, i.e. the
+        mechanistic model, the error model and, if set, the population model.
+
+        Any parameters that have been fixed to a constant value will not be
+        included in the number of model parameters.
+
+        If the mechanistic model or the error model have not been set, ``None``
+        is returned. If the population model has not been set, only the number
+        of parameters for one structural model is returned, as the models are
+        structurally the same across individuals.
+
+        If a population model has been set and not all parameters are pooled,
+        the mechanistic and error model parameters are counted multiple times
+        (once for each individual). To get the number of mechanistic and error
+        model parameters prior to setting a population model the
+        ``exlude_pop_model`` flag can be set to ``True``.
+
+        Parameters
+        ----------
+        exclude_pop_model
+            A boolean flag which determines whether the number of parameters
+            of the full model are returned, or just the number of parameters
+            of the mechanistic and error model, prior to setting a population
+            model.
+        """
+        if exclude_pop_model and (self._population_models is not None):
+            return len(self._individual_parameter_names)
+
+        # Return all free model parameters (including population model, if set)
+        if self._fixed_params_mask is None:
+            return self._n_parameters
+
+        # Subtract the number of fixed parameters
+        n_fixed_params = int(np.sum(self._fixed_params_mask))
+
+        return self._n_parameters - n_fixed_params
+
+    def get_parameter_names(
+            self, exclude_pop_model=False, exclude_pop_prefix=False):
         """
         Returns the names of the free structural model parameters, i.e. the
         free parameters of the mechanistic model, the error model and
@@ -495,8 +615,25 @@ class ProblemModellingController(object):
             A boolean flag which determines whether the parameter names of the
             full model are returned, or just the mechanistic and error model
             parameters prior to setting a population model.
+        exclude_pop_prefix
+            A boolean flag which determines whether the parameter names of the
+            full model are returned with their population prefixes.
         """
-        # TODO: Make exclude_pop_model work
+        # If `True`, return the parameter names of an individual model
+        if exclude_pop_model and (self._population_models is not None):
+            return self._individual_parameter_names
+
+        # If `True`, return the parameter names without prefix
+        if exclude_pop_prefix and (self._population_models is not None):
+            # Construct a list that carries the bottom-level parameter meter
+            # name once for each population model parameter.
+            names = []
+            for pop_model in self._population_models:
+                name = pop_model.get_bottom_parameter_name()
+                number = pop_model.n_parameters()
+                names += [name] * number
+            return names
+
         if self._fixed_params_mask is None:
             return self._parameter_names
 
@@ -505,55 +642,6 @@ class ProblemModellingController(object):
             ~self._fixed_params_mask]
 
         return list(parameter_names)
-
-    def n_parameters(self, exclude_pop_model=False):
-        """
-        Returns the number of free parameters of the structural model, i.e. the
-        mechanistic model, the error model and, if set, the population model.
-
-        Any parameters that have been fixed to a constant value will not be
-        included in the number of model parameters.
-
-        If the mechanistic model or the error model have not been set, ``None``
-        is returned. If the population model has not been set, only the number
-        of parameters for one structural model is returned, as the models are
-        structurally the same across individuals.
-
-        If a population model has been set and not all parameters are pooled,
-        the mechanistic and error model parameters are counted multiple times
-        (once for each individual). To get the number of mechanistic and error
-        model parameters prior to setting a population model the
-        ``exlude_pop_model`` flag can be set to ``True``.
-
-        Parameters
-        ----------
-        exclude_pop_model
-            A boolean flag which determines whether the number of parameters
-            of the full model are returned, or just number of parameters of the
-            mechanistic and error model, prior to setting an error model.
-        """
-        # if exclude_pop_model:
-        #     # Get number of mechanistic model and error model parameters
-        #     n_parameters = self._log_likelihoods[0].n_parameters()
-
-        #     # If no parameters have been fixed, return
-        #     if self._fixed_params_mask is None:
-        #         return n_parameters
-
-        #     # If parameters have been fixed, subtract fixed number
-        #     n_fixed_params = int(np.sum(
-        #         self._fixed_params_mask[:n_parameters]))
-
-        #     return n_parameters - n_fixed_params
-
-        # Return all free model parameters (including population model)
-        if self._fixed_params_mask is None:
-            return self._n_parameters
-
-        # Subtract the number of fixed parameters
-        n_fixed_params = int(np.sum(self._fixed_params_mask))
-
-        return self._n_parameters - n_fixed_params
 
     def set_error_model(self, error_models, outputs=None):
         """
@@ -623,7 +711,7 @@ class ProblemModellingController(object):
             'Noise param %d' % (n+1) for n in range(n_noise_parameters)]
 
         # Reset other settings that depend on the error model
-        self._population_model = None
+        self._population_models = None
         self._log_prior = None
         self._fixed_params_mask = None
         self._fixed_params_values = None
@@ -674,7 +762,7 @@ class ProblemModellingController(object):
                     'All marginal log-priors have to be instances of a '
                     'pints.LogPrior.')
 
-        if len(log_priors) != self.n_parameters():
+        if len(log_priors) != self.get_n_parameters():
             raise ValueError(
                 'One marginal log-prior has to be provided for each parameter.'
             )
@@ -683,7 +771,7 @@ class ProblemModellingController(object):
         for log_prior in log_priors:
             n_parameters += log_prior.n_parameters()
 
-        if n_parameters != self.n_parameters():
+        if n_parameters != self.get_n_parameters():
             raise ValueError(
                 'The joint log-prior does not match the dimensionality of the '
                 'problem. At least one of the marginal log-priors has to be '
@@ -780,27 +868,28 @@ class ProblemModellingController(object):
 
         # Reset other settings that depend on the mechanistic model
         self._log_likelihoods = None
-        self._population_model = None
+        self._population_models = None
         self._log_prior = None
         self._n_parameters = None
         self._parameter_names = None
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
-    '''
     def set_population_model(self, pop_models, params=None):
         """
         Sets the population model for each model parameter.
 
-        A population model is an instance of a :class:`PopulationModel`. A
+        A population model is a :class:`PopulationModel` class. A
         population model specifies how a model parameter varies across
         individuals.
 
-        The population models ``pop_model`` are mapped to the model parameters.
-        By default the first population model is mapped to the first model
-        parameter in :meth:`get_parameter_names`, the second population model
-        to the second model parameter, and so on. By default, one population
-        model has to be provided for each model parameter.
+        The population models ``pop_models`` are mapped to the model
+        parameters. By default the first population model is mapped to the
+        first mechanistic-error model parameter, the second
+        population model to the second parameter, and so on. One
+        population model has to be provided for each model parameter. The
+        names of the mechanistic-error model parameters can be retrieved with
+        :meth:`get_parameter_names` with ``exclude_pop_model=True``.
 
         If not all model parameters need to be modelled by a population model,
         and can vary independently between individuals, a list of parameter
@@ -808,11 +897,12 @@ class ProblemModellingController(object):
         be of the same length as the list of population models, and specifies
         the population model-model parameter map.
 
+        Setting a population model resets the log-prior to ``None``.
+
         Parameters
         ----------
-
         pop_models
-            A list of :class:`PopulationModel` instances that specifies the
+            A list of :class:`PopulationModel` classes that specifies the
             variation of model parameters between individuals. By default
             the list has to be of the same length as the number of mechanistic
             and error model parameters. If ``params`` is not ``None``, the list
@@ -833,7 +923,78 @@ class ProblemModellingController(object):
                 'an error model has to be set.')
 
         for pop_model in pop_models:
+            if not issubclass(pop_model, erlo.PopulationModel):
+                raise ValueError(
+                    'The provided population models have to be '
+                    'erlotinib.PopulationModel classes.')
 
+        # Get free individual parameter names
+        parameter_names = self._parameter_names
+        if self._fixed_params_mask is not None:
+            parameter_names = list(np.array(parameter_names)[
+                ~self._fixed_params_mask])
+        if self._population_models is not None:
+            # If population model has been set before, parameter names are
+            # not correct
+            parameter_names = self._individual_parameter_names
 
-        parameter_names = self.get_parameter_names(exclude_pop_model=True)
-    '''
+        # Sort inputs according to `params` and fill blanks
+        n_individual_parameters = len(parameter_names)
+        if params is not None:
+            # Create default population model container
+            default_pop_models = [
+                erlo.HeterogeneousModel] * n_individual_parameters
+
+            # Map population models to provided parameter names
+            for param_id, name in enumerate(params):
+                try:
+                    index = parameter_names.index(name)
+                except ValueError:
+                    raise ValueError(
+                        'The provided parameter names could not be identified '
+                        'in the model')
+                default_pop_models[index] = pop_models[param_id]
+
+            pop_models = default_pop_models
+
+        # Make sure that each parameter is assigned to a population model
+        if len(pop_models) != n_individual_parameters:
+            raise ValueError(
+                'If no parameter names are specified, exactly one population '
+                'model has to be provided for each free parameter.')
+
+        # Fix individual parameters permanently, and reset mask again so
+        # fix_parameters may be used for the hierarchical model
+        if self._fixed_params_mask is not None:
+            # Fix parameters
+            self._log_likelihoods = self._create_reduced_log_pdfs(
+                self._log_likelihoods)
+
+            # Reset mask
+            self._fixed_params_values = None
+            self._fixed_params_mask = None
+
+        # Save individual parameter names
+        self._individual_parameter_names = parameter_names
+
+        # Instantiate population models and set parameter names
+        n_ids = len(self._log_likelihoods)
+        for model_id, pop_model in enumerate(pop_models):
+            # Instantiate population model
+            model = pop_model(n_ids)
+
+            # Set name of modelled parameter
+            name = parameter_names[model_id]
+            model.set_bottom_parameter_name(name)
+
+            # Save model in the list
+            pop_models[model_id] = model
+
+        self._population_models = pop_models
+
+        # Update parameter names and number of parameters
+        self._set_population_model_parameter_names()
+        self._n_parameters = len(self._parameter_names)
+
+        # Set prior to default
+        self._log_prior = None

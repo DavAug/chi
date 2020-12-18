@@ -149,11 +149,9 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             if end_index is None:
                 # This parameter is pooled. Leverage broadcasting
                 individual_params[:, param_id] = parameters[start_index]
-            # TODO: temporarily commented out, as long no other pop models
-            # exist.
-            # else:
-            #     individual_params[:, param_id] = parameters[
-            #         start_index:end_index]
+            else:
+                individual_params[:, param_id] = parameters[
+                    start_index:end_index]
 
         # Evaluate individual likelihoods
         for index, log_likelihood in enumerate(self._log_likelihoods):
@@ -212,20 +210,34 @@ class LogPosterior(pints.LogPosterior):
 
     def set_id(self, posterior_id):
         """
-        Sets the posterior id.
+        Sets the posterior id(s).
 
         This can be used to tag the log-posterior to distinguish it from
         other structurally identical log-posteriors, e.g. when the same
         model is used to describe the PKPD of different individuals.
 
+        Alternatively a list of IDs may be provided which sets the ID for
+        each model parameter individually. This may be useful for
+        log-posteiors that are derived from a
+        :class:`HierarchicalLoglikelihood`.
+
         Parameters
         ----------
-
         posterior_id
-            An ID that can be used to identify the log-posterior. A valid ID
-            has to be convertable to a string object.
+            An ID (or a list of IDs) that can be used to identify the
+            log-posterior. A valid ID has to be convertable to a string
+            object, or be a list of length of IDs of length ``n_parameters``.
         """
-        self._id = str(posterior_id)
+        if isinstance(posterior_id, list):
+            if len(posterior_id) != self.n_parameters():
+                raise ValueError(
+                    'If a list of IDs is provided, it needs to be of the same '
+                    'length as the number of parameters.')
+
+            self._id = [str(label) for label in posterior_id]
+
+        else:
+            self._id = str(posterior_id)
 
     def set_parameter_names(self, names):
         """
