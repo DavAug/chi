@@ -885,10 +885,11 @@ class ProblemModellingController(object):
 
         The population models ``pop_models`` are mapped to the model
         parameters. By default the first population model is mapped to the
-        first model parameter in
-        :meth:`get_parameter_names(exlude_pop_model=True)`, the second
-        population model to the second model parameter, and so on. One
-        population model has to be provided for each model parameter.
+        first mechanistic-error model parameter, the second
+        population model to the second parameter, and so on. One
+        population model has to be provided for each model parameter. The
+        names of the mechanistic-error model parameters can be retrieved with
+        :meth:`get_parameter_names` with ``exclude_pop_model=True`.
 
         If not all model parameters need to be modelled by a population model,
         and can vary independently between individuals, a list of parameter
