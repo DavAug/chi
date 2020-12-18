@@ -509,7 +509,7 @@ class ProblemModellingController(object):
         if self._log_likelihoods is None:
             raise ValueError(
                 'The error model has not been set.')
-        log_likelihoods = self._log_likelihoods
+        log_likelihoods = self._log_likelihoods.copy()
 
         if self._log_prior is None:
             raise ValueError(
@@ -884,7 +884,8 @@ class ProblemModellingController(object):
 
         The population models ``pop_models`` are mapped to the model
         parameters. By default the first population model is mapped to the
-        first model parameter in :meth:`get_parameter_names`, the second
+        first model parameter in
+        :meth:`get_parameter_names(exlude_pop_model=True)`, the second
         population model to the second model parameter, and so on. One
         population model has to be provided for each model parameter.
 
@@ -893,6 +894,8 @@ class ProblemModellingController(object):
         names can be specified with ``params``. The list of parameters has to
         be of the same length as the list of population models, and specifies
         the population model-model parameter map.
+
+        Setting a population model resets the log-prior to ``None``.
 
         Parameters
         ----------
@@ -955,8 +958,8 @@ class ProblemModellingController(object):
         # Make sure that each parameter is assigned to a population model
         if len(pop_models) != n_individual_parameters:
             raise ValueError(
-                'If no parameter names are specified, one population model has'
-                ' to be provided for each free parameter.')
+                'If no parameter names are specified, exactly one population '
+                'model has to be provided for each free parameter.')
 
         # Fix individual parameters permanently, and reset mask again so
         # fix_parameters may be used for the hierarchical model
@@ -990,3 +993,6 @@ class ProblemModellingController(object):
         # Update parameter names and number of parameters
         self._set_population_model_parameter_names()
         self._n_parameters = len(self._parameter_names)
+
+        # Set prior to default
+        self._log_prior = None
