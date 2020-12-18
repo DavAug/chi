@@ -34,11 +34,7 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
           brew update-reset
-          brew install gcc
-          brew install open-mpi
-          brew install openblas
-          brew install suite-sparse
-          brew install sundials
+          brew install sundials-5.5.0
       - name: install erlotinib
         run: |
           python --version
