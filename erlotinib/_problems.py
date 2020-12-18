@@ -604,7 +604,7 @@ class ProblemModellingController(object):
 
         return list(parameter_names)
 
-    def n_parameters(self, exclude_pop_model=False):
+    def get_n_parameters(self, exclude_pop_model=False):
         """
         Returns the number of free parameters of the structural model, i.e. the
         mechanistic model, the error model and, if set, the population model.
@@ -761,7 +761,7 @@ class ProblemModellingController(object):
                     'All marginal log-priors have to be instances of a '
                     'pints.LogPrior.')
 
-        if len(log_priors) != self.n_parameters():
+        if len(log_priors) != self.get_n_parameters():
             raise ValueError(
                 'One marginal log-prior has to be provided for each parameter.'
             )
@@ -770,7 +770,7 @@ class ProblemModellingController(object):
         for log_prior in log_priors:
             n_parameters += log_prior.n_parameters()
 
-        if n_parameters != self.n_parameters():
+        if n_parameters != self.get_n_parameters():
             raise ValueError(
                 'The joint log-prior does not match the dimensionality of the '
                 'problem. At least one of the marginal log-priors has to be '
