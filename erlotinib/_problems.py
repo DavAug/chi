@@ -492,8 +492,13 @@ class ProblemModellingController(object):
                 'The log-prior has not been set.')
 
         if self._population_models is not None:
-            # TODO:
-            # Compose HierarchicalLogLikelihood
+            # Compose HierarchicalLogLikelihoods
+            log_likelihood = erlo.HierarchicalLogLikelihood(
+                log_likelihoods, self._population_models)
+
+            # Save IDs as key?
+
+            # And save ID and non-pop name in a smart way
 
             # Overwrites the log-likelihoods
             raise NotImplementedError
@@ -515,7 +520,8 @@ class ProblemModellingController(object):
 
         return log_posteriors
 
-    def get_parameter_names(self, exclude_pop_model=False):
+    def get_parameter_names(
+            self, exclude_pop_model=False, exclude_pop_prefix=False):
         """
         Returns the names of the free structural model parameters, i.e. the
         free parameters of the mechanistic model, the error model and
@@ -541,10 +547,24 @@ class ProblemModellingController(object):
             A boolean flag which determines whether the parameter names of the
             full model are returned, or just the mechanistic and error model
             parameters prior to setting a population model.
+        exclude_pop_prefix
+            A boolean flag which determines whether the parameter names of the
+            full model are returned with their population prefixes.
         """
         # If `True`, return the parameter names of an individual model
         if exclude_pop_model and (self._population_models is not None):
             return self._individual_parameter_names
+
+        # If `True`, return the parameter names without prefix
+        if exclude_pop_prefix and (self._population_models is not None):
+            # Construct a list that carries the bottom-level parameter meter
+            # name once for each population model parameter.
+            names = []
+            for pop_model in self._population_models:
+                name = pop_model.get_bottom_parameter_name()
+                number = pop_model.n_parameters()
+                names += [name] * number
+            return names
 
         if self._fixed_params_mask is None:
             return self._parameter_names
