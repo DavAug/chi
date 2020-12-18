@@ -356,6 +356,18 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
         self.assertEqual(param_names[7], 'Pooled Noise param 1')
 
+        # Test returning parameters without prefix
+        param_names = self.problem.get_parameter_names(exclude_pop_prefix=True)
+        self.assertEqual(len(param_names), 2 + 3 + 3)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.kappa')
+        self.assertEqual(param_names[4], 'myokit.kappa')
+        self.assertEqual(param_names[5], 'myokit.lambda_0')
+        self.assertEqual(param_names[6], 'myokit.lambda_1')
+        self.assertEqual(param_names[7], 'Noise param 1')
+
         # Test whether exclude population model works
         param_names = self.problem.get_parameter_names(exclude_pop_model=True)
         self.assertEqual(len(param_names), 6)
