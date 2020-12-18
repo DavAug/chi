@@ -332,8 +332,8 @@ class ProblemModellingController(object):
         pints.LogPDF values.
         """
         values = self._fixed_params_values[self._fixed_params_mask]
-        for index, log_pdf in log_pdfs.items():
-            log_pdfs[index] = erlo.ReducedLogPDF(
+        for key, log_pdf in log_pdfs.items():
+            log_pdfs[key] = erlo.ReducedLogPDF(
                 log_pdf=log_pdf,
                 mask=self._fixed_params_mask,
                 values=values)
@@ -370,6 +370,30 @@ class ProblemModellingController(object):
             regimens[label] = regimen
 
         return regimens
+
+    def _get_population_model_parameter_ids(self):
+        """
+        Returns the ID (prefix) of each parameter in a population model.
+        """
+        # Get the number of individuals
+        n_ids = len(self._ids)
+
+        # Construct parameter prefixes
+        prefixes = []
+        for pop_model in self._population_models:
+
+            # Create prefix for individual parameters
+            if pop_model.n_bottom_parameters() == n_ids:
+                names = ['ID %s' % n for n in self._ids]
+                prefixes += names
+
+            # Create prefix for population-level parameters
+            if pop_model.n_top_parameters() > 0:
+                top_names = pop_model.get_top_parameter_names()
+                names = ['%s' % pop_prefix for pop_prefix in top_names]
+                prefixes += names
+
+        return prefixes
 
     def _set_population_model_parameter_names(self):
         """
@@ -492,29 +516,34 @@ class ProblemModellingController(object):
                 'The log-prior has not been set.')
 
         if self._population_models is not None:
+            # Get log-likelihoods from dictionary
+            log_likelihoods = list(log_likelihoods.values())
+
             # Compose HierarchicalLogLikelihoods
             log_likelihood = erlo.HierarchicalLogLikelihood(
                 log_likelihoods, self._population_models)
 
-            # Save IDs as key?
-
-            # And save ID and non-pop name in a smart way
-
-            # Overwrites the log-likelihoods
-            raise NotImplementedError
+            # Replace individual LL by HierarchicalLL
+            log_likelihoods = dict({
+                'HierarchicalLoglikelihood': log_likelihood})
 
         if self._fixed_params_values is not None:
             log_likelihoods = self._create_reduced_log_pdfs(log_likelihoods)
 
         # Compose the log-posteriors
         log_posteriors = []
-        for index, log_likelihood in log_likelihoods.items():
+        for label, log_likelihood in log_likelihoods.items():
             # Create log-posterior
             log_posterior = erlo.LogPosterior(log_likelihood, self._log_prior)
 
-            # Tag posterior and name parameters
-            log_posterior.set_id(index)
-            log_posterior.set_parameter_names(self.get_parameter_names())
+            # Set ID of posterior
+            if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
+                label = self._get_population_model_parameter_ids()
+            log_posterior.set_id(label)
+
+            # Set parameter names
+            log_posterior.set_parameter_names(
+                self.get_parameter_names(exclude_pop_prefix=True))
 
             log_posteriors.append(log_posterior)
 
