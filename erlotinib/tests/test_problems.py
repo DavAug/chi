@@ -238,6 +238,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The error model'):
             problem.fix_parameters(name_value_dict)
 
+    def test_get_dosing_regimens(self):
+        regimens = self.problem.get_dosing_regimens()
+
+        self.assertIsNone(regimens)
+
     def test_get_log_posteriors(self):
         # Create posterior with no fixed parameters
         self.problem.set_mechanistic_model(self.model)
@@ -253,7 +258,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(posteriors[2].n_parameters(), 6)
         self.assertEqual(posteriors[2].get_id(), '2')
 
-        # Fixe some parameters
+        # Fix some parameters
         name_value_dict = dict({
             'myokit.drug_concentration': 0,
             'myokit.kappa': 1})
@@ -269,10 +274,38 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(posteriors[2].n_parameters(), 4)
         self.assertEqual(posteriors[2].get_id(), '2')
 
-    def test_get_dosing_regimens(self):
-        regimens = self.problem.get_dosing_regimens()
+        # Set a population model
+        pop_models = [
+            erlo.PooledModel,
+            erlo.HeterogeneousModel,
+            erlo.PooledModel,
+            erlo.PooledModel]
+        self.problem.set_population_model(pop_models)
+        self.problem.set_log_prior(self.log_priors)
 
-        self.assertIsNone(regimens)
+        posteriors = self.problem.get_log_posteriors()
+
+        self.assertEqual(len(posteriors), 1)
+        posterior = posteriors[0]
+        self.assertEqual(posterior.n_parameters(), 6)
+
+        names = posterior.get_parameter_names()
+        ids = posterior.get_id()
+        self.assertEqual(len(names), 6)
+        self.assertEqual(len(ids), 6)
+
+        self.assertEqual(names[0], 'myokit.tumour_volume')
+        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(names[1], 'myokit.lambda_0')
+        self.assertEqual(ids[1], 'ID 0')
+        self.assertEqual(names[2], 'myokit.lambda_0')
+        self.assertEqual(ids[2], 'ID 1')
+        self.assertEqual(names[3], 'myokit.lambda_0')
+        self.assertEqual(ids[3], 'ID 2')
+        self.assertEqual(names[4], 'myokit.lambda_1')
+        self.assertEqual(ids[4], 'Pooled')
+        self.assertEqual(names[5], 'Noise param 1')
+        self.assertEqual(ids[5], 'Pooled')
 
     def test_get_log_posteriors_bad_input(self):
         # No mechanistic model set
