@@ -549,6 +549,45 @@ class ProblemModellingController(object):
 
         return log_posteriors
 
+    def get_n_parameters(self, exclude_pop_model=False):
+        """
+        Returns the number of free parameters of the structural model, i.e. the
+        mechanistic model, the error model and, if set, the population model.
+
+        Any parameters that have been fixed to a constant value will not be
+        included in the number of model parameters.
+
+        If the mechanistic model or the error model have not been set, ``None``
+        is returned. If the population model has not been set, only the number
+        of parameters for one structural model is returned, as the models are
+        structurally the same across individuals.
+
+        If a population model has been set and not all parameters are pooled,
+        the mechanistic and error model parameters are counted multiple times
+        (once for each individual). To get the number of mechanistic and error
+        model parameters prior to setting a population model the
+        ``exlude_pop_model`` flag can be set to ``True``.
+
+        Parameters
+        ----------
+        exclude_pop_model
+            A boolean flag which determines whether the number of parameters
+            of the full model are returned, or just the number of parameters
+            of the mechanistic and error model, prior to setting a population
+            model.
+        """
+        if exclude_pop_model and (self._population_models is not None):
+            return len(self._individual_parameter_names)
+
+        # Return all free model parameters (including population model, if set)
+        if self._fixed_params_mask is None:
+            return self._n_parameters
+
+        # Subtract the number of fixed parameters
+        n_fixed_params = int(np.sum(self._fixed_params_mask))
+
+        return self._n_parameters - n_fixed_params
+
     def get_parameter_names(
             self, exclude_pop_model=False, exclude_pop_prefix=False):
         """
@@ -603,44 +642,6 @@ class ProblemModellingController(object):
             ~self._fixed_params_mask]
 
         return list(parameter_names)
-
-    def get_n_parameters(self, exclude_pop_model=False):
-        """
-        Returns the number of free parameters of the structural model, i.e. the
-        mechanistic model, the error model and, if set, the population model.
-
-        Any parameters that have been fixed to a constant value will not be
-        included in the number of model parameters.
-
-        If the mechanistic model or the error model have not been set, ``None``
-        is returned. If the population model has not been set, only the number
-        of parameters for one structural model is returned, as the models are
-        structurally the same across individuals.
-
-        If a population model has been set and not all parameters are pooled,
-        the mechanistic and error model parameters are counted multiple times
-        (once for each individual). To get the number of mechanistic and error
-        model parameters prior to setting a population model the
-        ``exlude_pop_model`` flag can be set to ``True``.
-
-        Parameters
-        ----------
-        exclude_pop_model
-            A boolean flag which determines whether the number of parameters
-            of the full model are returned, or just number of parameters of the
-            mechanistic and error model, prior to setting an error model.
-        """
-        if exclude_pop_model and (self._population_models is not None):
-            return len(self._individual_parameter_names)
-
-        # Return all free model parameters (including population model, if set)
-        if self._fixed_params_mask is None:
-            return self._n_parameters
-
-        # Subtract the number of fixed parameters
-        n_fixed_params = int(np.sum(self._fixed_params_mask))
-
-        return self._n_parameters - n_fixed_params
 
     def set_error_model(self, error_models, outputs=None):
         """
