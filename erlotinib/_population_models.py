@@ -139,7 +139,7 @@ class HeterogeneousModel(PopulationModel):
     A population model that imposes no relationship on the model parameters
     across individuals.
 
-    A heterohenous model assumes that the parameters across individuals are
+    A heterogeneous model assumes that the parameters across individuals are
     independent.
 
     Calling the HeterogenousModel returns a constant, irrespective of the
