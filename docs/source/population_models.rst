@@ -11,9 +11,14 @@ of mechanistic model parameters or error model parameters across individuals.
 
 Overview:
 
+- :class:`HeterogeneousModel`
 - :class:`PooledModel`
 - :class:`PopulationModel`
 
+
+.. autoclass:: HeterogeneousModel
+    :members:
+    :inherited-members:
 
 .. autoclass:: PooledModel
     :members:
