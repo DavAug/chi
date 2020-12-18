@@ -171,7 +171,7 @@ class TestPopulationModel(unittest.TestCase):
         pop_model = erlo.PopulationModel(n_ids=3)
         ids = ['wrong', 'number', 'of', 'IDs']
 
-        with self.assertRaisesRegex(ValueError, 'Length of IDs')
+        with self.assertRaisesRegex(ValueError, 'Length of IDs'):
             pop_model.set_ids(ids)
 
     def test_get_top_parameter_names(self):
