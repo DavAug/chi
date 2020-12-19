@@ -2,11 +2,11 @@
 Apps
 ****
 
-```{important}
-The app classes are currently only manually tested. Unexpected behaviour is
-therefore more likely than for classes that are integrated in an automatic
-testing framework.
-```
+.. important::
+    The app classes are currently only manually tested. Unexpected behaviour is
+    therefore more likely than for classes that are integrated in an automatic
+    testing framework.
+
 
 .. currentmodule:: erlotinib.apps
 
