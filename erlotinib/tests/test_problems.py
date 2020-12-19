@@ -252,11 +252,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         self.assertEqual(len(posteriors), 3)
         self.assertEqual(posteriors[0].n_parameters(), 6)
-        self.assertEqual(posteriors[0].get_id(), '0')
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
         self.assertEqual(posteriors[1].n_parameters(), 6)
-        self.assertEqual(posteriors[1].get_id(), '1')
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
         self.assertEqual(posteriors[2].n_parameters(), 6)
-        self.assertEqual(posteriors[2].get_id(), '2')
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
 
         # Fix some parameters
         name_value_dict = dict({
@@ -268,11 +268,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         self.assertEqual(len(posteriors), 3)
         self.assertEqual(posteriors[0].n_parameters(), 4)
-        self.assertEqual(posteriors[0].get_id(), '0')
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
         self.assertEqual(posteriors[1].n_parameters(), 4)
-        self.assertEqual(posteriors[1].get_id(), '1')
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
         self.assertEqual(posteriors[2].n_parameters(), 4)
-        self.assertEqual(posteriors[2].get_id(), '2')
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
 
         # Set a population model
         pop_models = [
@@ -1024,11 +1024,11 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
 
         self.assertEqual(len(posteriors), 3)
         self.assertEqual(posteriors[0].n_parameters(), 6)
-        self.assertEqual(posteriors[0].get_id(), '0')
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
         self.assertEqual(posteriors[1].n_parameters(), 6)
-        self.assertEqual(posteriors[1].get_id(), '1')
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
         self.assertEqual(posteriors[2].n_parameters(), 6)
-        self.assertEqual(posteriors[2].get_id(), '2')
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
 
         # Fix some parameters
         name_value_dict = dict({
@@ -1040,11 +1040,11 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
 
         self.assertEqual(len(posteriors), 3)
         self.assertEqual(posteriors[0].n_parameters(), 4)
-        self.assertEqual(posteriors[0].get_id(), '0')
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
         self.assertEqual(posteriors[1].n_parameters(), 4)
-        self.assertEqual(posteriors[1].get_id(), '1')
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
         self.assertEqual(posteriors[2].n_parameters(), 4)
-        self.assertEqual(posteriors[2].get_id(), '2')
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
 
     def test_get_log_posteriors_bad_input(self):
         # No mechanistic model set

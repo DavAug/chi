@@ -73,7 +73,7 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         fig.add_trace(
             go.Histogram(
                 y=samples,
-                name='ID: %s' % str(individual),
+                name='%s' % str(individual),
                 hovertemplate=(
                     'Sample: %{y:.2f}<br>' +
                     'Rhat: %.02f<br>' % rhat),
