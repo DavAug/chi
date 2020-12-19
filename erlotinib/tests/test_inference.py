@@ -128,49 +128,55 @@ class TestOptimisationController(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # Get test data and model
-        data = erlo.DataLibrary().lung_cancer_control_group()
-        individual = 40
-        mask = data['#ID'] == individual  # Arbitrary test id
-        times = data[mask]['TIME in day'].to_numpy()
-        observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
+        # Set up test problems
+        # Model I: Individual with ID 40
+        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        problem = erlo.ProblemModellingController(data)
 
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
+        problem.set_mechanistic_model(model)
 
-        # Create inverse problem
-        problem = erlo.InverseProblem(model, times, observed_volumes)
-        cls.log_likelihood = pints.GaussianLogLikelihood(problem)
-        log_prior_tumour_volume = pints.UniformLogPrior(1E-3, 1E1)
-        log_prior_drug_conc = pints.UniformLogPrior(-1E-3, 1E-3)
-        log_prior_kappa = pints.UniformLogPrior(-1E-3, 1E-3)
-        log_prior_lambda_0 = pints.UniformLogPrior(1E-3, 1E1)
-        log_prior_lambda_1 = pints.UniformLogPrior(1E-3, 1E1)
-        log_prior_sigma = pints.HalfCauchyLogPrior(location=0, scale=3)
-        cls.log_prior = pints.ComposedLogPrior(
-            log_prior_tumour_volume,
-            log_prior_drug_conc,
-            log_prior_kappa,
-            log_prior_lambda_0,
-            log_prior_lambda_1,
-            log_prior_sigma)
-        log_posterior = erlo.LogPosterior(cls.log_likelihood, cls.log_prior)
-        log_posterior.set_id(individual)
+        error_models = [pints.GaussianLogLikelihood]
+        problem.set_error_model(error_models)
 
-        # Set up optmisation controller
-        cls.optimiser = erlo.OptimisationController(log_posterior)
+        n_parameters = 6
+        log_priors = [
+            pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
+        problem.set_log_prior(log_priors)
+        log_posteriors = problem.get_log_posteriors()
+        cls.log_posterior_id_40 = log_posteriors[0]
 
-        cls.n_ids = 1
-        cls.n_params = 6
+        # Model II: Hierarchical model across all individuals
+        pop_models = [
+            erlo.PooledModel,
+            erlo.PooledModel,
+            erlo.HeterogeneousModel,
+            erlo.PooledModel,
+            erlo.PooledModel,
+            erlo.PooledModel]
+        problem.set_population_model(pop_models)
+
+        n_parameters = 5 + 8  # IDs in dataset
+        log_priors = [
+            pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
+        problem.set_log_prior(log_priors)
+        cls.hierarchical_posterior = problem.get_log_posteriors()
+
+        # Get IDs for testing
+        cls.ids = data['ID'].unique()
 
     def test_run(self):
+        # Case I: Individual with ID 40
+        optimiser = erlo.OptimisationController(self.log_posterior_id_40)
+
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
         # (Potentially codecov cannot keep track of multiple CPUs)
-        self.optimiser.set_parallel_evaluation(False)
+        optimiser.set_parallel_evaluation(False)
 
-        self.optimiser.set_n_runs(3)
-        result = self.optimiser.run(n_max_iterations=20)
+        optimiser.set_n_runs(3)
+        result = optimiser.run(n_max_iterations=20)
 
         keys = result.keys()
         self.assertEqual(len(keys), 5)
@@ -180,14 +186,19 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(keys[3], 'Score')
         self.assertEqual(keys[4], 'Run')
 
+        ids = result['ID'].unique()
+        self.assertEqual(len(ids), 1)
+        self.assertEqual(ids[0], 'ID 40')
+
+        n_parameters = 6
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), self.n_params)
-        self.assertEqual(parameters[0], 'Param 1')
-        self.assertEqual(parameters[1], 'Param 2')
-        self.assertEqual(parameters[2], 'Param 3')
-        self.assertEqual(parameters[3], 'Param 4')
-        self.assertEqual(parameters[4], 'Param 5')
-        self.assertEqual(parameters[5], 'Param 6')
+        self.assertEqual(len(parameters), n_parameters)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[5], 'Noise param 1')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -195,6 +206,55 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(runs[1], 2)
         self.assertEqual(runs[2], 3)
 
+        # Case II: Hierarchical model
+        optimiser = erlo.OptimisationController(self.hierarchical_posterior)
+
+        # Set evaluator to sequential, because otherwise codecov
+        # complains that posterior was never evaluated.
+        # (Potentially codecov cannot keep track of multiple CPUs)
+        optimiser.set_parallel_evaluation(False)
+
+        optimiser.set_n_runs(3)
+        result = optimiser.run(n_max_iterations=20)
+
+        keys = result.keys()
+        self.assertEqual(len(keys), 5)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Parameter')
+        self.assertEqual(keys[2], 'Estimate')
+        self.assertEqual(keys[3], 'Score')
+        self.assertEqual(keys[4], 'Run')
+
+        # One ID for each prefix
+        ids = result['ID'].unique()
+        self.assertEqual(len(ids), 9)  # nids + 'Pooled'
+        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(ids[1], 'ID ' + str(self.ids[0]))
+        self.assertEqual(ids[2], 'ID ' + str(self.ids[1]))
+        self.assertEqual(ids[3], 'ID ' + str(self.ids[2]))
+        self.assertEqual(ids[4], 'ID ' + str(self.ids[3]))
+        self.assertEqual(ids[5], 'ID ' + str(self.ids[4]))
+        self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
+        self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
+        self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
+
+        n_parameters = 6
+        parameters = result['Parameter'].unique()
+        self.assertEqual(len(parameters), n_parameters)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[5], 'Noise param 1')
+
+        runs = result['Run'].unique()
+        self.assertEqual(len(runs), 3)
+        self.assertEqual(runs[0], 1)
+        self.assertEqual(runs[1], 2)
+        self.assertEqual(runs[2], 3)
+
+    def test_run_catch_exception(self):
         # Check failure of optimisation doesn't interrupt all runs
         # (CMAES returns NAN for 1-dim problems)
 
@@ -240,15 +300,17 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(runs[2], 3)
 
     def test_set_optmiser(self):
-        self.optimiser.set_optimiser(pints.PSO)
-        self.assertEqual(self.optimiser._optimiser, pints.PSO)
+        optimiser = erlo.OptimisationController(self.log_posterior_id_40)
+        optimiser.set_optimiser(pints.PSO)
+        self.assertEqual(optimiser._optimiser, pints.PSO)
 
-        self.optimiser.set_optimiser(pints.CMAES)
-        self.assertEqual(self.optimiser._optimiser, pints.CMAES)
+        optimiser.set_optimiser(pints.CMAES)
+        self.assertEqual(optimiser._optimiser, pints.CMAES)
 
     def test_set_optimiser_bad_input(self):
+        optimiser = erlo.OptimisationController(self.log_posterior_id_40)
         with self.assertRaisesRegex(ValueError, 'Optimiser has to be'):
-            self.optimiser.set_optimiser(str)
+            optimiser.set_optimiser(str)
 
 
 class TestSamplingController(unittest.TestCase):
