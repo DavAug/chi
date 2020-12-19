@@ -107,21 +107,6 @@ todo_include_todos = False
 #
 html_theme = 'furo'
 
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-#
-html_theme_options = {
-
-    # See: https://alabaster.readthedocs.io/en/latest/customization.html
-
-    # Fixed sidebar is unusable: Doesn't have its own scrollbar!
-    # 'fixed_sidebar': True,
-
-    'page_width': '1280px',
-    'sidebar_width': '320px',
-}
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
