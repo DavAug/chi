@@ -537,6 +537,7 @@ class ProblemModellingController(object):
             log_posterior = erlo.LogPosterior(log_likelihood, self._log_prior)
 
             # Set ID of posterior
+            label = 'ID ' + label
             if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
                 label = self._get_population_model_parameter_ids()
             log_posterior.set_id(label)
