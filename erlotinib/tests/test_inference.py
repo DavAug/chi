@@ -320,49 +320,55 @@ class TestSamplingController(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # Get test data and model
-        data = erlo.DataLibrary().lung_cancer_control_group()
-        cls.individual = 40
-        mask = data['#ID'] == cls.individual  # Arbitrary test id
-        times = data[mask]['TIME in day'].to_numpy()
-        observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
+        # Set up test problems
+        # Model I: Individual with ID 40
+        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        problem = erlo.ProblemModellingController(data)
 
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
+        problem.set_mechanistic_model(model)
 
-        # Create inverse problem
-        problem = erlo.InverseProblem(model, times, observed_volumes)
-        log_likelihood = pints.GaussianLogLikelihood(problem)
-        log_prior_tumour_volume = pints.UniformLogPrior(1E-3, 1E1)
-        log_prior_drug_conc = pints.UniformLogPrior(-1E-3, 1E-3)
-        log_prior_kappa = pints.UniformLogPrior(-1E-3, 1E-3)
-        log_prior_lambda_0 = pints.UniformLogPrior(1E-3, 1E1)
-        log_prior_lambda_1 = pints.UniformLogPrior(1E-3, 1E1)
-        log_prior_sigma = pints.HalfCauchyLogPrior(location=0, scale=3)
-        log_prior = pints.ComposedLogPrior(
-            log_prior_tumour_volume,
-            log_prior_drug_conc,
-            log_prior_kappa,
-            log_prior_lambda_0,
-            log_prior_lambda_1,
-            log_prior_sigma)
-        log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
-        log_posterior.set_id(cls.individual)
+        error_models = [pints.GaussianLogLikelihood]
+        problem.set_error_model(error_models)
 
-        # Set up sampling controller
-        cls.sampler = erlo.SamplingController(log_posterior)
+        n_parameters = 6
+        log_priors = [
+            pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
+        problem.set_log_prior(log_priors)
+        log_posteriors = problem.get_log_posteriors()
+        cls.log_posterior_id_40 = log_posteriors[0]
 
-        cls.n_ids = 1
-        cls.n_params = 6
+        # Model II: Hierarchical model across all individuals
+        pop_models = [
+            erlo.PooledModel,
+            erlo.PooledModel,
+            erlo.HeterogeneousModel,
+            erlo.PooledModel,
+            erlo.PooledModel,
+            erlo.PooledModel]
+        problem.set_population_model(pop_models)
+
+        n_parameters = 5 + 8  # IDs in dataset
+        log_priors = [
+            pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
+        problem.set_log_prior(log_priors)
+        cls.hierarchical_posterior = problem.get_log_posteriors()
+
+        # Get IDs for testing
+        cls.ids = data['ID'].unique()
 
     def test_run(self):
+        # Case I: Individual with ID 40
+        sampler = erlo.SamplingController(self.log_posterior_id_40)
+
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
         # (Potentially codecov cannot keep track of multiple CPUs)
-        self.sampler.set_parallel_evaluation(False)
+        sampler.set_parallel_evaluation(False)
 
-        self.sampler.set_n_runs(3)
-        result = self.sampler.run(n_iterations=20)
+        sampler.set_n_runs(3)
+        result = sampler.run(n_iterations=20)
 
         keys = result.keys()
         self.assertEqual(len(keys), 5)
@@ -372,14 +378,67 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(keys[3], 'Iteration')
         self.assertEqual(keys[4], 'Run')
 
+        ids = result['ID'].unique()
+        self.assertEqual(len(ids), 1)
+        self.assertEqual(ids[0], 'ID 40')
+
+        n_parameters = 6
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), self.n_params)
-        self.assertEqual(parameters[0], 'Param 1')
-        self.assertEqual(parameters[1], 'Param 2')
-        self.assertEqual(parameters[2], 'Param 3')
-        self.assertEqual(parameters[3], 'Param 4')
-        self.assertEqual(parameters[4], 'Param 5')
-        self.assertEqual(parameters[5], 'Param 6')
+        self.assertEqual(len(parameters), n_parameters)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[5], 'Noise param 1')
+
+        runs = result['Run'].unique()
+        self.assertEqual(len(runs), 3)
+        self.assertEqual(runs[0], 1)
+        self.assertEqual(runs[1], 2)
+        self.assertEqual(runs[2], 3)
+
+        # Case II: Hierarchical model
+        sampler = erlo.SamplingController(self.hierarchical_posterior)
+
+        # Set evaluator to sequential, because otherwise codecov
+        # complains that posterior was never evaluated.
+        # (Potentially codecov cannot keep track of multiple CPUs)
+        sampler.set_parallel_evaluation(False)
+
+        sampler.set_n_runs(3)
+        result = sampler.run(n_iterations=20)
+
+        keys = result.keys()
+        self.assertEqual(len(keys), 5)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Parameter')
+        self.assertEqual(keys[2], 'Sample')
+        self.assertEqual(keys[3], 'Iteration')
+        self.assertEqual(keys[4], 'Run')
+
+        # One ID for each prefix
+        ids = result['ID'].unique()
+        self.assertEqual(len(ids), 9)  # nids + 'Pooled'
+        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(ids[1], 'ID ' + str(self.ids[0]))
+        self.assertEqual(ids[2], 'ID ' + str(self.ids[1]))
+        self.assertEqual(ids[3], 'ID ' + str(self.ids[2]))
+        self.assertEqual(ids[4], 'ID ' + str(self.ids[3]))
+        self.assertEqual(ids[5], 'ID ' + str(self.ids[4]))
+        self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
+        self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
+        self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
+
+        n_parameters = 6
+        parameters = result['Parameter'].unique()
+        self.assertEqual(len(parameters), n_parameters)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[5], 'Noise param 1')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -389,32 +448,35 @@ class TestSamplingController(unittest.TestCase):
 
     def test_set_initial_parameters(self):
         n_runs = 10
-        self.sampler.set_n_runs(n_runs)
+        sampler = erlo.SamplingController(self.log_posterior_id_40)
+        sampler.set_n_runs(n_runs)
 
         # Create test data
         # First run estimates both params as 1 and second run as 2
-        params = ['Param 3', 'Param 5'] * 2
+        params = ['myokit.kappa', 'myokit.lambda_1'] * 2
         estimates = [1, 1, 2, 2]
         scores = [0.3, 0.3, 5, 5]
         runs = [1, 1, 2, 2]
 
         data = pd.DataFrame({
-            'ID': self.individual,
+            'ID': 'ID 40',
             'Parameter': params,
             'Estimate': estimates,
             'Score': scores,
             'Run': runs})
 
         # Get initial values before setting them
-        default_params = self.sampler._initial_params.copy()
+        default_params = sampler._initial_params.copy()
 
         # Set initial values and test behaviour
-        self.sampler.set_initial_parameters(data)
-        new_params = self.sampler._initial_params
+        sampler.set_initial_parameters(data)
+        new_params = sampler._initial_params
 
+        n_ids = 1
+        n_parameters = 6
         self.assertEqual(
-            default_params.shape, (self.n_ids, n_runs, self.n_params))
-        self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
+            default_params.shape, (n_ids, n_runs, n_parameters))
+        self.assertEqual(new_params.shape, (n_ids, n_runs, n_parameters))
 
         # Compare values. All but 3rd and 5th parameter should coincide.
         # 3rd and 5th should correspong map estimates
@@ -433,12 +495,12 @@ class TestSamplingController(unittest.TestCase):
 
         # Check that it works fine even if ID cannot be found
         data['ID'] = 'Some ID'
-        self.sampler.set_initial_parameters(data)
-        new_params = self.sampler._initial_params
+        sampler.set_initial_parameters(data)
+        new_params = sampler._initial_params
 
         self.assertEqual(
-            default_params.shape, (self.n_ids, n_runs, self.n_params))
-        self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
+            default_params.shape, (n_ids, n_runs, n_parameters))
+        self.assertEqual(new_params.shape, (n_ids, n_runs, n_parameters))
 
         # Compare values. All but 3rd and 5th index should coincide.
         # 3rd and 5th should correspong map estimates
@@ -456,14 +518,14 @@ class TestSamplingController(unittest.TestCase):
             new_params[0, :, 5], default_params[0, :, 5]))
 
         # Check that it works fine even if parameter cannot be found
-        data['ID'] = self.individual
+        data['ID'] = 'ID 40'
         data['Parameter'] = ['SOME', 'PARAMETERS'] * 2
-        self.sampler.set_initial_parameters(data)
-        new_params = self.sampler._initial_params
+        sampler.set_initial_parameters(data)
+        new_params = sampler._initial_params
 
         self.assertEqual(
-            default_params.shape, (self.n_ids, n_runs, self.n_params))
-        self.assertEqual(new_params.shape, (self.n_ids, n_runs, self.n_params))
+            default_params.shape, (n_ids, n_runs, n_parameters))
+        self.assertEqual(new_params.shape, (n_ids, n_runs, n_parameters))
 
         # Compare values. All but 3rd and 5th index should coincide.
         # 3rd and 5th should correspong map estimates
@@ -481,12 +543,14 @@ class TestSamplingController(unittest.TestCase):
             new_params[0, :, 5], default_params[0, :, 5]))
 
     def test_set_initial_parameters_bad_input(self):
+        sampler = erlo.SamplingController(self.log_posterior_id_40)
+
         # Create data of wrong type
         data = np.ones(shape=(10, 4))
 
         self.assertRaisesRegex(
             TypeError, 'Data has to be pandas.DataFrame.',
-            self.sampler.set_initial_parameters, data)
+            sampler.set_initial_parameters, data)
 
         # Create test data
         # First run estimates both params as 1 and second run as 2
@@ -496,7 +560,7 @@ class TestSamplingController(unittest.TestCase):
         runs = [1, 1, 2, 2]
 
         test_data = pd.DataFrame({
-            'ID': self.individual,
+            'ID': 'ID 40',
             'Parameter': params,
             'Estimate': estimates,
             'Score': scores,
@@ -507,46 +571,48 @@ class TestSamplingController(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError, 'Data does not have the key <ID>.',
-            self.sampler.set_initial_parameters, data)
+            sampler.set_initial_parameters, data)
 
         # Rename parameter key
         data = test_data.rename(columns={'Parameter': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
             ValueError, 'Data does not have the key <Parameter>.',
-            self.sampler.set_initial_parameters, data)
+            sampler.set_initial_parameters, data)
 
         # Rename estimate key
         data = test_data.rename(columns={'Estimate': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
             ValueError, 'Data does not have the key <Estimate>.',
-            self.sampler.set_initial_parameters, data)
+            sampler.set_initial_parameters, data)
 
         # Rename score key
         data = test_data.rename(columns={'Score': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
             ValueError, 'Data does not have the key <Score>.',
-            self.sampler.set_initial_parameters, data)
+            sampler.set_initial_parameters, data)
 
         # Rename run key
         data = test_data.rename(columns={'Run': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
             ValueError, 'Data does not have the key <Run>.',
-            self.sampler.set_initial_parameters, data)
+            sampler.set_initial_parameters, data)
 
     def test_set_sampler(self):
-        self.sampler.set_sampler(pints.HamiltonianMCMC)
-        self.assertEqual(self.sampler._sampler, pints.HamiltonianMCMC)
+        sampler = erlo.SamplingController(self.log_posterior_id_40)
+        sampler.set_sampler(pints.HamiltonianMCMC)
+        self.assertEqual(sampler._sampler, pints.HamiltonianMCMC)
 
-        self.sampler.set_sampler(pints.HaarioACMC)
-        self.assertEqual(self.sampler._sampler, pints.HaarioACMC)
+        sampler.set_sampler(pints.HaarioACMC)
+        self.assertEqual(sampler._sampler, pints.HaarioACMC)
 
     def test_set_sampler_bad_input(self):
+        sampler = erlo.SamplingController(self.log_posterior_id_40)
         with self.assertRaisesRegex(ValueError, 'Sampler has to be'):
-            self.sampler.set_sampler(str)
+            sampler.set_sampler(str)
 
 
 if __name__ == '__main__':
