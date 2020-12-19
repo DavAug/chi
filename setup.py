@@ -34,6 +34,7 @@ setup(
     ],
     extras_require={
         'docs': [
+            'furo',
             'sphinx>=1.5, !=1.7.3',     # For doc generation
         ],
     },
