@@ -319,11 +319,17 @@ class SamplingController(InferenceController):
 
             # Initialise intermediate container for individuals
             indiviudal_results = pd.DataFrame(
-                columns=['Parameter', 'Sample', 'Iteration', 'Run'])
+                columns=['ID', 'Parameter', 'Sample', 'Iteration', 'Run'])
 
             # Initialise intermediate container for individual runs
             run_results = pd.DataFrame(
-                columns=['Parameter', 'Sample', 'Iteration', 'Run'])
+                columns=['ID', 'Parameter', 'Sample', 'Iteration', 'Run'])
+
+            # Get posterior ID (or parameter IDs, if hierarchical)
+            ids = log_posterior.get_id()
+            if not isinstance(ids, list):
+                # Create one ID entry for each parameter
+                ids = [ids] * len(self._parameters)
 
             # Sort pints sample output into dataframe format
             for run_id, samples in enumerate(output):
@@ -332,13 +338,13 @@ class SamplingController(InferenceController):
                 run_results['Run'] = run_id + 1
 
                 for param_id, name in enumerate(self._parameters):
+                    run_results['ID'] = ids[param_id]
                     run_results['Parameter'] = name
                     run_results['Sample'] = samples[:, param_id]
 
                     indiviudal_results = indiviudal_results.append(run_results)
 
             # Safe sample results to dataframe
-            indiviudal_results['ID'] = log_posterior.get_id()
             result = result.append(indiviudal_results)
 
         return result
