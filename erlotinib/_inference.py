@@ -276,6 +276,29 @@ class SamplingController(InferenceController):
         # Set default sampler
         self._sampler = pints.HaarioACMC
 
+    def _get_id_parameter_pairs(self, log_posterior):
+        """
+        Returns a zipped list of ID (pop_prefix), and parameter name pairs.
+
+        Posteriors that are not derived from a HierarchicalLoglikelihood carry
+        typically only a single ID (the ID of the individual they are
+        modelling). In that case all parameters are assigned with the same ID.
+
+        For posteriors that are derived from a HierarchicalLoglikelihood it
+        often makes sense to label the parameters with different IDs. These ID
+        parameter name pairs are reconstructed here.
+        """
+        # Get IDs and parameter names
+        ids = log_posterior.get_id()
+        parameters = log_posterior.get_parameter_names()
+
+        # If IDs is only one ID, expand to list of length n_parameters
+        if not isinstance(ids, list):
+            n_parameters = len(parameters)
+            ids = [ids] * n_parameters
+
+        return zip(ids, parameters)
+
     def run(
             self, n_iterations=10000, show_progress_bar=False,
             log_to_screen=False):
@@ -403,50 +426,65 @@ class SamplingController(InferenceController):
         # Convert dataframe IDs and parameter names to strings
         data = data.astype({id_key: str, param_key: str})
 
-        posterior_ids = [p.get_id() for p in self._log_posteriors]
-        ids = data[id_key].unique()
-        for index in ids:
-            if index not in posterior_ids:
-                warnings.warn(
-                    'The ID <' + str(index) + '> could not be '
-                    'associated with a log-posterior, and was '
-                    'therefore ignored.')
+        # Get posterior IDs (one posterior may have multiple IDs, one
+        # for each parameter)
+        for index, log_posterior in enumerate(self._log_posteriors):
 
-        parameters = data[param_key].unique()
-        for param in parameters:
-            if param not in self._parameters:
-                warnings.warn(
-                    'The parameter <' + str(param) + '> could not be '
-                    'associated with a non-fixed model parameter, and was '
-                    'therefore not set.')
+            # Get MAP for each parameter of log_posterior
+            for prefix, parameter in self._get_id_parameter_pairs(
+                    log_posterior):
 
-        for index, individual in enumerate(posterior_ids):
-            mask = data[id_key] == individual
-            individual_data = data[mask]
+                # Get estimates for ID (prefix)
+                mask = data[id_key] == prefix
+                individual_data = data[mask]
 
-            # If index doesn't exist, move on to next index
-            if individual_data.empty:
-                continue
+                # If ID (prefix) doesn't exist, move on to next iteration
+                if individual_data.empty:
+                    warnings.warn(
+                        'The log-posterior ID <' + str(prefix) + '> could not'
+                        ' be identified in the dataset, and was therefore '
+                        'not set to a specific value.')
 
-            # Get estimates with maximum a posteriori probability
-            max_prob = individual_data[score_key].max()
-            mask = individual_data[score_key] == max_prob
-            individual_data = individual_data[mask]
+                    continue
 
-            # Find a unique set of parameter values
-            runs = individual_data[run_key].unique()
-            selected_param_set = np.random.choice(runs)
-            mask = individual_data[run_key] == selected_param_set
-            individual_data = individual_data[mask]
+                # Among estimates for this ID (prefix), get the relevant
+                # parameter
+                mask = data[param_key] == parameter
+                individual_data = individual_data[mask]
 
-            # Set initial parameters to map estimates
-            for param in parameters:
-                # Get estimate
-                mask = individual_data[param_key] == param
-                map_estimate = individual_data[est_key][mask].to_numpy()
+                # If parameter with this ID (prefix) doesn't exist, move on to
+                # next iteration
+                if individual_data.empty:
+                    warnings.warn(
+                        'The parameter <' + str(parameter) + '> with ID '
+                        '<' + str(prefix) + '> could not be identified in the '
+                        'dataset, and was therefore not set to a specific '
+                        'value.')
 
-                # Set initial value to map estimate for all runs
-                mask = np.array(self._parameters) == param
+                    continue
+
+                # Get estimates with maximum a posteriori probability
+                max_prob = individual_data[score_key].max()
+                mask = individual_data[score_key] == max_prob
+                individual_data = individual_data[mask]
+
+                # Find a unique set of parameter values
+                runs = individual_data[run_key].unique()
+                selected_param_set = np.random.choice(runs)
+                mask = individual_data[run_key] == selected_param_set
+                individual_data = individual_data[mask]
+
+                # Create mask for parameter position in log-posterior
+                ids = log_posterior.get_id()
+                if not isinstance(ids, list):
+                    n_parameters = len(self._parameters)
+                    ids = [ids] * n_parameters
+                id_mask = np.array(ids) == prefix
+                param_mask = np.array(self._parameters) == parameter
+                mask = id_mask & param_mask
+
+                # Set initial parameters across runs to map estimate
+                map_estimate = individual_data[est_key].to_numpy()
                 self._initial_params[index, :, mask] = map_estimate
 
     def set_sampler(self, sampler):
