@@ -14,12 +14,19 @@ Any :class:`PharmacokineticModel` may be combined with any
 :class:`PharmacodynamicModel` using the :class:`PKPDModel`
 interface.
 
-Overview:
+Base classes
+------------
 
 - :class:`MechanisticModel`
+
+Functional classes
+------------------
+
 - :class:`PharmacodynamicModel`
 - :class:`PharmacokineticModel`
 
+Detailed API
+------------
 
 .. autoclass:: MechanisticModel
     :members:

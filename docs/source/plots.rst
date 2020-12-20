@@ -16,8 +16,8 @@ Base classes
 - :class:`SingleFigure`
 - :class:`SingleSubplotFigure`
 
-Overview
---------
+Functional classes
+------------------
 
 - :class:`MarginalPosteriorPlot`
 - :class:`ParameterEstimatePlot`

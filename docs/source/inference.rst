@@ -15,12 +15,19 @@ to easily explore different optimisation or sampling settings, e.g. using differ
 methods, fixing some parameters, or applying different transformations to the
 search space.
 
-Overview:
+Base classes
+------------
 
 - :class:`InferenceController`
+
+Functional classes
+------------------
+
 - :class:`OptimisationController`
 - :class:`SamplingController`
 
+Detailed API
+------------
 
 .. autoclass:: InferenceController
     :members:

@@ -10,12 +10,15 @@ Log-PDFs
 Log-PDFs in erlotinib_ extend the log-pdfs provided in pints_ for the purpose of
 PKPD modelling.
 
-Overview:
+Functional classes
+------------------
 
 - :class:`HierarchicalLogLikelihood`
 - :class:`LogPosterior`
 - :class:`ReducedLogPDF`
 
+Detailed API
+------------
 
 .. autoclass:: HierarchicalLogLikelihood
     :members:
