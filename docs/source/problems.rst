@@ -21,11 +21,14 @@ has been implemented. Behind the scences it builds on an :class:`InverseProblem`
 also simplifies the process of selecting error models, population models, and parameter
 prior distributions.
 
-Overview:
+Functional classes
+------------------
 
 - :class:`InverseProblem`
 - :class:`ProblemModellingController`
 
+Detailed API
+------------
 
 .. autoclass:: InverseProblem
     :members:

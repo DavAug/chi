@@ -3,6 +3,22 @@
 
 .. _GitHub: https://github.com/DavAug/erlotinib
 
+.. module:: erlotinib
+
+.. toctree::
+    :hidden:
+    :maxdepth: 1
+
+    apps
+    data_library
+    inference
+    log_pdfs
+    mechanistic_models
+    model_library
+    plots
+    population_models
+    problems
+
 Welcome to Erlotinib's documentation!
 =====================================
 
@@ -21,20 +37,3 @@ PKPD.
 While the package may also be used to model the PKPD of any other compound, the
 `erlotinib` package provides data and model libraries which are specific to
 Erlotinib (Tarceva).
-
-Contents
-========
-
-.. module:: erlotinib
-
-.. toctree::
-
-    apps
-    data_library
-    inference
-    log_pdfs
-    mechanistic_models
-    model_library
-    plots
-    population_models
-    problems

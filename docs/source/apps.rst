@@ -20,13 +20,18 @@ For further details on Dash apps, please refer to Dash's documentation.
 
 Note that apps have currently only been manually tested.
 
-Base classes:
+Base classes
+------------
 
 - :class:`BaseApp`
 
-Overview:
+Functional classes
+------------------
 
 - :class:`PDSimulationController`
+
+Detailed API
+------------
 
 .. autoclass:: BaseApp
     :members:

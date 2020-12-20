@@ -13,6 +13,8 @@ Those SBML models can be passed to either a
 :class:`PharmacodynamicModel` for simulation or to learn the
 model parameters from data.
 
+Detailed API
+------------
 
 .. autoclass:: ModelLibrary
     :members:
