@@ -449,7 +449,7 @@ class SamplingController(InferenceController):
 
                 # Among estimates for this ID (prefix), get the relevant
                 # parameter
-                mask = data[param_key] == parameter
+                mask = individual_data[param_key] == parameter
                 individual_data = individual_data[mask]
 
                 # If parameter with this ID (prefix) doesn't exist, move on to
