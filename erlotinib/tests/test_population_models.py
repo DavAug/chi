@@ -7,6 +7,8 @@
 
 import unittest
 
+import numpy as np
+
 import erlotinib as erlo
 
 
@@ -50,6 +52,165 @@ class TestHeterogeneousModel(unittest.TestCase):
     def test_set_top_parameter_names(self):
         with self.assertRaisesRegex(ValueError, 'A heterogeneous population'):
             self.pop_model.set_top_parameter_names('some params')
+
+
+class TestLogNormalModel(unittest.TestCase):
+    """
+    Tests the erlotinib.LogNormalModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.n_ids = 10
+        cls.pop_model = erlo.LogNormalModel(cls.n_ids)
+
+    def test_call(self):
+        # Hard to test exactly, but at least test some edge cases where
+        # loglikelihood is straightforward to compute analytically
+
+        # Test case I: psis = 1, sigma_log = 1.
+        # Score reduces to -n_ids * mu_log^2 / 2
+
+        # Test case I.1:
+        psis = [1] * self.n_ids
+        mu_log = [10]
+        sigma_log = [1]
+        score = -self.n_ids * 10**2 / 2  # -500
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case I.2:
+        psis = [1] * self.n_ids
+        mu_log = [3]
+        sigma_log = [1]
+        score = -self.n_ids * 3**2 / 2  # -45
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case II: psis = 1.
+        # Score reduces to
+        # -n_ids * log(sigma_log) -n_ids * mu_log^2 / (2 * sigma_log^2)
+
+        # Test case II.1:
+        psis = [1] * self.n_ids
+        mu_log = [10]
+        sigma_log = [np.exp(1)]
+        score = -self.n_ids - self.n_ids * 10**2 / (2 * np.exp(2))
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case II.2:
+        psis = [1] * self.n_ids
+        mu_log = [10]
+        sigma_log = [np.exp(3)]
+        score = -3 * self.n_ids - self.n_ids * 10**2 / (2 * np.exp(3 * 2))
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case III: psis all the same, sigma_log = 1.
+        # Score reduces to
+        # -n_ids * log(psi) - n_ids * (log(psi) - mu_log)^2 / 2
+
+        # Test case III.1
+        psis = [np.exp(4)] * self.n_ids
+        mu_log = [10]
+        sigma_log = [1]
+        score = -self.n_ids * 4 - self.n_ids * (4 - 10)**2 / 2  # -220
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case III.2
+        psis = [np.exp(10)] * self.n_ids
+        mu_log = [10]
+        sigma_log = [1]
+        score = -self.n_ids * 10  # -100
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case IV: mu_log or sigma_log negative or zero
+
+        # Test case IV.1
+        psis = [np.exp(10)] * self.n_ids
+        mu_log = [0]
+        sigma_log = [1]
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), -np.inf)
+
+        # Test case IV.2
+        psis = [np.exp(10)] * self.n_ids
+        mu_log = [1]
+        sigma_log = [0]
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), -np.inf)
+
+        # Test case IV.3
+        psis = [np.exp(10)] * self.n_ids
+        mu_log = [-10]
+        sigma_log = [1]
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), -np.inf)
+
+        # Test case IV.4
+        psis = [np.exp(10)] * self.n_ids
+        mu_log = [1]
+        sigma_log = [-10]
+
+        parameters = psis + mu_log + sigma_log
+        self.assertEqual(self.pop_model(parameters), -np.inf)
+
+    def test_get_top_parameter_names(self):
+        names = ['Mean log', 'Std. log']
+
+        self.assertEqual(self.pop_model.get_top_parameter_names(), names)
+
+    def test_n_bottom_parameters(self):
+        n_individual_input_params = 10
+        self.assertEqual(
+            self.pop_model.n_bottom_parameters(),
+            n_individual_input_params)
+
+    def test_n_parameters(self):
+        n_population_params = 12
+        self.assertEqual(self.pop_model.n_parameters(), n_population_params)
+
+    def test_n_top_parameters(self):
+        n_population_params = 2
+        self.assertEqual(
+            self.pop_model.n_top_parameters(), n_population_params)
+
+    def test_sample(self):
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.sample('some params')
+
+    def test_set_top_parameter_names(self):
+        # Test some name
+        names = ['test', 'name']
+        self.pop_model.set_top_parameter_names(names)
+
+        self.assertEqual(
+            self.pop_model.get_top_parameter_names(), names)
+
+        # Set back to default name
+        names = ['Mean log', 'Std. log']
+        self.pop_model.set_top_parameter_names(names)
+
+        self.assertEqual(
+            self.pop_model.get_top_parameter_names(), names)
+
+    def test_set_top_parameter_names_bad_input(self):
+        # Wrong number of names
+        names = ['only', 'two', 'is', 'allowed']
+        with self.assertRaisesRegex(ValueError, 'Length of names'):
+            self.pop_model.set_top_parameter_names(names)
 
 
 class TestPooledModel(unittest.TestCase):

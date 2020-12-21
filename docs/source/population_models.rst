@@ -17,6 +17,7 @@ Functional classes
 ------------------
 
 - :class:`HeterogeneousModel`
+- :class:`LogNormalModel`
 - :class:`PooledModel`
 
 Detailed API
@@ -25,10 +26,22 @@ Detailed API
 .. autoclass:: HeterogeneousModel
     :members:
     :inherited-members:
+    :special-members:
+    :exclude-members: __init__, __weakref__
+
+.. autoclass:: LogNormalModel
+    :members:
+    :inherited-members:
+    :special-members:
+    :exclude-members: __init__, __weakref__
 
 .. autoclass:: PooledModel
     :members:
     :inherited-members:
+    :special-members:
+    :exclude-members: __init__, __weakref__
 
 .. autoclass:: PopulationModel
     :members:
+    :special-members:
+    :exclude-members: __init__, __weakref__
