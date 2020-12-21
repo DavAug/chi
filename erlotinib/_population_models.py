@@ -315,15 +315,18 @@ class LogNormalModel(PopulationModel):
             :math:`\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`,
             :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
         """
-        log_psis = np.log(parameters[:self._n_bottom_parameters])
-        mean_log, std_log = parameters[self._n_bottom_parameters:]
+        log_psis = np.log(parameters[:self._n_ids])
+        mean_log, std_log = parameters[self._n_ids:]
 
-        if mean_log <= 0 or var_log <= 0:
+        if mean_log <= 0 or std_log <= 0:
             # The mean and var of log psi are strictly positive
             return -np.inf
 
+        # Compute log-likelihood score
+        score = -self._n_ids * np.log(std_log) - np.sum(log_psis) \
+            - np.sum((log_psis - mean_log) ** 2) / (2 * std_log ** 2)
 
-        return 0
+        return score
 
     def get_top_parameter_names(self):
         """
@@ -355,6 +358,21 @@ class LogNormalModel(PopulationModel):
         """
         return self._n_top_parameters
 
+    def sample(self, top_parameters, n=None):
+        r"""
+        Returns :math:`n` random samples from the underlying population
+        distribution.
+
+        For a LogNormalModel :math:`n` random samples from a log-normal
+        distribution are returned, where the population model parameters
+        :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}` are
+        given by ``top_parameters``.
+
+        The returned value is a numpy array with shape :math:`(n, d)` where
+        :math:`n` is the requested number of samples.
+        """
+        raise NotImplementedError
+
     def set_top_parameter_names(self, names):
         """
         Sets the names of the population model parameters.
@@ -362,8 +380,11 @@ class LogNormalModel(PopulationModel):
         This method raises an error for a heterogenous population model as
         no top-level model parameter exist.
         """
-        raise ValueError(
-            'A heterogeneous population model has no top-level parameters.')
+        if len(names) != self._n_top_parameters:
+            raise ValueError(
+                'Length of names does not match n_top_parameters.')
+
+        self._top_parameter_names = [str(label) for label in names]
 
 
 class PooledModel(PopulationModel):
