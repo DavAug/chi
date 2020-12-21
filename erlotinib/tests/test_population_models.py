@@ -206,11 +206,11 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(
             self.pop_model.get_top_parameter_names(), names)
 
-    # def test_set_top_parameter_names_bad_input(self):
-    #     # Wrong number of names
-    #     names = ['only', 'one', 'is', 'allowed']
-    #     with self.assertRaisesRegex(ValueError, 'Length of names'):
-    #         self.pop_model.set_top_parameter_names(names)
+    def test_set_top_parameter_names_bad_input(self):
+        # Wrong number of names
+        names = ['only', 'two', 'is', 'allowed']
+        with self.assertRaisesRegex(ValueError, 'Length of names'):
+            self.pop_model.set_top_parameter_names(names)
 
 
 class TestPooledModel(unittest.TestCase):
