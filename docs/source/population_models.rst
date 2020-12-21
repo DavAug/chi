@@ -17,12 +17,17 @@ Functional classes
 ------------------
 
 - :class:`HeterogeneousModel`
+- :class:`LogNormalModel`
 - :class:`PooledModel`
 
 Detailed API
 ------------
 
 .. autoclass:: HeterogeneousModel
+    :members:
+    :inherited-members:
+
+.. autoclass:: LogNormalModel
     :members:
     :inherited-members:
 

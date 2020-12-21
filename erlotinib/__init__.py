@@ -33,6 +33,7 @@ from ._inference import (  # noqa
 
 from ._population_models import (  # noqa
     HeterogeneousModel,
+    LogNormalModel,
     PooledModel,
     PopulationModel
 )
