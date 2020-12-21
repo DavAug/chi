@@ -167,8 +167,10 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = psis + mu_log + sigma_log
         self.assertEqual(self.pop_model(parameters), -np.inf)
 
-    # def test_get_top_parameter_names(self):
-    #     self.assertIsNone(self.pop_model.get_top_parameter_names())
+    def test_get_top_parameter_names(self):
+        names = ['Mean log', 'Std. log']
+
+        self.assertEqual(self.pop_model.get_top_parameter_names(), names)
 
     # def test_n_bottom_parameters(self):
     #     n_individual_input_params = 10
