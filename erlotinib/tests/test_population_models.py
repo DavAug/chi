@@ -187,9 +187,9 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(
             self.pop_model.n_top_parameters(), n_population_params)
 
-    # def test_sample(self):
-    #     with self.assertRaisesRegex(NotImplementedError, ''):
-    #         self.pop_model.sample('some params')
+    def test_sample(self):
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.sample('some params')
 
     # def test_set_top_parameter_names(self):
     #     with self.assertRaisesRegex(ValueError, 'A heterogeneous population'):
