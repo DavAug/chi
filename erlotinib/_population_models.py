@@ -281,7 +281,7 @@ class LogNormalModel(PopulationModel):
         self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
 
         # Set default top-level parameter names
-        self._top_parameter_names = ['mean log', 'var log']
+        self._top_parameter_names = ['Mean log', 'Std. log']
 
     def __call__(self, parameters):
         r"""
