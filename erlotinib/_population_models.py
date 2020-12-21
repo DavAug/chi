@@ -269,33 +269,60 @@ class LogNormalModel(PopulationModel):
     """
 
     def __init__(self, n_ids):
-        super(HeterogeneousModel, self).__init__(n_ids)
+        super(LogNormalModel, self).__init__(n_ids)
 
         # Set number of input individual parameters
         self._n_bottom_parameters = n_ids
 
         # Set number of population parameters
-        self._n_top_parameters = 0
+        self._n_top_parameters = 2
 
         # Set number of parameters
         self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
 
         # Set default top-level parameter names
-        self._top_parameter_names = None
+        self._top_parameter_names = ['mean log', 'var log']
 
     def __call__(self, parameters):
-        """
-        Returns the log-likelihood score of the population model.
+        r"""
+        Returns the unnormalised log-likelihood score of the population model.
 
-        The log-likelihood score of a PooledModel is independent of the input
-        parameters. We choose to return a score of ``0``.
+        The log-likelihood score of a LogNormalModel is the log-pdf evaluated
+        at the population model parameters
 
-        The parameters are expected to be of length :meth:`n_parameters`. The
-        first :meth:`nids` parameters are treated as the 'observations' of the
-        individual model parameters, and the remaining
-        :meth:`n_top_parameters` specify the values of the population
-        model parameters.
+        .. math::
+            L(\mu _{\text{log}}, \sigma _{\text{log}} | \Psi) =
+            \sum _{i=1}^N
+            \log p(\psi _i |\mu _{\text{log}}, \sigma _{\text{log}}) ,
+
+        where
+        :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`)
+        are the observed :math:`\psi` from :math:`N` individuals.
+
+        The first ``n_ids`` parameters are the realisations of :math:`\psi`
+        for the observed individuals, and the remaining 2 parameters are the
+        mean and standard deviation of :math:`\log \psi` in the population,
+        :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
+
+        .. note::
+            All constant terms that do not depend on the model parameters are
+            dropped when computing the log-likelihood score.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the model parameter values,
+            :math:`\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`,
+            :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
         """
+        log_psis = np.log(parameters[:self._n_bottom_parameters])
+        mean_log, std_log = parameters[self._n_bottom_parameters:]
+
+        if mean_log <= 0 or var_log <= 0:
+            # The mean and var of log psi are strictly positive
+            return -np.inf
+
+
         return 0
 
     def get_top_parameter_names(self):
