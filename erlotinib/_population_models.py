@@ -229,9 +229,9 @@ class LogNormalModel(PopulationModel):
     A population model that assumes that model parameters across individuals
     are log-normally distributed.
 
-    A log-normal population model assumes that the model parameter :math:`\psi`
-    can vary across individuals such that :math:`\psi` is log-normally
-    distributed
+    A log-normal population model assumes that a model parameter :math:`\psi`
+    varies across individuals such that :math:`\psi` is log-normally
+    distributed in the population
 
     .. math::
         p(\psi |\mu _{\text{log}}, \sigma _{\text{log}}) =
@@ -239,8 +239,26 @@ class LogNormalModel(PopulationModel):
         \exp\left(-\frac{(\log \psi - \mu _{\text{log}})^2}
         {2 \sigma ^2_{\text{log}}}\right).
 
-    Calling the HeterogenousModel returns a constant, irrespective of the
-    parameter values. We chose this constant to be ``0``.
+    Here :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` are the
+    mean and variance of :math:`\log \psi` in the population, respectively.
+
+    The mean and variance of the parameter :math:`\psi` itself,
+    :math:`\mu = \mathbb{E}\left[ \psi \right]` and
+    :math:`\sigma ^2 = \text{Var}\left[ \psi \right]`, are given by
+
+    .. math::
+        \mu = \mathrm{e}^{\mu _{\text{log}} + \sigma ^2_{\text{log}} / 2}
+        \quad \text{and} \quad
+        \sigma ^2 =
+        \mu ^2 \left( \mathrm{e}^{\sigma ^2_{\text{log}}} - 1\right) .
+
+    As a result, any observed individual with parameter :math:`\psi _i` is
+    assumed to be a realisation of the random variable :math:`\psi`.
+
+    Calling the LogNormalModel returns the log-likelihood score of the model,
+    assuming that the first ``n_ids`` parameters are the realisations of
+    :math:`\psi` for the observed individuals, and the remaining 2 parameters
+    are :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}`.
 
     Extends :class:`erlotinib.PopulationModel`.
 
