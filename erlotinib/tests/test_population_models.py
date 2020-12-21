@@ -191,9 +191,26 @@ class TestLogNormalModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some params')
 
-    # def test_set_top_parameter_names(self):
-    #     with self.assertRaisesRegex(ValueError, 'A heterogeneous population'):
-    #         self.pop_model.set_top_parameter_names('some params')
+    def test_set_top_parameter_names(self):
+        # Test some name
+        names = ['test', 'name']
+        self.pop_model.set_top_parameter_names(names)
+
+        self.assertEqual(
+            self.pop_model.get_top_parameter_names(), names)
+
+        # Set back to default name
+        names = ['Mean log', 'Std. log']
+        self.pop_model.set_top_parameter_names(names)
+
+        self.assertEqual(
+            self.pop_model.get_top_parameter_names(), names)
+
+    # def test_set_top_parameter_names_bad_input(self):
+    #     # Wrong number of names
+    #     names = ['only', 'one', 'is', 'allowed']
+    #     with self.assertRaisesRegex(ValueError, 'Length of names'):
+    #         self.pop_model.set_top_parameter_names(names)
 
 
 class TestPooledModel(unittest.TestCase):
