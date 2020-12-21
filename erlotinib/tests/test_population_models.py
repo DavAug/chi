@@ -182,10 +182,10 @@ class TestLogNormalModel(unittest.TestCase):
         n_population_params = 12
         self.assertEqual(self.pop_model.n_parameters(), n_population_params)
 
-    # def test_n_top_parameters(self):
-    #     n_population_params = 0
-    #     self.assertEqual(
-    #         self.pop_model.n_top_parameters(), n_population_params)
+    def test_n_top_parameters(self):
+        n_population_params = 2
+        self.assertEqual(
+            self.pop_model.n_top_parameters(), n_population_params)
 
     # def test_sample(self):
     #     with self.assertRaisesRegex(NotImplementedError, ''):
