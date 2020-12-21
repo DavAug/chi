@@ -178,9 +178,9 @@ class TestLogNormalModel(unittest.TestCase):
             self.pop_model.n_bottom_parameters(),
             n_individual_input_params)
 
-    # def test_n_parameters(self):
-    #     n_population_params = 10
-    #     self.assertEqual(self.pop_model.n_parameters(), n_population_params)
+    def test_n_parameters(self):
+        n_population_params = 12
+        self.assertEqual(self.pop_model.n_parameters(), n_population_params)
 
     # def test_n_top_parameters(self):
     #     n_population_params = 0
