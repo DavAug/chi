@@ -154,8 +154,25 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             ref_likelihood_part_one(parameters[:n_ids+2]) + \
             ref_likelihood_part_two(parameters[:n_ids] + parameters[n_ids+2:])
 
-        self.assertNotEqual(score, np.inf)
+        self.assertNotEqual(score, -np.inf)
         self.assertAlmostEqual(likelihood(parameters), score)
+
+        # Test case III.2: Returns -np.inf if individuals are far away from
+        # pop distribution
+        parameters = [100000, 1, 0.1, 1, 3, 1]
+        pop_params = [0, 0.00001]
+
+        n_ids = 8
+        parameters = \
+            [parameters[0]] * n_ids + \
+            pop_params + \
+            [parameters[1]] + \
+            [parameters[2]] + \
+            [parameters[3]] + \
+            [parameters[4]] + \
+            [parameters[5]]
+
+        self.assertEqual(likelihood(parameters), -np.inf)
 
     def test_n_parameters(self):
         n_parameters = self.log_likelihoods[0].n_parameters()
