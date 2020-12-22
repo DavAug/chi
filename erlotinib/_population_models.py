@@ -97,12 +97,22 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def sample(self, top_parameters, n=None):
+    def sample(self, top_parameters, n=None, seed=None):
         r"""
         Returns `n` random samples from the underlying population distribution.
 
         The returned value is a numpy array with shape :math:`(n,)` where
         :math:`n` is the requested number of samples.
+
+        Parameters
+        ----------
+        top_parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
         """
         raise NotImplementedError
 
@@ -281,7 +291,7 @@ class LogNormalModel(PopulationModel):
         self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
 
         # Set default top-level parameter names
-        self._top_parameter_names = ['Mean', 'Std.']
+        self._top_parameter_names = ['Mean log', 'Std. log']
         # TODO: Reparametrise by mean and std (simply easier to understand)
 
     def __call__(self, parameters):
@@ -359,7 +369,7 @@ class LogNormalModel(PopulationModel):
         """
         return self._n_top_parameters
 
-    def sample(self, top_parameters, n=None):
+    def sample(self, top_parameters, n=None, seed=None):
         r"""
         Returns :math:`n` random samples from the underlying population
         distribution.
@@ -371,14 +381,26 @@ class LogNormalModel(PopulationModel):
 
         The returned value is a numpy array with shape :math:`(n,)` where
         :math:`n` is the requested number of samples.
+
+        Parameters
+        ----------
+        top_parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
         """
         if len(top_parameters) != self._n_top_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
 
-        if n is not None:
-            n = int(n)
+        # Define shape of samples
+        if n is None:
+            n = 1
+        n = (int(n),)
 
         # Get parameters
         mean_log, std_log = top_parameters
@@ -480,7 +502,7 @@ class PooledModel(PopulationModel):
         """
         return self._n_top_parameters
 
-    def sample(self, top_parameters, n=None):
+    def sample(self, top_parameters, n=None, seed=None):
         r"""
         Returns :math:`n` random samples from the underlying population
         distribution.
@@ -490,6 +512,16 @@ class PooledModel(PopulationModel):
 
         The returned value is a numpy array with shape :math:`(n, d)` where
         :math:`n` is the requested number of samples.
+
+        Parameters
+        ----------
+        top_parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
         """
         if len(top_parameters) != self._n_top_parameters:
             raise ValueError(
