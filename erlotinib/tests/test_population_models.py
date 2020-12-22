@@ -204,10 +204,10 @@ class TestLogNormalModel(unittest.TestCase):
 
         self.assertEqual(
             sample.shape, (n_samples,))
-        self.assertEqual(sample[0], 36.94514184203785)
-        self.assertEqual(sample[1], 2.509370155320032)
-        self.assertEqual(sample[2], 90.09839866680616)
-        self.assertEqual(sample[3], 131.77941585966096)
+        self.assertAlmostEqual(sample[0], 36.94514184203785)
+        self.assertAlmostEqual(sample[1], 2.509370155320032)
+        self.assertAlmostEqual(sample[2], 90.09839866680616)
+        self.assertAlmostEqual(sample[3], 131.77941585966096)
 
     def test_sample_bad_input(self):
         # Too many paramaters
