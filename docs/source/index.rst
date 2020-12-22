@@ -11,6 +11,7 @@
 
     apps
     data_library
+    error_models
     inference
     log_pdfs
     mechanistic_models
