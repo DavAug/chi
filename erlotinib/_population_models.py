@@ -97,12 +97,22 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def sample(self, top_parameters, n=None):
+    def sample(self, top_parameters, n=None, seed=None):
         r"""
         Returns `n` random samples from the underlying population distribution.
 
-        The returned value is a numpy array with shape :math:`(n, 1)` where
+        The returned value is a numpy array with shape :math:`(n,)` where
         :math:`n` is the requested number of samples.
+
+        Parameters
+        ----------
+        top_parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
         """
         raise NotImplementedError
 
@@ -282,6 +292,7 @@ class LogNormalModel(PopulationModel):
 
         # Set default top-level parameter names
         self._top_parameter_names = ['Mean log', 'Std. log']
+        # TODO: Reparametrise by mean and std (simply easier to understand)
 
     def __call__(self, parameters):
         r"""
@@ -358,7 +369,7 @@ class LogNormalModel(PopulationModel):
         """
         return self._n_top_parameters
 
-    def sample(self, top_parameters, n=None):
+    def sample(self, top_parameters, n=None, seed=None):
         r"""
         Returns :math:`n` random samples from the underlying population
         distribution.
@@ -368,10 +379,37 @@ class LogNormalModel(PopulationModel):
         :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}` are
         given by ``top_parameters``.
 
-        The returned value is a numpy array with shape :math:`(n, d)` where
+        The returned value is a numpy array with shape :math:`(n,)` where
         :math:`n` is the requested number of samples.
+
+        Parameters
+        ----------
+        top_parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
         """
-        raise NotImplementedError
+        if len(top_parameters) != self._n_top_parameters:
+            raise ValueError(
+                'The number of provided parameters does not match the expected'
+                ' number of top-level parameters.')
+
+        # Define shape of samples
+        if n is None:
+            n = 1
+        n = (int(n),)
+
+        # Get parameters
+        mean_log, std_log = top_parameters
+
+        # Sample from population distribution
+        rng = np.random.default_rng(seed=seed)
+        samples = rng.lognormal(mean=mean_log, sigma=std_log, size=n)
+
+        return samples
 
     def set_top_parameter_names(self, names):
         """
@@ -465,7 +503,7 @@ class PooledModel(PopulationModel):
         """
         return self._n_top_parameters
 
-    def sample(self, top_parameters, n=None):
+    def sample(self, top_parameters, n=None, seed=None):
         r"""
         Returns :math:`n` random samples from the underlying population
         distribution.
@@ -475,20 +513,29 @@ class PooledModel(PopulationModel):
 
         The returned value is a numpy array with shape :math:`(n, d)` where
         :math:`n` is the requested number of samples.
+
+        Parameters
+        ----------
+        top_parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
         """
         if len(top_parameters) != self._n_top_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
+        samples = np.asarray(top_parameters)
 
-        # Expand dimension of top level parameters
-        top_parameters = np.asarray(top_parameters)
-        samples = np.expand_dims(top_parameters, axis=0)
-
+        # If only one sample is wanted, return input parameter
         if n is None:
             return samples
 
-        samples = np.broadcast_to(samples, shape=(n, self._n_top_parameters))
+        # If more samples are wanted, broadcast input parameter to shape (n,)
+        samples = np.broadcast_to(samples, shape=(n,))
         return samples
 
     def set_top_parameter_names(self, names):

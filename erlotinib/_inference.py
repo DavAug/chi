@@ -73,8 +73,71 @@ class InferenceController(object):
             len(self._log_posteriors),
             self._n_runs,
             self._n_parameters))
-        for index in range(len(self._log_posteriors)):
+        self._sample_initial_parameters()
+
+    def _sample_initial_parameters(self):
+        """
+        Sample initial parameter values for inference runs from prior.
+
+        If the underlying model has a hierarchical structure, the population
+        model parameters are randomly sampled from the prior, and the
+        individual parameters from the resulting population models. This avoids
+        numerical instabilities from starting off with very bad initial
+        parameters.
+        """
+        for index, log_posterior in enumerate(self._log_posteriors):
+            # Sample initial parameters from prior
             self._initial_params[index] = self._log_prior.sample(self._n_runs)
+
+            # Sample initial population, if model is hierarchical
+            log_likelihood = log_posterior.log_likelihood()
+            if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
+                population_models = log_likelihood._population_models
+                self._initial_params[index] = self._sample_population(
+                        index, population_models)
+
+    def _sample_population(self, index, population_models):
+        """
+        Samples population for initial population model parameters.
+        """
+        # Create container for samples
+        container = np.empty(shape=(self._n_runs, self._n_parameters))
+
+        # Sample individuals from population model for each run
+        start_index = 0
+        for pop_model in population_models:
+            # Get number of individual and total parameters
+            n_bottom_params = pop_model.n_bottom_parameters()
+            n_parameters = pop_model.n_parameters()
+
+            # If number of bottom-level parameters is 0, skip to next iteration
+            if n_bottom_params == 0:
+                start_index += n_parameters
+                continue
+
+            # Get population parameters
+            # (always trailing parameters in a population model)
+            start = start_index + n_bottom_params
+            end = start_index + n_parameters
+            pop_parameters = self._initial_params[index, :, start:end]
+
+            # Substitude individual parameters by population samples
+            start = start_index
+            end = start_index + n_bottom_params
+            for run_id, pop_params in enumerate(pop_parameters):
+                try:
+                    sample = pop_model.sample(pop_params, n_bottom_params)
+                except NotImplementedError:
+                    # If sample is not implemented, continue to the next
+                    # iteration
+                    continue
+
+                container[run_id, start:end] = sample
+
+            # Shift start_index to next position
+            start_index += n_parameters
+
+        return container
 
     def set_n_runs(self, n_runs):
         """

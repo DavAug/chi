@@ -127,15 +127,17 @@ class HierarchicalLogLikelihood(pints.LogPDF):
         # Compute population model scores
         score = 0
         start_index = 0
-        for pop_models in self._population_models:
+        for pop_model in self._population_models:
             # Compute likelihood score
-            end_index = start_index + pop_models.n_parameters()
-            score += pop_models(parameters[start_index:end_index])
+            end_index = start_index + pop_model.n_parameters()
+            score += pop_model(parameters[start_index:end_index])
 
             # Shift start index
-            start_index += end_index
+            start_index = end_index
 
-        # TODO: return if values are already broken
+        # Return if values already lead to a rejection
+        if score == -np.inf:
+            return score
 
         # Create container for individual values
         individual_params = np.empty(

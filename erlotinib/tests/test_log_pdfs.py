@@ -125,6 +125,55 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             [parameters[5]] * n_ids
         self.assertEqual(likelihood(parameters), score)
 
+        # Test case III.1: Non-trivial population model.
+        pop_models = \
+            [erlo.LogNormalModel(n_ids=self.n_ids)] + \
+            [erlo.PooledModel(n_ids=self.n_ids)] \
+            * (self.n_individual_params - 1)
+        likelihood = erlo.HierarchicalLogLikelihood(
+            self.log_likelihoods, pop_models)
+
+        ref_likelihood_part_one = erlo.LogNormalModel(n_ids=self.n_ids)
+        ref_likelihood_part_two = pints.PooledLogPDF(
+            self.log_likelihoods, pooled=[False] + [True]*5)
+
+        parameters = [10, 1, 0.1, 1, 3, 1]
+        pop_params = [1, 1]
+
+        n_ids = 8
+        parameters = \
+            [parameters[0]] * n_ids + \
+            pop_params + \
+            [parameters[1]] + \
+            [parameters[2]] + \
+            [parameters[3]] + \
+            [parameters[4]] + \
+            [parameters[5]]
+
+        score = \
+            ref_likelihood_part_one(parameters[:n_ids+2]) + \
+            ref_likelihood_part_two(parameters[:n_ids] + parameters[n_ids+2:])
+
+        self.assertNotEqual(score, -np.inf)
+        self.assertAlmostEqual(likelihood(parameters), score)
+
+        # Test case III.2: Returns -np.inf if individuals are far away from
+        # pop distribution
+        parameters = [100000, 1, 0.1, 1, 3, 1]
+        pop_params = [0, 0.00001]
+
+        n_ids = 8
+        parameters = \
+            [parameters[0]] * n_ids + \
+            pop_params + \
+            [parameters[1]] + \
+            [parameters[2]] + \
+            [parameters[3]] + \
+            [parameters[4]] + \
+            [parameters[5]]
+
+        self.assertEqual(likelihood(parameters), -np.inf)
+
     def test_n_parameters(self):
         n_parameters = self.log_likelihoods[0].n_parameters()
         self.assertEqual(
