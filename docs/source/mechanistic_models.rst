@@ -1,4 +1,5 @@
 .. _erlotinib: https://github.com/DavAug/erlotinib
+.. _SBML: http://sbml.org
 
 ******************
 Mechanistic Models
@@ -6,13 +7,12 @@ Mechanistic Models
 
 .. currentmodule:: erlotinib
 
-Mechanistic models in erlotinib_ convert SBML files into model
-classes which can be used to simulate the pharmacokinetics or
-pharmacodynamics of erlotinib.
+Mechanistic models in erlotinib_ model the pharmacokinetics and
+pharmacodynamics of patients based on models specified by SBML
+files (System Biology Markup Language (SBML_)).
 
-Any :class:`PharmacokineticModel` may be combined with any
-:class:`PharmacodynamicModel` using the :class:`PKPDModel`
-interface.
+Some SBML files relevant to the modelling of erlotinib are provided
+in the :class:`ModelLibrary`.
 
 Base classes
 ------------
