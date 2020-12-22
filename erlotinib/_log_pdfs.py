@@ -135,7 +135,9 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             # Shift start index
             start_index = end_index
 
-        # TODO: return if values are already broken
+        # Return if values already lead to a rejection
+        if score == -np.inf:
+            return score
 
         # Create container for individual values
         individual_params = np.empty(
