@@ -101,7 +101,7 @@ class PopulationModel(object):
         r"""
         Returns `n` random samples from the underlying population distribution.
 
-        The returned value is a numpy array with shape :math:`(n, 1)` where
+        The returned value is a numpy array with shape :math:`(n,)` where
         :math:`n` is the requested number of samples.
         """
         raise NotImplementedError
@@ -281,7 +281,8 @@ class LogNormalModel(PopulationModel):
         self._n_parameters = self._n_bottom_parameters + self._n_top_parameters
 
         # Set default top-level parameter names
-        self._top_parameter_names = ['Mean log', 'Std. log']
+        self._top_parameter_names = ['Mean', 'Std.']
+        # TODO: Reparametrise by mean and std (simply easier to understand)
 
     def __call__(self, parameters):
         r"""
@@ -368,10 +369,13 @@ class LogNormalModel(PopulationModel):
         :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}` are
         given by ``top_parameters``.
 
-        The returned value is a numpy array with shape :math:`(n, d)` where
+        The returned value is a numpy array with shape :math:`(n,)` where
         :math:`n` is the requested number of samples.
         """
-        raise NotImplementedError
+        if len(top_parameters) != self._n_top_parameters:
+            raise ValueError(
+                'The number of provided parameters does not match the expected'
+                ' number of top-level parameters.')
 
     def set_top_parameter_names(self, names):
         """
@@ -480,15 +484,14 @@ class PooledModel(PopulationModel):
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
+        samples = np.asarray(top_parameters)
 
-        # Expand dimension of top level parameters
-        top_parameters = np.asarray(top_parameters)
-        samples = np.expand_dims(top_parameters, axis=0)
-
+        # If only one sample is wanted, return input parameter
         if n is None:
             return samples
 
-        samples = np.broadcast_to(samples, shape=(n, self._n_top_parameters))
+        # If more samples are wanted, broadcast input parameter to shape (n,)
+        samples = np.broadcast_to(samples, shape=(n,))
         return samples
 
     def set_top_parameter_names(self, names):
