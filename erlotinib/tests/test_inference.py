@@ -345,11 +345,11 @@ class TestSamplingController(unittest.TestCase):
             erlo.PooledModel,
             erlo.HeterogeneousModel,
             erlo.PooledModel,
-            erlo.PooledModel,
+            erlo.LogNormalModel,
             erlo.PooledModel]
         problem.set_population_model(pop_models)
 
-        n_parameters = 5 + 8  # IDs in dataset
+        n_parameters = 1 + 1 + 8 + 1 + 10 + 1
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
@@ -419,7 +419,7 @@ class TestSamplingController(unittest.TestCase):
 
         # One ID for each prefix
         ids = result['ID'].unique()
-        self.assertEqual(len(ids), 9)  # nids + 'Pooled'
+        self.assertEqual(len(ids), 11)  # nids + 'Pooled' + 'Mean' + 'Std'
         self.assertEqual(ids[0], 'Pooled')
         self.assertEqual(ids[1], 'ID ' + str(self.ids[0]))
         self.assertEqual(ids[2], 'ID ' + str(self.ids[1]))
@@ -429,6 +429,8 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
         self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
         self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
+        self.assertEqual(ids[9], 'Mean log')
+        self.assertEqual(ids[10], 'Std. log')
 
         n_parameters = 6
         parameters = result['Parameter'].unique()
@@ -447,6 +449,7 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(runs[2], 3)
 
     def test_set_initial_parameters(self):
+        # Test case I: Individual data
         n_runs = 10
         sampler = erlo.SamplingController(self.log_posterior_id_40)
         sampler.set_n_runs(n_runs)
