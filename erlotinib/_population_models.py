@@ -268,7 +268,7 @@ class LogNormalModel(PopulationModel):
     Calling the LogNormalModel returns the log-likelihood score of the model,
     assuming that the first ``n_ids`` parameters are the realisations of
     :math:`\psi` for the observed individuals, and the remaining 2 parameters
-    are :math:`\mu ` and :math:`\sigma `.
+    are :math:`\mu` and :math:`\sigma`.
 
     Extends :class:`erlotinib.PopulationModel`.
 
@@ -306,13 +306,13 @@ class LogNormalModel(PopulationModel):
             \log p(\psi _i |\mu _{\text{log}}, \sigma _{\text{log}}) ,
 
         where
-        :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`)
+        :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N)`
         are the observed :math:`\psi` from :math:`N` individuals.
 
         The first ``n_ids`` parameters are the realisations of :math:`\psi`
         for the observed individuals, and the remaining 2 parameters are the
         mean and standard deviation of :math:`\psi` in the population,
-        :math:`\mu ` and :math:`\sigma `.
+        :math:`\mu` and :math:`\sigma`.
 
         .. note::
             All constant terms that do not depend on the model parameters are
@@ -323,7 +323,7 @@ class LogNormalModel(PopulationModel):
         parameters
             An array-like object with the model parameter values,
             :math:`\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`,
-            :math:`\mu ` and :math:`\sigma `.
+            :math:`\mu` and :math:`\sigma`.
         """
         log_psis = np.log(parameters[:self._n_ids])
         mean, std = parameters[self._n_ids:]
@@ -378,8 +378,7 @@ class LogNormalModel(PopulationModel):
 
         For a LogNormalModel :math:`n` random samples from a log-normal
         distribution are returned, where the population model parameters
-        :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}` are
-        given by ``top_parameters``.
+        :math:`\mu` and :math:`\sigma` are given by ``top_parameters``.
 
         The returned value is a numpy array with shape :math:`(n,)` where
         :math:`n` is the requested number of samples.
@@ -423,11 +422,11 @@ class LogNormalModel(PopulationModel):
         return samples
 
     def set_top_parameter_names(self, names):
-        """
+        r"""
         Sets the names of the population model parameters.
 
-        This method raises an error for a heterogenous population model as
-        no top-level model parameter exist.
+        The population parameter of a LogNormalModel are the population mean
+        and standard deviation of the parameter :math:`\psi`.
         """
         if len(names) != self._n_top_parameters:
             raise ValueError(
@@ -438,16 +437,16 @@ class LogNormalModel(PopulationModel):
     def transform_parameters(self, mean, std):
         r"""
         Returns the standard parameters :math:`\mu _{\text{log}}` and
-        :math:`\mu _{\text{log}}` for a given population mean and
+        :math:`\sigma _{\text{log}}` for a given population mean and
         standard deviation.
 
         Log-normal distributions are typically parametrised by
-        :math:`\mu _{\text{log}}` and :math:`\mu _{\text{log}}` which
+        :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}` which
         represent the mean and standard deviation of :math:`\log \psi`.
 
-        We chose to parametrise the log-normal distribution by the somewhat
+        We choose to parametrise the log-normal distribution by the somewhat
         more intuitive mean and standard deviation of the parameter
-        :math:`\psi ` itself, :math:`\mu ` and :math:`\mu `.
+        :math:`\psi` itself, :math:`\mu` and :math:`\sigma`.
 
         The transformation is given by
 
@@ -463,9 +462,10 @@ class LogNormalModel(PopulationModel):
         Parameters
         ----------
         mean
-            Mean of :math:`\psi` in the population.
+            Mean of :math:`\psi` in the population :math:`\mu`.
         std
-            Standard deviation of :math:`\psi` in the population.
+            Standard deviation of :math:`\psi` in the population
+            :math:`\sigma`.
         """
         mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
         var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
