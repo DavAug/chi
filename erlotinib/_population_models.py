@@ -377,6 +377,17 @@ class LogNormalModel(PopulationModel):
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
 
+        if n is not None:
+            n = int(n)
+
+        # Get parameters
+        mean_log, std_log = top_parameters
+
+        # Sample from population distribution
+        samples = np.random.lognormal(mean=mean_log, sigma=std_log, size=n)
+
+        return samples
+
     def set_top_parameter_names(self, names):
         """
         Sets the names of the population model parameters.
