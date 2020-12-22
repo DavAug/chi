@@ -9,6 +9,10 @@ from ._data_library_api import (  # noqa
     DataLibrary
 )
 
+from ._error_models import (  # noqa
+    ErrorModel
+)
+
 from ._log_pdfs import (  # noqa
     HierarchicalLogLikelihood,
     LogPosterior,
