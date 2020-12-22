@@ -63,7 +63,7 @@ class ErrorModel(object):
         ----------
         parameters
             An array-like object with the error model parameters.
-         model_output
+        model_output
             An array-like object with the one-dimensional output of a
             :class:`MechanisticModel`. Each entry is a prediction of the
             mechanistic model for an observed time point in ``observations``.
