@@ -86,7 +86,6 @@ class InferenceController(object):
         parameters.
         """
         for index, log_posterior in enumerate(self._log_posteriors):
-
             # Sample initial parameters from prior
             self._initial_params[index] = self._log_prior.sample(self._n_runs)
 
@@ -117,7 +116,13 @@ class InferenceController(object):
             start = start_index
             end = start_index + n_bottom_params
             for run_id, pop_params in enumerate(pop_parameters):
-                sample = pop_model.sample(pop_params, n_bottom_params)
+                try:
+                    sample = pop_model.sample(pop_params, n_bottom_params)
+                except NotImplementedError:
+                    # If sample is not implemented, continue to the next
+                    # iteration
+                    continue
+
                 self._initial_params[index, run_id, start:end] = sample
 
             # Shift start_index to next position
