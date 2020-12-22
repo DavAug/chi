@@ -100,6 +100,10 @@ class InferenceController(object):
         """
         Samples population for initial population model parameters.
         """
+        # Create container for samples
+        container = np.empty(shape=(self._n_runs, self._n_parameters))
+
+        # Sample individuals from population model for each run
         start_index = 0
         for pop_model in population_models:
             # Get number of individual and total parameters
@@ -123,10 +127,12 @@ class InferenceController(object):
                     # iteration
                     continue
 
-                self._initial_params[index, run_id, start:end] = sample
+                container[run_id, start:end] = sample
 
             # Shift start_index to next position
             start_index = start_index + n_parameters
+
+        return container
 
     def set_n_runs(self, n_runs):
         """
