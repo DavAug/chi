@@ -188,8 +188,33 @@ class TestLogNormalModel(unittest.TestCase):
             self.pop_model.n_top_parameters(), n_population_params)
 
     def test_sample(self):
-        with self.assertRaisesRegex(NotImplementedError, ''):
-            self.pop_model.sample('some params')
+        # Test I: sample size 1
+        seed = 42
+        parameters = [3, 2]
+        sample = self.pop_model.sample(parameters, seed=seed)
+
+        n_samples = 1
+        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample[0], 36.94514184203785)
+
+        # Test II: sample size > 1
+        parameters = [3, 2]
+        n_samples = 4
+        sample = self.pop_model.sample(parameters, n=n_samples, seed=seed)
+
+        self.assertEqual(
+            sample.shape, (n_samples,))
+        self.assertEqual(sample[0], 36.94514184203785)
+        self.assertEqual(sample[1], 2.509370155320032)
+        self.assertEqual(sample[2], 90.09839866680616)
+        self.assertEqual(sample[3], 131.77941585966096)
+
+    def test_sample_bad_input(self):
+        # Too many paramaters
+        parameters = [1, 1, 1, 1, 1]
+
+        with self.assertRaisesRegex(ValueError, 'The number of provided'):
+            self.pop_model.sample(parameters)
 
     def test_set_top_parameter_names(self):
         # Test some name
@@ -253,24 +278,21 @@ class TestPooledModel(unittest.TestCase):
         parameters = [3]
         sample = self.pop_model.sample(parameters)
 
-        n_params_per_individual = len(parameters)
         n_samples = 1
-        self.assertEqual(
-            sample.shape, (n_samples, n_params_per_individual))
-        self.assertEqual(sample[0, 0], parameters[0])
+        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample[0], parameters[0])
 
         # Test one sample size > 1
         parameters = [3]
         n_samples = 4
         sample = self.pop_model.sample(parameters, n=n_samples)
 
-        n_params_per_individual = len(parameters)
         self.assertEqual(
-            sample.shape, (n_samples, n_params_per_individual))
-        self.assertEqual(sample[0, 0], parameters[0])
-        self.assertEqual(sample[1, 0], parameters[0])
-        self.assertEqual(sample[2, 0], parameters[0])
-        self.assertEqual(sample[3, 0], parameters[0])
+            sample.shape, (n_samples,))
+        self.assertEqual(sample[0], parameters[0])
+        self.assertEqual(sample[1], parameters[0])
+        self.assertEqual(sample[2], parameters[0])
+        self.assertEqual(sample[3], parameters[0])
 
     def test_sample_bad_input(self):
         # Too many paramaters
