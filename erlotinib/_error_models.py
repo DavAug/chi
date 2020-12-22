@@ -25,8 +25,9 @@ class ErrorModel(object):
 
         In this method, the model output and the observations are compared
         pair-wise. The time-dependence of the values is thus dealt with
-        implicitly, by assuming that `model_ouput` and `observations` are
-        already ordered appropriately
+        implicitly, by assuming that ``model_ouput`` and ``observations`` are
+        already ordered, such that the first entries are correspond to the same
+        time, the second entries correspond to the same time, etc.
 
         Parameters
         ----------
@@ -35,7 +36,7 @@ class ErrorModel(object):
         model_output
             An array-like object with the one-dimensional output of a
             :class:`MechanisticModel`. Each entry is a prediction of the
-            mechanistic model at for a observed time point.
+            mechanistic model for an observed time point in ``observations``.
         observations
             An array-like object with the observations of a biomarker.
         """
@@ -56,19 +57,19 @@ class ErrorModel(object):
     def sample(self, parameters, model_output, n_samples=None, seed=None):
         """
         Returns a samples from the mechanistic model-error model pair in form
-        of a NumPy array of shape `(len(model_output), n_samples)`.
+        of a NumPy array of shape ``(len(model_output), n_samples)``.
 
         Parameters
         ----------
         parameters
             An array-like object with the error model parameters.
-        model_output
+         model_output
             An array-like object with the one-dimensional output of a
             :class:`MechanisticModel`. Each entry is a prediction of the
-            mechanistic model at for a observed time point.
+            mechanistic model for an observed time point in ``observations``.
         n_samples
             Number of samples from the error model for each entry in
-            `model_output`. If ``None``, one sample is assumed.
+            ``model_output``. If ``None``, one sample is assumed.
         seed
             Seed for the pseudo-random number generator. If ``None``, the
             pseudo-random number generator is not seeded.

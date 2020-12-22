@@ -6,7 +6,7 @@ Error Models
 
 .. currentmodule:: erlotinib
 
-Error models in erlotinib_ model the deviations of clinically
+Error models in erlotinib_ model the deviations of experimentally
 observed pharmacokinetic and pharmacodynamic biomarkers and
 the predictions of a :class:`MechanisticModel`.
 
