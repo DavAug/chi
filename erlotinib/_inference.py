@@ -110,6 +110,11 @@ class InferenceController(object):
             n_bottom_params = pop_model.n_bottom_parameters()
             n_parameters = pop_model.n_parameters()
 
+            # If number of bottom-level parameters is 0, skip to next iteration
+            if n_bottom_params == 0:
+                start_index += n_parameters
+                continue
+
             # Get population parameters
             # (always trailing parameters in a population model)
             start = start_index + n_bottom_params
@@ -130,7 +135,7 @@ class InferenceController(object):
                 container[run_id, start:end] = sample
 
             # Shift start_index to next position
-            start_index = start_index + n_parameters
+            start_index += n_parameters
 
         return container
 
