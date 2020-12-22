@@ -5,6 +5,11 @@
 # full license details.
 #
 
+from . import (  # noqa
+    apps,
+    plots
+)
+
 from ._data_library_api import (  # noqa
     DataLibrary
 )
@@ -45,9 +50,4 @@ from ._population_models import (  # noqa
 from ._problems import (  # noqa
     InverseProblem,
     ProblemModellingController
-)
-
-from . import (  # noqa
-    apps,
-    plots
 )
