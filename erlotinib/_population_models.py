@@ -406,7 +406,8 @@ class LogNormalModel(PopulationModel):
         mean_log, std_log = top_parameters
 
         # Sample from population distribution
-        samples = np.random.lognormal(mean=mean_log, sigma=std_log, size=n)
+        rng = np.random.default_rng(seed=seed)
+        samples = rng.lognormal(mean=mean_log, sigma=std_log, size=n)
 
         return samples
 
