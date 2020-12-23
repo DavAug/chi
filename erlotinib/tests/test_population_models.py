@@ -68,20 +68,29 @@ class TestLogNormalModel(unittest.TestCase):
         # Hard to test exactly, but at least test some edge cases where
         # loglikelihood is straightforward to compute analytically
 
-        # Test case I: psis = 1, sigma_log = 1 <=> sigma^2 = mu^2 * (e^1-1).
-        # Score reduces to -n_ids * mu_log^2 / 2 with
-        # mu_log = log mu - log(e^1-1) / 2
+        # Test case I: psis = 1, sigma_log = 1
+        # Score reduces to -n_ids * mu_log^2 / 2
 
-        pass
-        # # Test case I.1:
-        # psis = [1] * self.n_ids
-        # mu = (np.exp(1) - 1) / 2
-        # sigma = mu * (np.exp(1) - 1)
-        # score = 0  # mu_log = 0
+        # Test case I.1:
+        psis = [1] * self.n_ids
+        mu_log = 1
+        sigma_log = 1
+        score = -self.n_ids * mu_log**2 / 2  # mu_log = -5
 
-        # parameters = psis + [mu] + [sigma]
-        # self.assertEqual(self.pop_model(parameters), score)
+        # Transform parameters
+        mu = np.exp(mu_log + sigma_log**2 / 2)
+        var = mu**2 * (np.exp(sigma_log**2) - 1)
+        sigma = np.sqrt(var)
 
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertEqual(transformed[1], sigma_log)
+
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), score)
+
+        #TODO: Complete testing
         # # Test case I.2:
         # psis = [1] * self.n_ids
         # mu = np.exp(1) * (np.exp(1) - 1) / 2
@@ -256,9 +265,9 @@ class TestLogNormalModel(unittest.TestCase):
         transformed = self.pop_model.transform_parameters(mu, sigma)
 
         self.assertEqual(len(transformed), 2)
-        mu_log, sigma_log = transformed
+        mu_log, var_log = transformed
         self.assertAlmostEqual(mu_log, np.log(2) / 2)
-        self.assertAlmostEqual(sigma_log, np.log(2))
+        self.assertAlmostEqual(var_log, np.log(2))
 
 
 class TestPooledModel(unittest.TestCase):
