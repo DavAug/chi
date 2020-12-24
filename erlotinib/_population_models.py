@@ -457,7 +457,7 @@ class LogNormalModel(PopulationModel):
             \quad
             \text{and}
             \quad
-            \sigma _{\text{log}} =
+            \sigma ^2_{\text{log}} =
             -2\log \mu + \log (\mu ^2 + \sigma ^2)
 
         Parameters
