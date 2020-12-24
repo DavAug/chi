@@ -303,7 +303,8 @@ class LogNormalModel(PopulationModel):
         .. math::
             L(\mu _{\text{log}}, \sigma _{\text{log}} | \Psi) =
             \sum _{i=1}^N
-            \log p(\psi _i |\mu _{\text{log}}, \sigma _{\text{log}}) ,
+            \log p(\psi ^{\text{obs}}_i |
+            \mu _{\text{log}}, \sigma _{\text{log}}) ,
 
         where
         :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N)`
