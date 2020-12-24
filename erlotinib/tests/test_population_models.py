@@ -247,27 +247,27 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(
             self.pop_model.n_top_parameters(), n_population_params)
 
-    # def test_sample(self):
-    #     # Test I: sample size 1
-    #     seed = 42
-    #     parameters = [3, 2]
-    #     sample = self.pop_model.sample(parameters, seed=seed)
+    def test_sample(self):
+        # Test I: sample size 1
+        seed = 42
+        parameters = [3, 2]
+        sample = self.pop_model.sample(parameters, seed=seed)
 
-    #     n_samples = 1
-    #     self.assertEqual(sample.shape, (n_samples,))
-    #     self.assertEqual(sample[0], 36.94514184203785)
+        n_samples = 1
+        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample[0], 3.0027582879721875)
 
-    #     # Test II: sample size > 1
-    #     parameters = [3, 2]
-    #     n_samples = 4
-    #     sample = self.pop_model.sample(parameters, n=n_samples, seed=seed)
+        # Test II: sample size > 1
+        parameters = [3, 2]
+        n_samples = 4
+        sample = self.pop_model.sample(parameters, n=n_samples, seed=seed)
 
-    #     self.assertEqual(
-    #         sample.shape, (n_samples,))
-    #     self.assertAlmostEqual(sample[0], 36.94514184203785)
-    #     self.assertAlmostEqual(sample[1], 2.509370155320032)
-    #     self.assertAlmostEqual(sample[2], 90.09839866680616)
-    #     self.assertAlmostEqual(sample[3], 131.77941585966096)
+        self.assertEqual(
+            sample.shape, (n_samples,))
+        self.assertAlmostEqual(sample[0], 3.0027582879721875)
+        self.assertAlmostEqual(sample[1], 1.3285661271871976)
+        self.assertAlmostEqual(sample[2], 3.9346654828223047)
+        self.assertAlmostEqual(sample[3], 4.415456848935877)
 
     def test_sample_bad_input(self):
         # Too many paramaters
