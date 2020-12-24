@@ -74,109 +74,158 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case I.1:
         psis = [1] * self.n_ids
         mu_log = 1
-        sigma_log = 1
+        var_log = 1
         score = -self.n_ids * mu_log**2 / 2  # mu_log = -5
 
         # Transform parameters
-        mu = np.exp(mu_log + sigma_log**2 / 2)
-        var = mu**2 * (np.exp(sigma_log**2) - 1)
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
         sigma = np.sqrt(var)
 
         # Make sure that the transform works
         transformed = self.pop_model.transform_parameters(mu, sigma)
         self.assertEqual(transformed[0], mu_log)
-        self.assertEqual(transformed[1], sigma_log)
+        self.assertEqual(transformed[1], var_log)
 
         parameters = psis + [mu] + [sigma]
         self.assertEqual(self.pop_model(parameters), score)
 
-        #TODO: Complete testing
-        # # Test case I.2:
-        # psis = [1] * self.n_ids
-        # mu = np.exp(1) * (np.exp(1) - 1) / 2
-        # sigma = mu * (np.exp(1) - 1)
-        # score = -self.n_ids / 2  # =5, mu_log = 1
+        # Test case I.2:
+        psis = [1] * self.n_ids
+        mu_log = 5
+        var_log = 1
+        score = -self.n_ids * mu_log**2 / 2  # mu_log = -125
 
-        # parameters = psis + [mu] + [sigma]
-        # self.assertEqual(self.pop_model(parameters), score)
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
 
-        # # Test case II: psis = 1.
-        # # Score reduces to
-        # # -n_ids * log(sigma_log) -n_ids * mu_log^2 / (2 * sigma_log^2)
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertEqual(transformed[1], var_log)
 
-        # # Test case II.1:
-        # psis = [1] * self.n_ids
-        # mu_log = [10]
-        # sigma_log = [np.exp(1)]
-        # score = -self.n_ids - self.n_ids * 10**2 / (2 * np.exp(2))
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), score)
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), score)
+        # Test case II: psis = 1.
+        # Score reduces to
+        # -n_ids * log(sigma_log) -n_ids * mu_log^2 / (2 * sigma_log^2)
 
-        # # Test case II.2:
-        # psis = [1] * self.n_ids
-        # mu_log = [10]
-        # sigma_log = [np.exp(3)]
-        # score = -3 * self.n_ids - self.n_ids * 10**2 / (2 * np.exp(3 * 2))
+        # Test case II.1:
+        psis = [1] * self.n_ids
+        mu_log = 1
+        var_log = np.exp(2)
+        score = -self.n_ids - self.n_ids * mu_log**2 / (2 * var_log)
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), score)
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
 
-        # # Test case III: psis all the same, sigma_log = 1.
-        # # Score reduces to
-        # # -n_ids * log(psi) - n_ids * (log(psi) - mu_log)^2 / 2
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
 
-        # # Test case III.1
-        # psis = [np.exp(4)] * self.n_ids
-        # mu_log = [10]
-        # sigma_log = [1]
-        # score = -self.n_ids * 4 - self.n_ids * (4 - 10)**2 / 2  # -220
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), score)
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), score)
+        # Test case II.2:
+        psis = [1] * self.n_ids
+        mu_log = 3
+        var_log = np.exp(3)
+        score = -1.5 * self.n_ids - self.n_ids * mu_log**2 / (2 * var_log)
 
-        # # Test case III.2
-        # psis = [np.exp(10)] * self.n_ids
-        # mu_log = [10]
-        # sigma_log = [1]
-        # score = -self.n_ids * 10  # -100
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), score)
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
 
-        # # Test case IV: mu_log or sigma_log negative or zero
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), score)
 
-        # # Test case IV.1
-        # psis = [np.exp(10)] * self.n_ids
-        # mu_log = [0]
-        # sigma_log = [1]
+        # Test case III: psis all the same, sigma_log = 1.
+        # Score reduces to
+        # -n_ids * log(psi) - n_ids * (log(psi) - mu_log)^2 / 2
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), -np.inf)
+        # Test case III.1
+        psis = [np.exp(4)] * self.n_ids
+        mu_log = 1
+        var_log = 1
+        score = -self.n_ids * 4 - self.n_ids * (4 - mu_log)**2 / 2  # -85
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
+
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case III.2
+        psis = [np.exp(3)] * self.n_ids
+        mu_log = 3
+        var_log = 1
+        score = -self.n_ids * 3  # -100
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
+
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), score)
+
+        # Test case IV: mu_log or sigma_log negative or zero
+
+        # Test case IV.1
+        psis = [np.exp(10)] * self.n_ids
+        mu = 0
+        sigma = 1
+
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), -np.inf)
 
         # # Test case IV.2
-        # psis = [np.exp(10)] * self.n_ids
-        # mu_log = [1]
-        # sigma_log = [0]
+        psis = [np.exp(10)] * self.n_ids
+        mu = 1
+        sigma = 0
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), -np.inf)
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), -np.inf)
 
-        # # Test case IV.3
-        # psis = [np.exp(10)] * self.n_ids
-        # mu_log = [-10]
-        # sigma_log = [1]
+        # Test case IV.3
+        psis = [np.exp(10)] * self.n_ids
+        mu = -10
+        sigma = 1
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), -np.inf)
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), -np.inf)
 
-        # # Test case IV.4
-        # psis = [np.exp(10)] * self.n_ids
-        # mu_log = [1]
-        # sigma_log = [-10]
+        # Test case IV.4
+        psis = [np.exp(10)] * self.n_ids
+        mu = 1
+        sigma = -10
 
-        # parameters = psis + mu_log + sigma_log
-        # self.assertEqual(self.pop_model(parameters), -np.inf)
+        parameters = psis + [mu] + [sigma]
+        self.assertEqual(self.pop_model(parameters), -np.inf)
 
     def test_get_top_parameter_names(self):
         names = ['Mean', 'Std.']
