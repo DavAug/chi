@@ -87,3 +87,68 @@ class ErrorModel(object):
             :meth:`n_parameters`.
         """
         raise NotImplementedError
+
+
+class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
+    r"""
+    An error model that assumes that the model error is a mixture between a
+    Gaussian base-level noise and a Gaussian heteroscedastic noise.
+
+    A ConstantAndMultiplicativeGaussianErrorModel assumes that the observable
+    biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
+    output :math:`X^{\text{m}}` by
+
+    .. math::
+        X(t, \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
+        X^{\text{m}}(t, \psi ) + (\sigma _{\text{base}} + \sigma _{\text{rel}}
+        X^{\text{m}}(t, \psi ) \, \epsilon ,
+
+    where :math:`\epsilon` is a i.i.d. standard Gaussian random variable
+
+    .. math::
+        \epsilon \sim \mathcal{N}(0, 1).
+
+    As a result, this model assumes that the observed biomarker values
+    :math:`X^{\text{obs}}` are realisations of the random variable
+    :math:`X`.
+
+    Extends :class:`ErrorModel`.
+    """
+
+    def __init__(self, problem):
+        super(ConstantAndMultiplicativeGaussianErrorModel, self).__init__()
+
+        # Get number of times and number of noise parameters
+        self._nt = len(self._times)
+        self._no = problem.n_outputs()
+        self._np = 3 * self._no
+
+        # Add parameters to problem
+        self._n_parameters = problem.n_parameters() + self._np
+
+        # Pre-calculate the constant part of the likelihood
+        self._logn = -0.5 * self._nt * self._no * np.log(2 * np.pi)
+
+    def __call__(self, parameters):
+        # Get parameters from input
+        noise_parameters = np.asarray(parameters[-self._np:])
+        sigma_base = noise_parameters[:self._no]
+        eta = noise_parameters[self._no:2 * self._no]
+        sigma_rel = noise_parameters[2 * self._no:]
+
+        # Evaluate noise-free model (n_times, n_outputs)
+        function_values = self._problem.evaluate(parameters[:-self._np])
+
+        # Compute error (n_times, n_outputs)
+        error = self._values - function_values
+
+        # Compute total standard deviation
+        sigma_tot = sigma_base + sigma_rel * function_values**eta
+
+        # Compute log-likelihood
+        # (inner sums over time points, outer sum over parameters)
+        log_likelihood = self._logn - np.sum(
+            np.sum(np.log(sigma_tot), axis=0)
+            + 0.5 * np.sum(error**2 / sigma_tot**2, axis=0))
+
+        return log_likelihood
