@@ -437,12 +437,12 @@ class LogNormalModel(PopulationModel):
     def transform_parameters(self, mean, std):
         r"""
         Returns the standard parameters :math:`\mu _{\text{log}}` and
-        :math:`\sigma _{\text{log}}` for a given population mean and
+        :math:`\sigma ^2_{\text{log}}` for a given population mean and
         standard deviation.
 
         Log-normal distributions are typically parametrised by
-        :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}` which
-        represent the mean and standard deviation of :math:`\log \psi`.
+        :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` which
+        represent the mean and variance of :math:`\log \psi`.
 
         We choose to parametrise the log-normal distribution by the somewhat
         more intuitive mean and standard deviation of the parameter
