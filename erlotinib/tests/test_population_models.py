@@ -276,6 +276,18 @@ class TestLogNormalModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The number of provided'):
             self.pop_model.sample(parameters)
 
+        # Negative mean
+        parameters = [-1, 1]
+
+        with self.assertRaisesRegex(ValueError, 'A log-normal distribution'):
+            self.pop_model.sample(parameters)
+
+        # Negative std
+        parameters = [1, -1]
+
+        with self.assertRaisesRegex(ValueError, 'A log-normal distribution'):
+            self.pop_model.sample(parameters)
+
     def test_set_top_parameter_names(self):
         # Test some name
         names = ['test', 'name']
