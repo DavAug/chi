@@ -114,8 +114,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         \epsilon \sim \mathcal{N}(0, 1).
 
     As a result, this model assumes that the observed biomarker values
-    :math:`X^{\text{obs}}` are realisations of the random variable
-    :math:`X`.
+    :math:`x^{\text{obs}}` are realisations of the random variable
+    :math:`x`.
 
     The distribution of the observable biomarkers can then be expressed in
     terms of a Gaussian distribution
