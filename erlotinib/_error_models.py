@@ -99,14 +99,16 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
     A ConstantAndMultiplicativeGaussianErrorModel assumes that the observable
     biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
-    output :math:`X^{\text{m}}` by
+    output by
 
     .. math::
         X(t, \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
-        X^{\text{m}}(t, \psi ) + (\sigma _{\text{base}} + \sigma _{\text{rel}}
-        X^{\text{m}}(t, \psi ) \, \epsilon ,
+        X^{\text{m}} + \left( \sigma _{\text{base}} + \sigma _{\text{rel}}
+        X^{\text{m}}\right) \, \epsilon ,
 
-    where :math:`\epsilon` is a i.i.d. standard Gaussian random variable
+    where :math:`X^{\text{m}} := X^{\text{m}}(t, \psi )` is the mechanistic
+    model output with parameters :math:`\psi`, and :math:`\epsilon` is a
+    i.i.d. standard Gaussian random variable
 
     .. math::
         \epsilon \sim \mathcal{N}(0, 1).
@@ -114,6 +116,18 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     As a result, this model assumes that the observed biomarker values
     :math:`X^{\text{obs}}` are realisations of the random variable
     :math:`X`.
+
+    The distribution of the observable biomarkers can then be expressed in
+    terms of a Gaussian distirbution
+
+    .. math::
+        p(X | \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
+        \frac{1}{\sqrt{2\pi} \sigma _{\text{tot}}}
+        \exp{\left(-\frac{\left(X-X^{\text{m}}\right) ^2}
+        {2\sigma^2 _{\text{tot}}} \right)},
+
+    where :math:`\sigma _{\text{tot}} = \sigma _{\text{base}} +
+    \sigma _{\text{rel}}X^{\text{m}}`.
 
     Extends :class:`ErrorModel`.
     """
@@ -125,16 +139,32 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         self._parameter_names = ['Sigma base', 'Sigma rel.']
         self._n_parameters = 2
 
-    def compute_log_likelihood(self, parameters):
-        """
+    def compute_log_likelihood(self, parameters, model_output, observations):
+        r"""
         Returns the unnormalised log-likelihood score for the model parameters
         of the mechanistic model-error model pair.
 
-        In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
-        implicitly, by assuming that ``model_ouput`` and ``observations`` are
-        already ordered, such that the first entries are correspond to the same
+        In this method, the model output :math:`X^{\text{m}}` and the
+        observations :math:`X^{\text{obs}}` are compared pair-wise, and the
+        log-likelihood score is computed according to
+
+        .. math::
+            L(\psi , \sigma _{\text{base}}, \sigma _{\text{rel}} |
+            X^{\text{obs}}) =
+            \sum _{i=1}^N
+            \log p(X^{\text{obs}} _i |
+            \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) ,
+
+        where :math:`N` is the number of observations.
+
+        The time-dependence of the values is dealt with implicitly, by
+        assuming that ``model_ouput`` and ``observations`` are already
+        ordered, such that the first entries are correspond to the same
         time, the second entries correspond to the same time, etc.
+
+        .. note::
+            All constant terms that do not depend on the model parameters are
+            dropped when computing the log-likelihood score.
 
         Parameters
         ----------
@@ -147,27 +177,23 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         observations
             An array-like object with the observations of a biomarker.
         """
-        #TODO: Refactor properly
-        # Get parameters from input
-        noise_parameters = np.asarray(parameters[-self._np:])
-        sigma_base = noise_parameters[:self._no]
-        eta = noise_parameters[self._no:2 * self._no]
-        sigma_rel = noise_parameters[2 * self._no:]
+        model_output = np.asarray(model_output)
+        observations = np.asarray(observations)
+        n_observatinos = len(observations)
+        if len(model_output) != n_observatinos:
+            raise ValueError(
+                'The number of model outputs must match the number of '
+                'observations, otherwise they cannot be compared pair-wise.')
 
-        # Evaluate noise-free model (n_times, n_outputs)
-        function_values = self._problem.evaluate(parameters[:-self._np])
-
-        # Compute error (n_times, n_outputs)
-        error = self._values - function_values
+        # Get parameters
+        sigma_base, sigma_rel = parameters
 
         # Compute total standard deviation
-        sigma_tot = sigma_base + sigma_rel * function_values**eta
+        sigma_tot = sigma_base + sigma_rel * model_output
 
         # Compute log-likelihood
-        # (inner sums over time points, outer sum over parameters)
-        log_likelihood = self._logn - np.sum(
-            np.sum(np.log(sigma_tot), axis=0)
-            + 0.5 * np.sum(error**2 / sigma_tot**2, axis=0))
+        log_likelihood = - np.sum(np.log(sigma_tot)) \
+            - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
 
         return log_likelihood
 
