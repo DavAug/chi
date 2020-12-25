@@ -144,8 +144,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         Returns the unnormalised log-likelihood score for the model parameters
         of the mechanistic model-error model pair.
 
-        In this method, the model output :math:`X^{\text{m}}` and the
-        observations :math:`X^{\text{obs}}` are compared pair-wise, and the
+        In this method, the model output :math:`x^{\text{m}}` and the
+        observations :math:`x^{\text{obs}}` are compared pair-wise, and the
         log-likelihood score is computed according to
 
         .. math::
