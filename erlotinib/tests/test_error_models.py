@@ -7,6 +7,8 @@
 
 import unittest
 
+import numpy as np
+
 import erlotinib as erlo
 
 
@@ -19,8 +21,55 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
         cls.error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
 
     def test_compute_log_likelihood(self):
-        # TODO:
-        pass
+        # Test case I: If X = X^m, the score reduces to
+        # - np.log(sigma_tot)
+
+        # Test case I.1:
+        parameters = [1, 0.1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -10 * np.log(1 + 0.1 * 1)
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case I.2:
+        parameters = [1, 0.1]
+        model_output = [10] * 10
+        observations = [10] * 10
+        ref_score = -10 * np.log(1 + 0.1 * 10)
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertEqual(score, ref_score)
+
+        # Test case II: If sigma_tot = 1, the score reduces to
+        # -(X-X^m) / 2
+
+        # Test case II.1:
+        parameters = [0.9, 0.1]
+        model_output = [1] * 10
+        observations = [2] * 10
+        ref_score = -10 * (1 - 2)**2 / 2
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case II.2:
+        parameters = [0.9, 0.1]
+        model_output = [1] * 10
+        observations = [10] * 10
+        ref_score = -10 * (1 - 10)**2 / 2
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
 
     def test_get_parameter_names(self):
         parameters = self.error_model.get_parameter_names()
