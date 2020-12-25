@@ -18,8 +18,14 @@ Base classes
 Functional classes
 ------------------
 
+- :class:`ConstantAndMultiplicativeGaussianErrorModel`
+
 Detailed API
 ------------
+
+.. autoclass:: ConstantAndMultiplicativeGaussianErrorModel
+    :members:
+    :inherited-members:
 
 .. autoclass:: ErrorModel
     :members:

@@ -15,6 +15,7 @@ from ._data_library_api import (  # noqa
 )
 
 from ._error_models import (  # noqa
+    ConstantAndMultiplicativeGaussianErrorModel,
     ErrorModel
 )
 
