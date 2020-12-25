@@ -260,7 +260,8 @@ class TestLogNormalModel(unittest.TestCase):
         # Test II: sample size > 1
         parameters = [3, 2]
         n_samples = 4
-        sample = self.pop_model.sample(parameters, n=n_samples, seed=seed)
+        sample = self.pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed)
 
         self.assertEqual(
             sample.shape, (n_samples,))
@@ -378,7 +379,7 @@ class TestPooledModel(unittest.TestCase):
         # Test one sample size > 1
         parameters = [3]
         n_samples = 4
-        sample = self.pop_model.sample(parameters, n=n_samples)
+        sample = self.pop_model.sample(parameters, n_samples=n_samples)
 
         self.assertEqual(
             sample.shape, (n_samples,))
