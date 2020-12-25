@@ -68,8 +68,7 @@ class ErrorModel(object):
             An array-like object with the error model parameters.
         model_output
             An array-like object with the one-dimensional output of a
-            :class:`MechanisticModel`. Each entry is a prediction of the
-            mechanistic model for an observed time point in ``observations``.
+            :class:`MechanisticModel`.
         n_samples
             Number of samples from the error model for each entry in
             ``model_output``. If ``None``, one sample is assumed.
@@ -214,8 +213,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             An array-like object with the error model parameters.
         model_output
             An array-like object with the one-dimensional output of a
-            :class:`MechanisticModel`. Each entry is a prediction of the
-            mechanistic model for an observed time point in ``observations``.
+            :class:`MechanisticModel`.
         n_samples
             Number of samples from the error model for each entry in
             ``model_output``. If ``None``, one sample is assumed.
