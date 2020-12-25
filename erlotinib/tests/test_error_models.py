@@ -29,8 +29,8 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
         self.assertEqual(parameters[0], 'Sigma base')
         self.assertEqual(parameters[1], 'Sigma rel.')
 
-    # def test_n_parameters(self):
-    #     self.assertIsNone(self.error_model.n_parameters())
+    def test_n_parameters(self):
+        self.assertEqual(self.error_model.n_parameters(), 2)
 
     # def test_sample(self):
     #     parameters = 'some parameters'
