@@ -5,6 +5,9 @@
 # full license details.
 #
 
+import numpy as np
+
+
 class ErrorModel(object):
     """
     A base class for error models for the one-dimensional output of
@@ -118,18 +121,33 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     def __init__(self, problem):
         super(ConstantAndMultiplicativeGaussianErrorModel, self).__init__()
 
-        # Get number of times and number of noise parameters
-        self._nt = len(self._times)
-        self._no = problem.n_outputs()
-        self._np = 3 * self._no
+        # Set defaults
+        self._parameter_names = ['Sigma base', 'Sigma rel.']
+        self._n_parameters = 2
 
-        # Add parameters to problem
-        self._n_parameters = problem.n_parameters() + self._np
+    def compute_log_likelihood(self, parameters):
+        """
+        Returns the unnormalised log-likelihood score for the model parameters
+        of the mechanistic model-error model pair.
 
-        # Pre-calculate the constant part of the likelihood
-        self._logn = -0.5 * self._nt * self._no * np.log(2 * np.pi)
+        In this method, the model output and the observations are compared
+        pair-wise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_ouput`` and ``observations`` are
+        already ordered, such that the first entries are correspond to the same
+        time, the second entries correspond to the same time, etc.
 
-    def __call__(self, parameters):
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        observations
+            An array-like object with the observations of a biomarker.
+        """
+        #TODO: Refactor properly
         # Get parameters from input
         noise_parameters = np.asarray(parameters[-self._np:])
         sigma_base = noise_parameters[:self._no]
@@ -152,3 +170,63 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             + 0.5 * np.sum(error**2 / sigma_tot**2, axis=0))
 
         return log_likelihood
+
+    def sample(self, parameters, model_output, n_samples=None, seed=None):
+        """
+        Returns samples from the mechanistic model-error model pair in form
+        of a NumPy array of shape ``(len(model_output), n_samples)``.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        n_samples
+            Number of samples from the error model for each entry in
+            ``model_output``. If ``None``, one sample is assumed.
+        seed
+            Seed for the pseudo-random number generator. If ``None``, the
+            pseudo-random number generator is not seeded.
+        """
+        if len(parameters) != self._n_parameters:
+            raise ValueError(
+                'The number of provided parameters does not match the expected'
+                ' number of model parameters.')
+
+        # Get number of predicted time points
+        model_output = np.asarray(model_output)
+        n_times = len(model_output)
+
+        # Define shape of samples
+        if n_samples is None:
+            n_samples = 1
+        sample_shape = (n_times, int(n_samples))
+
+        # Get parameters
+        sigma_base, sigma_rel = parameters
+
+        # Sample from Gaussian distributions
+        rng = np.random.default_rng(seed=seed)
+        base_samples = rng.normal(mean=0, sigma=sigma_base, size=sample_shape)
+        rel_samples = rng.normal(mean=0, sigma=sigma_rel, size=sample_shape)
+
+        # Construct final samples
+        samples = base_samples + model_output * rel_samples
+
+        return samples
+
+    def set_parameter_names(self, names):
+        """
+        Sets the names of the error model parameters.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`.
+        """
+        # TODO: Implement
+        raise NotImplementedError
