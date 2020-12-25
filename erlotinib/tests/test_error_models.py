@@ -169,6 +169,14 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
         self.assertAlmostEqual(sample[1, 3], -1.0485795990032525)
         self.assertAlmostEqual(sample[2, 3], 2.024316842149241)
 
+    def test_sample_bad_input(self):
+        # Too many paramaters
+        parameters = [1, 1, 1, 1, 1]
+        model_output = [1] * 10
+
+        with self.assertRaisesRegex(ValueError, 'The number of provided'):
+            self.error_model.sample(parameters, model_output)
+
     def test_set_parameter_names(self):
         # Set parameter names
         names = ['some', 'names']
