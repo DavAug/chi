@@ -240,10 +240,11 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         # Sample from Gaussian distributions
         rng = np.random.default_rng(seed=seed)
-        base_samples = rng.normal(mean=0, sigma=sigma_base, size=sample_shape)
-        rel_samples = rng.normal(mean=0, sigma=sigma_rel, size=sample_shape)
+        base_samples = rng.normal(loc=0, scale=sigma_base, size=sample_shape)
+        rel_samples = rng.normal(loc=0, scale=sigma_rel, size=sample_shape)
 
         # Construct final samples
+        model_output = np.expand_dims(model_output, axis=1)
         samples = base_samples + model_output * rel_samples
 
         return samples
