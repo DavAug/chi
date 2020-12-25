@@ -38,10 +38,24 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
     #     with self.assertRaisesRegex(NotImplementedError, ''):
     #         self.error_model.sample(parameters, model_output)
 
-    # def test_set_parameter_names(self):
-    #     names = 'some names'
-    #     with self.assertRaisesRegex(NotImplementedError, ''):
-    #         self.error_model.set_parameter_names(names)
+    def test_set_parameter_names(self):
+        # Set parameter names
+        names = ['some', 'names']
+        self.error_model.set_parameter_names(names)
+        parameters = self.error_model.get_parameter_names()
+
+        self.assertEqual(len(parameters), 2)
+        self.assertEqual(parameters[0], 'some')
+        self.assertEqual(parameters[1], 'names')
+
+        # Reset parameter names
+        names = ['Sigma base', 'Sigma rel.']
+        self.error_model.set_parameter_names(names)
+        parameters = self.error_model.get_parameter_names()
+
+        self.assertEqual(len(parameters), 2)
+        self.assertEqual(parameters[0], 'Sigma base')
+        self.assertEqual(parameters[1], 'Sigma rel.')
 
 
 class TestErrorModel(unittest.TestCase):
