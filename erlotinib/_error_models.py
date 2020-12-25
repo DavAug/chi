@@ -98,15 +98,15 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     Gaussian base-level noise and a Gaussian heteroscedastic noise.
 
     A ConstantAndMultiplicativeGaussianErrorModel assumes that the observable
-    biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
+    biomarker :math:`x` is related to the :class:`MechanisticModel` biomarker
     output by
 
     .. math::
-        X(t, \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
-        X^{\text{m}} + \left( \sigma _{\text{base}} + \sigma _{\text{rel}}
-        X^{\text{m}}\right) \, \epsilon ,
+        x(t, \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
+        x^{\text{m}} + \left( \sigma _{\text{base}} + \sigma _{\text{rel}}
+        x^{\text{m}}\right) \, \epsilon ,
 
-    where :math:`X^{\text{m}} := X^{\text{m}}(t, \psi )` is the mechanistic
+    where :math:`x^{\text{m}} := x^{\text{m}}(t, \psi )` is the mechanistic
     model output with parameters :math:`\psi`, and :math:`\epsilon` is a
     i.i.d. standard Gaussian random variable
 
@@ -118,16 +118,16 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     :math:`X`.
 
     The distribution of the observable biomarkers can then be expressed in
-    terms of a Gaussian distirbution
+    terms of a Gaussian distribution
 
     .. math::
-        p(X | \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
+        p(x | \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
         \frac{1}{\sqrt{2\pi} \sigma _{\text{tot}}}
-        \exp{\left(-\frac{\left(X-X^{\text{m}}\right) ^2}
+        \exp{\left(-\frac{\left(x-x^{\text{m}}\right) ^2}
         {2\sigma^2 _{\text{tot}}} \right)},
 
     where :math:`\sigma _{\text{tot}} = \sigma _{\text{base}} +
-    \sigma _{\text{rel}}X^{\text{m}}`.
+    \sigma _{\text{rel}}x^{\text{m}}`.
 
     Extends :class:`ErrorModel`.
     """
@@ -150,9 +150,9 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         .. math::
             L(\psi , \sigma _{\text{base}}, \sigma _{\text{rel}} |
-            X^{\text{obs}}) =
+            x^{\text{obs}}) =
             \sum _{i=1}^N
-            \log p(X^{\text{obs}} _i |
+            \log p(x^{\text{obs}} _i |
             \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) ,
 
         where :math:`N` is the number of observations.
@@ -172,10 +172,12 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             An array-like object with the error model parameters.
         model_output
             An array-like object with the one-dimensional output of a
-            :class:`MechanisticModel`. Each entry is a prediction of the
-            mechanistic model for an observed time point in ``observations``.
+            :class:`MechanisticModel`, :math:`x^{\text{m}}`. Each entry is a
+            prediction of the mechanistic model for an observed time point in
+            ``observations``, :math:`x^{\text{obs}}`.
         observations
-            An array-like object with the observations of a biomarker.
+            An array-like object with the observations of a biomarker
+            :math:`x^{\text{obs}}`.
         """
         model_output = np.asarray(model_output)
         observations = np.asarray(observations)
