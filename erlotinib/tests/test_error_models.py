@@ -71,6 +71,15 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
 
         self.assertAlmostEqual(score, ref_score)
 
+    def test_compute_log_likelihood_bad_input(self):
+        # Model output and observations don't match
+        parameters = [1, 0.1]
+        model_output = ['some', 'length']
+        observations = ['some', 'other', 'length']
+        with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
+            self.error_model.compute_log_likelihood(
+                parameters, model_output, observations)
+
     def test_get_parameter_names(self):
         parameters = self.error_model.get_parameter_names()
 
