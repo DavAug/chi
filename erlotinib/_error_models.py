@@ -98,11 +98,11 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     Gaussian base-level noise and a Gaussian heteroscedastic noise.
 
     A ConstantAndMultiplicativeGaussianErrorModel assumes that the observable
-    biomarker :math:`x` is related to the :class:`MechanisticModel` biomarker
+    biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
     output by
 
     .. math::
-        x(t, \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
+        X(t, \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
         x^{\text{m}} + \left( \sigma _{\text{base}} + \sigma _{\text{rel}}
         x^{\text{m}}\right) \, \epsilon ,
 
@@ -115,7 +115,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
     As a result, this model assumes that the observed biomarker values
     :math:`x^{\text{obs}}` are realisations of the random variable
-    :math:`x`.
+    :math:`X`.
 
     The distribution of the observable biomarkers can then be expressed in
     terms of a Gaussian distribution
