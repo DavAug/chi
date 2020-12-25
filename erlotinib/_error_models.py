@@ -49,7 +49,7 @@ class ErrorModel(object):
         """
         Returns the names of the error model parameters.
         """
-        self._parameter_names
+        return self._parameter_names
 
     def n_parameters(self):
         """
@@ -132,7 +132,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     Extends :class:`ErrorModel`.
     """
 
-    def __init__(self, problem):
+    def __init__(self):
         super(ConstantAndMultiplicativeGaussianErrorModel, self).__init__()
 
         # Set defaults
