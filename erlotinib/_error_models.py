@@ -188,6 +188,10 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         # Get parameters
         sigma_base, sigma_rel = parameters
 
+        if sigma_base <= 0 or sigma_rel <= 0:
+            # sigma_base and sigma_rel are strictly positive
+            return -np.inf
+
         # Compute total standard deviation
         sigma_tot = sigma_base + sigma_rel * model_output
 
