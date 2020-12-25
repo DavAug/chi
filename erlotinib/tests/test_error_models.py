@@ -161,6 +161,12 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
         self.assertEqual(parameters[0], 'Sigma base')
         self.assertEqual(parameters[1], 'Sigma rel.')
 
+    def test_set_parameter_names_bad_input(self):
+        # Not the right number of names
+        names = ['Too', 'many', 'names']
+        with self.assertRaisesRegex(ValueError, 'Length of names'):
+            self.error_model.set_parameter_names(names)
+
 
 class TestErrorModel(unittest.TestCase):
     """
