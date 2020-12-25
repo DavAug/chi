@@ -7,7 +7,200 @@
 
 import unittest
 
+import numpy as np
+
 import erlotinib as erlo
+
+
+class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
+    """
+    Tests the erlo.ConstantAndMultiplicativeGaussianErrorModel class.
+    """
+    @classmethod
+    def setUpClass(cls):
+        cls.error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+
+    def test_compute_log_likelihood(self):
+        # Test case I: If X = X^m, the score reduces to
+        # - np.log(sigma_tot)
+
+        # Test case I.1:
+        parameters = [1, 0.1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -10 * np.log(1 + 0.1 * 1)
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case I.2:
+        parameters = [1, 0.1]
+        model_output = [10] * 10
+        observations = [10] * 10
+        ref_score = -10 * np.log(1 + 0.1 * 10)
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertEqual(score, ref_score)
+
+        # Test case II: If sigma_tot = 1, the score reduces to
+        # -(X-X^m) / 2
+
+        # Test case II.1:
+        parameters = [0.9, 0.1]
+        model_output = [1] * 10
+        observations = [2] * 10
+        ref_score = -10 * (1 - 2)**2 / 2
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case II.2:
+        parameters = [0.9, 0.1]
+        model_output = [1] * 10
+        observations = [10] * 10
+        ref_score = -10 * (1 - 10)**2 / 2
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case III: -Infinity for not allowed regimes
+
+        # Test case III.1: Zero sigma_base
+        parameters = [0, 0.1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case III.2: Negative sigma_base
+        parameters = [-1, 0.1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case III.3: Zero sigma_rel
+        parameters = [1, 0]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case III.4: Negative sigma_rel
+        parameters = [1, -1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+    def test_compute_log_likelihood_bad_input(self):
+        # Model output and observations don't match
+        parameters = [1, 0.1]
+        model_output = ['some', 'length']
+        observations = ['some', 'other', 'length']
+        with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
+            self.error_model.compute_log_likelihood(
+                parameters, model_output, observations)
+
+    def test_get_parameter_names(self):
+        parameters = self.error_model.get_parameter_names()
+
+        self.assertEqual(len(parameters), 2)
+        self.assertEqual(parameters[0], 'Sigma base')
+        self.assertEqual(parameters[1], 'Sigma rel.')
+
+    def test_n_parameters(self):
+        self.assertEqual(self.error_model.n_parameters(), 2)
+
+    def test_sample(self):
+        # Test I: sample size 1
+        seed = 42
+        parameters = [3, 2]
+        n_times = 3
+        model_output = [1] * n_times
+        sample = self.error_model.sample(parameters, model_output, seed=seed)
+
+        n_samples = 1
+        self.assertEqual(sample.shape, (n_times, n_samples))
+        self.assertAlmostEqual(sample[0, 0], 2.7952806720457217)
+        self.assertAlmostEqual(sample[1, 0], -7.022022696029159)
+        self.assertAlmostEqual(sample[2, 0], -0.35300542630526444)
+
+        # Test II: sample size > 1
+        n_samples = 4
+        sample = self.error_model.sample(
+            parameters, model_output, n_samples=n_samples, seed=seed)
+
+        self.assertEqual(sample.shape, (n_times, n_samples))
+        self.assertAlmostEqual(sample[0, 0], 1.046212634385726)
+        self.assertAlmostEqual(sample[1, 0], -5.115603997796511)
+        self.assertAlmostEqual(sample[2, 0], -0.4201281996033875)
+        self.assertAlmostEqual(sample[0, 1], -0.8654699047854209)
+        self.assertAlmostEqual(sample[1, 1], -5.824303722244952)
+        self.assertAlmostEqual(sample[2, 1], -3.920990871528623)
+        self.assertAlmostEqual(sample[0, 2], 3.186372271923463)
+        self.assertAlmostEqual(sample[1, 2], 2.140421812116401)
+        self.assertAlmostEqual(sample[2, 2], 5.0832766019365465)
+        self.assertAlmostEqual(sample[0, 3], 1.1031092234071649)
+        self.assertAlmostEqual(sample[1, 3], -1.0485795990032525)
+        self.assertAlmostEqual(sample[2, 3], 2.024316842149241)
+
+    def test_sample_bad_input(self):
+        # Too many paramaters
+        parameters = [1, 1, 1, 1, 1]
+        model_output = [1] * 10
+
+        with self.assertRaisesRegex(ValueError, 'The number of provided'):
+            self.error_model.sample(parameters, model_output)
+
+    def test_set_parameter_names(self):
+        # Set parameter names
+        names = ['some', 'names']
+        self.error_model.set_parameter_names(names)
+        parameters = self.error_model.get_parameter_names()
+
+        self.assertEqual(len(parameters), 2)
+        self.assertEqual(parameters[0], 'some')
+        self.assertEqual(parameters[1], 'names')
+
+        # Reset parameter names
+        names = ['Sigma base', 'Sigma rel.']
+        self.error_model.set_parameter_names(names)
+        parameters = self.error_model.get_parameter_names()
+
+        self.assertEqual(len(parameters), 2)
+        self.assertEqual(parameters[0], 'Sigma base')
+        self.assertEqual(parameters[1], 'Sigma rel.')
+
+    def test_set_parameter_names_bad_input(self):
+        # Not the right number of names
+        names = ['Too', 'many', 'names']
+        with self.assertRaisesRegex(ValueError, 'Length of names'):
+            self.error_model.set_parameter_names(names)
 
 
 class TestErrorModel(unittest.TestCase):
