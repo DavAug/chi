@@ -228,5 +228,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             An array-like object with string-convertable entries of length
             :meth:`n_parameters`.
         """
-        # TODO: Implement
-        raise NotImplementedError
+        if len(names) != self._n_parameters:
+            raise ValueError(
+                'Length of names does not match n_parameters.')
+
+        self._parameter_names = [str(label) for label in names]
