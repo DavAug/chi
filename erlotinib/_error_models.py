@@ -29,8 +29,8 @@ class ErrorModel(object):
         In this method, the model output and the observations are compared
         pair-wise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_ouput`` and ``observations`` are
-        already ordered, such that the first entries are correspond to the same
-        time, the second entries correspond to the same time, etc.
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
 
         Parameters
         ----------
@@ -159,8 +159,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         The time-dependence of the values is dealt with implicitly, by
         assuming that ``model_ouput`` and ``observations`` are already
-        ordered, such that the first entries are correspond to the same
-        time, the second entries correspond to the same time, etc.
+        ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
 
         .. note::
             All constant terms that do not depend on the model parameters are
