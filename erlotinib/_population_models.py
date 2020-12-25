@@ -97,19 +97,18 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def sample(self, top_parameters, n=None, seed=None):
+    def sample(self, top_parameters, n_samples=None, seed=None):
         r"""
-        Returns `n` random samples from the underlying population distribution.
+        Returns random samples from the underlying population distribution.
 
-        The returned value is a numpy array with shape :math:`(n,)` where
-        :math:`n` is the requested number of samples.
+        The returned value is a NumPy array with shape ``(n_samples,)``.
 
         Parameters
         ----------
         top_parameters
             Parameter values of the top-level parameters that are used for the
             simulation.
-        n
+        n_samples
             Number of samples. If ``None``, one sample is returned.
         seed
             A seed for the pseudo-random number generator.
@@ -372,24 +371,23 @@ class LogNormalModel(PopulationModel):
         """
         return self._n_top_parameters
 
-    def sample(self, top_parameters, n=None, seed=None):
+    def sample(self, top_parameters, n_samples=None, seed=None):
         r"""
-        Returns :math:`n` random samples from the underlying population
+        Returns random samples from the underlying population
         distribution.
 
-        For a LogNormalModel :math:`n` random samples from a log-normal
+        For a LogNormalModel random samples from a log-normal
         distribution are returned, where the population model parameters
         :math:`\mu` and :math:`\sigma` are given by ``top_parameters``.
 
-        The returned value is a numpy array with shape :math:`(n,)` where
-        :math:`n` is the requested number of samples.
+        The returned value is a NumPy array with shape ``(n_samples,)``.
 
         Parameters
         ----------
         top_parameters
             Parameter values of the top-level parameters that are used for the
             simulation.
-        n
+        n_samples
             Number of samples. If ``None``, one sample is returned.
         seed
             A seed for the pseudo-random number generator.
@@ -400,9 +398,9 @@ class LogNormalModel(PopulationModel):
                 ' number of top-level parameters.')
 
         # Define shape of samples
-        if n is None:
-            n = 1
-        n = (int(n),)
+        if n_samples is None:
+            n_samples = 1
+        sample_shape = (int(n_samples),)
 
         # Get parameters
         mean, std = top_parameters
@@ -418,7 +416,8 @@ class LogNormalModel(PopulationModel):
 
         # Sample from population distribution
         rng = np.random.default_rng(seed=seed)
-        samples = rng.lognormal(mean=mean_log, sigma=std_log, size=n)
+        samples = rng.lognormal(
+            mean=mean_log, sigma=std_log, size=sample_shape)
 
         return samples
 
@@ -552,23 +551,22 @@ class PooledModel(PopulationModel):
         """
         return self._n_top_parameters
 
-    def sample(self, top_parameters, n=None, seed=None):
+    def sample(self, top_parameters, n_samples=None, seed=None):
         r"""
-        Returns :math:`n` random samples from the underlying population
+        Returns random samples from the underlying population
         distribution.
 
-        For a PooledModel the input top-level parameters are copied for each
-        individual and are returned :math:`n` times.
+        For a PooledModel the input top-level parameters are copied
+        ``n_samples`` and are returned.
 
-        The returned value is a numpy array with shape :math:`(n, d)` where
-        :math:`n` is the requested number of samples.
+        The returned value is a NumPy array with shape ``(n_samples,)``.
 
         Parameters
         ----------
         top_parameters
             Parameter values of the top-level parameters that are used for the
             simulation.
-        n
+        n_samples
             Number of samples. If ``None``, one sample is returned.
         seed
             A seed for the pseudo-random number generator.
@@ -580,11 +578,12 @@ class PooledModel(PopulationModel):
         samples = np.asarray(top_parameters)
 
         # If only one sample is wanted, return input parameter
-        if n is None:
+        if n_samples is None:
             return samples
 
-        # If more samples are wanted, broadcast input parameter to shape (n,)
-        samples = np.broadcast_to(samples, shape=(n,))
+        # If more samples are wanted, broadcast input parameter to shape
+        # (n_samples,)
+        samples = np.broadcast_to(samples, shape=(n_samples,))
         return samples
 
     def set_top_parameter_names(self, names):
