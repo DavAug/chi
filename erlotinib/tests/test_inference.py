@@ -429,8 +429,8 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
         self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
         self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
-        self.assertEqual(ids[9], 'Mean log')
-        self.assertEqual(ids[10], 'Std. log')
+        self.assertEqual(ids[9], 'Mean')
+        self.assertEqual(ids[10], 'Std.')
 
         n_parameters = 6
         parameters = result['Parameter'].unique()
