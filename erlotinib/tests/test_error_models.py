@@ -71,6 +71,52 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
 
         self.assertAlmostEqual(score, ref_score)
 
+        # Test case III: -Infinity for not allowed regimes
+
+        # Test case III.1: Zero sigma_base
+        parameters = [0, 0.1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case III.2: Negative sigma_base
+        parameters = [-1, 0.1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case III.3: Zero sigma_rel
+        parameters = [1, 0]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case III.4: Negative sigma_rel
+        parameters = [1, -1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+
     def test_compute_log_likelihood_bad_input(self):
         # Model output and observations don't match
         parameters = [1, 0.1]
