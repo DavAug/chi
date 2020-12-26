@@ -170,8 +170,8 @@ class PredictiveModel(object):
             for time_id, time in enumerate(times):
                 samples = samples.append(pd.DataFrame({
                     'Sample ID': sample_ids,
-                    'Time': [time],
-                    'Biomarker': [name],
+                    'Time': time,
+                    'Biomarker': name,
                     'Sample': container[output_id, time_id, :]}))
 
         return samples
