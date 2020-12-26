@@ -213,6 +213,14 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertAlmostEqual(samples[0, 4, 2], 0.834770862895378)
         self.assertAlmostEqual(samples[0, 4, 3], -0.015458749010722986)
 
+    def test_sample_bad_input(self):
+        # Parameters are not of length n_parameters
+        parameters = ['wrong', 'length']
+        times = [1, 2, 3, 4]
+
+        with self.assertRaisesRegex(ValueError, 'The length of parameters'):
+            self.model.sample(parameters, times)
+
 
 if __name__ == '__main__':
     unittest.main()
