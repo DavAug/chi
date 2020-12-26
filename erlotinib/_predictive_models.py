@@ -89,11 +89,11 @@ class PredictiveModel(object):
             return_df=True):
         """
         Samples "measurements" of the biomarkers from the predictive model and
-        returns in form of a :class:`pandas.DataFrame`.
+        returns them in form of a :class:`pandas.DataFrame`.
 
         The mechanistic model is solved for the provided parameters and times,
-        and samples around this solution are drawn for time point according to
-        the error models.
+        and samples around this solution are drawn from the error models for each
+        time point.
 
         The number of samples for each time point can be specified with
         ``n_samples``.
@@ -108,7 +108,7 @@ class PredictiveModel(object):
             are performed.
         n_samples
             The number of virtual "measurements" that are performed at each
-            time point. If ``None`` only the biomarkers are measured only once
+            time point. If ``None`` the biomarkers are measured only once
             at each time point.
         seed
             A seed for the pseudo-random number generator.
