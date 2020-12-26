@@ -39,6 +39,9 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(names[5], 'Sigma base')
         self.assertEqual(names[6], 'Sigma rel.')
 
+    def test_n_parameters(self):
+        self.assertEqual(self.model.n_parameters(), 7)
+
 
 if __name__ == '__main__':
     unittest.main()
