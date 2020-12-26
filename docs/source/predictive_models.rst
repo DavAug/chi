@@ -20,5 +20,5 @@ Functional classes
 Detailed API
 ------------
 
-- :autoclass: PredictiveModel
+.. autoclass:: PredictiveModel
     :members:
