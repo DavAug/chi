@@ -68,3 +68,15 @@ class PredictiveModel(object):
             parameter_names += error_models.get_parameter_names()
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
+
+    def get_parameter_names(self):
+        """
+        Returns the parameter names of the predictive model.
+        """
+        return self._parameter_names
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the predictive model.
+        """
+        return self._n_parameters
