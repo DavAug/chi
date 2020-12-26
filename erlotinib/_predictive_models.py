@@ -132,7 +132,7 @@ class PredictiveModel(object):
         error_params = parameters[n_parameters:]
 
         # Solve mechanistic model
-        outputs = self._mechanistic_model.simulate(mechanistic_params)
+        outputs = self._mechanistic_model.simulate(mechanistic_params, times)
 
         # Create numpy container for samples
         n_outputs = len(outputs)
