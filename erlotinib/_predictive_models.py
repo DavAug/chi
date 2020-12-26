@@ -92,8 +92,8 @@ class PredictiveModel(object):
         returns them in form of a :class:`pandas.DataFrame`.
 
         The mechanistic model is solved for the provided parameters and times,
-        and samples around this solution are drawn from the error models for each
-        time point.
+        and samples around this solution are drawn from the error models for
+        each time point.
 
         The number of samples for each time point can be specified with
         ``n_samples``.
