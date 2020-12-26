@@ -48,6 +48,10 @@ from ._population_models import (  # noqa
     PopulationModel
 )
 
+from ._predictive_models import (  # noqa
+    PredictiveModel
+)
+
 from ._problems import (  # noqa
     InverseProblem,
     ProblemModellingController
