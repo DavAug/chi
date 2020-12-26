@@ -18,6 +18,7 @@
     model_library
     plots
     population_models
+    predictive_models
     problems
 
 Welcome to Erlotinib's documentation!
