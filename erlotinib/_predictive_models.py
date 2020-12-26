@@ -68,7 +68,7 @@ class PredictiveModel(object):
         # Set parameter names and number of parameters
         parameter_names = self._mechanistic_model.parameters()
         for error_model in error_models:
-            parameter_names += error_models.get_parameter_names()
+            parameter_names += error_model.get_parameter_names()
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
 
