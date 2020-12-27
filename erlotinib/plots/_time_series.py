@@ -14,8 +14,11 @@ import erlotinib.plots as eplt
 
 class PDTimeSeriesPlot(eplt.SingleFigure):
     """
-    A figure class that visualises pharmacodynamic data and PD simulation
-    results.
+    A figure class that visualises measurements of a pharmacodynamic biomarker
+    across multiple individuals.
+
+    Measurements of a pharmacodynamic biomarker over time are visualised as a
+    scatter plot.
 
     Extends :class:`SingleFigure`.
 
@@ -149,8 +152,11 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
 
 class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
     """
-    A figure class that visualises pharmacodynamic data and PD simulation
-    results.
+    A figure class that visualises measurements of a pharmacokinetic biomarker
+    across multiple individuals.
+
+    Measurements of a pharmacokinetic biomarker over time are visualised as a
+    scatter plot.
 
     Extends :class:`SingleSubplotFigure`.
 
