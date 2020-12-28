@@ -75,11 +75,11 @@ class PDPredictivePlot(eplt.SingleFigure):
         """
         # Construct times that go from min to max and back to min
         # (Important for shading with 'toself')
-        times = data['Time'].to_numpy()
+        times = data['Time'].unique()
         times = np.hstack([times, times[::-1]])
 
         # Get unique bulk probabilities and sort in descending order
-        bulk_probs = data['Bulk probabilities'].unique()
+        bulk_probs = data['Bulk probability'].unique()
         bulk_probs[::-1].sort()
 
         # Get colors (shift start a little bit, because 0th level is too light)
@@ -88,7 +88,7 @@ class PDPredictivePlot(eplt.SingleFigure):
         colors = plotly.colors.sequential.Blues[shift:shift+n_traces]
 
         # Add traces
-        for trace_id, bulk_prob in bulk_probs:
+        for trace_id, bulk_prob in enumerate(bulk_probs):
             # Get relevant upper and lower percentiles
             mask = data['Bulk probability'] == bulk_prob
             reduced_data = data[mask]
@@ -210,7 +210,7 @@ class PDPredictivePlot(eplt.SingleFigure):
             self._add_data_trace(label, times, biomarker, color)
 
     def add_prediction(
-            self, data, biom=None, bulk_probs=[0.3, 0.6, 0.9], time_key='Time',
+            self, data, biom=None, bulk_probs=[0.9], time_key='Time',
             biom_key='Biomarker', sample_key='Sample'):
         r"""
         Adds the prediction for the observable pharmacodynamic biomarker values
@@ -271,6 +271,13 @@ class PDPredictivePlot(eplt.SingleFigure):
             self._add_prediction_scatter_trace(times, samples)
 
             return None
+
+        # Not more than 7 bulk probabilities are allowed (Purely aesthetic
+        # criterion)
+        if len(bulk_probs) > 7:
+            raise ValueError(
+                'At most 7 different bulk probabilities can be illustrated at '
+                'the same time.')
 
         # Make sure that bulk probabilities are between 0 and 1
         bulk_probs = [float(probability) for probability in bulk_probs]
