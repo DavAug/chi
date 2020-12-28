@@ -43,12 +43,21 @@ class TestParameterEstimatePlot(unittest.TestCase):
             [1] * (n_params * n_iter) + [2] * (n_params * n_iter)
             ) * n_ids
 
-        cls.data = pd.DataFrame({
+        data = pd.DataFrame({
             'ID': ids,
             'Parameter': params,
             'Sample': samples,
             'Iteration': iterations,
             'Run': runs})
+
+        # Add a 'population' parameter to the dataset
+        cls.data = data.append(pd.DataFrame({
+            'ID': ['Pooled'] * 8,
+            'Parameter': 'Param 3',
+            'Sample': np.arange(8),
+            'Iteration': [1, 2, 3, 4] * 2,
+            'Run': [1] * 4 + [2] * 4
+        }))
 
         # Create test figure
         cls.fig = erlo.plots.MarginalPosteriorPlot()

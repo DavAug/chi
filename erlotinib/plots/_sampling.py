@@ -31,10 +31,8 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
     Extends :class:`MultiFigure`.
     """
 
-    def __init__(self, updatemenu=True):
+    def __init__(self):
         super(MarginalPosteriorPlot, self).__init__()
-
-        self._updatemenu = updatemenu
 
     def _add_histogram_plots(self, fig_id, data, colors):
         """
@@ -88,38 +86,6 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
             tickvals=[],
             row=1,
             col=index+1)
-
-    def _add_updatemenu(self):
-        """
-        Adds a button to the figure that switches the parameter scale from
-        linear to logarithmic.
-        """
-        self._fig.update_layout(
-            updatemenus=[
-                dict(
-                    type="buttons",
-                    direction="left",
-                    buttons=list([
-                        dict(
-                            args=[{"yaxis.type": "linear"}],
-                            label="Linear y-scale",
-                            method="relayout"
-                        ),
-                        dict(
-                            args=[{"yaxis.type": "log"}],
-                            label="Log y-scale",
-                            method="relayout"
-                        )
-                    ]),
-                    pad={"r": 0, "t": -10},
-                    showactive=True,
-                    x=0.0,
-                    xanchor="left",
-                    y=1.15,
-                    yanchor="top"
-                )
-            ]
-        )
 
     def _compute_diagnostics(self, data):
         """
@@ -207,13 +173,24 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         self._create_template_figure(
             rows=1, cols=n_ids, x_title='Normalised counts', spacing=0.01)
 
-        # Add yscale switch
-        if self._updatemenu:
-            self._add_updatemenu()
-
         # Create one figure for each parameter
+        figs = []
         parameters = data[param_key].unique()
-        self._figs = [copy.copy(self._fig) for _ in parameters]
+        for parameter in parameters:
+            # Check that parameter has as many ids as columns in template
+            # figure
+            mask = data[param_key] == parameter
+            number_ids = len(data[mask][id_key].unique())
+            if number_ids != n_ids:
+                # Create a new template
+                self._create_template_figure(
+                    rows=1, cols=number_ids, x_title='Normalised counts',
+                    spacing=0.01)
+
+            # Append a copy of the template figure to all figures
+            figs.append(copy.copy(self._fig))
+
+        self._figs = figs
 
         # Exclude warm up iterations
         mask = data[self._iter_key] > warm_up_iter
