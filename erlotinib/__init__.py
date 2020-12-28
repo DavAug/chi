@@ -49,7 +49,8 @@ from ._population_models import (  # noqa
 )
 
 from ._predictive_models import (  # noqa
-    PredictiveModel
+    PredictiveModel,
+    PriorPredictiveModel
 )
 
 from ._problems import (  # noqa
