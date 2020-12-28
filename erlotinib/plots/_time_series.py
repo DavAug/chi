@@ -194,28 +194,36 @@ class PDPredictivePlot(eplt.SingleFigure):
             # Create Scatter plot
             self._add_data_trace(label, times, biomarker, color)
 
-    def add_predictions(
-            self, data, time_key='Time', biom_key='Biomarker',
+    def add_prediction(
+            self, data, biom=None, time_key='Time', biom_key='Biomarker',
             sample_key='Sample'):
-        """
-        Adds predictions for the observable pharmacodynamic biomarker values
+        r"""
+        Adds the prediction for the observable pharmacodynamic biomarker values
         to the figure.
 
-        Expects a :class:`pandas.DataFrame` with a time and a PD biomarker
-        column, and adds a line plot of the biomarker time series to the
-        figure.
+        Expects a :class:`pandas.DataFrame` with a time, a PD biomarker and a
+        sample column. The time column determines the time of the biomarker
+        measurement and the sample column the corresponding biomarker
+        measurement. The biomarker column determines the biomarker type.
 
         Parameters
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
             form of a time and biomarker column.
+        biom
+            The predicted bimoarker. This argument is used to determin the
+            relevant rows in dataframe. If ``None`` the first biomarker type
+            in the biomarker column is selected.
         time_key
-            Key label of the :class:`DataFrame` which specifies the time
+            Key label of the :class:`pandas.DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
         biom_key
-            Key label of the :class:`DataFrame` which specifies the PD
+            Key label of the :class:`pandas.DataFrame` which specifies the PD
             biomarker column. Defaults to ``'Biomarker'``.
+        sample_key
+            Key label of the :class:`pandas.DataFrame` which specifies the
+            sample column. Defaults to ``'Sample'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
@@ -227,9 +235,17 @@ class PDPredictivePlot(eplt.SingleFigure):
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # TODO: Temporarily, only one biomarker type is supported
-        biomarker = data[biom_key].unique()
-        mask = data[biom_key] == biomarker[0]
+        # Defualt to first bimoarker, if biomarker is not specified
+        biom_types = data[biom_key].unique()
+        if biom is None:
+            biom = biom_types[0]
+
+        if biom not in biom_types:
+            raise ValueError(
+                'The biomarker could not be found in the biomarker column.')
+
+        # Mask data for biomarker
+        mask = data[biom_key] == biom
         data = data[mask]
 
         # Compute 30% bulk, 60% bulk and 90% bulk
