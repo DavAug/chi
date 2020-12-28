@@ -47,70 +47,83 @@ class PDPredictivePlot(eplt.SingleFigure):
                     opacity=0.7,
                     line=dict(color='black', width=1))))
 
-    def _add_prediction_trace(self, data):
+    def _add_prediction_scatter_trace(self, times, samples):
         """
-        Adds 2 dimensional contour histogram of the prediction samples to the
-        figure.
+        Adds scatter plot of samples from the predictive model.
         """
-        # Get colors
-        colors = plotly.colors.sequential.Blues
+        # Get colour (light blueish)
+        color = plotly.colors.qualitative.Pastel2[1]
 
+        # Add trace
+        self._fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=samples,
+                name="Predicted samples",
+                showlegend=True,
+                mode="markers",
+                marker=dict(
+                    symbol='circle',
+                    color=color,
+                    opacity=0.7,
+                    line=dict(color='black', width=1))))
+
+    def _add_prediction_bulk_prob_trace(self, data):
+        """
+        Adds the bulk probabilities as two line plots (one for upper and lower
+        limit) and shaded area to the figure.
+        """
         # Construct times that go from min to max and back to min
         # (Important for shading with 'toself')
         times = data['Time'].to_numpy()
         times = np.hstack([times, times[::-1]])
 
-        # Add trace of 90% bulk
-        upper = data['Upper 0.9 bulk'].to_numpy()
-        lower = data['Lower 0.9 bulk'].to_numpy()
-        values = np.hstack([upper, lower[::-1]])
-        self._fig.add_trace(go.Scatter(
-            x=times,
-            y=values,
-            line=dict(width=1, color=colors[-5]),
-            fill='toself',
-            legendgroup='Model prediction',
-            name=r"90% Bulk",
-            hoverinfo='name',
-            showlegend=False))
+        # Get unique bulk probabilities
+        bulk_probs = data['Bulk probabilities'].unique()
 
-        # Add trace of 60% bulk
-        upper = data['Upper 0.6 bulk'].to_numpy()
-        lower = data['Lower 0.6 bulk'].to_numpy()
-        values = np.hstack([upper, lower[::-1]])
-        self._fig.add_trace(go.Scatter(
-            x=times,
-            y=values,
-            line=dict(width=1, color=colors[-3]),
-            fill='toself',
-            legendgroup='Model prediction',
-            name=r"60% Bulk",
-            hoverinfo='name',
-            showlegend=False))
+        # Get colors (shift start a little bit, because 0th level is too light)
+        n_traces = len(bulk_probs)
+        shift = 2
+        colors = plotly.colors.sequential.Blues[shift:shift+n_traces:-1]
 
-        # Add trace of 30% bulk
-        upper = data['Upper 0.3 bulk'].to_numpy()
-        lower = data['Lower 0.3 bulk'].to_numpy()
-        values = np.hstack([upper, lower[::-1]])
-        self._fig.add_trace(go.Scatter(
-            x=times,
-            y=values,
-            line=dict(width=1, color=colors[-1]),
-            fill='toself',
-            legendgroup='Model prediction',
-            name='Prediction',
-            text=r"30% Bulk",
-            hoverinfo='text',
-            showlegend=True))
+        # Add traces
+        for trace_id, bulk_prob in bulk_probs:
+            # Get relevant upper and lower percentiles
+            mask = data['Bulk probability'] == bulk_prob
+            reduced_data = data[mask]
 
-    def _compute_percentiles(self, data, time_key, sample_key):
+            upper = reduced_data['Upper'].to_numpy()
+            lower = reduced_data['Lower'].to_numpy()
+            values = np.hstack([upper, lower[::-1]])
+
+            # Add trace
+            self._fig.add_trace(go.Scatter(
+                x=times,
+                y=values,
+                line=dict(width=1, color=colors[trace_id]),
+                fill='toself',
+                legendgroup='Model prediction',
+                name='Prediction',
+                text="%s Bulk" % bulk_prob,
+                hoverinfo='text',
+                showlegend=True if trace_id == 0 else False))
+
+    def _compute_bulk_probs(self, data, bulk_probs, time_key, sample_key):
         """
-        Computes the 30%, 60% and 90% bulk probability curves.
+        Computes the upper and lower percentiles from the predictive model
+        samples, corresponding to the provided bulk probabilities.
         """
         # Create container for perecentiles
         container = pd.DataFrame(columns=[
-            'Time', 'Lower 0.9 bulk', 'Lower 0.6 bulk', 'Lower 0.3 bulk',
-            'Upper 0.3 bulk', 'Upper 0.6 bulk', 'Upper 0.9 bulk'])
+            'Time', 'Upper', 'Lower', 'Bulk probability'])
+
+        # Translate bulk probabilities into percentiles
+        percentiles = []
+        for bulk_prob in bulk_probs:
+            lower = 0.5 - bulk_prob / 2
+            upper = 0.5 + bulk_prob / 2
+
+            percentiles.append([bulk_prob, lower, upper])
 
         # Get unique times
         unique_times = data[time_key].unique()
@@ -121,24 +134,25 @@ class PDPredictivePlot(eplt.SingleFigure):
             mask = data[time_key] == time
             reduced_data = data[mask]
 
-            # Compute perentiles
-            percentiles = reduced_data[sample_key].rank(pct=True)
+            # Get percentiles
+            reduced_data['Percentile'] = reduced_data[sample_key].rank(
+                pct=True)
+            for item in percentiles:
+                bulk_prob, lower, upper = item
 
-            # Append percentiles to container
-            container = container.append(pd.DataFrame({
-                'Time': [time],
-                'Lower 0.9 bulk': [
-                    reduced_data[percentiles <= 0.05]['Sample'].max()],
-                'Lower 0.6 bulk': [
-                    reduced_data[percentiles <= 0.2]['Sample'].max()],
-                'Lower 0.3 bulk': [
-                    reduced_data[percentiles <= 0.35]['Sample'].max()],
-                'Upper 0.3 bulk': [
-                    reduced_data[percentiles >= 0.65]['Sample'].min()],
-                'Upper 0.6 bulk': [
-                    reduced_data[percentiles >= 0.8]['Sample'].min()],
-                'Upper 0.9 bulk': [
-                    reduced_data[percentiles >= 0.95]['Sample'].min()]}))
+                # Get biomarker value corresponding to percentiles
+                mask = reduced_data['Percentile'] <= lower
+                biom_lower = reduced_data[mask]['Sample'].max()
+
+                mask = reduced_data['Percentile'] >= upper
+                biom_upper = reduced_data[mask]['Sample'].min()
+
+                # Append percentiles to container
+                container = container.append(pd.DataFrame({
+                    'Time': [time],
+                    'Lower': [biom_lower],
+                    'Upper': [biom_upper],
+                    'Bulk probability': [str(bulk_prob)]}))
 
         return container
 
@@ -195,8 +209,8 @@ class PDPredictivePlot(eplt.SingleFigure):
             self._add_data_trace(label, times, biomarker, color)
 
     def add_prediction(
-            self, data, biom=None, time_key='Time', biom_key='Biomarker',
-            sample_key='Sample'):
+            self, data, biom=None, bulk_probs=[0.3, 0.6, 0.9], time_key='Time',
+            biom_key='Biomarker', sample_key='Sample'):
         r"""
         Adds the prediction for the observable pharmacodynamic biomarker values
         to the figure.
@@ -235,7 +249,7 @@ class PDPredictivePlot(eplt.SingleFigure):
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Defualt to first bimoarker, if biomarker is not specified
+        # Default to first bimoarker, if biomarker is not specified
         biom_types = data[biom_key].unique()
         if biom is None:
             biom = biom_types[0]
@@ -248,10 +262,26 @@ class PDPredictivePlot(eplt.SingleFigure):
         mask = data[biom_key] == biom
         data = data[mask]
 
-        # Compute 30% bulk, 60% bulk and 90% bulk
-        percentile_df = self._compute_percentiles(data, time_key, sample_key)
+        # Add samples as scatter plot if no bulk probabilites are provided, and
+        # terminate method
+        if bulk_probs is None:
+            times = data[time_key]
+            samples = data[sample_key]
+            self._add_prediction_scatter_trace(times, samples)
 
-        self._add_prediction_trace(percentile_df)
+            return None
+
+        # Make sure that bulk probabilities are between 0 and 1
+        bulk_probs = [float(probability) for probability in bulk_probs]
+        for probability in bulk_probs:
+            if (probability < 0) or (probability > 1):
+                raise ValueError(
+                    'The provided bulk probabilities have to between 0 and 1.')
+
+        # Add bulk probabilities to figure
+        percentile_df = self._compute_bulk_probs(
+            data, bulk_probs, time_key, sample_key)
+        self._add_prediction_bulk_prob_trace(percentile_df)
 
 
 class PDTimeSeriesPlot(eplt.SingleFigure):
