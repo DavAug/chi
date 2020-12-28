@@ -78,13 +78,14 @@ class PDPredictivePlot(eplt.SingleFigure):
         times = data['Time'].to_numpy()
         times = np.hstack([times, times[::-1]])
 
-        # Get unique bulk probabilities
+        # Get unique bulk probabilities and sort in descending order
         bulk_probs = data['Bulk probabilities'].unique()
+        bulk_probs[::-1].sort()
 
         # Get colors (shift start a little bit, because 0th level is too light)
         n_traces = len(bulk_probs)
         shift = 2
-        colors = plotly.colors.sequential.Blues[shift:shift+n_traces:-1]
+        colors = plotly.colors.sequential.Blues[shift:shift+n_traces]
 
         # Add traces
         for trace_id, bulk_prob in bulk_probs:
@@ -103,10 +104,10 @@ class PDPredictivePlot(eplt.SingleFigure):
                 line=dict(width=1, color=colors[trace_id]),
                 fill='toself',
                 legendgroup='Model prediction',
-                name='Prediction',
+                name='Predictive model',
                 text="%s Bulk" % bulk_prob,
                 hoverinfo='text',
-                showlegend=True if trace_id == 0 else False))
+                showlegend=True if trace_id == n_traces-1 else False))
 
     def _compute_bulk_probs(self, data, bulk_probs, time_key, sample_key):
         """
