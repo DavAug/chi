@@ -221,6 +221,17 @@ class PDPredictivePlot(eplt.SingleFigure):
         measurement and the sample column the corresponding biomarker
         measurement. The biomarker column determines the biomarker type.
 
+        A list of bulk probabilities ``bulk_probs`` can be specified, which are
+        then added as area to the figure. The corresponding upper and lower
+        percentiles are estimated from the ranks of the provided
+        samples.
+
+        .. warning::
+            For low sample sizes the illustrated bulk probabilities may deviate
+            significantly from the theoretical bulk probabilities. The upper
+            and lower limit are determined from the rank of the samples for
+            each time point.
+
         Parameters
         ----------
         data
@@ -230,6 +241,9 @@ class PDPredictivePlot(eplt.SingleFigure):
             The predicted bimoarker. This argument is used to determin the
             relevant rows in dataframe. If ``None`` the first biomarker type
             in the biomarker column is selected.
+        bulk_probs
+            A list of bulk probabilities that are illustrated in the
+            figure. If ``None`` the samples are illustrated as a scatter plot.
         time_key
             Key label of the :class:`pandas.DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
