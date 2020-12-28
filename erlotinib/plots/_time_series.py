@@ -143,10 +143,10 @@ class PDPredictivePlot(eplt.SingleFigure):
 
                 # Get biomarker value corresponding to percentiles
                 mask = percentile_df <= lower
-                biom_lower = reduced_data[mask]['Sample'].max()
+                biom_lower = reduced_data[mask][sample_key].max()
 
                 mask = percentile_df >= upper
-                biom_upper = reduced_data[mask]['Sample'].min()
+                biom_upper = reduced_data[mask][sample_key].min()
 
                 # Append percentiles to container
                 container = container.append(pd.DataFrame({
