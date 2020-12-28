@@ -146,9 +146,9 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
 
         n_samples = 1
         self.assertEqual(sample.shape, (n_times, n_samples))
-        self.assertAlmostEqual(sample[0, 0], 2.7952806720457217)
-        self.assertAlmostEqual(sample[1, 0], -7.022022696029159)
-        self.assertAlmostEqual(sample[2, 0], -0.35300542630526444)
+        self.assertAlmostEqual(sample[0, 0], 3.7952806720457217)
+        self.assertAlmostEqual(sample[1, 0], -6.022022696029159)
+        self.assertAlmostEqual(sample[2, 0], 0.6469945736947356)
 
         # Test II: sample size > 1
         n_samples = 4
@@ -156,18 +156,18 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
             parameters, model_output, n_samples=n_samples, seed=seed)
 
         self.assertEqual(sample.shape, (n_times, n_samples))
-        self.assertAlmostEqual(sample[0, 0], 1.046212634385726)
-        self.assertAlmostEqual(sample[1, 0], -5.115603997796511)
-        self.assertAlmostEqual(sample[2, 0], -0.4201281996033875)
-        self.assertAlmostEqual(sample[0, 1], -0.8654699047854209)
-        self.assertAlmostEqual(sample[1, 1], -5.824303722244952)
-        self.assertAlmostEqual(sample[2, 1], -3.920990871528623)
-        self.assertAlmostEqual(sample[0, 2], 3.186372271923463)
-        self.assertAlmostEqual(sample[1, 2], 2.140421812116401)
-        self.assertAlmostEqual(sample[2, 2], 5.0832766019365465)
-        self.assertAlmostEqual(sample[0, 3], 1.1031092234071649)
-        self.assertAlmostEqual(sample[1, 3], -1.0485795990032525)
-        self.assertAlmostEqual(sample[2, 3], 2.024316842149241)
+        self.assertAlmostEqual(sample[0, 0], 2.046212634385726)
+        self.assertAlmostEqual(sample[1, 0], -4.115603997796511)
+        self.assertAlmostEqual(sample[2, 0], 0.5798718003966126)
+        self.assertAlmostEqual(sample[0, 1], 0.13453009521457915)
+        self.assertAlmostEqual(sample[1, 1], -4.824303722244952)
+        self.assertAlmostEqual(sample[2, 1], -2.920990871528623)
+        self.assertAlmostEqual(sample[0, 2], 4.186372271923463)
+        self.assertAlmostEqual(sample[1, 2], 3.140421812116401)
+        self.assertAlmostEqual(sample[2, 2], 6.0832766019365465)
+        self.assertAlmostEqual(sample[0, 3], 2.1031092234071647)
+        self.assertAlmostEqual(sample[1, 3], -0.04857959900325241)
+        self.assertAlmostEqual(sample[2, 3], 3.024316842149241)
 
     def test_sample_bad_input(self):
         # Too many paramaters
