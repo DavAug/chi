@@ -267,16 +267,16 @@ class PriorPredictiveModel(object):
             columns=['Sample ID', 'Biomarker', 'Time', 'Sample'])
 
         # Get model outputs (biomarkers)
-        outputs = self._predictive_model.outputs()
+        outputs = self._predictive_model.get_outputs()
 
         # Draw samples
         sample_ids = np.arange(start=1, stop=n_samples+1)
         for sample_id in sample_ids:
             # Sample parameter
-            parameters = self._log_prior.sample()
+            parameters = self._log_prior.sample().flatten()
 
             # Sample from predictive model
-            sample = self._predictive_model(
+            sample = self._predictive_model.sample(
                 parameters, times, n_samples, seed, return_df=False)
 
             # Append samples to dataframe
