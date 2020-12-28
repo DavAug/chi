@@ -16,7 +16,7 @@
     log_pdfs
     mechanistic_models
     model_library
-    plots
+    plots/index
     population_models
     predictive_models
     problems
