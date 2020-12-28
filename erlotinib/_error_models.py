@@ -245,7 +245,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         # Construct final samples
         model_output = np.expand_dims(model_output, axis=1)
-        samples = base_samples + model_output * rel_samples
+        samples = model_output + base_samples + model_output * rel_samples
 
         return samples
 
