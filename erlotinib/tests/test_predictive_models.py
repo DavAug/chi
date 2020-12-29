@@ -60,8 +60,8 @@ class TestPredictiveModel(unittest.TestCase):
     def test_get_n_outputs(self):
         self.assertEqual(self.model.get_n_outputs(), 1)
 
-    def test_get_outputs(self):
-        outputs = self.model.get_outputs()
+    def test_get_output_names(self):
+        outputs = self.model.get_output_names()
         self.assertEqual(len(outputs), 1)
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
 

@@ -79,7 +79,7 @@ class PredictiveModel(object):
         """
         return self._mechanistic_model.n_outputs()
 
-    def get_outputs(self):
+    def get_output_names(self):
         """
         Returns the output names.
         """
@@ -277,7 +277,7 @@ class PriorPredictiveModel(object):
             columns=['Sample ID', 'Biomarker', 'Time', 'Sample'])
 
         # Get model outputs (biomarkers)
-        outputs = self._predictive_model.get_outputs()
+        outputs = self._predictive_model.get_output_names()
 
         # Draw samples
         sample_ids = np.arange(start=1, stop=n_samples+1)
