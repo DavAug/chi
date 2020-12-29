@@ -204,9 +204,9 @@ class PriorPredictiveModel(object):
     A PriorPredictiveModel is instantiated with an instance of a
     :class:`PredictiveModel` and a :class:`pints.LogPrior` of the same
     parametric dimension as the predictive model. Future biomarker
-    "measurement" can then be predicted by first sampling parameter values from
-    the log-prior distribution, and then sampling from the predictive model
-    with those parameters.
+    "measurements" can then be predicted by first sampling parameter values
+    from the log-prior distribution, and then sampling from the predictive
+    model with those parameters.
 
     Parameters
     ----------
