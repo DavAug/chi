@@ -259,6 +259,15 @@ class PriorPredictiveModel(object):
             n_samples = 1
         n_samples = int(n_samples)
 
+        if seed is not None:
+            # Set seed for prior samples (does not affect predictive model)
+            # TODO: pints.Priors are not meant to be seeded, so fails when
+            # anything else but np.random is used.
+            np.random.seed(seed)
+
+            # Set predictive model base seed
+            base_seed = seed
+
         # Sort times
         times = np.sort(times)
 
@@ -274,6 +283,11 @@ class PriorPredictiveModel(object):
         for sample_id in sample_ids:
             # Sample parameter
             parameters = self._log_prior.sample().flatten()
+
+            if seed is not None:
+                # Set seed for predictive model to base_seed + sample_id
+                # (Needs to change every iteration)
+                seed = base_seed + sample_id
 
             # Sample from predictive model
             sample = self._predictive_model.sample(
