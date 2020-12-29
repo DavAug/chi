@@ -7,6 +7,7 @@
 
 import numpy as np
 import pandas as pd
+import pints
 
 import erlotinib as erlo
 
@@ -71,6 +72,18 @@ class PredictiveModel(object):
             parameter_names += error_model.get_parameter_names()
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
+
+    def get_n_outputs(self):
+        """
+        Returns the number of outputs.
+        """
+        return self._mechanistic_model.n_outputs()
+
+    def get_output_names(self):
+        """
+        Returns the output names.
+        """
+        return self._mechanistic_model.outputs()
 
     def get_parameter_names(self):
         """
@@ -175,3 +188,124 @@ class PredictiveModel(object):
                     'Sample': container[output_id, time_id, :]}))
 
         return samples
+
+
+class PriorPredictiveModel(object):
+    """
+    Implements a model that predicts the change of observable biomarkers over
+    time based on the provided distribution of model parameters prior to the
+    inference.
+
+    A prior predictive model may be used to check whether the assumptions about
+    the parameter distribution ``log_prior`` lead to a predictive distirbution
+    that encapsulates the expected measurement values of preclinical and
+    clinical biomarkers.
+
+    A PriorPredictiveModel is instantiated with an instance of a
+    :class:`PredictiveModel` and a :class:`pints.LogPrior` of the same
+    parametric dimension as the predictive model. Future biomarker
+    "measurements" can then be predicted by first sampling parameter values
+    from the log-prior distribution, and then sampling from the predictive
+    model with those parameters.
+
+    Parameters
+    ----------
+    predictive_model
+        An instance of a :class:`PredictiveModel`.
+    log_prior
+        An instance of a :class:`pints.LogPrior` of the same dimensionality as
+        the number of predictive model parameters.
+    """
+
+    def __init__(self, predictive_model, log_prior):
+        super(PriorPredictiveModel, self).__init__()
+
+        # Check inputs
+        if not isinstance(predictive_model, PredictiveModel):
+            raise ValueError(
+                'The provided predictive model has to be an instance of a '
+                'erlotinib.PredictiveModel.')
+
+        if not isinstance(log_prior, pints.LogPrior):
+            raise ValueError(
+                'The provided log-prior has to be an instance of a '
+                'pints.LogPrior.')
+
+        if predictive_model.n_parameters() != log_prior.n_parameters():
+            raise ValueError(
+                'The dimension of the log-prior has to be the same as the '
+                'number of parameters of the predictive model.')
+
+        self._predictive_model = predictive_model
+        self._log_prior = log_prior
+
+    def sample(self, times, n_samples=None, seed=None):
+        """
+        Samples "measurements" of the biomarkers from the prior predictive
+        model and returns them in form of a :class:`pandas.DataFrame`.
+
+        For each of the ``n_samples`` a parameter set is drawn from the
+        log-prior. These paramaters are then used to sample from the predictive
+        model.
+
+        Parameters
+        ----------
+        times
+            An array-like object with times at which the virtual "measurements"
+            are performed.
+        n_samples
+            The number of virtual "measurements" that are performed at each
+            time point. If ``None`` the biomarkers are measured only once
+            at each time point.
+        seed
+            A seed for the pseudo-random number generator.
+        """
+        # Make sure n_samples is an integer
+        if n_samples is None:
+            n_samples = 1
+        n_samples = int(n_samples)
+
+        # Set seed for prior samples
+        # (does not affect predictive model)
+        if seed is not None:
+            # TODO: pints.Priors are not meant to be seeded, so fails when
+            # anything else but np.random is used.
+            np.random.seed(seed)
+
+            # Set predictive model base seed
+            base_seed = seed
+
+        # Sort times
+        times = np.sort(times)
+
+        # Create container for samples
+        container = pd.DataFrame(
+            columns=['Sample ID', 'Biomarker', 'Time', 'Sample'])
+
+        # Get model outputs (biomarkers)
+        outputs = self._predictive_model.get_output_names()
+
+        # Draw samples
+        sample_ids = np.arange(start=1, stop=n_samples+1)
+        for sample_id in sample_ids:
+            # Sample parameter
+            parameters = self._log_prior.sample().flatten()
+
+            if seed is not None:
+                # Set seed for predictive model to base_seed + sample_id
+                # (Needs to change every iteration)
+                seed = base_seed + sample_id
+
+            # Sample from predictive model
+            sample = self._predictive_model.sample(
+                parameters, times, n_samples, seed, return_df=False)
+
+            # Append samples to dataframe
+            for output_id, name in enumerate(outputs):
+                container = container.append(pd.DataFrame({
+                    'Sample ID': sample_id,
+                    'Biomarker': name,
+                    'Time': times,
+                    'Sample': sample[output_id, :, 0]}))
+
+        return container
