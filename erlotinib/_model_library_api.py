@@ -28,7 +28,7 @@ class ModelLibrary(object):
         self._path = os.path.dirname(os.path.abspath(__file__))
         self._path += '/model_library/'
 
-    def erlotinib_tumour_growth_inhibition_model_eigenmann(self):
+    def erlotinib_tumour_growth_inhibition_model(self):
         """
         .. warning::
             This model is going to be deprecated soon in favour of a dynamic
