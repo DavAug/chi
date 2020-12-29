@@ -28,6 +28,20 @@ class ModelLibrary(object):
         self._path = os.path.dirname(os.path.abspath(__file__))
         self._path += '/model_library/'
 
+    def erlotinib_tumour_growth_inhibition_model_eigenmann(self):
+        """
+        .. warning::
+            This model is going to be deprecated soon in favour of a dynamic
+            PK model-PD model composition.
+
+        This model is a combination of a
+        :meth:`ModelLibrary.one_compartment_pk_model` and a
+        :methd:`tumour_growth_inhibition_model_koch_reparametrised`.
+        """
+        file_name = 'temporary_full_pkpd_model.xml'
+
+        return self._path + file_name
+
     def one_compartment_pk_model(self):
         r"""
         Returns the absolute path to a SBML file, specifying a one compartment
