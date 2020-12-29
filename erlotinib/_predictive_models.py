@@ -259,8 +259,8 @@ class PriorPredictiveModel(object):
             n_samples = 1
         n_samples = int(n_samples)
 
-         # Set seed for prior samples
-         # (does not affect predictive model)
+        # Set seed for prior samples
+        # (does not affect predictive model)
         if seed is not None:
             # TODO: pints.Priors are not meant to be seeded, so fails when
             # anything else but np.random is used.
