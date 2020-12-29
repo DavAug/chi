@@ -57,6 +57,14 @@ class TestPredictiveModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Wrong number of error'):
             erlo.PredictiveModel(self.mechanistic_model, error_models)
 
+    def test_get_n_outputs(self):
+        self.assertEqual(self.model.get_n_outputs(), 1)
+
+    def test_get_outputs(self):
+        outputs = self.model.get_outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
     def test_get_parameter_names(self):
         names = self.model.get_parameter_names()
 
