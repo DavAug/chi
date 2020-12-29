@@ -31,12 +31,6 @@
           <unit kind="gram" exponent="1" scale="-3" multiplier="1"/>
         </listOfUnits>
       </unitDefinition>
-      <unitDefinition id="mg_per_liter">
-        <listOfUnits>
-          <unit kind="gram" exponent="1" scale="-3" multiplier="1"/>
-          <unit kind="liter" exponent="-1" scale="0" multiplier="1"/>
-        </listOfUnits>
-      </unitDefinition>
       <unitDefinition id="per_day">
         <listOfUnits>
           <unit kind="second" exponent="-1" scale="0" multiplier="86400"/>
@@ -54,7 +48,6 @@
 
     <listOfParameters>
       <parameter id="critical_volume" value="1" constant="true" units="cm_cubed"/>
-      <parameter id="drug_concentration" value="1" constant="true" units="mg_per_liter"/>
       <parameter id="elimination_rate" value="1" constant="true" units="per_day"/>
       <parameter id="kappa" value="1" constant="true" units="liter_per_mg_per_day"/>
       <parameter id="lambda" value="1" constant="true" units="per_day"/>
@@ -100,7 +93,7 @@
             <apply>
               <times/>
               <ci> kappa </ci>
-              <ci> drug_concentration </ci>
+              <ci> drug </ci>
               <ci> tumour_volume </ci>
             </apply>
           </apply>
