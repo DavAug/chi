@@ -193,7 +193,13 @@ class PredictiveModel(object):
 class PriorPredictiveModel(object):
     """
     Implements a model that predicts the change of observable biomarkers over
-    time based on assumptions about the model parameters prior to inference.
+    time based on the provided distribution of model parameters prior to the
+    inference.
+
+    A prior predictive model may be used to check whether the assumptions about
+    the parameter distribution ``log_prior`` lead to a predictive distirbution
+    that encapsulates the expected measurement values of preclinical and
+    clinical biomarkers.
 
     A PriorPredictiveModel is instantiated with an instance of a
     :class:`PredictiveModel` and a :class:`pints.LogPrior` of the same
@@ -208,7 +214,7 @@ class PriorPredictiveModel(object):
         An instance of a :class:`PredictiveModel`.
     log_prior
         An instance of a :class:`pints.LogPrior` of the same dimensionality as
-        predictive model parameters.
+        the number of predictive model parameters.
     """
 
     def __init__(self, predictive_model, log_prior):
