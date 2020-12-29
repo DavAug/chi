@@ -16,9 +16,13 @@ Functional classes
 ------------------
 
 - :class:`PredictiveModel`
+- :class:`PriorPredictiveModel`
 
 Detailed API
 ------------
 
 .. autoclass:: PredictiveModel
+    :members:
+
+.. autoclass:: PriorPredictiveModel
     :members:
