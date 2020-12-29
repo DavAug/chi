@@ -36,7 +36,7 @@ class ModelLibrary(object):
 
         This model is a combination of a
         :meth:`ModelLibrary.one_compartment_pk_model` and a
-        :methd:`tumour_growth_inhibition_model_koch_reparametrised`.
+        :meth:`tumour_growth_inhibition_model_koch_reparametrised`.
         """
         file_name = 'temporary_full_pkpd_model.xml'
 
