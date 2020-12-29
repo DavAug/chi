@@ -22,6 +22,11 @@ class TestModelLibrary(unittest.TestCase):
     def setUpClass(cls):
         cls.model_library = erlo.ModelLibrary()
 
+    def test_existence_erlotinib_tumour_growth_inhibition_model(self):
+        path = self.model_library.erlotinib_tumour_growth_inhibition_model()
+
+        self.assertTrue(os.path.exists(path))
+
     def test_existence_tumour_growth_inhibition_model_koch(self):
         path = self.model_library.tumour_growth_inhibition_model_koch()
 
@@ -33,6 +38,56 @@ class TestModelLibrary(unittest.TestCase):
         path = lib.tumour_growth_inhibition_model_koch_reparametrised()
 
         self.assertTrue(os.path.exists(path))
+
+    def test_existence_one_compartment_pk_model(self):
+        path = self.model_library.one_compartment_pk_model()
+
+        self.assertTrue(os.path.exists(path))
+
+
+class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
+    """
+    Tests the erlotinib.modelLibrary.erlotinib_tumour_growth_inhibition_model
+    method.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        lib = erlo.ModelLibrary()
+        path = lib.erlotinib_tumour_growth_inhibition_model()
+        importer = sbml.SBMLImporter()
+        cls.model = importer.model(path)
+
+    def test_constant_variables(self):
+        const_names = sorted(
+            [var.qname() for var in self.model.variables(const=True)])
+
+        n_const = len(const_names)
+        self.assertEqual(n_const, 5)
+        self.assertEqual(const_names[0], 'central.size')
+        self.assertEqual(const_names[1], 'myokit.critical_volume')
+        self.assertEqual(const_names[2], 'myokit.elimination_rate')
+        self.assertEqual(const_names[3], 'myokit.kappa')
+        self.assertEqual(const_names[4], 'myokit.lambda')
+
+    def test_intermediate_variables(self):
+        inter_names = sorted(
+            [var.qname() for var in self.model.variables(inter=True)])
+
+        n_inter = len(inter_names)
+        self.assertEqual(n_inter, 1)
+
+        drug_conc = 'central.drug_concentration'
+        self.assertEqual(inter_names[0], drug_conc)
+
+    def test_states(self):
+        state_names = sorted(
+            [var.qname() for var in self.model.states()])
+
+        n_states = len(state_names)
+        self.assertTrue(n_states, 2)
+        self.assertEqual(state_names[0], 'central.drug_amount')
+        self.assertEqual(state_names[1], 'myokit.tumour_volume')
 
 
 class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
