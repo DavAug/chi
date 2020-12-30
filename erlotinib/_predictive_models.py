@@ -12,7 +12,7 @@ import pints
 import erlotinib as erlo
 
 
-class PredictiveModel(object):
+class IndividualPredictiveModel(object):
     """
     Implements a model that predicts the change of observable biomarkers over
     time.
@@ -36,7 +36,7 @@ class PredictiveModel(object):
     """
 
     def __init__(self, mechanistic_model, error_models, outputs=None):
-        super(PredictiveModel, self).__init__()
+        super(IndividualPredictiveModel, self).__init__()
 
         # Check inputs
         if not isinstance(mechanistic_model, erlo.MechanisticModel):
@@ -221,7 +221,7 @@ class PriorPredictiveModel(object):
         super(PriorPredictiveModel, self).__init__()
 
         # Check inputs
-        if not isinstance(predictive_model, PredictiveModel):
+        if not isinstance(predictive_model, IndividualPredictiveModel):
             raise ValueError(
                 'The provided predictive model has to be an instance of a '
                 'erlotinib.PredictiveModel.')
