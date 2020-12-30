@@ -34,11 +34,11 @@ class DataDrivenPredictiveModel(object):
         """
         return self._predictive_model.get_dosing_regimen()
 
-    def get_sub_models(self):
+    def get_submodels(self):
         """
         Returns the submodels of the predictive model.
         """
-        return self._predictive_model.get_sub_models()
+        return self._predictive_model.get_submodels()
 
     def get_n_outputs(self):
         """
@@ -134,7 +134,7 @@ class PredictiveModel(object):
         Returns the dosing regimen of the compound.
         """
 
-    def get_sub_models(self):
+    def get_submodels(self):
         """
         Returns the submodels of the predictive model in form of a dictionary.
         """
@@ -264,9 +264,17 @@ class PredictiveModel(object):
         """
         Sets the dosing regimen with which the compound is administered.
         """
-        # TODO: Implement this
-        # Make sure dosing regiment is also in sample dataframe.
-        raise NotImplementedError
+        try:
+            self._mechanistic_model.set_dosing_regimen(
+                dose, start, period, duration, num)
+        except AttributeError:
+            # This error means that the mechanistic model is a
+            # PharmacodynamicModel and therefore no dosing regimen can be set.
+            raise AttributeError(
+                'The mechanistic model does not support to set dosing '
+                'regimens. This may be because the underlying '
+                'erlotinib.MechanisticModel is a '
+                'erlotinib.PharmacodynamicModel.')
 
 
 class PriorPredictiveModel(DataDrivenPredictiveModel):
