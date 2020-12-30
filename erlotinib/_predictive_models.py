@@ -64,7 +64,8 @@ class DataDrivenPredictiveModel(object):
         """
         Sets the dosing regimen with which the compound is administered.
         """
-        raise NotImplementedError
+        self._predictive_model.set_dosing_regimen(
+            dose, start, period, duration, num)
 
 
 class PredictiveModel(object):
