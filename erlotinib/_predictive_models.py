@@ -135,9 +135,11 @@ class PredictiveModel(object):
 
     def get_sub_models(self):
         """
-        Returns the submodels of the predictive model.
+        Returns the submodels of the predictive model in form of a dictionary.
         """
-        raise NotImplementedError
+        submodels = dict({
+            'Mechanistic model': self._mechanistic_model,
+            'Error models': self._error_models})
 
     def get_n_outputs(self):
         """
