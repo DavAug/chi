@@ -141,6 +141,8 @@ class PredictiveModel(object):
             'Mechanistic model': self._mechanistic_model,
             'Error models': self._error_models})
 
+        return submodels
+
     def get_n_outputs(self):
         """
         Returns the number of outputs.
