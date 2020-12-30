@@ -12,7 +12,62 @@ import pints
 import erlotinib as erlo
 
 
-class IndividualPredictiveModel(object):
+class DataDrivenPredictiveModel(object):
+    """
+    A base class for predictive PK, PD, and PKPD models. TODO:
+    """
+
+    def __init__(self, predictive_model):
+        super(DataDrivenPredictiveModel, self).__init__()
+
+        # Check inputs
+        if not isinstance(predictive_model, erlo.PredictiveModel):
+            raise ValueError(
+                'The provided predictive model has to be an instance of a '
+                'erlotinib.PredictiveModel.')
+
+        self._predictive_model = predictive_model
+
+    def get_dosing_regimen(self):
+        """
+        Returns the dosing regimen with which the compound is administered.
+        """
+        return self._predictive_model.get_dosing_regimen()
+
+    def get_sub_models(self):
+        """
+        Returns the submodels of the predictive model.
+        """
+        return self._predictive_model.get_sub_models()
+
+    def get_n_outputs(self):
+        """
+        Returns the number of outputs.
+        """
+        return self._predictive_model.get_n_outputs()
+
+    def get_output_names(self):
+        """
+        Returns the output names.
+        """
+        return self._predictive_model.get_output_names()
+
+    def sample(
+            self, times, n_samples=None, seed=None):
+        """
+        Samples "measurements" of the biomarkers from the predictive model and
+        returns them in form of a :class:`pandas.DataFrame`.
+        """
+        raise NotImplementedError
+
+    def set_dosing_regimen(self, dose, start, period, duration=0.01, num=0):
+        """
+        Sets the dosing regimen with which the compound is administered.
+        """
+        raise NotImplementedError
+
+
+class PredictiveModel(object):
     """
     Implements a model that predicts the change of observable biomarkers over
     time.
@@ -36,7 +91,7 @@ class IndividualPredictiveModel(object):
     """
 
     def __init__(self, mechanistic_model, error_models, outputs=None):
-        super(IndividualPredictiveModel, self).__init__()
+        super(PredictiveModel, self).__init__()
 
         # Check inputs
         if not isinstance(mechanistic_model, erlo.MechanisticModel):
@@ -72,6 +127,17 @@ class IndividualPredictiveModel(object):
             parameter_names += error_model.get_parameter_names()
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
+
+    def get_dosing_regimen(self):
+        """
+        Returns the dosing regimen of the compound.
+        """
+
+    def get_sub_models(self):
+        """
+        Returns the submodels of the predictive model.
+        """
+        raise NotImplementedError
 
     def get_n_outputs(self):
         """
@@ -189,8 +255,14 @@ class IndividualPredictiveModel(object):
 
         return samples
 
+    def set_dosing_regimen(self, dose, start, period, duration=0.01, num=0):
+        """
+        Sets the dosing regimen with which the compound is administered.
+        """
+        raise NotImplementedError
 
-class PriorPredictiveModel(object):
+
+class PriorPredictiveModel(DataDrivenPredictiveModel):
     """
     Implements a model that predicts the change of observable biomarkers over
     time based on the provided distribution of model parameters prior to the
@@ -208,6 +280,8 @@ class PriorPredictiveModel(object):
     from the log-prior distribution, and then sampling from the predictive
     model with those parameters.
 
+    Extends :class:`DataDrivenPredictiveModel`.
+
     Parameters
     ----------
     predictive_model
@@ -218,13 +292,7 @@ class PriorPredictiveModel(object):
     """
 
     def __init__(self, predictive_model, log_prior):
-        super(PriorPredictiveModel, self).__init__()
-
-        # Check inputs
-        if not isinstance(predictive_model, IndividualPredictiveModel):
-            raise ValueError(
-                'The provided predictive model has to be an instance of a '
-                'erlotinib.PredictiveModel.')
+        super(PriorPredictiveModel, self).__init__(predictive_model)
 
         if not isinstance(log_prior, pints.LogPrior):
             raise ValueError(
@@ -236,7 +304,6 @@ class PriorPredictiveModel(object):
                 'The dimension of the log-prior has to be the same as the '
                 'number of parameters of the predictive model.')
 
-        self._predictive_model = predictive_model
         self._log_prior = log_prior
 
     def sample(self, times, n_samples=None, seed=None):
