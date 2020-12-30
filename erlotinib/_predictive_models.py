@@ -263,6 +263,8 @@ class PredictiveModel(object):
         """
         Sets the dosing regimen with which the compound is administered.
         """
+        # TODO: Implement this
+        # Make sure dosing regiment is also in sample dataframe.
         raise NotImplementedError
 
 
