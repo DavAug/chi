@@ -398,6 +398,14 @@ class PharmacokineticModel(MechanisticModel):
         """
         return self._administration
 
+    def dosing_regimen(self):
+        """
+        Returns the dosing regimen of the compound in form of a
+        :class:`myokit.Protocol`. If the protocol has not been set, ``None`` is
+        returned.
+        """
+        return self._sim._protocol
+
     def set_administration(
             self, compartment, amount_var='drug_amount', direct=True):
         r"""
