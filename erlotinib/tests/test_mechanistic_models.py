@@ -343,7 +343,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         model.set_dosing_regimen(
             dose, start, period, duration, num)
 
-        events = model._sim._protocol.events()
+        events = model.dosing_regimen().events()
 
         self.assertEqual(len(events), 1)
 
