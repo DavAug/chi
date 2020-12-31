@@ -133,6 +133,7 @@ class PredictiveModel(object):
         """
         Returns the dosing regimen of the compound.
         """
+        return self._mechanistic_model.dosing_regimen()
 
     def get_submodels(self):
         """
