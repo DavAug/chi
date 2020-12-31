@@ -171,7 +171,7 @@ class ProblemModellingController(object):
 
     def __init__(
             self, data, id_key='ID', time_key='Time', biom_keys=['Biomarker'],
-            dose_key=None):
+            dose_key=None, dose_duration_key=None):
         super(ProblemModellingController, self).__init__()
 
         # Check input format
@@ -182,6 +182,8 @@ class ProblemModellingController(object):
         keys = [id_key, time_key] + biom_keys
         if dose_key is not None:
             keys += [dose_key]
+        if dose_duration_key is not None:
+            keys += [dose_duration_key]
 
         for key in keys:
             if key not in data.keys():
@@ -193,13 +195,14 @@ class ProblemModellingController(object):
         self._data = data[keys]
 
         # Make sure data is formatted correctly
-        self._clean_data(dose_key)
+        self._clean_data(dose_key, dose_duration_key)
         self._ids = self._data[self._id_key].unique()
 
         # Extract dosing regimens
         self._applied_regimens = None
         if dose_key is not None:
-            self._applied_regimens = self._extract_dosing_regimens(dose_key)
+            self._applied_regimens = self._extract_dosing_regimens(
+                dose_key, dose_duration_key)
 
         # Set defaults
         self._mechanistic_model = None
@@ -212,7 +215,7 @@ class ProblemModellingController(object):
         self._fixed_params_mask = None
         self._fixed_params_values = None
 
-    def _clean_data(self, dose_key):
+    def _clean_data(self, dose_key, dose_duration_key):
         """
         Makes sure that the data is formated properly.
 
@@ -241,6 +244,10 @@ class ProblemModellingController(object):
         if dose_key is not None:
             data[dose_key] = pd.to_numeric(
                 self._data[dose_key])
+
+        if dose_duration_key is not None:
+            data[dose_duration_key] = pd.to_numeric(
+                self._data[dose_duration_key])
 
         self._data = data
 
@@ -340,7 +347,7 @@ class ProblemModellingController(object):
 
         return log_pdfs
 
-    def _extract_dosing_regimens(self, dose_key):
+    def _extract_dosing_regimens(self, dose_key, duration_key):
         """
         Converts the dosing regimens defined by the pandas.DataFrame into
         myokit.Protocols, and returns them as a dictionary with individual
@@ -349,11 +356,19 @@ class ProblemModellingController(object):
         For each dose entry in the dataframe a (bolus) dose event is added
         to the myokit.Protocol.
         """
+        # Create duration column if it doesn't exist and set it to default
+        # bolus duration of 0.01
+        if duration_key is None:
+            duration_key = 'Duration in base time unit'
+            self._data[duration_key] = 0.01
+
+        # Extract regimen from dataset
         regimens = dict()
         for label in self._ids:
             # Filter times and dose events for non-NaN entries
             mask = self._data[self._id_key] == label
-            data = self._data[[self._time_key, dose_key]][mask]
+            data = self._data[
+                [self._time_key, dose_key, duration_key]][mask]
             mask = data[dose_key].notnull()
             data = data[mask]
             mask = data[self._time_key].notnull()
@@ -362,7 +377,15 @@ class ProblemModellingController(object):
             # Add dose events to dosing regimen
             regimen = myokit.Protocol()
             for _, row in data.iterrows():
-                duration = 0.01  # Only support bolus at this point
+                # Set duration
+                duration = row[duration_key]
+                if np.isnan(duration) or (duration < 0.01):
+                    # If duration is not provided, or less than 0.01, we
+                    # assume a bolus dose which we approximate by 0.01
+                    # time_units.
+                    duration = 0.01
+
+                # Compute dose rate and set regimen
                 dose_rate = row[dose_key] / duration
                 time = row[self._time_key]
                 regimen.add(myokit.ProtocolEvent(dose_rate, time, duration))
