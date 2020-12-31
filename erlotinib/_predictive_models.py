@@ -129,11 +129,84 @@ class PredictiveModel(object):
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
 
-    def get_dosing_regimen(self):
+    def get_dosing_regimen(self, final_time=None):
         """
-        Returns the dosing regimen of the compound.
+        Returns the dosing regimen of the compound in form of a
+        :class:`pandas.DataFrame`.
+
+        The dataframe has a time, a duration, and a dose column, which indicate
+        the time point and duration of the dose administration in the time
+        units of the mechanistic model, :meth:`MechanisticModel.time_unit`. The
+        dose column specifies the amount of the compound that is being
+        administered in units of the drug amount variable of the mechanistic
+        model.
+
+        If a dosing regimen is set which is administered indefinitely, i.e. a
+        finite duration and undefined number of doses, see
+        :meth:`set_dosing_regimen`, a final dose time can be provided, up to
+        which the doses will be registered in the dataframe. By default the
+        final dose time is ``None``, and only the first administration of the
+        dose will appear in the dataframe.
+
+        If no dosing regimen has been set, ``None`` is returned.
+
+        Parameters
+        ----------
+        final_time
+            Time up to which dose events are registered in the dataframe. If
+            ``None``, all dose events are registered, except for indefinite
+            dosing regimens. Here, only the first dose event is registered.
         """
-        return self._mechanistic_model.dosing_regimen()
+        # Get regimen
+        regimen = self._mechanistic_model.dosing_regimen()
+
+        # Return None is regimen is not set
+        if regimen is None:
+            return regimen
+
+        # Sort regimen into dataframe
+        regimen_df = pd.DataFrame(columns=['Time', 'Duration', 'Dose'])
+        for dose_event in regimen.events():
+            # Get dose amount
+            dose_rate = dose_event.level()
+            dose_duration = dose_event.duration()
+            dose_amount = dose_rate * dose_duration
+
+            # Get dosing time points
+            start_time = dose_event.start()
+            period = dose_event.period()
+            n_doses = dose_event.multiplier()
+
+            if (final_time is not None) and (start_time > final_time):
+                # Dose event exceeds final dose time and is therefore
+                # not registered
+                continue
+
+            if period is None:
+                # Dose is administered only once
+                regimen_df = regimen_df.append(pd.DataFrame({
+                    'Time': [start_time],
+                    'Duration': [dose_duration],
+                    'Dose': [dose_amount]}))
+
+                # Continue to next dose event
+                continue
+
+            if n_doses is None:
+                # The dose event would be administered indefinitely, so we
+                # stop with final_time or 1.
+                n_doses = 1 if final_time is None else final_time
+
+            # Cosntruct dose times
+            dose_times = [start_time + n * period for n in range(n_doses)]
+
+            # Add dose administrations to dataframe
+            regimen_df = regimen_df.append(pd.DataFrame({
+                'Time': dose_times,
+                'Duration': dose_duration,
+                'Dose': dose_amount}))
+
+        return regimen_df
 
     def get_submodels(self):
         """
