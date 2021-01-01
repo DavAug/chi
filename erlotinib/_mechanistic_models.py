@@ -491,7 +491,8 @@ class PharmacokineticModel(MechanisticModel):
         self._administration = dict(
             {'compartment': compartment, 'direct': direct})
 
-    def set_dosing_regimen(self, dose, start, period, duration=0.01, num=0):
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
 
@@ -514,19 +515,31 @@ class PharmacokineticModel(MechanisticModel):
             The amount of the compound that is injected at each administration.
         start
             Start time of the treatment.
-        period
-            Periodicity at which doses are administered.
         duration
             Duration of dose administration. For bolus injection setting the
             duration to 1% of the time unit should suffice. By default the
             duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
         num
-            Number of administered doses. For ``num=0`` the dose is applied
-            indefinitely. By default ``num`` is set to ``0``.
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
         """
         if self._administration is None:
             raise ValueError(
                 'The route of administration of the dose has not been set.')
+
+        if num is None:
+            # Myokits default is zero, i.e. infinitely many doses
+            num = 0
+
+        if period is None:
+            # If period is not provided, we administer a single dose
+            # The period has to be larger than the dose duration
+            period = duration + 1
+            num = 1
 
         # Translate dose to dose rate
         dose_rate = dose / duration
