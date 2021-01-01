@@ -537,9 +537,9 @@ class PharmacokineticModel(MechanisticModel):
 
         if period is None:
             # If period is not provided, we administer a single dose
-            # The period has to be larger than the dose duration
-            period = duration + 1
-            num = 1
+            # Myokits defaults are 0s for that.
+            period = 0
+            num = 0
 
         # Translate dose to dose rate
         dose_rate = dose / duration
