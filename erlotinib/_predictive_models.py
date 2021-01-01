@@ -164,7 +164,7 @@ class PredictiveModel(object):
             # The model does not support dosing regimens
             return None
 
-        # Return None is regimen is not set
+        # Return None if regimen is not set
         if regimen is None:
             return regimen
 
