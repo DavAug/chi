@@ -505,9 +505,8 @@ class PharmacokineticModel(MechanisticModel):
         model an infusion of the dose over a longer time period, the
         ``duration`` can be adjusted to the appropriate time scale.
 
-        By default the doses are administered indefinitely at a period
-        specified by ``period``. To apply only a finite number of doses,
-        ``num`` can be set to a positive integer.
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
 
         Parameters
         ----------
