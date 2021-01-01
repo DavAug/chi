@@ -223,6 +223,7 @@ class ProblemModellingController(object):
         2. time are numerics or NaN
         3. biomarker are numerics or NaN
         4. dose are numerics or NaN
+        5. duration are numerics or NaN
         """
         # Create container for data
         columns = [self._id_key, self._time_key] + self._biom_keys
@@ -241,10 +242,12 @@ class ProblemModellingController(object):
         for biom_key in self._biom_keys:
             data[biom_key] = pd.to_numeric(self._data[biom_key])
 
+        # Convert dose to numerics
         if dose_key is not None:
             data[dose_key] = pd.to_numeric(
                 self._data[dose_key])
 
+        # Convert duration to numerics
         if dose_duration_key is not None:
             data[dose_duration_key] = pd.to_numeric(
                 self._data[dose_duration_key])
@@ -353,8 +356,9 @@ class ProblemModellingController(object):
         myokit.Protocols, and returns them as a dictionary with individual
         IDs as keys, and regimens as values.
 
-        For each dose entry in the dataframe a (bolus) dose event is added
-        to the myokit.Protocol.
+        For each dose entry in the dataframe a dose event is added
+        to the myokit.Protocol. If the duration of the dose is not provided
+        a bolus dose of duration 0.01 time units is assumed.
         """
         # Create duration column if it doesn't exist and set it to default
         # bolus duration of 0.01
@@ -379,10 +383,9 @@ class ProblemModellingController(object):
             for _, row in data.iterrows():
                 # Set duration
                 duration = row[duration_key]
-                if np.isnan(duration) or (duration < 0.01):
-                    # If duration is not provided, or less than 0.01, we
-                    # assume a bolus dose which we approximate by 0.01
-                    # time_units.
+                if np.isnan(duration):
+                    # If duration is not provided, we assume a bolus dose
+                    # which we approximate by 0.01 time_units.
                     duration = 0.01
 
                 # Compute dose rate and set regimen
