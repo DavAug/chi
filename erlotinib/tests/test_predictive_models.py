@@ -77,6 +77,177 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(names[5], 'Sigma base')
         self.assertEqual(names[6], 'Sigma rel.')
 
+    def test_get_set_dosing_regimen(self):
+        # Test case I: Mechanistic model does not support dosing regimens
+        # (PharmacodynaimcModel)
+        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
+            self.model.set_dosing_regimen(1, 1, 1)
+
+        self.assertIsNone(self.model.get_dosing_regimen())
+
+        # Test case II: Mechanistic model supports dosing regimens
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model.set_administration('central')
+        model = erlo.PredictiveModel(
+            mechanistic_model, self.error_models)
+
+        # Test case II.1: Dosing regimen not set
+        self.assertIsNone(model.get_dosing_regimen())
+
+        # Test case II.2 Set single bolus dose
+        model.set_dosing_regimen(dose=1, start=1)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Test case II.3 Set single infusion
+        model.set_dosing_regimen(dose=1, start=1, duration=1)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 1)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Test case II.4 Multiple doses
+        model.set_dosing_regimen(dose=1, start=1, period=1, num=3)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 3)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Set final time
+        regimen_df = model.get_dosing_regimen(final_time=1.5)
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Set final time, such that regimen dataframe would be empty
+        regimen_df = model.get_dosing_regimen(final_time=0)
+
+        self.assertIsNone(regimen_df, pd.DataFrame)
+
+        # Test case II.3 Indefinite dosing regimen
+        model.set_dosing_regimen(dose=1, start=1, period=1)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Set final time
+        regimen_df = model.get_dosing_regimen(final_time=5)
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
     def test_n_parameters(self):
         self.assertEqual(self.model.n_parameters(), 7)
 
