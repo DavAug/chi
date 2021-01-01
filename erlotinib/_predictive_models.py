@@ -158,7 +158,11 @@ class PredictiveModel(object):
             dosing regimens. Here, only the first dose event is registered.
         """
         # Get regimen
-        regimen = self._mechanistic_model.dosing_regimen()
+        try:
+            regimen = self._mechanistic_model.dosing_regimen()
+        except AttributeError:
+            # The model does not support dosing regimens
+            return None
 
         # Return None is regimen is not set
         if regimen is None:
@@ -205,6 +209,10 @@ class PredictiveModel(object):
                 'Time': dose_times,
                 'Duration': dose_duration,
                 'Dose': dose_amount}))
+
+        #TODO:
+        # 1. Test that get set dosing regimen works as expected.
+        # 2. Integrate the df dosing regimen into the sample result.
 
         return regimen_df
 
