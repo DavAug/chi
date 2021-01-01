@@ -189,16 +189,12 @@ class PredictiveModel(object):
             period = dose_event.period()
             n_doses = dose_event.multiplier()
 
-            print(start_time)
-            print(period)
-            print(n_doses)
-
             if start_time > final_time:
                 # Dose event exceeds final dose time and is therefore
                 # not registered
                 continue
 
-            if period is None:
+            if period == 0:
                 # Dose is administered only once
                 regimen_df = regimen_df.append(pd.DataFrame({
                     'Time': [start_time],
@@ -208,7 +204,7 @@ class PredictiveModel(object):
                 # Continue to next dose event
                 continue
 
-            if n_doses is None:
+            if n_doses == 0:
                 # The dose event would be administered indefinitely, so we
                 # stop with final_time or 1.
                 n_doses = 1
@@ -236,8 +232,8 @@ class PredictiveModel(object):
             return None
 
         #TODO:
-        # 1. Test that get set dosing regimen works as expected.
-        # 2. Integrate the df dosing regimen into the sample result.
+        # 1. Integrate the df dosing regimen into the sample result.
+        # 2. Refactor problems
 
         return regimen_df
 
@@ -379,6 +375,10 @@ class PredictiveModel(object):
 
         By default the dose is administered once. To apply multiple doses
         provide a dose administration period.
+
+        .. note::
+            This method requires a :class:`MechanisticModel` that supports
+            compound administration.
 
         Parameters
         ----------
