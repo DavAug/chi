@@ -168,6 +168,14 @@ class PredictiveModel(object):
         if regimen is None:
             return regimen
 
+        # Make sure that final_time is positive
+        if final_time is None:
+            final_time = np.inf
+
+        if final_time < 0:
+            raise ValueError(
+                'The final dose time has to be positive.')
+
         # Sort regimen into dataframe
         regimen_df = pd.DataFrame(columns=['Time', 'Duration', 'Dose'])
         for dose_event in regimen.events():
@@ -181,7 +189,11 @@ class PredictiveModel(object):
             period = dose_event.period()
             n_doses = dose_event.multiplier()
 
-            if (final_time is not None) and (start_time > final_time):
+            print(start_time)
+            print(period)
+            print(n_doses)
+
+            if start_time > final_time:
                 # Dose event exceeds final dose time and is therefore
                 # not registered
                 continue
@@ -199,16 +211,29 @@ class PredictiveModel(object):
             if n_doses is None:
                 # The dose event would be administered indefinitely, so we
                 # stop with final_time or 1.
-                n_doses = 1 if final_time is None else final_time
+                n_doses = 1
 
-            # Cosntruct dose times
+                if np.isfinite(final_time):
+                    n_doses = int(final_time // period)
+
+            # Construct dose times
             dose_times = [start_time + n * period for n in range(n_doses)]
+
+            # Make sure that even for finite periodic dose events the final time
+            # is not exceeded
+            dose_times = np.array(dose_times)
+            mask = dose_times <= final_time
+            dose_times = dose_times[mask]
 
             # Add dose administrations to dataframe
             regimen_df = regimen_df.append(pd.DataFrame({
                 'Time': dose_times,
                 'Duration': dose_duration,
                 'Dose': dose_amount}))
+
+        # If no dose event before final_time exist, return None
+        if regimen_df.empty:
+            return None
 
         #TODO:
         # 1. Test that get set dosing regimen works as expected.
@@ -342,13 +367,40 @@ class PredictiveModel(object):
 
         return samples
 
-    def set_dosing_regimen(self, dose, start, period, duration=0.01, num=0):
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
+
+        By default the dose is administered as a bolus injection (duration on
+        a time scale that is 100 fold smaller than the basic time unit). To
+        model an infusion of the dose over a longer time period, the
+        ``duration`` can be adjusted to the appropriate time scale.
+
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
+
+        Parameters
+        ----------
+        dose
+            The amount of the compound that is injected at each administration.
+        start
+            Start time of the treatment.
+        duration
+            Duration of dose administration. For bolus injection setting the
+            duration to 1% of the time unit should suffice. By default the
+            duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
+        num
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
         """
         try:
             self._mechanistic_model.set_dosing_regimen(
-                dose, start, period, duration, num)
+                dose, start, duration, period, num)
         except AttributeError:
             # This error means that the mechanistic model is a
             # PharmacodynamicModel and therefore no dosing regimen can be set.
