@@ -540,7 +540,7 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
 
         # Add dosing regimen, if set
         final_time = np.max(times)
-        regimen = self._predictive_model(final_time)
+        regimen = self.get_dosing_regimen(final_time)
         if (regimen is not None) and (include_regimen is True):
             # Append dosing regimen only once for all samples
             container = container.append(regimen)
