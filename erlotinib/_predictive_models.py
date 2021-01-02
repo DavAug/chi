@@ -31,7 +31,31 @@ class DataDrivenPredictiveModel(object):
 
     def get_dosing_regimen(self, final_time=None):
         """
-        Returns the dosing regimen with which the compound is administered.
+        Returns the dosing regimen of the compound in form of a
+        :class:`pandas.DataFrame`.
+
+        The dataframe has a time, a duration, and a dose column, which indicate
+        the time point and duration of the dose administration in the time
+        units of the mechanistic model, :meth:`MechanisticModel.time_unit`. The
+        dose column specifies the amount of the compound that is being
+        administered in units of the drug amount variable of the mechanistic
+        model.
+
+        If a dosing regimen is set which is administered indefinitely, i.e. a
+        finite duration and undefined number of doses, see
+        :meth:`set_dosing_regimen`, only the first administration of the
+        dose will appear in the dataframe. Alternatively, a final dose time
+        ``final_time`` can be provided, up to which the dose events are
+        registered.
+
+        If no dosing regimen has been set, ``None`` is returned.
+
+        Parameters
+        ----------
+        final_time
+            Time up to which dose events are registered in the dataframe. If
+            ``None``, all dose events are registered, except for indefinite
+            dosing regimens. Here, only the first dose event is registered.
         """
         return self._predictive_model.get_dosing_regimen(final_time)
 
