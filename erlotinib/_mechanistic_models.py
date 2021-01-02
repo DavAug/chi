@@ -5,6 +5,8 @@
 # full license details.
 #
 
+from copy import copy
+
 import myokit
 import myokit.formats.sbml as sbml
 import numpy as np
@@ -99,13 +101,13 @@ class MechanisticModel(object):
         """
         Returns the output names of the model.
         """
-        return self._output_names
+        return copy(self._output_names)
 
     def parameters(self):
         """
         Returns the parameter names of the model.
         """
-        return self._parameter_names
+        return copy(self._parameter_names)
 
     def set_outputs(self, outputs):
         """
