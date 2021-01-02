@@ -28,11 +28,11 @@ class DataDrivenPredictiveModel(object):
 
         self._predictive_model = predictive_model
 
-    def get_dosing_regimen(self):
+    def get_dosing_regimen(self, final_time=None):
         """
         Returns the dosing regimen with which the compound is administered.
         """
-        return self._predictive_model.get_dosing_regimen()
+        return self._predictive_model.get_dosing_regimen(final_time)
 
     def get_submodels(self):
         """
