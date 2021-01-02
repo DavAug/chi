@@ -466,7 +466,7 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
 
         self._log_prior = log_prior
 
-    def sample(self, times, n_samples=None, seed=None):
+    def sample(self, times, n_samples=None, seed=None, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the prior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -486,6 +486,9 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
             at each time point.
         seed
             A seed for the pseudo-random number generator.
+        include_regimen
+            A boolean flag which determines whether the information about the
+            dosing regimen is included.
         """
         # Make sure n_samples is an integer
         if n_samples is None:
@@ -534,5 +537,12 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
                     'Biomarker': name,
                     'Time': times,
                     'Sample': sample[output_id, :, 0]}))
+
+        # Add dosing regimen, if set
+        final_time = np.max(times)
+        regimen = self._predictive_model(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Append dosing regimen only once for all samples
+            container = container.append(regimen)
 
         return container
