@@ -173,10 +173,6 @@ class PredictiveModel(object):
         if final_time is None:
             final_time = np.inf
 
-        if final_time < 0:
-            raise ValueError(
-                'The final dose time has to be positive.')
-
         # Sort regimen into dataframe
         regimen_df = pd.DataFrame(columns=['Time', 'Duration', 'Dose'])
         for dose_event in regimen.events():
@@ -211,7 +207,7 @@ class PredictiveModel(object):
                 n_doses = 1
 
                 if np.isfinite(final_time):
-                    n_doses = int(final_time // period)
+                    n_doses = int(abs(final_time)e // period)
 
             # Construct dose times
             dose_times = [start_time + n * period for n in range(n_doses)]
