@@ -144,10 +144,10 @@ class PredictiveModel(object):
 
         If a dosing regimen is set which is administered indefinitely, i.e. a
         finite duration and undefined number of doses, see
-        :meth:`set_dosing_regimen`, a final dose time can be provided, up to
-        which the doses will be registered in the dataframe. By default the
-        final dose time is ``None``, and only the first administration of the
-        dose will appear in the dataframe.
+        :meth:`set_dosing_regimen`, only the first administration of the
+        dose will appear in the dataframe. Alternatively, a final dose time
+        ``final_time`` can be provided, up to which the dose events are
+        registered.
 
         If no dosing regimen has been set, ``None`` is returned.
 
