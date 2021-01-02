@@ -14,11 +14,6 @@ files (System Biology Markup Language (SBML_)).
 Some SBML files relevant to the modelling of erlotinib are provided
 in the :class:`ModelLibrary`.
 
-Base classes
-------------
-
-- :class:`MechanisticModel`
-
 Functional classes
 ------------------
 
@@ -26,10 +21,7 @@ Functional classes
 - :class:`PharmacokineticModel`
 
 Detailed API
-------------
-
-.. autoclass:: MechanisticModel
-    :members:
+^^^^^^^^^^^^
 
 .. autoclass:: PharmacodynamicModel
     :members:
@@ -38,3 +30,14 @@ Detailed API
 .. autoclass:: PharmacokineticModel
     :members:
     :inherited-members:
+
+Base classes
+------------
+
+- :class:`MechanisticModel`
+
+Detailed API
+^^^^^^^^^^^^
+
+.. autoclass:: MechanisticModel
+    :members:

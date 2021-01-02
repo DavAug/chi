@@ -20,22 +20,25 @@ For further details on Dash apps, please refer to Dash's documentation.
 
 Note that apps have currently only been manually tested.
 
-Base classes
-------------
-
-- :class:`BaseApp`
-
 Functional classes
 ------------------
 
 - :class:`PDSimulationController`
 
 Detailed API
-------------
-
-.. autoclass:: BaseApp
-    :members:
+^^^^^^^^^^^^
 
 .. autoclass:: PDSimulationController
     :members:
     :inherited-members:
+
+Base classes
+------------
+
+- :class:`BaseApp`
+
+Detailed API
+^^^^^^^^^^^^
+
+.. autoclass:: BaseApp
+    :members:

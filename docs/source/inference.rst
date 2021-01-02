@@ -15,11 +15,6 @@ to easily explore different optimisation or sampling settings, e.g. using differ
 methods, fixing some parameters, or applying different transformations to the
 search space.
 
-Base classes
-------------
-
-- :class:`InferenceController`
-
 Functional classes
 ------------------
 
@@ -27,10 +22,7 @@ Functional classes
 - :class:`SamplingController`
 
 Detailed API
-------------
-
-.. autoclass:: InferenceController
-    :members:
+^^^^^^^^^^^^
 
 .. autoclass:: OptimisationController
     :members:
@@ -39,3 +31,14 @@ Detailed API
 .. autoclass:: SamplingController
     :members:
     :inherited-members:
+
+Base classes
+------------
+
+- :class:`InferenceController`
+
+Detailed API
+^^^^^^^^^^^^
+
+.. autoclass:: InferenceController
+    :members:

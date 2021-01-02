@@ -19,10 +19,22 @@ Functional classes
 - :class:`PriorPredictiveModel`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: PredictiveModel
     :members:
 
 .. autoclass:: PriorPredictiveModel
+    :members:
+    :inherited-members:
+
+Base classes
+------------
+
+- :class:`DataDrivenPredictiveModel`
+
+Detailed API
+^^^^^^^^^^^^
+
+.. autoclass:: DataDrivenPredictiveModel
     :members:

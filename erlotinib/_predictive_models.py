@@ -12,6 +12,118 @@ import pints
 import erlotinib as erlo
 
 
+class DataDrivenPredictiveModel(object):
+    """
+    A base class for predictive models whose parameters are either drawn from
+    distribution, or are set by a :class:`pandas.DataFrame`.
+    """
+
+    def __init__(self, predictive_model):
+        super(DataDrivenPredictiveModel, self).__init__()
+
+        # Check inputs
+        if not isinstance(predictive_model, erlo.PredictiveModel):
+            raise ValueError(
+                'The provided predictive model has to be an instance of a '
+                'erlotinib.PredictiveModel.')
+
+        self._predictive_model = predictive_model
+
+    def get_dosing_regimen(self, final_time=None):
+        """
+        Returns the dosing regimen of the compound in form of a
+        :class:`pandas.DataFrame`.
+
+        The dataframe has a time, a duration, and a dose column, which indicate
+        the time point and duration of the dose administration in the time
+        units of the mechanistic model, :meth:`MechanisticModel.time_unit`. The
+        dose column specifies the amount of the compound that is being
+        administered in units of the drug amount variable of the mechanistic
+        model.
+
+        If a dosing regimen is set which is administered indefinitely, i.e. a
+        finite duration and undefined number of doses, see
+        :meth:`set_dosing_regimen`, only the first administration of the
+        dose will appear in the dataframe. Alternatively, a final dose time
+        ``final_time`` can be provided, up to which the dose events are
+        registered.
+
+        If no dosing regimen has been set, ``None`` is returned.
+
+        Parameters
+        ----------
+        final_time
+            Time up to which dose events are registered in the dataframe. If
+            ``None``, all dose events are registered, except for indefinite
+            dosing regimens. Here, only the first dose event is registered.
+        """
+        return self._predictive_model.get_dosing_regimen(final_time)
+
+    def get_n_outputs(self):
+        """
+        Returns the number of outputs.
+        """
+        return self._predictive_model.get_n_outputs()
+
+    def get_output_names(self):
+        """
+        Returns the output names.
+        """
+        return self._predictive_model.get_output_names()
+
+    def get_submodels(self):
+        """
+        Returns the submodels of the predictive model.
+        """
+        return self._predictive_model.get_submodels()
+
+    def sample(
+            self, times, n_samples=None, seed=None, include_regimen=False):
+        """
+        Samples "measurements" of the biomarkers from the predictive model and
+        returns them in form of a :class:`pandas.DataFrame`.
+        """
+        raise NotImplementedError
+
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
+        """
+        Sets the dosing regimen with which the compound is administered.
+
+        By default the dose is administered as a bolus injection (duration on
+        a time scale that is 100 fold smaller than the basic time unit). To
+        model an infusion of the dose over a longer time period, the
+        ``duration`` can be adjusted to the appropriate time scale.
+
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
+
+        .. note::
+            This method requires a :class:`MechanisticModel` that supports
+            compound administration.
+
+        Parameters
+        ----------
+        dose
+            The amount of the compound that is injected at each administration.
+        start
+            Start time of the treatment.
+        duration
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
+            duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
+        num
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
+        """
+        self._predictive_model.set_dosing_regimen(
+            dose, start, duration, period, num)
+
+
 class PredictiveModel(object):
     """
     Implements a model that predicts the change of observable biomarkers over
@@ -73,6 +185,106 @@ class PredictiveModel(object):
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
 
+    def get_dosing_regimen(self, final_time=None):
+        """
+        Returns the dosing regimen of the compound in form of a
+        :class:`pandas.DataFrame`.
+
+        The dataframe has a time, a duration, and a dose column, which indicate
+        the time point and duration of the dose administration in the time
+        units of the mechanistic model, :meth:`MechanisticModel.time_unit`. The
+        dose column specifies the amount of the compound that is being
+        administered in units of the drug amount variable of the mechanistic
+        model.
+
+        If a dosing regimen is set which is administered indefinitely, i.e. a
+        finite duration and undefined number of doses, see
+        :meth:`set_dosing_regimen`, only the first administration of the
+        dose will appear in the dataframe. Alternatively, a final dose time
+        ``final_time`` can be provided, up to which the dose events are
+        registered.
+
+        If no dosing regimen has been set, ``None`` is returned.
+
+        Parameters
+        ----------
+        final_time
+            Time up to which dose events are registered in the dataframe. If
+            ``None``, all dose events are registered, except for indefinite
+            dosing regimens. Here, only the first dose event is registered.
+        """
+        # Get regimen
+        try:
+            regimen = self._mechanistic_model.dosing_regimen()
+        except AttributeError:
+            # The model does not support dosing regimens
+            return None
+
+        # Return None if regimen is not set
+        if regimen is None:
+            return regimen
+
+        # Make sure that final_time is positive
+        if final_time is None:
+            final_time = np.inf
+
+        # Sort regimen into dataframe
+        regimen_df = pd.DataFrame(columns=['Time', 'Duration', 'Dose'])
+        for dose_event in regimen.events():
+            # Get dose amount
+            dose_rate = dose_event.level()
+            dose_duration = dose_event.duration()
+            dose_amount = dose_rate * dose_duration
+
+            # Get dosing time points
+            start_time = dose_event.start()
+            period = dose_event.period()
+            n_doses = dose_event.multiplier()
+
+            if start_time > final_time:
+                # Dose event exceeds final dose time and is therefore
+                # not registered
+                continue
+
+            if period == 0:
+                # Dose is administered only once
+                regimen_df = regimen_df.append(pd.DataFrame({
+                    'Time': [start_time],
+                    'Duration': [dose_duration],
+                    'Dose': [dose_amount]}))
+
+                # Continue to next dose event
+                continue
+
+            if n_doses == 0:
+                # The dose event would be administered indefinitely, so we
+                # stop with final_time or 1.
+                n_doses = 1
+
+                if np.isfinite(final_time):
+                    n_doses = int(abs(final_time) // period)
+
+            # Construct dose times
+            dose_times = [start_time + n * period for n in range(n_doses)]
+
+            # Make sure that even for finite periodic dose events the final
+            # time is not exceeded
+            dose_times = np.array(dose_times)
+            mask = dose_times <= final_time
+            dose_times = dose_times[mask]
+
+            # Add dose administrations to dataframe
+            regimen_df = regimen_df.append(pd.DataFrame({
+                'Time': dose_times,
+                'Duration': dose_duration,
+                'Dose': dose_amount}))
+
+        # If no dose event before final_time exist, return None
+        if regimen_df.empty:
+            return None
+
+        return regimen_df
+
     def get_n_outputs(self):
         """
         Returns the number of outputs.
@@ -91,6 +303,16 @@ class PredictiveModel(object):
         """
         return self._parameter_names
 
+    def get_submodels(self):
+        """
+        Returns the submodels of the predictive model in form of a dictionary.
+        """
+        submodels = dict({
+            'Mechanistic model': self._mechanistic_model,
+            'Error models': self._error_models})
+
+        return submodels
+
     def n_parameters(self):
         """
         Returns the number of parameters of the predictive model.
@@ -99,10 +321,11 @@ class PredictiveModel(object):
 
     def sample(
             self, parameters, times, n_samples=None, seed=None,
-            return_df=True):
+            return_df=True, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the predictive model and
-        returns them in form of a :class:`pandas.DataFrame`.
+        returns them in form of a :class:`pandas.DataFrame` or a
+        :class:`numpy.ndarray`.
 
         The mechanistic model is solved for the provided parameters and times,
         and samples around this solution are drawn from the error models for
@@ -130,6 +353,11 @@ class PredictiveModel(object):
             :class:`pandas.DataFrame` or a :class:`numpy.ndarray`. If ``False``
             the samples are returned as a numpy array of shape
             ``(n_outputs, n_times, n_samples)``.
+        include_regimen
+            A boolean flag which determines whether the dosing regimen
+            information is included in the output. If the samples are returned
+            as a :class:`numpy.ndarray`, the dosing information is not
+            included.
         """
         parameters = np.asarray(parameters)
         if len(parameters) != self._n_parameters:
@@ -176,21 +404,77 @@ class PredictiveModel(object):
         output_names = self._mechanistic_model.outputs()
         sample_ids = np.arange(start=1, stop=n_samples+1)
         samples = pd.DataFrame(
-            columns=['Sample ID', 'Biomarker', 'Time', 'Sample'])
+            columns=['ID', 'Biomarker', 'Time', 'Sample'])
 
         # Fill in all samples at a specific time point at once
         for output_id, name in enumerate(output_names):
             for time_id, time in enumerate(times):
                 samples = samples.append(pd.DataFrame({
-                    'Sample ID': sample_ids,
+                    'ID': sample_ids,
                     'Time': time,
                     'Biomarker': name,
                     'Sample': container[output_id, time_id, :]}))
 
+        # Add dosing regimen information, if set
+        final_time = np.max(times)
+        regimen = self.get_dosing_regimen(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Add dosing regimen for each sample
+            for _id in sample_ids:
+                regimen['ID'] = _id
+                samples = samples.append(regimen)
+
         return samples
 
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
+        """
+        Sets the dosing regimen with which the compound is administered.
 
-class PriorPredictiveModel(object):
+        By default the dose is administered as a bolus injection (duration on
+        a time scale that is 100 fold smaller than the basic time unit). To
+        model an infusion of the dose over a longer time period, the
+        ``duration`` can be adjusted to the appropriate time scale.
+
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
+
+        .. note::
+            This method requires a :class:`MechanisticModel` that supports
+            compound administration.
+
+        Parameters
+        ----------
+        dose
+            The amount of the compound that is injected at each administration.
+        start
+            Start time of the treatment.
+        duration
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
+            duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
+        num
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
+        """
+        try:
+            self._mechanistic_model.set_dosing_regimen(
+                dose, start, duration, period, num)
+        except AttributeError:
+            # This error means that the mechanistic model is a
+            # PharmacodynamicModel and therefore no dosing regimen can be set.
+            raise AttributeError(
+                'The mechanistic model does not support to set dosing '
+                'regimens. This may be because the underlying '
+                'erlotinib.MechanisticModel is a '
+                'erlotinib.PharmacodynamicModel.')
+
+
+class PriorPredictiveModel(DataDrivenPredictiveModel):
     """
     Implements a model that predicts the change of observable biomarkers over
     time based on the provided distribution of model parameters prior to the
@@ -208,6 +492,8 @@ class PriorPredictiveModel(object):
     from the log-prior distribution, and then sampling from the predictive
     model with those parameters.
 
+    Extends :class:`DataDrivenPredictiveModel`.
+
     Parameters
     ----------
     predictive_model
@@ -218,13 +504,7 @@ class PriorPredictiveModel(object):
     """
 
     def __init__(self, predictive_model, log_prior):
-        super(PriorPredictiveModel, self).__init__()
-
-        # Check inputs
-        if not isinstance(predictive_model, PredictiveModel):
-            raise ValueError(
-                'The provided predictive model has to be an instance of a '
-                'erlotinib.PredictiveModel.')
+        super(PriorPredictiveModel, self).__init__(predictive_model)
 
         if not isinstance(log_prior, pints.LogPrior):
             raise ValueError(
@@ -236,10 +516,9 @@ class PriorPredictiveModel(object):
                 'The dimension of the log-prior has to be the same as the '
                 'number of parameters of the predictive model.')
 
-        self._predictive_model = predictive_model
         self._log_prior = log_prior
 
-    def sample(self, times, n_samples=None, seed=None):
+    def sample(self, times, n_samples=None, seed=None, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the prior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -259,6 +538,9 @@ class PriorPredictiveModel(object):
             at each time point.
         seed
             A seed for the pseudo-random number generator.
+        include_regimen
+            A boolean flag which determines whether the information about the
+            dosing regimen is included.
         """
         # Make sure n_samples is an integer
         if n_samples is None:
@@ -280,7 +562,7 @@ class PriorPredictiveModel(object):
 
         # Create container for samples
         container = pd.DataFrame(
-            columns=['Sample ID', 'Biomarker', 'Time', 'Sample'])
+            columns=['ID', 'Biomarker', 'Time', 'Sample'])
 
         # Get model outputs (biomarkers)
         outputs = self._predictive_model.get_output_names()
@@ -303,9 +585,16 @@ class PriorPredictiveModel(object):
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):
                 container = container.append(pd.DataFrame({
-                    'Sample ID': sample_id,
+                    'ID': sample_id,
                     'Biomarker': name,
                     'Time': times,
                     'Sample': sample[output_id, :, 0]}))
+
+        # Add dosing regimen, if set
+        final_time = np.max(times)
+        regimen = self.get_dosing_regimen(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Append dosing regimen only once for all samples
+            container = container.append(regimen)
 
         return container

@@ -7,10 +7,78 @@
 
 import unittest
 
+import numpy as np
 import pandas as pd
 import pints
 
 import erlotinib as erlo
+
+
+class TestDataDrivenPredictiveModel(unittest.TestCase):
+    """
+    Tests the erlo.DataDrivenPredictiveModel class.
+
+    Since most methods only call methods from the
+    erlo.PredictiveModel the methods are tested rather superficially.
+    """
+    @classmethod
+    def setUpClass(cls):
+        # Get mechanistic model
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = erlo.PharmacodynamicModel(path)
+
+        # Define error models
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+
+        # Create predictive model
+        predictive_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+
+        # Create data driven predictive model
+        cls.model = erlo.DataDrivenPredictiveModel(
+            predictive_model)
+
+    def test_get_dosing_regimen(self):
+        # Pass no final time
+        regimen = self.model.get_dosing_regimen()
+        self.assertIsNone(regimen)
+
+        # Pass final time
+        final_time = 10
+        regimen = self.model.get_dosing_regimen(final_time)
+        self.assertIsNone(regimen)
+
+    def test_get_n_outputs(self):
+        n_outputs = self.model.get_n_outputs()
+        self.assertEqual(n_outputs, 1)
+
+    def test_get_output_names(self):
+        names = self.model.get_output_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'myokit.tumour_volume')
+
+    def test_get_submodels(self):
+        submodels = self.model.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 1)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
+    def test_sample(self):
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.model.sample('times')
+
+    def test_set_dosing_regimen(self):
+        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
+            self.model.set_dosing_regimen(10, 2)
 
 
 class TestPredictiveModel(unittest.TestCase):
@@ -77,6 +145,192 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(names[5], 'Sigma base')
         self.assertEqual(names[6], 'Sigma rel.')
 
+    def test_get_set_dosing_regimen(self):
+        # Test case I: Mechanistic model does not support dosing regimens
+        # (PharmacodynaimcModel)
+        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
+            self.model.set_dosing_regimen(1, 1, 1)
+
+        self.assertIsNone(self.model.get_dosing_regimen())
+
+        # Test case II: Mechanistic model supports dosing regimens
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model.set_administration('central')
+        model = erlo.PredictiveModel(
+            mechanistic_model, self.error_models)
+
+        # Test case II.1: Dosing regimen not set
+        self.assertIsNone(model.get_dosing_regimen())
+
+        # Test case II.2 Set single bolus dose
+        model.set_dosing_regimen(dose=1, start=1)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Test case II.3 Set single infusion
+        model.set_dosing_regimen(dose=1, start=1, duration=1)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 1)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Test case II.4 Multiple doses
+        model.set_dosing_regimen(dose=1, start=1, period=1, num=3)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 3)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Set final time
+        regimen_df = model.get_dosing_regimen(final_time=1.5)
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Set final time, such that regimen dataframe would be empty
+        regimen_df = model.get_dosing_regimen(final_time=0)
+
+        self.assertIsNone(regimen_df, pd.DataFrame)
+
+        # Test case II.3 Indefinite dosing regimen
+        model.set_dosing_regimen(dose=1, start=1, period=1)
+        regimen_df = model.get_dosing_regimen()
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 1)
+        self.assertEqual(times[0], 1)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+        # Set final time
+        regimen_df = model.get_dosing_regimen(final_time=5)
+
+        self.assertIsInstance(regimen_df, pd.DataFrame)
+
+        keys = regimen_df.keys()
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Time')
+        self.assertEqual(keys[1], 'Duration')
+        self.assertEqual(keys[2], 'Dose')
+
+        times = regimen_df['Time'].to_numpy()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        durations = regimen_df['Duration'].unique()
+        self.assertEqual(len(durations), 1)
+        self.assertEqual(durations[0], 0.01)
+
+        doses = regimen_df['Dose'].unique()
+        self.assertEqual(len(doses), 1)
+        self.assertEqual(doses[0], 1)
+
+    def test_get_submodels(self):
+        submodels = self.model.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 1)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
     def test_n_parameters(self):
         self.assertEqual(self.model.n_parameters(), 7)
 
@@ -93,12 +347,12 @@ class TestPredictiveModel(unittest.TestCase):
 
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Sample ID')
+        self.assertEqual(keys[0], 'ID')
         self.assertEqual(keys[1], 'Biomarker')
         self.assertEqual(keys[2], 'Time')
         self.assertEqual(keys[3], 'Sample')
 
-        sample_ids = samples['Sample ID'].unique()
+        sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
@@ -147,12 +401,12 @@ class TestPredictiveModel(unittest.TestCase):
 
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Sample ID')
+        self.assertEqual(keys[0], 'ID')
         self.assertEqual(keys[1], 'Biomarker')
         self.assertEqual(keys[2], 'Time')
         self.assertEqual(keys[3], 'Sample')
 
-        sample_ids = samples['Sample ID'].unique()
+        sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 4)
         self.assertEqual(sample_ids[0], 1)
         self.assertEqual(sample_ids[1], 2)
@@ -221,6 +475,197 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertAlmostEqual(samples[0, 4, 1], -0.47361160445867245)
         self.assertAlmostEqual(samples[0, 4, 2], 1.364551743048893)
         self.assertAlmostEqual(samples[0, 4, 3], 0.5143221311427919)
+
+        # Test case III: Return dosing regimen
+
+        # Test case III.1: PDModel, dosing regimen is not returned even
+        # if flag is True
+        samples = self.model.sample(
+            parameters, times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 0.970159924388273)
+        self.assertAlmostEqual(values[1], -0.3837168004345003)
+        self.assertAlmostEqual(values[2], 1.3172158091846213)
+        self.assertAlmostEqual(values[3], 1.4896478457110898)
+        self.assertAlmostEqual(values[4], -1.4664469447762758)
+
+        # Test case III.2: PKmodel, where the dosing regimen is not set
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model.set_administration('central')
+        model = erlo.PredictiveModel(
+            mechanistic_model, self.error_models)
+
+        # Sample
+        parameters = [1, 1, 1, 1, 1]
+        samples = model.sample(
+            parameters, times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'central.drug_concentration')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 0.19357442536989605)
+        self.assertAlmostEqual(values[1], -0.8873567434686567)
+        self.assertAlmostEqual(values[2], 0.7844710370969462)
+        self.assertAlmostEqual(values[3], 0.9585509622439399)
+        self.assertAlmostEqual(values[4], -1.9500467417155718)
+
+        # Test case III.3: PKmodel, dosing regimen is set
+        model.set_dosing_regimen(1, 1, period=1, num=2)
+
+        # Sample
+        parameters = [1, 1, 1, 1, 1]
+        samples = model.sample(
+            parameters, times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 6)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[4], 'Duration')
+        self.assertEqual(keys[5], 'Dose')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].dropna().unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'central.drug_concentration')
+
+        times = samples['Time'].dropna().unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].dropna().unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 0.19357442536989605)
+        self.assertAlmostEqual(values[1], -0.47051946530234423)
+        self.assertAlmostEqual(values[2], 1.1301703133958951)
+        self.assertAlmostEqual(values[3], 1.1414603643105294)
+        self.assertAlmostEqual(values[4], -1.9399955984363169)
+
+        doses = samples['Dose'].dropna().unique()
+        self.assertEqual(len(doses), 1)
+        self.assertAlmostEqual(doses[0], 1)
+
+        durations = samples['Duration'].dropna().unique()
+        self.assertEqual(len(durations), 1)
+        self.assertAlmostEqual(durations[0], 0.01)
+
+        # Test case III.4: PKmodel, dosing regimen is set, 2 samples
+        # Sample
+        parameters = [1, 1, 1, 1, 1]
+        samples = model.sample(
+            parameters, times, n_samples=2, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 6)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[4], 'Duration')
+        self.assertEqual(keys[5], 'Dose')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 2)
+        self.assertEqual(sample_ids[0], 1)
+        self.assertEqual(sample_ids[1], 2)
+
+        biomarkers = samples['Biomarker'].dropna().unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'central.drug_concentration')
+
+        times = samples['Time'].dropna().unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].dropna().unique()
+        self.assertEqual(len(values), 10)
+        self.assertAlmostEqual(values[0], 0.9959660719183876)
+        self.assertAlmostEqual(values[1], -0.3861061623036009)
+        self.assertAlmostEqual(values[2], 1.2887071287477976)
+        self.assertAlmostEqual(values[3], 2.0146427922545884)
+        self.assertAlmostEqual(values[4], -1.1360658058662318)
+        self.assertAlmostEqual(values[5], -1.2240387200366378)
+        self.assertAlmostEqual(values[6], 0.4075153414639344)
+        self.assertAlmostEqual(values[7], -0.3078411315299712)
+        self.assertAlmostEqual(values[8], 0.12431122545485368)
+        self.assertAlmostEqual(values[9], -0.7816727453841099)
+
+        doses = samples['Dose'].dropna().unique()
+        self.assertEqual(len(doses), 1)
+        self.assertAlmostEqual(doses[0], 1)
+
+        durations = samples['Duration'].dropna().unique()
+        self.assertEqual(len(durations), 1)
+        self.assertAlmostEqual(durations[0], 0.01)
 
     def test_sample_bad_input(self):
         # Parameters are not of length n_parameters
@@ -292,12 +737,12 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Sample ID')
+        self.assertEqual(keys[0], 'ID')
         self.assertEqual(keys[1], 'Biomarker')
         self.assertEqual(keys[2], 'Time')
         self.assertEqual(keys[3], 'Sample')
 
-        sample_ids = samples['Sample ID'].unique()
+        sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
@@ -330,12 +775,12 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
-        self.assertEqual(keys[0], 'Sample ID')
+        self.assertEqual(keys[0], 'ID')
         self.assertEqual(keys[1], 'Biomarker')
         self.assertEqual(keys[2], 'Time')
         self.assertEqual(keys[3], 'Sample')
 
-        sample_ids = samples['Sample ID'].unique()
+        sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 4)
         self.assertEqual(sample_ids[0], 1)
         self.assertEqual(sample_ids[1], 2)
@@ -376,6 +821,145 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertAlmostEqual(values[17], 12.177527343575)
         self.assertAlmostEqual(values[18], -6.435165240274607)
         self.assertAlmostEqual(values[19], 10.471501140030037)
+
+        # Test case III: include dosing regimen
+
+        # Test case III.1: PD model
+        samples = self.model.sample(times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 2.8622881485041396)
+        self.assertAlmostEqual(values[1], 3.7272644272099664)
+        self.assertAlmostEqual(values[2], -2.5604320890107455)
+        self.assertAlmostEqual(values[3], -5.445074975020219)
+        self.assertAlmostEqual(values[4], -8.562594546870663)
+
+        # Test case III.2: PK model, regimen not set
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model.set_administration('central')
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        predictive_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+        log_prior = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(1, 2),
+            pints.UniformLogPrior(2, 3),
+            pints.UniformLogPrior(3, 4),
+            pints.UniformLogPrior(4, 5))
+        model = erlo.PriorPredictiveModel(predictive_model, log_prior)
+
+        # Sample
+        samples = model.sample(times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'central.drug_concentration')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 1.1172798067087084)
+        self.assertAlmostEqual(values[1], 2.4529962526026536)
+        self.assertAlmostEqual(values[2], -2.101794465025344)
+        self.assertAlmostEqual(values[3], -3.2715998653763183)
+        self.assertAlmostEqual(values[4], -7.166884648723757)
+
+        # Test case III.3: PK model, regimen set
+        model.set_dosing_regimen(1, 1, duration=2, period=2, num=2)
+
+        # Sample
+        samples = model.sample(times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 6)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[4], 'Duration')
+        self.assertEqual(keys[5], 'Dose')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 2)
+        self.assertEqual(sample_ids[0], 1)
+        self.assertTrue(np.isnan(sample_ids[1]))
+
+        biomarkers = samples['Biomarker'].dropna().unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'central.drug_concentration')
+
+        times = samples['Time'].dropna().unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].dropna().unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 1.1172798067087084)
+        self.assertAlmostEqual(values[1], 2.600438628319377)
+        self.assertAlmostEqual(values[2], -1.7828831612242066)
+        self.assertAlmostEqual(values[3], -3.678463265192953)
+        self.assertAlmostEqual(values[4], -6.055087048712221)
+
+        doses = samples['Dose'].dropna().unique()
+        self.assertEqual(len(doses), 1)
+        self.assertAlmostEqual(doses[0], 1)
+
+        durations = samples['Duration'].dropna().unique()
+        self.assertEqual(len(durations), 1)
+        self.assertAlmostEqual(durations[0], 2)
 
 
 if __name__ == '__main__':

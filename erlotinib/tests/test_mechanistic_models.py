@@ -334,17 +334,70 @@ class TestPharmacokineticModel(unittest.TestCase):
         # Administer dose directly to central compartment
         model.set_administration(compartment='central')
 
-        # Set dosing regimen
+        # Test case I: Single bolus dose
+        dose = 1
+        start = 5
+        model.set_dosing_regimen(dose, start)
+
+        events = model.dosing_regimen().events()
+        self.assertEqual(len(events), 1)
+
+        num = 0
+        period = 0
+        duration = 0.01
+        event = events[0]
+        self.assertEqual(event.level(), dose / duration)
+        self.assertEqual(event.start(), start)
+        self.assertEqual(event.period(), period)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.multiplier(), num)
+
+        # Test case II: Single infusion
+        dose = 1
+        start = 5
+        duration = 1
+        model.set_dosing_regimen(dose, start, duration)
+
+        events = model.dosing_regimen().events()
+        self.assertEqual(len(events), 1)
+
+        num = 0
+        period = 0
+        event = events[0]
+        self.assertEqual(event.level(), dose / duration)
+        self.assertEqual(event.start(), start)
+        self.assertEqual(event.period(), period)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.multiplier(), num)
+
+        # Test case III: Infinitely many doses
+        dose = 1
+        start = 5
+        period = 1
+        model.set_dosing_regimen(dose, start, period=period)
+
+        events = model.dosing_regimen().events()
+        self.assertEqual(len(events), 1)
+
+        num = 0
+        duration = 0.01
+        event = events[0]
+        self.assertEqual(event.level(), dose / duration)
+        self.assertEqual(event.start(), start)
+        self.assertEqual(event.period(), period)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.multiplier(), num)
+
+        # Test case IV: Finitely many doses
         dose = 10
         start = 3
         duration = 0.01
         period = 5
         num = 4
         model.set_dosing_regimen(
-            dose, start, period, duration, num)
+            dose, start, duration, period, num)
 
-        events = model._sim._protocol.events()
-
+        events = model.dosing_regimen().events()
         self.assertEqual(len(events), 1)
 
         event = events[0]
