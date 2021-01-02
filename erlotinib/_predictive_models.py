@@ -53,7 +53,7 @@ class DataDrivenPredictiveModel(object):
         return self._predictive_model.get_output_names()
 
     def sample(
-            self, times, n_samples=None, seed=None):
+            self, times, n_samples=None, seed=None, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the predictive model and
         returns them in form of a :class:`pandas.DataFrame`.
