@@ -515,8 +515,8 @@ class PharmacokineticModel(MechanisticModel):
         start
             Start time of the treatment.
         duration
-            Duration of dose administration. For bolus injection setting the
-            duration to 1% of the time unit should suffice. By default the
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
             duration is set to 0.01 (bolus).
         period
             Periodicity at which doses are administered. If ``None`` the dose
