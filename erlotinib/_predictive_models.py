@@ -34,12 +34,6 @@ class DataDrivenPredictiveModel(object):
         """
         return self._predictive_model.get_dosing_regimen(final_time)
 
-    def get_submodels(self):
-        """
-        Returns the submodels of the predictive model.
-        """
-        return self._predictive_model.get_submodels()
-
     def get_n_outputs(self):
         """
         Returns the number of outputs.
@@ -51,6 +45,12 @@ class DataDrivenPredictiveModel(object):
         Returns the output names.
         """
         return self._predictive_model.get_output_names()
+
+    def get_submodels(self):
+        """
+        Returns the submodels of the predictive model.
+        """
+        return self._predictive_model.get_submodels()
 
     def sample(
             self, times, n_samples=None, seed=None, include_regimen=False):

@@ -14,6 +14,73 @@ import pints
 import erlotinib as erlo
 
 
+class TestDataDrivenPredictiveModel(unittest.TestCase):
+    """
+    Tests the erlo.DataDrivenPredictiveModel class.
+
+    Since most methods only call methods from the
+    erlo.PredictiveModel the methods are tested rather superficially.
+    """
+    @classmethod
+    def setUpClass(cls):
+        # Get mechanistic model
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = erlo.PharmacodynamicModel(path)
+
+        # Define error models
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+
+        # Create predictive model
+        predictive_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+
+        # Create data driven predictive model
+        cls.model = erlo.DataDrivenPredictiveModel(
+            predictive_model)
+
+    def test_get_dosing_regimen(self):
+        # Pass no final time
+        regimen = self.model.get_dosing_regimen()
+        self.assertIsNone(regimen)
+
+        # Pass final time
+        final_time = 10
+        regimen = self.model.get_dosing_regimen(final_time)
+        self.assertIsNone(regimen)
+
+    def test_get_n_outputs(self):
+        n_outputs = self.model.get_n_outputs()
+        self.assertEqual(n_outputs, 1)
+
+    def test_get_output_names(self):
+        names = self.model.get_output_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'myokit.tumour_volume')
+
+    def test_get_submodels(self):
+        submodels = self.model.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 1)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
+    def test_sample(self):
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.model.sample('times')
+
+    def test_set_dosing_regimen(self):
+        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
+            self.model.set_dosing_regimen(10, 2)
+
+
 class TestPredictiveModel(unittest.TestCase):
     """
     Tests the erlo.PredictiveModel class.
