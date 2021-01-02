@@ -215,8 +215,8 @@ class PredictiveModel(object):
             # Construct dose times
             dose_times = [start_time + n * period for n in range(n_doses)]
 
-            # Make sure that even for finite periodic dose events the final time
-            # is not exceeded
+            # Make sure that even for finite periodic dose events the final
+            # time is not exceeded
             dose_times = np.array(dose_times)
             mask = dose_times <= final_time
             dose_times = dose_times[mask]
@@ -230,10 +230,6 @@ class PredictiveModel(object):
         # If no dose event before final_time exist, return None
         if regimen_df.empty:
             return None
-
-        #TODO:
-        # 1. Integrate the df dosing regimen into the sample result.
-        # 2. Refactor problems
 
         return regimen_df
 
@@ -276,7 +272,8 @@ class PredictiveModel(object):
             return_df=True):
         """
         Samples "measurements" of the biomarkers from the predictive model and
-        returns them in form of a :class:`pandas.DataFrame`.
+        returns them in form of a :class:`pandas.DataFrame` or a
+        :class:`numpy.ndarray`.
 
         The mechanistic model is solved for the provided parameters and times,
         and samples around this solution are drawn from the error models for
@@ -284,6 +281,13 @@ class PredictiveModel(object):
 
         The number of samples for each time point can be specified with
         ``n_samples``.
+
+        If the samples are returned as a :class:`pandas.DataFrame`, the
+        dataframe is structured in a ``ID``, ``Biomarker``, ``Time``,
+        ``Sample``, ``Dose`` and ``Duration`` column. If the samples are
+        returned as a :class:`numpy.ndarray`, the array is of shape
+        ``(n_outputs, n_times, n_samples)`` and contains no information about
+        the dosing regimen.
 
         Parameters
         ----------
@@ -350,13 +354,13 @@ class PredictiveModel(object):
         output_names = self._mechanistic_model.outputs()
         sample_ids = np.arange(start=1, stop=n_samples+1)
         samples = pd.DataFrame(
-            columns=['Sample ID', 'Biomarker', 'Time', 'Sample'])
+            columns=['ID', 'Biomarker', 'Time', 'Sample'])
 
         # Fill in all samples at a specific time point at once
         for output_id, name in enumerate(output_names):
             for time_id, time in enumerate(times):
                 samples = samples.append(pd.DataFrame({
-                    'Sample ID': sample_ids,
+                    'ID': sample_ids,
                     'Time': time,
                     'Biomarker': name,
                     'Sample': container[output_id, time_id, :]}))
