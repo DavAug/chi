@@ -269,7 +269,7 @@ class PredictiveModel(object):
 
     def sample(
             self, parameters, times, n_samples=None, seed=None,
-            return_df=True):
+            return_df=True, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the predictive model and
         returns them in form of a :class:`pandas.DataFrame` or a
@@ -281,13 +281,6 @@ class PredictiveModel(object):
 
         The number of samples for each time point can be specified with
         ``n_samples``.
-
-        If the samples are returned as a :class:`pandas.DataFrame`, the
-        dataframe is structured in a ``ID``, ``Biomarker``, ``Time``,
-        ``Sample``, ``Dose`` and ``Duration`` column. If the samples are
-        returned as a :class:`numpy.ndarray`, the array is of shape
-        ``(n_outputs, n_times, n_samples)`` and contains no information about
-        the dosing regimen.
 
         Parameters
         ----------
@@ -308,6 +301,11 @@ class PredictiveModel(object):
             :class:`pandas.DataFrame` or a :class:`numpy.ndarray`. If ``False``
             the samples are returned as a numpy array of shape
             ``(n_outputs, n_times, n_samples)``.
+        include_regimen
+            A boolean flag which determines whether the dosing regimen
+            information is included in the output. If the samples are returned
+            as a :class:`numpy.ndarray`, the dosing information is not
+            included.
         """
         parameters = np.asarray(parameters)
         if len(parameters) != self._n_parameters:
@@ -364,6 +362,15 @@ class PredictiveModel(object):
                     'Time': time,
                     'Biomarker': name,
                     'Sample': container[output_id, time_id, :]}))
+
+        # Add dosing regimen information, if set
+        final_time = np.max(times)
+        regimen = self.get_dosing_regimen(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Add dosing regimen for each sample
+            for _id in sample_ids:
+                regimen['ID'] = _id
+                samples = samples.append(regimen)
 
         return samples
 
@@ -500,7 +507,7 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
 
         # Create container for samples
         container = pd.DataFrame(
-            columns=['Sample ID', 'Biomarker', 'Time', 'Sample'])
+            columns=['ID', 'Biomarker', 'Time', 'Sample'])
 
         # Get model outputs (biomarkers)
         outputs = self._predictive_model.get_output_names()
@@ -523,7 +530,7 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):
                 container = container.append(pd.DataFrame({
-                    'Sample ID': sample_id,
+                    'ID': sample_id,
                     'Biomarker': name,
                     'Time': times,
                     'Sample': sample[output_id, :, 0]}))
