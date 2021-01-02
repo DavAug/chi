@@ -9,10 +9,6 @@ Population Models
 Population models in erlotinib_ can be used to model the variation
 of mechanistic model parameters or error model parameters across individuals.
 
-Base classes
-------------
-- :class:`PopulationModel`
-
 Functional classes
 ------------------
 
@@ -21,7 +17,7 @@ Functional classes
 - :class:`PooledModel`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: HeterogeneousModel
     :members:
@@ -40,6 +36,13 @@ Detailed API
     :inherited-members:
     :special-members:
     :exclude-members: __init__, __weakref__
+
+Base classes
+------------
+- :class:`PopulationModel`
+
+Detailed API
+^^^^^^^^^^^^
 
 .. autoclass:: PopulationModel
     :members:

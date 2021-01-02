@@ -24,7 +24,7 @@ Functional classes
 - :class:`PKTimeSeriesPlot`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: PDTimeSeriesPlot
     :members:

@@ -28,7 +28,7 @@ Functional classes
 - :class:`ProblemModellingController`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: InverseProblem
     :members:

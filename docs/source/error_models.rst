@@ -10,22 +10,25 @@ Error models in erlotinib_ model the deviations of experimentally
 observed pharmacokinetic and pharmacodynamic biomarkers and
 the predictions of a :class:`MechanisticModel`.
 
-Base classes
-------------
-
-- :class:`ErrorModel`
-
 Functional classes
 ------------------
 
 - :class:`ConstantAndMultiplicativeGaussianErrorModel`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: ConstantAndMultiplicativeGaussianErrorModel
     :members:
     :inherited-members:
+
+Base classes
+------------
+
+- :class:`ErrorModel`
+
+Detailed API
+^^^^^^^^^^^^
 
 .. autoclass:: ErrorModel
     :members:

@@ -18,7 +18,7 @@ Functional classes
 - :class:`ParameterEstimatePlot`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: MarginalPosteriorPlot
     :members:

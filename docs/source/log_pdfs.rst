@@ -18,7 +18,7 @@ Functional classes
 - :class:`ReducedLogPDF`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: HierarchicalLogLikelihood
     :members:

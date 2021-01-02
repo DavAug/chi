@@ -29,8 +29,8 @@ Base classes
 - :class:`SingleFigure`
 - :class:`SingleSubplotFigure`
 
-Detailed API of base classes
-----------------------------
+Detailed API
+^^^^^^^^^^^^
 
 .. autoclass:: MultiFigure
     :members:

@@ -19,7 +19,7 @@ Functional classes
 - :class:`PDPredictivePlot`
 
 Detailed API
-------------
+^^^^^^^^^^^^
 
 .. autoclass:: PDPredictivePlot
     :members:
