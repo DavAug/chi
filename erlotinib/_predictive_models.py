@@ -234,16 +234,6 @@ class PredictiveModel(object):
 
         return regimen_df
 
-    def get_submodels(self):
-        """
-        Returns the submodels of the predictive model in form of a dictionary.
-        """
-        submodels = dict({
-            'Mechanistic model': self._mechanistic_model,
-            'Error models': self._error_models})
-
-        return submodels
-
     def get_n_outputs(self):
         """
         Returns the number of outputs.
@@ -261,6 +251,16 @@ class PredictiveModel(object):
         Returns the parameter names of the predictive model.
         """
         return self._parameter_names
+
+    def get_submodels(self):
+        """
+        Returns the submodels of the predictive model in form of a dictionary.
+        """
+        submodels = dict({
+            'Mechanistic model': self._mechanistic_model,
+            'Error models': self._error_models})
+
+        return submodels
 
     def n_parameters(self):
         """
