@@ -249,6 +249,21 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(len(doses), 1)
         self.assertEqual(doses[0], 1)
 
+    def test_get_submodels(self):
+        submodels = self.model.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 1)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
     def test_n_parameters(self):
         self.assertEqual(self.model.n_parameters(), 7)
 
