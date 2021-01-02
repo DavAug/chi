@@ -776,7 +776,8 @@ class TestProblemModellingControllerPKProblem(unittest.TestCase):
         times = [0, 1, 2, 2, np.nan, 4, 1, 3]
         plasma_conc = [np.nan, 0.3, 0.2, 0.5, 0.1, 0.2, 0.234, np.nan]
         dose = [3.4, np.nan, np.nan, 0.5, 0.5, 0.5, np.nan, np.nan]
-        duration = [0.01, np.nan, 0.01, 0.01, np.nan, 0.01, np.nan, np.nan]
+        duration = [
+            0.01, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
         cls.data = pd.DataFrame({
             'ID': ids,
             'Time': times,
