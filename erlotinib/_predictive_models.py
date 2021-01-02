@@ -60,12 +60,13 @@ class DataDrivenPredictiveModel(object):
         """
         raise NotImplementedError
 
-    def set_dosing_regimen(self, dose, start, period, duration=0.01, num=0):
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
         """
         self._predictive_model.set_dosing_regimen(
-            dose, start, period, duration, num)
+            dose, start, duration, period, num)
 
 
 class PredictiveModel(object):
