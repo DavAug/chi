@@ -207,7 +207,7 @@ class PredictiveModel(object):
                 n_doses = 1
 
                 if np.isfinite(final_time):
-                    n_doses = int(abs(final_time)e // period)
+                    n_doses = int(abs(final_time) // period)
 
             # Construct dose times
             dose_times = [start_time + n * period for n in range(n_doses)]
