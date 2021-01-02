@@ -14,7 +14,8 @@ import erlotinib as erlo
 
 class DataDrivenPredictiveModel(object):
     """
-    A base class for predictive PK, PD, and PKPD models. TODO:
+    A base class for predictive models whose parameters are either drawn from
+    distribution, or are set by a :class:`pandas.DataFrame`.
     """
 
     def __init__(self, predictive_model):
@@ -64,6 +65,36 @@ class DataDrivenPredictiveModel(object):
             self, dose, start, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
+
+        By default the dose is administered as a bolus injection (duration on
+        a time scale that is 100 fold smaller than the basic time unit). To
+        model an infusion of the dose over a longer time period, the
+        ``duration`` can be adjusted to the appropriate time scale.
+
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
+
+        .. note::
+            This method requires a :class:`MechanisticModel` that supports
+            compound administration.
+
+        Parameters
+        ----------
+        dose
+            The amount of the compound that is injected at each administration.
+        start
+            Start time of the treatment.
+        duration
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
+            duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
+        num
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
         """
         self._predictive_model.set_dosing_regimen(
             dose, start, duration, period, num)
@@ -395,8 +426,8 @@ class PredictiveModel(object):
         start
             Start time of the treatment.
         duration
-            Duration of dose administration. For bolus injection setting the
-            duration to 1% of the time unit should suffice. By default the
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
             duration is set to 0.01 (bolus).
         period
             Periodicity at which doses are administered. If ``None`` the dose
