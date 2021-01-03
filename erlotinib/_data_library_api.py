@@ -17,8 +17,9 @@ class DataLibrary(object):
     Each method corresponds to a separate dataset, which will return
     the corresponding dataset in form of a :class:`pandas.DataFrame`.
 
-    All dataset are organised in 6 columns:
-    ID | Time | Time unit | Biomarker | Measurement | Biomarker unit.
+    All dataset are organised in 9 columns:
+    ID | Time | Time unit | Biomarker | Measurement | Biomarker unit | Dose |
+    Dose unit | Duration.
 
     References
     ----------
@@ -109,10 +110,6 @@ class DataLibrary(object):
         The blood plasma concentration of erlotinib was measured on day 10 and
         16, while the tumour volume of each mouse was monitored over a period
         of 30 days and measured a couple times a week.
-
-        The column keys are '#ID', 'TIME in day', 'DOSE in mg',
-        'PLASMA CONCENTRATION in mg/L', 'TUMOUR VOLUME in cm^3' and
-        'BODY WEIGHT in g'.
         """
         file_name = 'lxf_medium_erlotinib_dose.csv'
         data = pd.read_csv(self._path + file_name)
