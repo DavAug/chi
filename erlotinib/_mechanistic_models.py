@@ -57,6 +57,14 @@ class MechanisticModel(object):
         for id_var, var in enumerate(self._const_names):
             self._sim.set_constant(var, float(parameters[id_var]))
 
+    def _set_state(self, parameters):
+        """
+        Sets initial values of states.
+        """
+        parameters = np.array(parameters)
+        parameters = parameters[self._original_order]
+        self._sim.set_state(parameters)
+
     def _set_number_and_names(self, model):
         """
         Sets the number of states, parameters and outputs, as well as their
@@ -68,10 +76,14 @@ class MechanisticModel(object):
         self._n_parameters = self._n_states + n_const
 
         # Get constant variable names and state names
-        self._state_names = sorted(
-            [var.qname() for var in model.states()])
+        names = [var.qname() for var in model.states()]
+        self._state_names = sorted(names)
         self._const_names = sorted(
             [var.qname() for var in model.variables(const=True)])
+
+        # Remember original order of state names for simulation
+        order_after_sort = np.argsort(names)
+        self._original_order = np.argsort(order_after_sort)
 
         # Set default parameter names
         self._parameter_names = self._state_names + self._const_names
@@ -177,7 +189,7 @@ class MechanisticModel(object):
         self._sim.reset()
 
         # Set initial conditions
-        self._sim.set_state(parameters[:self._n_states])
+        self._set_state(parameters[:self._n_states])
 
         # Set constant model parameters
         self._set_const(parameters[self._n_states:])
