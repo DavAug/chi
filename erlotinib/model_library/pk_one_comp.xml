@@ -41,6 +41,7 @@
           <math xmlns="http://www.w3.org/1998/Math/MathML">
             <apply>
               <times/>
+              <ci> central </ci>
               <ci> elimination_rate </ci>
               <ci> drug </ci>
             </apply>
