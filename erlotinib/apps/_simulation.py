@@ -34,7 +34,7 @@ class PDSimulationController(apps.BaseApp):
         # Set up app with data and model
         app = PDSimulationController()
         app.add_model(model)
-        app.add_data(data)
+        app.add_data(data, biomarker='<Biomarker name>')
 
         # Define a simulation callback that updates the simulation according
         # to the sliders
@@ -178,7 +178,8 @@ class PDSimulationController(apps.BaseApp):
         return result
 
     def add_data(
-            self, data, id_key='ID', time_key='Time', biom_key='Biomarker'):
+            self, data, biomarker, id_key='ID', time_key='Time',
+            biom_key='Biomarker', meas_key='Measurement'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
@@ -192,6 +193,9 @@ class PDSimulationController(apps.BaseApp):
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
+        biomarker
+            Selector for the displayed biomarker. The provided value has to be
+            an element of the biomarker column.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -202,9 +206,13 @@ class PDSimulationController(apps.BaseApp):
         biom_key
             Key label of the :class:`DataFrame` which specifies the PD
             biomarker column. Defaults to ``'Biomarker'``.
+        meas_key
+            Key label of the :class:`DataFrame` which specifies the column of
+            the measured PD biomarker. Defaults to ``'Measurement'``.
         """
         # Add data to figure
-        self._fig.add_data(data, id_key, time_key, biom_key)
+        self._fig.add_data(
+            data, biomarker, id_key, time_key, biom_key, meas_key)
 
         # Set axes labels to time_key and biom_key
         self._fig.set_axis_labels(xlabel=time_key, ylabel=biom_key)
@@ -392,9 +400,7 @@ if __name__ == "__main__":
     from dash.dependencies import Input, Output
 
     # Get data and model
-    data = erlo.DataLibrary().lung_cancer_control_group(True)
-    data = data.rename(columns={
-        'Time': 'Time in day', 'Biomarker': 'Tumour volume in cm^3'})
+    data = erlo.DataLibrary().lung_cancer_control_group()
     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
     model = erlo.PharmacodynamicModel(path)
     model.set_parameter_names(names={
@@ -407,8 +413,7 @@ if __name__ == "__main__":
     # Set up demo app
     app = PDSimulationController()
     app.add_model(model)
-    app.add_data(
-        data, time_key='Time in day', biom_key='Tumour volume in cm^3')
+    app.add_data(data, biomarker='Tumour volume')
 
     # Define a simulation callback
     sliders = app.slider_ids()
