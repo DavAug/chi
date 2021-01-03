@@ -137,17 +137,20 @@ class TestLungCancerLowErlotinibDoseGroup(unittest.TestCase):
         keys = self.data.keys()
 
         n_keys = len(keys)
-        self.assertEqual(n_keys, 6)
+        self.assertEqual(n_keys, 9)
 
-        self.assertEqual(keys[0], '#ID')
-        self.assertEqual(keys[1], 'TIME in day')
-        self.assertEqual(keys[2], 'DOSE in mg')
-        self.assertEqual(keys[3], 'PLASMA CONCENTRATION in mg/L')
-        self.assertEqual(keys[4], 'TUMOUR VOLUME in cm^3')
-        self.assertEqual(keys[5], 'BODY WEIGHT in g')
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Time unit')
+        self.assertEqual(keys[3], 'Biomarker')
+        self.assertEqual(keys[4], 'Measurement')
+        self.assertEqual(keys[5], 'Biomarker unit')
+        self.assertEqual(keys[6], 'Dose')
+        self.assertEqual(keys[7], 'Dose unit')
+        self.assertEqual(keys[8], 'Duration')
 
     def test_individuals(self):
-        ids = sorted(self.data['#ID'].unique())
+        ids = sorted(self.data['ID'].unique())
 
         n_ids = len(ids)
         self.assertEqual(n_ids, 8)

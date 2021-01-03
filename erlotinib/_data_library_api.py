@@ -62,10 +62,6 @@ class DataLibrary(object):
         The blood plasma concentration of erlotinib was measured on day 14,
         while the tumour volume of each mouse was monitored over a period
         of 30 days and measured a couple times a week.
-
-        The column keys are '#ID', 'TIME in day', 'DOSE in mg',
-        'PLASMA CONCENTRATION in mg/L', 'TUMOUR VOLUME in cm^3' and
-        'BODY WEIGHT in g'.
         """
         file_name = 'lxf_high_erlotinib_dose.csv'
         data = pd.read_csv(self._path + file_name)
@@ -86,10 +82,6 @@ class DataLibrary(object):
         The blood plasma concentration of erlotinib was measured on day 10 and
         16, while the tumour volume of each mouse was monitored over a period
         of 30 days and measured a couple times a week.
-
-        The column keys are '#ID', 'TIME in day', 'DOSE in mg',
-        'PLASMA CONCENTRATION in mg/L', 'TUMOUR VOLUME in cm^3' and
-        'BODY WEIGHT in g'.
         """
         file_name = 'lxf_low_erlotinib_dose.csv'
         data = pd.read_csv(self._path + file_name)
