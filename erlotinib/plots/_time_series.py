@@ -159,7 +159,7 @@ class PDPredictivePlot(eplt.SingleFigure):
 
     def add_data(
             self, data, biomarker, id_key='ID', time_key='Time',
-            biom_key='Biomarker', meas_key='Measurememt'):
+            biom_key='Biomarker', meas_key='Measurement'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
@@ -375,7 +375,7 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
 
     def add_data(
             self, data, biomarker, id_key='ID', time_key='Time',
-            biom_key='Biomarker', meas_key='Measurememt'):
+            biom_key='Biomarker', meas_key='Measurement'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
