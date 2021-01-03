@@ -17,6 +17,9 @@ class DataLibrary(object):
     Each method corresponds to a separate dataset, which will return
     the corresponding dataset in form of a :class:`pandas.DataFrame`.
 
+    All dataset are organised in 6 columns:
+    ID | Time | Time unit | Biomarker | Measurement | Biomarker unit.
+
     References
     ----------
     .. [1] Eigenmann, M. J. et al., Combining Nonclinical Experiments with
@@ -29,7 +32,7 @@ class DataLibrary(object):
         self._path = os.path.dirname(os.path.abspath(__file__))
         self._path += '/data_library/'
 
-    def lung_cancer_control_group(self, standardised=False):
+    def lung_cancer_control_group(self):
         r"""
         Returns the lung cancer control group data published in [1]_ as a
         :class:`pandas.DataFrame`.
@@ -38,27 +41,9 @@ class DataLibrary(object):
         patient-derived lung cancer implants. The tumour volume of each
         mouse was monitored over a period of 30 days and measured a couple
         times a week.
-
-        The original column keys are '#ID', 'TIME in day' and 'TUMOUR VOLUME in
-        cm^3'. If ``standardised=True`` those column keys are changed to the
-        generic keys 'ID', 'Time', and 'Biomarker', which are also used by
-        other classes.
-
-        Parameters
-        ----------
-        standardised
-            A boolean flag indicating whether the columns are supposed to be
-            standardised.
-
         """
         file_name = 'lxf_control_growth.csv'
         data = pd.read_csv(self._path + file_name)
-
-        if standardised:
-            data = data.rename(columns={
-                '#ID': 'ID',
-                'TIME in day': 'Time',
-                'TUMOUR VOLUME in cm^3': 'Biomarker'})
 
         return data
 

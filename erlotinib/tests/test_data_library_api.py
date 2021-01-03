@@ -51,21 +51,22 @@ class TestLungCancerControlGroup(unittest.TestCase):
     def setUpClass(cls):
         lib = erlo.DataLibrary()
         cls.data = lib.lung_cancer_control_group()
-        cls.standardised_data = lib.lung_cancer_control_group(True)
 
     def test_column_keys(self):
         keys = self.data.keys()
 
         n_keys = len(keys)
-        self.assertEqual(n_keys, 4)
+        self.assertEqual(n_keys, 6)
 
-        self.assertEqual(keys[0], '#ID')
-        self.assertEqual(keys[1], 'TIME in day')
-        self.assertEqual(keys[2], 'TUMOUR VOLUME in cm^3')
-        self.assertEqual(keys[3], 'BODY WEIGHT in g')
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Time unit')
+        self.assertEqual(keys[3], 'Biomarker')
+        self.assertEqual(keys[4], 'Measurement')
+        self.assertEqual(keys[5], 'Biomarker unit')
 
     def test_individuals(self):
-        ids = sorted(self.data['#ID'].unique())
+        ids = sorted(self.data['ID'].unique())
 
         n_ids = len(ids)
         self.assertEqual(n_ids, 8)
@@ -78,17 +79,6 @@ class TestLungCancerControlGroup(unittest.TestCase):
         self.assertEqual(ids[5], 155)
         self.assertEqual(ids[6], 169)
         self.assertEqual(ids[7], 170)
-
-    def test_standardised_column_keys(self):
-        keys = self.standardised_data.keys()
-
-        n_keys = len(keys)
-        self.assertEqual(n_keys, 4)
-
-        self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Time')
-        self.assertEqual(keys[2], 'Biomarker')
-        self.assertEqual(keys[3], 'BODY WEIGHT in g')
 
 
 class TestLungCancerHighErlotinibDoseGroup(unittest.TestCase):
