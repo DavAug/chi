@@ -221,8 +221,8 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         # Create a unique ID for the samples
         self._posterior = posterior_samples[[id_key, sample_key, param_key]]
         self._posterior[iter_key] = \
-            'Iteration: ' + posterior_samples[iter_key] + \
-            'Run: ' + posterior_samples[run_key]
+            'Iteration: ' + posterior_samples[iter_key].apply(str) + \
+            'Run: ' + posterior_samples[run_key].apply(str)
 
     def sample(
             self, times, n_samples=None, seed=None, individual=None,
@@ -314,9 +314,10 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 seed += 1
 
             # Sample parameter
-            sample_id = posterior[self._iter_key].sample(random_state=seed)
+            sample_id = posterior[
+                self._iter_key].sample(random_state=seed).iloc[0]
             mask = posterior[self._iter_key] == sample_id
-            df_params = posterior[mask][self._param_key, self._sample_key]
+            df_params = posterior[mask][[self._param_key, self._sample_key]]
 
             # Sort parameters in order expected from model
             parameters = []
@@ -401,16 +402,93 @@ class PredictiveModel(object):
                 'Wrong number of error models. One error model has to be '
                 'provided for each mechanistic error model.')
 
+        # Rename error model parameters, if more that one output
+        if n_outputs > 1:
+            # Get output names
+            outputs = mechanistic_model.outputs()
+
+            for output_id, error_model in enumerate(error_models):
+                # Get original parameter names
+                names = error_model.get_parameter_names()
+
+                # Prepend output name
+                output = outputs[output_id]
+                names = [output + name for name in names]
+
+                # Set new parameter names
+                error_model.set_parameter_names(names)
+
         # Remember models
         self._mechanistic_model = mechanistic_model
         self._error_models = error_models
 
         # Set parameter names and number of parameters
+        self._set_number_and_parameter_names()
+
+    def _set_number_and_parameter_names(self):
+        """
+        Sets the number and names of the free model parameters.
+        """
+        # Get mechanistic model parameters
         parameter_names = self._mechanistic_model.parameters()
-        for error_model in error_models:
+
+        # Get error model parameters
+        for error_model in self._error_models:
             parameter_names += error_model.get_parameter_names()
+
+        # Update number and names
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
+
+    def fix_model_parameters(self, name_value_dict):
+        #TODO:
+        # 1. Use Reduced M + E Model to implement this method
+        # 2. Change get-set names
+        # 3. Change sample method
+        # 4. Change submodels method
+        # 5. Test RMM
+        # 6. Test REM
+        # 7. Test fix model parameters PM
+        # 8. Test PosteriorPredictiveModel
+        # 9. Complete notebook
+
+        # Check type of dictionanry
+        try:
+            name_value_dict = dict(name_value_dict)
+        except TypeError:
+            raise ValueError(
+                'The name-value dictionary has to be convertable to a python '
+                'dictionary.')
+
+        # Get submodels
+        mechanistic_model = self._mechanistic_model
+        error_models = self._error_models
+
+        # Convert models to reduced models
+        mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        for model_id, error_model in enumerate(error_models):
+            error_models[model_id] = erlo.ReducedErrorModel(error_model)
+
+        # Fix model parameters
+        mechanistic_model.fix_parameters(name_value_dict)
+        for error_model in error_models:
+            error_model.fix_parameters(name_value_dict)
+
+        # If no parameters are fixed, get original model back
+        if mechanistic_model._fixed_params_values is None:
+            mechanistic_model = mechanistic_model.mechanistic_model()
+
+        for model_id, error_model in enumerate(error_models):
+            if error_model._fixed_params_values is None:
+                error_model = error_model.get_error_model()
+                error_models[model_id] = error_model
+
+        # Safe reduced models
+        self._mechanistic_model = mechanistic_model
+        self._error_models = error_models
+
+        # Update names and number of parameters
+        self._set_number_and_parameter_names()
 
     def get_dosing_regimen(self, final_time=None):
         """
@@ -534,9 +612,20 @@ class PredictiveModel(object):
         """
         Returns the submodels of the predictive model in form of a dictionary.
         """
+        # Get original submodels
+        mechanistic_model = self._mechanistic_model
+        if isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+            mechanistic_model = mechanistic_model.mechanistic_model()
+
+        error_models = []
+        for error_model in self._error_models:
+            if isinstance(error_model, erlo.ReducedErrorModel):
+                error_model = error_model.get_error_model()
+                error_models.append(error_model)
+
         submodels = dict({
-            'Mechanistic model': self._mechanistic_model,
-            'Error models': self._error_models})
+            'Mechanistic model': mechanistic_model,
+            'Error models': error_models})
 
         return submodels
 
