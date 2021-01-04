@@ -22,7 +22,11 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Set up toy problem
-        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        data = data[mask]
+        data = data[['ID', 'Time', 'Measurement']].rename(
+            columns={'Measurement': 'Biomarker'})
         cls.n_ids = len(data['ID'].unique())
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
