@@ -688,7 +688,7 @@ class ReducedMechanisticModel(object):
             A dictionary with model parameter names as keys, and parameter
             value as values.
         """
-        # Check type of dictionanry
+        # Check type
         try:
             name_value_dict = dict(name_value_dict)
         except TypeError:
