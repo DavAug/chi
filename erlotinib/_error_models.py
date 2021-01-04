@@ -360,6 +360,12 @@ class ReducedErrorModel(object):
             self._fixed_params_mask = None
             self._fixed_params_values = None
 
+    def get_error_model(self):
+        """
+        Returns the original error model.
+        """
+        return self._error_model
+
     def get_parameter_names(self):
         """
         Returns the names of the error model parameters.
