@@ -688,6 +688,14 @@ class ReducedMechanisticModel(object):
             A dictionary with model parameter names as keys, and parameter
             value as values.
         """
+        # Check type of dictionanry
+        try:
+            name_value_dict = dict(name_value_dict)
+        except TypeError:
+            raise ValueError(
+                'The name-value dictionary has to be convertable to a python '
+                'dictionary.')
+
         # If no model parameters have been fixed before, instantiate a mask
         # and values
         if self._fixed_params_mask is None:
