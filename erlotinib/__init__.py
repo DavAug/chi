@@ -16,7 +16,8 @@ from ._data_library_api import (  # noqa
 
 from ._error_models import (  # noqa
     ConstantAndMultiplicativeGaussianErrorModel,
-    ErrorModel
+    ErrorModel,
+    ReducedErrorModel
 )
 
 from ._log_pdfs import (  # noqa
@@ -28,7 +29,8 @@ from ._log_pdfs import (  # noqa
 from ._mechanistic_models import (  # noqa
     MechanisticModel,
     PharmacodynamicModel,
-    PharmacokineticModel
+    PharmacokineticModel,
+    ReducedMechanisticModel
 )
 
 from ._model_library_api import (  # noqa
