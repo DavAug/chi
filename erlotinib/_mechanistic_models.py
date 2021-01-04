@@ -859,7 +859,7 @@ class ReducedMechanisticModel(object):
             A list of quantifiable variable names of the :class:`myokit.Model`,
             e.g. `compartment.variable`.
         """
-        self._mechanistic_model.set_ouputs(outputs)
+        self._mechanistic_model.set_outputs(outputs)
 
     def set_parameter_names(self, names):
         """
