@@ -24,9 +24,11 @@ class TestInferenceController(unittest.TestCase):
         # Get test data and model
         data = erlo.DataLibrary().lung_cancer_control_group()
         individual = 40
-        mask = data['#ID'] == individual  # Arbitrary test id
-        times = data[mask]['TIME in day'].to_numpy()
-        observed_volumes = data[mask]['TUMOUR VOLUME in cm^3'].to_numpy()
+        mask = data['ID'] == individual  # Arbitrary test id
+        data = data[mask]
+        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        times = data[mask]['Time'].to_numpy()
+        observed_volumes = data[mask]['Measurement'].to_numpy()
 
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
@@ -130,7 +132,11 @@ class TestOptimisationController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        data = data[mask]
+        data = data[['ID', 'Time', 'Measurement']].rename(
+            columns={'Measurement': 'Biomarker'})
         problem = erlo.ProblemModellingController(data)
 
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
@@ -259,7 +265,11 @@ class TestOptimisationController(unittest.TestCase):
         # (CMAES returns NAN for 1-dim problems)
 
         # Get test data and model
-        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        data = data[mask]
+        data = data[['ID', 'Time', 'Measurement']].rename(
+            columns={'Measurement': 'Biomarker'})
         problem = erlo.ProblemModellingController(data)
 
         # Create inverse problem
@@ -322,7 +332,11 @@ class TestSamplingController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        data = erlo.DataLibrary().lung_cancer_control_group(standardised=True)
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        data = data[mask]
+        data = data[['ID', 'Time', 'Measurement']].rename(
+            columns={'Measurement': 'Biomarker'})
         problem = erlo.ProblemModellingController(data)
 
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
