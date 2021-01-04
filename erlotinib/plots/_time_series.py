@@ -396,7 +396,7 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
         biomarker
-            The predicted bimoarker. This argument is used to determine the
+            The measured bimoarker. This argument is used to determine the
             relevant rows in the dataframe. If ``None``, the first biomarker
             type in the biomarker column is selected.
         id_key
@@ -613,7 +613,7 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
         biomarker
-            The predicted bimoarker. This argument is used to determine the
+            The measured bimoarker. This argument is used to determine the
             relevant rows in the dataframe. If ``None``, the first biomarker
             type in the biomarker column is selected.
         id_key
