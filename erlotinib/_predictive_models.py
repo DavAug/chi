@@ -219,10 +219,11 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         posterior_samples = posterior_samples[mask]
 
         # Create a unique ID for the samples
-        self._posterior = posterior_samples[[id_key, sample_key, param_key]]
-        self._posterior[iter_key] = \
+        self._posterior = posterior_samples[
+            [id_key, sample_key, param_key]].copy()
+        self._posterior.loc[:, iter_key] = \
             'Iteration: ' + posterior_samples[iter_key].apply(str) + \
-            'Run: ' + posterior_samples[run_key].apply(str)
+            ', Run: ' + posterior_samples[run_key].apply(str)
 
     def sample(
             self, times, n_samples=None, seed=None, individual=None,
@@ -314,9 +315,9 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 seed += 1
 
             # Sample parameter
-            sample_id = posterior[
+            posterior_sample_id = posterior[
                 self._iter_key].sample(random_state=seed).iloc[0]
-            mask = posterior[self._iter_key] == sample_id
+            mask = posterior[self._iter_key] == posterior_sample_id
             df_params = posterior[mask][[self._param_key, self._sample_key]]
 
             # Sort parameters in order expected from model
