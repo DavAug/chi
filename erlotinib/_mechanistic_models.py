@@ -757,7 +757,7 @@ class ReducedMechanisticModel(object):
         """
         Returns the output names of the model.
         """
-        return self._mechanistic_model.ouputs()
+        return self._mechanistic_model.outputs()
 
     def parameters(self):
         """
