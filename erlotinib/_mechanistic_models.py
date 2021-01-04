@@ -634,3 +634,216 @@ class PharmacokineticModel(MechanisticModel):
                 'The name does not match a model variable.')
 
         self._pd_output = name
+
+
+class ReducedMechanisticModel(object):
+    """
+    A class that can be used to permanently fix model parameters of a
+    :class:`MechanisticModel` instance.
+
+    This may be useful to explore simplifies versions of a model before
+    defining a new SBML file.
+    """
+
+    def __init__(self, mechanistic_model):
+        # Check input
+        if not isinstance(mechanistic_model, MechanisticModel):
+            raise ValueError(
+                'The mechanistic model has to be an instance of a '
+                'erlotinib.MechanisticModel')
+
+        self._mechanistic_model = mechanistic_model
+
+    def administration(self):
+        """
+        Returns the mode of administration in form of a dictionary.
+
+        The dictionary has the keys 'compartment' and 'direct'. The former
+        provides information about which compartment is dosed, and the latter
+        whether the dose is administered directly ot indirectly to the
+        compartment.
+
+        If the model does not support a dose administration, ``None`` is
+        returned.
+        """
+        try:
+            return self._mechanistic_model.administration()
+        except AttributeError:
+            return None
+
+    def dosing_regimen(self):
+        """
+        Returns the dosing regimen of the compound in form of a
+        :class:`myokit.Protocol`. If the protocol has not been set, ``None`` is
+        returned.
+
+        If the model does not support a dose administration, ``None`` is
+        returned.
+        """
+        try:
+            return self._mechanistic_model.dosing_regimen()
+        except AttributeError:
+            return None
+
+    def mechanistic_model(self):
+        """
+        Returns the original mechanistic model.
+        """
+        return self._mechanistic_model
+
+    def n_outputs(self):
+        """
+        Returns the number of output dimensions.
+
+        By default this is the number of states.
+        """
+        return self._mechanistic_model.n_outputs()
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters in the model.
+
+        Parameters of the model are initial state values and structural
+        parameter values.
+        """
+        #TODO:
+        return self._mechanistic_model.n_parameters()
+
+    def outputs(self):
+        """
+        Returns the output names of the model.
+        """
+        return self._mechanistic_model.ouputs()
+
+    def parameters(self):
+        """
+        Returns the parameter names of the model.
+        """
+        #TODO:
+        return self._mechanistic_model.parameters()
+
+    def pd_output(self):
+        """
+        Returns the variable which interacts with the pharmacodynamic model.
+        In most models this will be the concentration of the drug in the
+        central compartment.
+
+        This variable is mapped to the
+        :meth:`erlotinib.PharmacodynamicModel.pk_input` variable when a
+        :class:`PKPDModel` is instantiated.
+
+        Defaults to ``None`` or ``central.drug_concentration`` if the latter is
+        among the model parameters.
+
+        If the model does not support a pd output, ``None`` is returned.
+        """
+        try:
+            return self._mechanistic_model.pd_output()
+        except AttributeError:
+            return None
+
+    def pk_input(self):
+        """
+        Returns the pharmacokinetic input variable. In most models this will be
+        the concentration of the drug.
+
+        Defaults to ``None`` or ``myokit.drug_concentration`` if the latter is
+        among the model parameters.
+
+        If the model does not support a pk input, ``None`` is returned.
+        """
+        try:
+            return self._mechanistic_model.pk_input()
+        except AttributeError:
+            return None
+
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
+        """
+        Sets the dosing regimen with which the compound is administered.
+
+        The route of administration can be set with :meth:`set_administration`.
+        However, the type of administration, e.g. bolus injection or infusion,
+        may be controlled with the duration input.
+
+        By default the dose is administered as a bolus injection (duration on
+        a time scale that is 100 fold smaller than the basic time unit). To
+        model an infusion of the dose over a longer time period, the
+        ``duration`` can be adjusted to the appropriate time scale.
+
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
+
+        Parameters
+        ----------
+        dose
+            The amount of the compound that is injected at each administration.
+        start
+            Start time of the treatment.
+        duration
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
+            duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
+        num
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
+        """
+        try:
+            self._mechanistic_model.set_dosing_regimen(
+                dose, start, duration, period, num)
+        except AttributeError:
+            raise AttributeError(
+                'The mechanistic model does not support dosing regimens.')
+
+    def set_outputs(self, outputs):
+        """
+        Sets outputs of the model.
+
+        Parameters
+        ----------
+        outputs
+            A list of quantifiable variable names of the :class:`myokit.Model`,
+            e.g. `compartment.variable`.
+        """
+        self._mechanistic_model.set_ouputs(outputs)
+
+    def set_parameter_names(self, names):
+        """
+        Assigns names to the parameters. By default the :class:`myokit.Model`
+        names are assigned to the parameters.
+
+        Parameters
+        ----------
+        names
+            A dictionary that maps the current parameter names to new names.
+        """
+        self._mechanistic_model.set_parameter_names(names)
+
+    def simulate(self, parameters, times):
+        """
+        Returns the numerical solution of the model outputs for specified
+        parameters and times.
+
+        The result is returned as a 2 dimensional NumPy array of shape
+        (n_outputs, n_times).
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with values for the model parameters.
+        times
+            An array-like object with time points at which the output
+            values are returned.
+        """
+        #TODO:
+        return self._mechanistic_model.simulate(parameters, times)
+
+    def time_unit(self):
+        """
+        Returns the model's unit of time.
+        """
+        return self._mechanistic_model.time_unit()
