@@ -30,15 +30,15 @@ class PDPredictivePlot(eplt.SingleFigure):
     def __init__(self, updatemenu=True):
         super(PDPredictivePlot, self).__init__(updatemenu)
 
-    def _add_data_trace(self, label, times, biomarker, color):
+    def _add_data_trace(self, _id, times, measurements, color):
         """
         Adds scatter plot of an indiviudals pharamcodynamics to figure.
         """
         self._fig.add_trace(
             go.Scatter(
                 x=times,
-                y=biomarker,
-                name="ID: %d" % label,
+                y=measurements,
+                name="ID: %d" % _id,
                 showlegend=True,
                 mode="markers",
                 marker=dict(
@@ -158,20 +158,26 @@ class PDPredictivePlot(eplt.SingleFigure):
         return container
 
     def add_data(
-            self, data, id_key='ID', time_key='Time', biom_key='Biomarker'):
+            self, data, biomarker=None, id_key='ID', time_key='Time',
+            biom_key='Biomarker', meas_key='Measurement'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
 
-        Expects a :class:`pandas.DataFrame` with an ID, a time and a PD
-        biomarker column, and adds a scatter plot of the biomarker time series
-        to the figure. Each individual receives a unique colour.
+        Expects a :class:`pandas.DataFrame` with an ID, a time, a PD
+        biomarker and a measurement column, and adds a scatter plot of the
+        measurement time series to the figure. Each individual receives a
+        unique colour.
 
         Parameters
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
+        biomarker
+            The predicted bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -182,16 +188,32 @@ class PDPredictivePlot(eplt.SingleFigure):
         biom_key
             Key label of the :class:`DataFrame` which specifies the PD
             biomarker column. Defaults to ``'Biomarker'``.
+        meas_key
+            Key label of the :class:`DataFrame` which specifies the column of
+            the measured PD biomarker. Defaults to ``'Measurement'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [id_key, time_key, biom_key]:
+        for key in [id_key, time_key, biom_key, meas_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
+
+        # Default to first bimoarker, if biomarker is not specified
+        biom_types = data[biom_key].unique()
+        if biomarker is None:
+            biomarker = biom_types[0]
+
+        if biomarker not in biom_types:
+            raise ValueError(
+                'The biomarker could not be found in the biomarker column.')
+
+        # Mask data for biomarker
+        mask = data[biom_key] == biomarker
+        data = data[mask]
 
         # Get a unique colour for each individual
         ids = data[id_key].unique()
@@ -199,18 +221,18 @@ class PDPredictivePlot(eplt.SingleFigure):
         colors = plotly.colors.qualitative.Plotly[:n_ids]
 
         # Fill figure with scatter plots of individual data
-        for index, label in enumerate(ids):
+        for index, _id in enumerate(ids):
             # Get individual data
-            mask = data[id_key] == label
+            mask = data[id_key] == _id
             times = data[time_key][mask]
-            biomarker = data[biom_key][mask]
+            measurements = data[meas_key][mask]
             color = colors[index]
 
             # Create Scatter plot
-            self._add_data_trace(label, times, biomarker, color)
+            self._add_data_trace(_id, times, measurements, color)
 
     def add_prediction(
-            self, data, biom=None, bulk_probs=[0.9], time_key='Time',
+            self, data, biomarker=None, bulk_probs=[0.9], time_key='Time',
             biom_key='Biomarker', sample_key='Sample'):
         r"""
         Adds the prediction for the observable pharmacodynamic biomarker values
@@ -237,10 +259,10 @@ class PDPredictivePlot(eplt.SingleFigure):
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
             form of a time and biomarker column.
-        biom
-            The predicted bimoarker. This argument is used to determin the
-            relevant rows in dataframe. If ``None`` the first biomarker type
-            in the biomarker column is selected.
+        biomarker
+            The predicted bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         bulk_probs
             A list of bulk probabilities that are illustrated in the
             figure. If ``None`` the samples are illustrated as a scatter plot.
@@ -265,16 +287,16 @@ class PDPredictivePlot(eplt.SingleFigure):
                     'Data does not have the key <' + str(key) + '>.')
 
         # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].unique()
-        if biom is None:
-            biom = biom_types[0]
+        biom_types = data[biom_key].dropna().unique()
+        if biomarker is None:
+            biomarker = biom_types[0]
 
-        if biom not in biom_types:
+        if biomarker not in biom_types:
             raise ValueError(
                 'The biomarker could not be found in the biomarker column.')
 
         # Mask data for biomarker
-        mask = data[biom_key] == biom
+        mask = data[biom_key] == biomarker
         data = data[mask]
 
         # Add samples as scatter plot if no bulk probabilites are provided, and
@@ -326,15 +348,15 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
     def __init__(self, updatemenu=True):
         super(PDTimeSeriesPlot, self).__init__(updatemenu)
 
-    def _add_data_trace(self, label, times, biomarker, color):
+    def _add_data_trace(self, _id, times, measurements, color):
         """
         Adds scatter plot of an indiviudals pharamcodynamics to figure.
         """
         self._fig.add_trace(
             go.Scatter(
                 x=times,
-                y=biomarker,
-                name="ID: %d" % label,
+                y=measurements,
+                name="ID: %d" % _id,
                 showlegend=True,
                 mode="markers",
                 marker=dict(
@@ -357,20 +379,26 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
                 line=dict(color='black')))
 
     def add_data(
-            self, data, id_key='ID', time_key='Time', biom_key='Biomarker'):
+            self, data, biomarker=None, id_key='ID', time_key='Time',
+            biom_key='Biomarker', meas_key='Measurement'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
 
-        Expects a :class:`pandas.DataFrame` with an ID, a time and a PD
-        biomarker column, and adds a scatter plot of the biomarker time series
-        to the figure. Each individual receives a unique colour.
+        Expects a :class:`pandas.DataFrame` with an ID, a time, a PD
+        biomarker and a measurement column, and adds a scatter plot of the
+        measurement time series to the figure. Each individual receives a
+        unique colour.
 
         Parameters
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
+        biomarker
+            The measured bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -381,16 +409,32 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
         biom_key
             Key label of the :class:`DataFrame` which specifies the PD
             biomarker column. Defaults to ``'Biomarker'``.
+        meas_key
+            Key label of the :class:`DataFrame` which specifies the column of
+            the measured PD biomarker. Defaults to ``'Measurement'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [id_key, time_key, biom_key]:
+        for key in [id_key, time_key, biom_key, meas_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
+
+        # Default to first bimoarker, if biomarker is not specified
+        biom_types = data[biom_key].dropna().unique()
+        if biomarker is None:
+            biomarker = biom_types[0]
+
+        if biomarker not in biom_types:
+            raise ValueError(
+                'The biomarker could not be found in the biomarker column.')
+
+        # Mask data for biomarker
+        mask = data[biom_key] == biomarker
+        data = data[mask]
 
         # Get a unique colour for each individual
         ids = data[id_key].unique()
@@ -398,15 +442,15 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
         colors = plotly.colors.qualitative.Plotly[:n_ids]
 
         # Fill figure with scatter plots of individual data
-        for index, label in enumerate(ids):
+        for index, _id in enumerate(ids):
             # Get individual data
-            mask = data[id_key] == label
+            mask = data[id_key] == _id
             times = data[time_key][mask]
-            biomarker = data[biom_key][mask]
+            measurements = data[meas_key][mask]
             color = colors[index]
 
             # Create Scatter plot
-            self._add_data_trace(label, times, biomarker, color)
+            self._add_data_trace(_id, times, measurements, color)
 
     def add_simulation(self, data, time_key='Time', biom_key='Biomarker'):
         """
@@ -470,18 +514,25 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
         if updatemenu:
             self._add_updatemenu()
 
-    def _add_dose_trace(self, label, times, dose, color):
+    def _add_dose_trace(self, _id, times, doses, durations, color):
         """
         Adds scatter plot of an indiviudals pharamcodynamics to figure.
         """
+        # Convert durations to strings
+        durations = [
+            'Dose duration: ' + str(duration) for duration in durations]
+
+        # Add scatter plot of dose events
         self._fig.add_trace(
             go.Scatter(
                 x=times,
-                y=dose,
-                name="ID: %d" % label,
-                legendgroup="ID: %d" % label,
+                y=doses,
+                name="ID: %d" % _id,
+                legendgroup="ID: %d" % _id,
                 showlegend=False,
                 mode="markers",
+                text=durations,
+                hoverinfo='text',
                 marker=dict(
                     symbol='circle',
                     color=color,
@@ -490,16 +541,16 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             row=1,
             col=1)
 
-    def _add_biom_trace(self, label, times, biomarker, color):
+    def _add_biom_trace(self, _id, times, measurements, color):
         """
         Adds scatter plot of an indiviudals pharamcodynamics to figure.
         """
         self._fig.add_trace(
             go.Scatter(
                 x=times,
-                y=biomarker,
-                name="ID: %d" % label,
-                legendgroup="ID: %d" % label,
+                y=measurements,
+                name="ID: %d" % _id,
+                legendgroup="ID: %d" % _id,
                 showlegend=True,
                 mode="markers",
                 marker=dict(
@@ -543,21 +594,28 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
         )
 
     def add_data(
-            self, data, id_key='ID', time_key='Time', biom_key='Biomarker',
-            dose_key='Dose'):
+            self, data, biomarker=None, id_key='ID', time_key='Time',
+            biom_key='Biomarker', meas_key='Measurement', dose_key='Dose',
+            dose_duration_key='Duration'):
         """
         Adds pharmacokinetic time series data of (multiple) individuals to
         the figure.
 
-        Expects a :class:`pandas.DataFrame` with an ID, a time and a PD
-        biomarker column, and adds a scatter plot of the biomarker time series
-        to the figure. Each individual receives a unique colour.
+        Expects a :class:`pandas.DataFrame` with an ID, a time, a PK
+        biomarker and measurement column, and adds a scatter plot of the
+        measurement time series to the figure. The dataframe is also expected
+        to have information about the administered dose via a dose and a
+        dose duration column. Each individual receives a unique colour.
 
         Parameters
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
+        biomarker
+            The measured bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -568,19 +626,44 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
         biom_key
             Key label of the :class:`DataFrame` which specifies the PD
             biomarker column. Defaults to ``'Biomarker'``.
+        meas_key
+            Key label of the :class:`DataFrame` which specifies the column of
+            the measured PD biomarker. Defaults to ``'Measurement'``.
         dose_key
             Key label of the :class:`DataFrame` which specifies the dose
             column. Defaults to ``'Dose'``.
+        dose_duration_key
+            Key label of the :class:`DataFrame` which specifies the dose
+            duration column. Defaults to ``'Duration'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [id_key, time_key, biom_key, dose_key]:
+        keys = [
+            id_key, time_key, biom_key, meas_key, dose_key, dose_duration_key]
+        for key in keys:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
+
+        # Default to first bimoarker, if biomarker is not specified
+        biom_types = data[biom_key].dropna().unique()
+        if biomarker is None:
+            biomarker = biom_types[0]
+
+        if biomarker not in biom_types:
+            raise ValueError(
+                'The biomarker could not be found in the biomarker column.')
+
+        # Get dose information
+        mask = data[dose_key].notnull()
+        dose_data = data[mask][[id_key, time_key, dose_key, dose_duration_key]]
+
+        # Mask data for biomarker
+        mask = data[biom_key] == biomarker
+        data = data[mask][[id_key, time_key, meas_key]]
 
         # Set axis labels to dataframe keys
         self.set_axis_labels(time_key, biom_key, dose_key)
@@ -591,19 +674,26 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
         colors = plotly.colors.qualitative.Plotly[:n_ids]
 
         # Fill figure with scatter plots of individual data
-        for index, label in enumerate(ids):
-            # Get individual data
-            mask = data[id_key] == label
+        for index, _id in enumerate(ids):
+            # Get doses applied to individual
+            mask = dose_data[id_key] == _id
+            dose_times = dose_data[time_key][mask]
+            doses = dose_data[dose_key][mask]
+            durations = dose_data[dose_duration_key][mask]
+
+            # Get biomarker measurements
+            mask = data[id_key] == _id
             times = data[time_key][mask]
-            biomarker = data[biom_key][mask]
-            dose = data[dose_key][mask]
+            measurements = data[meas_key][mask]
+
+            # Get a color for the individual
             color = colors[index]
 
             # Create scatter plot of dose events
-            self._add_dose_trace(label, times, dose, color)
+            self._add_dose_trace(_id, dose_times, doses, durations, color)
 
             # Create Scatter plot
-            self._add_biom_trace(label, times, biomarker, color)
+            self._add_biom_trace(_id, times, measurements, color)
 
     def add_simulation(
             self, data, time_key='Time', biom_key='Biomarker',
