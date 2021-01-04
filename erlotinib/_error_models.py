@@ -264,3 +264,183 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
                 'Length of names does not match n_parameters.')
 
         self._parameter_names = [str(label) for label in names]
+
+
+class ReducedErrorModel(object):
+    """
+    A class that can be used to permanently fix model parameters of an
+    :class:`ErrorModel` instance.
+
+    This may be useful to explore simplified versions of a model.
+    """
+
+    def __init__(self, error_model):
+        super(ReducedErrorModel, self).__init__()
+
+        # Check input
+        if not isinstance(error_model, ErrorModel):
+            raise ValueError(
+                'The error model has to be an instance of a '
+                'erlotinib.ErrorModel')
+
+        self._error_model = error_model
+
+        # Set defaults
+        self._fixed_params_mask = None
+        self._fixed_params_values = None
+        self._n_parameters = error_model.n_parameters()
+        self._parameter_names = error_model.get_parameter_names()
+
+    def compute_log_likelihood(self, parameters, model_output, observations):
+        """
+        Returns the unnormalised log-likelihood score for the model parameters
+        of the mechanistic model-error model pair.
+
+        In this method, the model output and the observations are compared
+        pair-wise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_ouput`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        observations
+            An array-like object with the observations of a biomarker.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        score = self._error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+        return score
+
+    def fix_parameters(self, name_value_dict):
+        """
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
+
+        Parameters
+        ----------
+        name_value_dict
+            A dictionary with model parameter names as keys, and parameter
+            value as values.
+        """
+        # If no model parameters have been fixed before, instantiate a mask
+        # and values
+        if self._fixed_params_mask is None:
+            self._fixed_params_mask = np.zeros(
+                shape=self._n_parameters, dtype=bool)
+
+        if self._fixed_params_values is None:
+            self._fixed_params_values = np.empty(shape=self._n_parameters)
+
+        # Update the mask and values
+        for index, name in enumerate(self._parameter_names):
+            try:
+                value = name_value_dict[name]
+            except KeyError:
+                # KeyError indicates that parameter name is not being fixed
+                continue
+
+            # Fix parameter if value is not None, else unfix it
+            self._fixed_params_mask[index] = value is not None
+            self._fixed_params_values[index] = value
+
+        # If all parameters are free, set mask and values to None again
+        if np.alltrue(~self._fixed_params_mask):
+            self._fixed_params_mask = None
+            self._fixed_params_values = None
+
+    def get_parameter_names(self):
+        """
+        Returns the names of the error model parameters.
+        """
+        # Get all parameter names
+        names = np.array(self._error_model.get_parameter_names())
+
+        # Filter fixed parameters
+        names = list(names[~self._fixed_params_mask])
+
+        return names
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the error model.
+        """
+        # Get number of fixed parameters
+        n_fixed = 0
+        if self._fixed_params_mask is not None:
+            n_fixed = int(np.sum(self._fixed_params_mask))
+
+        # Subtract fixed parameters from total number
+        n_parameters = self._n_parameters - n_fixed
+
+        return n_parameters
+
+    def sample(self, parameters, model_output, n_samples=None, seed=None):
+        """
+        Returns a samples from the mechanistic model-error model pair in form
+        of a NumPy array of shape ``(len(model_output), n_samples)``.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`.
+        n_samples
+            Number of samples from the error model for each entry in
+            ``model_output``. If ``None``, one sample is assumed.
+        seed
+            Seed for the pseudo-random number generator. If ``None``, the
+            pseudo-random number generator is not seeded.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        # Sample from error model
+        sample = self._error_model.sample(
+            parameters, model_output, n_samples, seed)
+
+        return sample
+
+    def set_parameter_names(self, names):
+        """
+        Sets the names of the error model parameters.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`.
+        """
+        # Get number of parameters
+        n_parameters = self._n_parameters
+        if self._fixed_params_mask is not None:
+            n_fixed = int(np.sum(self._fixed_params_mask))
+            n_parameters -= n_fixed
+
+        if len(names) != n_parameters:
+            raise ValueError(
+                'One name for each model parameter has to be provided.')
+
+        # Retreive names of fixed parameters
+        if self._fixed_params_mask is not None:
+            all_names = np.array(self._parameter_names)
+            all_names[self._fixed_params_mask] = names
+            names = list(all_names)
+
+        # Set parameter names
+        self._error_model.set_parameter_names(names)
