@@ -158,7 +158,7 @@ class PDPredictivePlot(eplt.SingleFigure):
         return container
 
     def add_data(
-            self, data, biomarker, id_key='ID', time_key='Time',
+            self, data, biomarker=None, id_key='ID', time_key='Time',
             biom_key='Biomarker', meas_key='Measurement'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
@@ -175,8 +175,9 @@ class PDPredictivePlot(eplt.SingleFigure):
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
         biomarker
-            Selector for the displayed biomarker. The provided value has to be
-            an element of the biomarker column.
+            The predicted bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -201,13 +202,16 @@ class PDPredictivePlot(eplt.SingleFigure):
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        biomarkers = data[biom_key].unique()
-        if biomarker not in biomarkers:
-            raise ValueError(
-                'The provided biomarker has to be an element of the biomarker '
-                'column.')
+        # Default to first bimoarker, if biomarker is not specified
+        biom_types = data[biom_key].unique()
+        if biomarker is None:
+            biomarker = biom_types[0]
 
-        # Filter dataframe for biomarker
+        if biomarker not in biom_types:
+            raise ValueError(
+                'The biomarker could not be found in the biomarker column.')
+
+        # Mask data for biomarker
         mask = data[biom_key] == biomarker
         data = data[mask]
 
@@ -228,7 +232,7 @@ class PDPredictivePlot(eplt.SingleFigure):
             self._add_data_trace(_id, times, measurements, color)
 
     def add_prediction(
-            self, data, biom=None, bulk_probs=[0.9], time_key='Time',
+            self, data, biomarker=None, bulk_probs=[0.9], time_key='Time',
             biom_key='Biomarker', sample_key='Sample'):
         r"""
         Adds the prediction for the observable pharmacodynamic biomarker values
@@ -255,10 +259,10 @@ class PDPredictivePlot(eplt.SingleFigure):
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
             form of a time and biomarker column.
-        biom
-            The predicted bimoarker. This argument is used to determin the
-            relevant rows in dataframe. If ``None`` the first biomarker type
-            in the biomarker column is selected.
+        biomarker
+            The predicted bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         bulk_probs
             A list of bulk probabilities that are illustrated in the
             figure. If ``None`` the samples are illustrated as a scatter plot.
@@ -284,15 +288,15 @@ class PDPredictivePlot(eplt.SingleFigure):
 
         # Default to first bimoarker, if biomarker is not specified
         biom_types = data[biom_key].unique()
-        if biom is None:
-            biom = biom_types[0]
+        if biomarker is None:
+            biomarker = biom_types[0]
 
-        if biom not in biom_types:
+        if biomarker not in biom_types:
             raise ValueError(
                 'The biomarker could not be found in the biomarker column.')
 
         # Mask data for biomarker
-        mask = data[biom_key] == biom
+        mask = data[biom_key] == biomarker
         data = data[mask]
 
         # Add samples as scatter plot if no bulk probabilites are provided, and
@@ -375,7 +379,7 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
                 line=dict(color='black')))
 
     def add_data(
-            self, data, biomarker, id_key='ID', time_key='Time',
+            self, data, biomarker=None, id_key='ID', time_key='Time',
             biom_key='Biomarker', meas_key='Measurement'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
@@ -392,8 +396,9 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
         biomarker
-            Selector for the displayed biomarker. The provided value has to be
-            an element of the biomarker column.
+            The predicted bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
