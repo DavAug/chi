@@ -641,11 +641,13 @@ class ReducedMechanisticModel(object):
     A class that can be used to permanently fix model parameters of a
     :class:`MechanisticModel` instance.
 
-    This may be useful to explore simplifies versions of a model before
+    This may be useful to explore simplified versions of a model before
     defining a new SBML file.
     """
 
     def __init__(self, mechanistic_model):
+        super(ReducedMechanisticModel, self).__init__()
+
         # Check input
         if not isinstance(mechanistic_model, MechanisticModel):
             raise ValueError(
@@ -733,7 +735,6 @@ class ReducedMechanisticModel(object):
         Parameters of the model are initial state values and structural
         parameter values.
         """
-
         # Get number of fixed parameters
         n_fixed = 0
         if self._fixed_params_mask is not None:
@@ -885,7 +886,7 @@ class ReducedMechanisticModel(object):
             self._fixed_params_values[
                 ~self._fixed_params_mask] = parameters
             parameters = self._fixed_params_mask
-            
+
         return self._mechanistic_model.simulate(parameters, times)
 
     def time_unit(self):
