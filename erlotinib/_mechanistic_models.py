@@ -654,22 +654,11 @@ class ReducedMechanisticModel(object):
 
         self._mechanistic_model = mechanistic_model
 
-    def administration(self):
-        """
-        Returns the mode of administration in form of a dictionary.
-
-        The dictionary has the keys 'compartment' and 'direct'. The former
-        provides information about which compartment is dosed, and the latter
-        whether the dose is administered directly ot indirectly to the
-        compartment.
-
-        If the model does not support a dose administration, ``None`` is
-        returned.
-        """
-        try:
-            return self._mechanistic_model.administration()
-        except AttributeError:
-            return None
+        # Set defaults
+        self._fixed_params_mask = None
+        self._fixed_params_values = None
+        self._n_parameters = mechanistic_model.n_parameters()
+        self._parameter_names = mechanistic_model.parameters()
 
     def dosing_regimen(self):
         """
@@ -684,6 +673,44 @@ class ReducedMechanisticModel(object):
             return self._mechanistic_model.dosing_regimen()
         except AttributeError:
             return None
+
+    def fix_parameters(self, name_value_dict):
+        """
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
+
+        Parameters
+        ----------
+        name_value_dict
+            A dictionary with model parameter names as keys, and parameter
+            value as values.
+        """
+        # If no model parameters have been fixed before, instantiate a mask
+        # and values
+        if self._fixed_params_mask is None:
+            self._fixed_params_mask = np.zeros(
+                shape=self._n_parameters, dtype=bool)
+
+        if self._fixed_params_values is None:
+            self._fixed_params_values = np.empty(shape=self._n_parameters)
+
+        # Update the mask and values
+        for index, name in enumerate(self._parameter_names):
+            try:
+                value = name_value_dict[name]
+            except KeyError:
+                # KeyError indicates that parameter name is not being fixed
+                continue
+
+            # Fix parameter if value is not None, else unfix it
+            self._fixed_params_mask[index] = value is not None
+            self._fixed_params_values[index] = value
+
+        # If all parameters are free, set mask and values to None again
+        if np.alltrue(~self._fixed_params_mask):
+            self._fixed_params_mask = None
+            self._fixed_params_values = None
 
     def mechanistic_model(self):
         """
@@ -706,8 +733,16 @@ class ReducedMechanisticModel(object):
         Parameters of the model are initial state values and structural
         parameter values.
         """
-        #TODO:
-        return self._mechanistic_model.n_parameters()
+
+        # Get number of fixed parameters
+        n_fixed = 0
+        if self._fixed_params_mask is not None:
+            n_fixed = int(np.sum(self._fixed_params_mask))
+
+        # Subtract fixed parameters from total number
+        n_parameters = self._n_parameters - n_fixed
+
+        return n_parameters
 
     def outputs(self):
         """
@@ -719,8 +754,14 @@ class ReducedMechanisticModel(object):
         """
         Returns the parameter names of the model.
         """
-        #TODO:
-        return self._mechanistic_model.parameters()
+        # Remove fixed model parameters
+        names = self._parameter_names
+        if self._fixed_params_mask is not None:
+            names = np.array(names)
+            names = names[~self._fixed_params_mask]
+            names = list(names)
+
+        return names
 
     def pd_output(self):
         """
@@ -839,7 +880,12 @@ class ReducedMechanisticModel(object):
             An array-like object with time points at which the output
             values are returned.
         """
-        #TODO:
+        # Insert fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[
+                ~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_mask
+            
         return self._mechanistic_model.simulate(parameters, times)
 
     def time_unit(self):
