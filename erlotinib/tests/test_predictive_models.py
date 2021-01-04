@@ -905,11 +905,11 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 1.1172798067087084)
-        self.assertAlmostEqual(values[1], 2.4529962526026536)
-        self.assertAlmostEqual(values[2], -2.101794465025344)
-        self.assertAlmostEqual(values[3], -3.2715998653763183)
-        self.assertAlmostEqual(values[4], -7.166884648723757)
+        self.assertAlmostEqual(values[0], 0.9418268811969496)
+        self.assertAlmostEqual(values[1], 2.4414001899620565)
+        self.assertAlmostEqual(values[2], -2.1070223214978583)
+        self.assertAlmostEqual(values[3], -3.2700124414629426)
+        self.assertAlmostEqual(values[4], -7.167939155896637)
 
         # Test case III.3: PK model, regimen set
         model.set_dosing_regimen(1, 1, duration=2, period=2, num=2)
@@ -947,11 +947,11 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 1.1172798067087084)
-        self.assertAlmostEqual(values[1], 2.600438628319377)
-        self.assertAlmostEqual(values[2], -1.7828831612242066)
-        self.assertAlmostEqual(values[3], -3.678463265192953)
-        self.assertAlmostEqual(values[4], -6.055087048712221)
+        self.assertAlmostEqual(values[0], 0.9418268811969484)
+        self.assertAlmostEqual(values[1], 2.535202697375215)
+        self.assertAlmostEqual(values[2], -1.9337139346520897)
+        self.assertAlmostEqual(values[3], -3.481678813431062)
+        self.assertAlmostEqual(values[4], -6.595926429217902)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
