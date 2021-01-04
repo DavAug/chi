@@ -893,7 +893,7 @@ class ReducedMechanisticModel(object):
         if self._fixed_params_mask is not None:
             self._fixed_params_values[
                 ~self._fixed_params_mask] = parameters
-            parameters = self._fixed_params_mask
+            parameters = self._fixed_params_values
 
         return self._mechanistic_model.simulate(parameters, times)
 
