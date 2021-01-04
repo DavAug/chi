@@ -287,7 +287,7 @@ class PDPredictivePlot(eplt.SingleFigure):
                     'Data does not have the key <' + str(key) + '>.')
 
         # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].unique()
+        biom_types = data[biom_key].dropna().unique()
         if biomarker is None:
             biomarker = biom_types[0]
 
@@ -423,13 +423,16 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        biomarkers = data[biom_key].unique()
-        if biomarker not in biomarkers:
-            raise ValueError(
-                'The provided biomarker has to be an element of the biomarker '
-                'column.')
+        # Default to first bimoarker, if biomarker is not specified
+        biom_types = data[biom_key].dropna().unique()
+        if biomarker is None:
+            biomarker = biom_types[0]
 
-        # Filter dataframe for biomarker
+        if biomarker not in biom_types:
+            raise ValueError(
+                'The biomarker could not be found in the biomarker column.')
+
+        # Mask data for biomarker
         mask = data[biom_key] == biomarker
         data = data[mask]
 
@@ -591,7 +594,7 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
         )
 
     def add_data(
-            self, data, biomarker, id_key='ID', time_key='Time',
+            self, data, biomarker=None, id_key='ID', time_key='Time',
             biom_key='Biomarker', meas_key='Measurement', dose_key='Dose',
             dose_duration_key='Duration'):
         """
@@ -610,8 +613,9 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             A :class:`pandas.DataFrame` with the time series PD data in form of
             an ID, time, and biomarker column.
         biomarker
-            Selector for the displayed biomarker. The provided value has to be
-            an element of the biomarker column.
+            The predicted bimoarker. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first biomarker
+            type in the biomarker column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -637,24 +641,29 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [id_key, time_key, biom_key, dose_key, dose_duration_key]:
+        keys = [
+            id_key, time_key, biom_key, meas_key, dose_key, dose_duration_key]
+        for key in keys:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        biomarkers = data[biom_key].unique()
-        if biomarker not in biomarkers:
+        # Default to first bimoarker, if biomarker is not specified
+        biom_types = data[biom_key].dropna().unique()
+        if biomarker is None:
+            biomarker = biom_types[0]
+
+        if biomarker not in biom_types:
             raise ValueError(
-                'The provided biomarker has to be an element of the biomarker '
-                'column.')
+                'The biomarker could not be found in the biomarker column.')
 
         # Get dose information
         mask = data[dose_key].notnull()
         dose_data = data[mask][[id_key, time_key, dose_key, dose_duration_key]]
 
-        # Filter dataframe for biomarker
+        # Mask data for biomarker
         mask = data[biom_key] == biomarker
-        data = data[mask]
+        data = data[mask][[id_key, time_key, meas_key]]
 
         # Set axis labels to dataframe keys
         self.set_axis_labels(time_key, biom_key, dose_key)
