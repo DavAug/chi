@@ -474,6 +474,233 @@ class PredictiveModel(object):
                 'erlotinib.PharmacodynamicModel.')
 
 
+class PosteriorPredictiveModel(DataDrivenPredictiveModel):
+    """
+    Implements a model that predicts the change of observable biomarkers over
+    time based on the inferred posterior distribution of the model parameters.
+
+    A posterior predictive model may be used to check whether the inference
+    results agree with observed measurement. A posterior predictive model may
+    also be used to predict future measurements of preclinical or clinical
+    biomarkers.
+
+    A PosteriorPredictiveModel is instantiated with an instance of a
+    :class:`PredictiveModel` and a :class:`pandas.DataFrame` of parameter
+    samples generated e.g. with the :class:`SamplingController`. The samples
+    approximate the posterior distribution of the model parameters. The
+    posterior distribution has to be of the same parametric dimension as the
+    predictive model. Future biomarker "measurements" can then be predicted by
+    first sampling parameter values from the posterior distribution, and then
+    generating "virtual" measurements from the predictive model with those
+    parameters.
+
+    Extends :class:`DataDrivenPredictiveModel`.
+
+    Parameters
+    ----------
+    predictive_model
+        An instance of a :class:`PredictiveModel`.
+    posterior_samples
+        A :class:`pandas.DataFrame` with samples from the posterior
+        distribution of the model parameters. The posterior distirbution has
+        to be of the same dimension as the number of predictive model
+        parameters.
+    warm_up_iter
+        Number of warm up iterations which are excluded from the approximate
+        posterior distribution.
+    id_key
+        Key label of the :class:`DataFrame` which specifies the ID column.
+        The ID refers to the identity of an individual. Defaults to
+        ``'ID'``.
+    param_key
+        Key label of the :class:`DataFrame` which specifies the parameter
+        name column. Defaults to ``'Parameter'``.
+    sample_key
+        Key label of the :class:`DataFrame` which specifies the parameter
+        sample column. Defaults to ``'Sample'``.
+    iter_key
+        Key label of the :class:`DataFrame` which specifies the iteration
+        column. The iteration refers to the iteration of the sampling
+        routine at which the parameter value was sampled. Defaults to
+        ``'Iteration'``.
+    run_key
+        Key label of the :class:`DataFrame` which specifies the run ID
+        column. The run ID refers to the run of the sampling
+        routine at which the parameter value was sampled. Defaults to
+        ``'Run'``.
+    """
+
+    def __init__(
+            self, predictive_model, posterior_samples, warm_up_iter=0,
+            id_key='ID', param_key='Parameter', sample_key='Sample',
+            iter_key='Iteration', run_key='Run'):
+        super(PosteriorPredictiveModel, self).__init__(predictive_model)
+
+        # Check input
+        if not isinstance(posterior_samples, pd.DataFrame):
+            raise TypeError(
+                'The posterior samples have to be in a pandas.DataFrame '
+                'format.')
+
+        keys = [run_key, id_key, sample_key, param_key, iter_key]
+        for key in keys:
+            if key not in posterior_samples.keys():
+                raise ValueError(
+                    'Posterior samples dataframe does not have the key '
+                    '<' + str(key) + '>.')
+        self._id_key, self._sample_key, self._param_key, self._iter_key = keys[
+            1:]
+
+        if warm_up_iter >= posterior_samples[iter_key].max():
+            raise ValueError(
+                'The number of warm up iterations has to be smaller than the '
+                'total number of iterations for each run.')
+
+        # Check that posterior has the same dimensionality as the model
+        parameter_names = posterior_samples[param_key].unique()
+        n_parameters = len(parameter_names)
+        if predictive_model.n_parameters() != n_parameters:
+            raise ValueError(
+                'The dimension of the posterior distribution has to be the '
+                'same as the number of parameters of the predictive model.')
+
+        # Exclude warm up iterations
+        mask = posterior_samples[iter_key] > warm_up_iter
+        posterior_samples = posterior_samples[mask]
+
+        # Create a unique ID for the samples
+        self._posterior = posterior_samples[[id_key, sample_key, param_key]]
+        self._posterior[iter_key] = \
+            'Iteration: ' + posterior_samples[iter_key] + \
+            'Run: ' + posterior_samples[run_key]
+
+    def sample(
+            self, times, n_samples=None, seed=None, individual=None,
+            param_map=None, include_regimen=False):
+        """
+        Samples "measurements" of the biomarkers from the posterior predictive
+        model and returns them in form of a :class:`pandas.DataFrame`.
+
+        For each of the ``n_samples`` a parameter set is drawn from the
+        approximate posterior distribution. These paramaters are then used to
+        sample from the predictive model.
+
+        Parameters
+        ----------
+        times
+            An array-like object with times at which the virtual "measurements"
+            are performed.
+        n_samples
+            The number of virtual "measurements" that are performed at each
+            time point. If ``None`` the biomarkers are measured only once
+            at each time point.
+        seed
+            A seed for the pseudo-random number generator.
+        individual
+            The ID of the modelled indiviudal. This argument is used to
+            determine the relevant samples in the dataframe. If ``None``, the
+            first ID in the ID column is selected.
+        param_map
+            A dictionary which can be used to map predictive model parameter
+            names to the parameter names in the parameter column of the
+            posterior dataframe. If ``None``, it is assumed that the naming is
+            identical.
+        include_regimen
+            A boolean flag which determines whether the information about the
+            dosing regimen is included.
+        """
+        # Make sure n_samples is an integer
+        if n_samples is None:
+            n_samples = 1
+        n_samples = int(n_samples)
+
+        # Select which ID is modelled, default to first ID
+        ids = self._posterior[self._id_key].dropna().unique()
+        if individual is None:
+            individual = ids[0]
+
+        if individual not in ids:
+            raise ValueError(
+                'The individual could not be found in the ID column.')
+
+        # Mask samples for individual
+        mask = self._posterior[self._id_key] == individual
+        posterior = self._posterior[mask]
+
+        # Create map from posterior parameter names to model parameter names
+        parameter_names = self._predictive_model.get_parameter_names()
+        if parameter_names is not None:
+            # Map parameter names
+            for param_id, name in enumerate(parameter_names):
+                try:
+                    parameter_names[param_id] = param_map[name]
+                except KeyError:
+                    # The name is not mapped
+                    pass
+
+        # Make sure that all parameter names can be found in the dataframe
+        df_parameter_names = posterior[self._param_key].unique()
+        for name in parameter_names:
+            if name not in df_parameter_names:
+                raise ValueError(
+                    'The parameter <' + str(name) + '> could not be found in '
+                    'the parameter column of the posterior dataframe.')
+
+        # Sort times
+        times = np.sort(times)
+
+        # Create container for samples
+        container = pd.DataFrame(
+            columns=['ID', 'Biomarker', 'Time', 'Sample'])
+
+        # Get model outputs (biomarkers)
+        outputs = self._predictive_model.get_output_names()
+
+        # Draw samples
+        sample_ids = np.arange(start=1, stop=n_samples+1)
+        for sample_id in sample_ids:
+            # Increment seed for each iteration, to avoid repeated patterns
+            if seed is not None:
+                seed += 1
+
+            # Sample parameter
+            sample_id = posterior[self._iter_key].sample(random_state=seed)
+            mask = posterior[self._iter_key] == sample_id
+            df_params = posterior[mask][self._param_key, self._sample_key]
+
+            # Sort parameters in order expected from model
+            parameters = []
+            for name in parameter_names:
+                mask = df_params[self._param_key] == name
+                value = df_params.loc[mask, self._sample_key].iloc[0]
+                parameters.append(value)
+
+            # Increment seed for each iteration, to avoid repeated patterns
+            if seed is not None:
+                seed += 1
+
+            # Sample from predictive model
+            sample = self._predictive_model.sample(
+                parameters, times, n_samples, seed, return_df=False)
+
+            # Append samples to dataframe
+            for output_id, name in enumerate(outputs):
+                container = container.append(pd.DataFrame({
+                    'ID': sample_id,
+                    'Biomarker': name,
+                    'Time': times,
+                    'Sample': sample[output_id, :, 0]}))
+
+        # Add dosing regimen, if set
+        final_time = np.max(times)
+        regimen = self.get_dosing_regimen(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Append dosing regimen only once for all samples
+            container = container.append(regimen)
+
+        return container
+
+
 class PriorPredictiveModel(DataDrivenPredictiveModel):
     """
     Implements a model that predicts the change of observable biomarkers over
@@ -489,8 +716,8 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
     :class:`PredictiveModel` and a :class:`pints.LogPrior` of the same
     parametric dimension as the predictive model. Future biomarker
     "measurements" can then be predicted by first sampling parameter values
-    from the log-prior distribution, and then sampling from the predictive
-    model with those parameters.
+    from the log-prior distribution, and then generating "virtual" measurements
+    from the predictive model with those parameters.
 
     Extends :class:`DataDrivenPredictiveModel`.
 
