@@ -337,7 +337,7 @@ class ReducedErrorModel(object):
         # Check type
         try:
             name_value_dict = dict(name_value_dict)
-        except TypeError:
+        except (TypeError, ValueError):
             raise ValueError(
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
