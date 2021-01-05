@@ -675,6 +675,9 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(sim[1], ref_sim[1])
         self.assertEqual(sim[2], ref_sim[2])
 
+    def test_time_unit(self):
+        self.assertIsInstance(self.pd_model.time_unit(), myokit.Unit)
+
 
 if __name__ == '__main__':
     unittest.main()
