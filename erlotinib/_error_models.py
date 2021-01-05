@@ -433,29 +433,31 @@ class ReducedErrorModel(object):
 
     def set_parameter_names(self, names):
         """
-        Sets the names of the error model parameters.
+        Assigns names to the parameters. By default the the default parameter
+        names of the :class:`ErrorModel` are kept.
 
         Parameters
         ----------
         names
-            An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            A dictionary that maps the current parameter names to new names.
         """
-        # Get number of parameters
-        n_parameters = self._n_parameters
-        if self._fixed_params_mask is not None:
-            n_fixed = int(np.sum(self._fixed_params_mask))
-            n_parameters -= n_fixed
-
-        if len(names) != n_parameters:
+        # Check type
+        try:
+            names = dict(names)
+        except (TypeError, ValueError):
             raise ValueError(
-                'One name for each model parameter has to be provided.')
+                'The name dictionary has to be convertable to a python '
+                'dictionary.')
 
-        # Retreive names of fixed parameters
-        if self._fixed_params_mask is not None:
-            all_names = np.array(self._parameter_names)
-            all_names[self._fixed_params_mask] = names
-            names = list(all_names)
+        parameter_names = self._parameter_names
+        for index, parameter in enumerate(self._parameter_names):
+            try:
+                parameter_names[index] = str(names[parameter])
+            except KeyError:
+                # KeyError indicates that a current parameter is not being
+                # replaced.
+                pass
 
         # Set parameter names
-        self._error_model.set_parameter_names(names)
+        self._error_model.set_parameter_names(parameter_names)
+        self._parameter_names = self._error_model.get_parameter_names()
