@@ -441,7 +441,7 @@ class PredictiveModel(object):
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
 
-    def fix_model_parameters(self, name_value_dict):
+    def fix_parameters(self, name_value_dict):
         #TODO:
         # 1. Use Reduced M + E Model to implement this method
         # 2. Change get-set names
