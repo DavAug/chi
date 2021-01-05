@@ -596,6 +596,15 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(
             self.pk_model.pd_output(), 'central.drug_concentration')
 
+    def test_pk_output(self):
+        # Test PD model
+        self.assertEqual(
+            self.pd_model.pk_input(), 'myokit.drug_concentration')
+        self.assertIsNone(self.pd_model.pd_output())
+
+        # Test PK model
+        self.assertIsNone(self.pk_model.pk_input())
+
     def test_set_get_dosing_regimen(self):
         # Test case I: dosing regimen unset
         # Test PD model
