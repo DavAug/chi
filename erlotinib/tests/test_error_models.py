@@ -272,6 +272,42 @@ class TestReducedErrorModel(unittest.TestCase):
         self.error_model.fix_parameters(name_value_dict={
             'Sigma base': None})
 
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma rel.': 1})
+
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 1)
+
+        parameter_names = self.error_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 1)
+        self.assertEqual(parameter_names[0], 'Sigma base')
+
+        # Test case II: fix overlapping set of parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.2,
+            'Sigma rel.': 0.1})
+
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 0)
+
+        parameter_names = self.error_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 0)
+
+        # Test case III: unfix all parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None,
+            'Sigma rel.': None})
+
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+        parameter_names = self.error_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 2)
+        self.assertEqual(parameter_names[0], 'Sigma base')
+        self.assertEqual(parameter_names[1], 'Sigma rel.')
+
 
 if __name__ == '__main__':
     unittest.main()
