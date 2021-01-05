@@ -308,6 +308,29 @@ class TestReducedErrorModel(unittest.TestCase):
         self.assertEqual(parameter_names[0], 'Sigma base')
         self.assertEqual(parameter_names[1], 'Sigma rel.')
 
+    def test_get_error_model(self):
+        error_model = self.error_model.get_error_model()
+        self.assertIsInstance(error_model, erlo.ErrorModel)
+
+    def test_set_get_parameter_names(self):
+        # Set some parameter names
+        self.error_model.set_parameter_names({
+            'Sigma base': 'Test'})
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Test')
+        self.assertEqual(names[1], 'Sigma rel.')
+
+        # Revert to defaults
+        self.error_model.set_parameter_names({
+            'Test': 'Sigma base'})
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Sigma base')
+        self.assertEqual(names[1], 'Sigma rel.')
+
 
 if __name__ == '__main__':
     unittest.main()
