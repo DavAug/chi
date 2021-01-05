@@ -518,6 +518,11 @@ class TestReducedMechanisticModel(unittest.TestCase):
         model.set_administration('central')
         cls.pk_model = erlo.ReducedMechanisticModel(model)
 
+    def test_bad_instantiation(self):
+        model = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The mechanistic model'):
+            erlo.ReducedMechanisticModel(model)
+
     def test_fix_parameters(self):
         # Test case I: fix some parameters
         self.pd_model.fix_parameters(name_value_dict={
@@ -563,6 +568,11 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(parameter_names[2], 'myokit.kappa')
         self.assertEqual(parameter_names[3], 'myokit.lambda_0')
         self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.pd_model.fix_parameters(name_value_dict)
 
     def test_mechanistic_model(self):
         self.assertIsInstance(
