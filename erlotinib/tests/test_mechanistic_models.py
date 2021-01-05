@@ -578,6 +578,30 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertIsInstance(
             self.pd_model.mechanistic_model(), erlo.MechanisticModel)
 
+    def test_n_fixed_parameters(self):
+        # Test case I: fix some parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
+
+        self.assertEqual(self.pd_model.n_fixed_parameters(), 2)
+
+        # Test case II: fix overlapping set of parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.kappa': None,
+            'myokit.lambda_0': 0.5,
+            'myokit.lambda_1': 0.3})
+
+        self.assertEqual(self.pd_model.n_fixed_parameters(), 3)
+
+        # Test case III: unfix all parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': None,
+            'myokit.lambda_0': None,
+            'myokit.lambda_1': None})
+
+        self.assertEqual(self.pd_model.n_fixed_parameters(), 0)
+
     def test_n_outputs(self):
         self.assertEqual(self.pd_model.n_outputs(), 1)
 
