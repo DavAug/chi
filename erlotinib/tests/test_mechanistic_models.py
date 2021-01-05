@@ -574,20 +574,6 @@ class TestReducedMechanisticModel(unittest.TestCase):
     def test_n_parameters(self):
         self.assertEqual(self.pd_model.n_parameters(), 5)
 
-    def test_outputs(self):
-        outputs = self.pd_model.outputs()
-        self.assertEqual(len(outputs), 1)
-        self.assertEqual(outputs[0], 'myokit.tumour_volume')
-
-    def test_parameters(self):
-        parameters = self.pd_model.parameters()
-        self.assertEqual(len(parameters), 5)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-
     def test_pd_output(self):
         # Test PD model
         self.assertIsNone(self.pd_model.pd_output())
@@ -624,7 +610,48 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertIsInstance(
             self.pk_model.dosing_regimen(), myokit.Protocol)
 
+    def test_set_get_outputs(self):
+        # Test case I: Set outputs
+        self.pd_model.set_outputs([
+            'myokit.tumour_volume',
+            'myokit.tumour_volume'])
 
+        outputs = self.pd_model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[1], 'myokit.tumour_volume')
+
+        # Test case II: Set outputs back to default
+        self.pd_model.set_outputs(['myokit.tumour_volume'])
+
+        outputs = self.pd_model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+    def test_set_get_parameters(self):
+        # Test case I: set some parameter names
+        self.pd_model.set_parameter_names({
+            'myokit.tumour_volume': 'Test'})
+
+        parameters = self.pd_model.parameters()
+        self.assertEqual(len(parameters), 5)
+        self.assertEqual(parameters[0], 'Test')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+
+        # Test case II: set back to default
+        self.pd_model.set_parameter_names({
+            'Test': 'myokit.tumour_volume'})
+
+        parameters = self.pd_model.parameters()
+        self.assertEqual(len(parameters), 5)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
 
 
 if __name__ == '__main__':
