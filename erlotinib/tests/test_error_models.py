@@ -312,6 +312,40 @@ class TestReducedErrorModel(unittest.TestCase):
         error_model = self.error_model.get_error_model()
         self.assertIsInstance(error_model, erlo.ErrorModel)
 
+    def test_n_parameters(self):
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+    def test_sample(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.1})
+
+        # Sample
+        seed = 42
+        n_samples = 1
+        parameters = [0.2]
+        model_output = [1, 2, 3, 4]
+        samples = self.error_model.sample(
+            parameters, model_output, n_samples, seed)
+
+        # Compute ref score with original error model
+        parameters = [0.1, 0.2]
+        error_model = self.error_model.get_error_model()
+        ref_samples = error_model.sample(
+            parameters, model_output, n_samples, seed)
+
+        self.assertEqual(samples.shape, (4, 1))
+        self.assertEqual(ref_samples.shape, (4, 1))
+        self.assertEqual(samples[0, 0], ref_samples[0, 0])
+        self.assertEqual(samples[1, 0], ref_samples[1, 0])
+        self.assertEqual(samples[2, 0], ref_samples[2, 0])
+        self.assertEqual(samples[3, 0], ref_samples[3, 0])
+
+        # Unfix model parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
     def test_set_get_parameter_names(self):
         # Set some parameter names
         self.error_model.set_parameter_names({
