@@ -518,25 +518,6 @@ class TestReducedMechanisticModel(unittest.TestCase):
         model.set_administration('central')
         cls.pk_model = erlo.ReducedMechanisticModel(model)
 
-    def test_set_get_dosing_regimen(self):
-        # Test case I: dosing regimen unset
-        # Test PD model
-        self.assertIsNone(self.pd_model.dosing_regimen())
-
-        # Test PK model
-        self.assertIsNone(self.pk_model.dosing_regimen())
-
-        # Test case II: dosing regimen set
-        # Test PD model
-        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
-            self.pd_model.set_dosing_regimen(1, 1)
-        self.assertIsNone(self.pd_model.dosing_regimen())
-
-        # Test PK model
-        self.pk_model.set_dosing_regimen(1, 1)
-        self.assertIsInstance(
-            self.pk_model.dosing_regimen(), myokit.Protocol)
-
     def test_fix_parameters(self):
         # Test case I: fix some parameters
         self.pd_model.fix_parameters(name_value_dict={
@@ -590,7 +571,49 @@ class TestReducedMechanisticModel(unittest.TestCase):
     def test_n_outputs(self):
         self.assertEqual(self.pd_model.n_outputs(), 1)
 
+    def test_n_parameters(self):
+        self.assertEqual(self.pd_model.n_parameters(), 5)
 
+    def test_outputs(self):
+        outputs = self.pd_model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+    def test_parameters(self):
+        parameters = self.pd_model.parameters()
+        self.assertEqual(len(parameters), 5)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+
+    def test_pd_output(self):
+        # Test PD model
+        self.assertIsNone(self.pd_model.pd_output())
+
+        # Test PK model
+        self.assertEqual(
+            self.pk_model.pd_output(), 'central.drug_concentration')
+
+    def test_set_get_dosing_regimen(self):
+        # Test case I: dosing regimen unset
+        # Test PD model
+        self.assertIsNone(self.pd_model.dosing_regimen())
+
+        # Test PK model
+        self.assertIsNone(self.pk_model.dosing_regimen())
+
+        # Test case II: dosing regimen set
+        # Test PD model
+        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
+            self.pd_model.set_dosing_regimen(1, 1)
+        self.assertIsNone(self.pd_model.dosing_regimen())
+
+        # Test PK model
+        self.pk_model.set_dosing_regimen(1, 1)
+        self.assertIsInstance(
+            self.pk_model.dosing_regimen(), myokit.Protocol)
 
 
 
