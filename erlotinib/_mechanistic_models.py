@@ -871,7 +871,9 @@ class ReducedMechanisticModel(object):
         names
             A dictionary that maps the current parameter names to new names.
         """
+        # Set parameter names
         self._mechanistic_model.set_parameter_names(names)
+        self._parameter_names = self._mechanistic_model.parameters()
 
     def simulate(self, parameters, times):
         """
