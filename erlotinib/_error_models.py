@@ -387,6 +387,17 @@ class ReducedErrorModel(object):
 
         return names
 
+    def n_fixed_parameters(self):
+        """
+        Returns the number of fixed model parameters.
+        """
+        if self._fixed_params_mask is None:
+            return 0
+
+        n_fixed = int(np.sum(self._fixed_params_mask))
+
+        return n_fixed
+
     def n_parameters(self):
         """
         Returns the number of parameters of the error model.
