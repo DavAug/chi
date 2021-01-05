@@ -7,6 +7,7 @@
 
 import unittest
 
+import myokit
 import numpy as np
 
 import erlotinib as erlo
@@ -517,12 +518,27 @@ class TestReducedMechanisticModel(unittest.TestCase):
         model.set_administration('central')
         cls.pk_model = erlo.ReducedMechanisticModel(model)
 
-    def test_dosing_regimen(self):
+    def test_set_get_dosing_regimen(self):
+        # Test case I: dosing regimen unset
         # Test PD model
         self.assertIsNone(self.pd_model.dosing_regimen())
 
         # Test PK model
         self.assertIsNone(self.pk_model.dosing_regimen())
+
+        # Test case II: dosing regimen set
+        # Test PD model
+        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
+            self.pd_model.set_dosing_regimen(1, 1)
+        self.assertIsNone(self.pd_model.dosing_regimen())
+
+        # Test PK model
+        self.pk_model.set_dosing_regimen(1, 1)
+        self.assertIsInstance(
+            self.pk_model.dosing_regimen(), myokit.Protocol)
+
+
+
 
 
 
