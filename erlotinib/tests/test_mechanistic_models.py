@@ -537,7 +537,55 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertIsInstance(
             self.pk_model.dosing_regimen(), myokit.Protocol)
 
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
 
+        n_parameters = self.pd_model.n_parameters()
+        self.assertEqual(n_parameters, 3)
+
+        parameter_names = self.pd_model.parameters()
+        self.assertEqual(len(parameter_names), 3)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[2], 'myokit.lambda_1')
+
+        # Test case II: fix overlapping set of parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.kappa': None,
+            'myokit.lambda_0': 0.5,
+            'myokit.lambda_1': 0.3})
+
+        n_parameters = self.pd_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+        parameter_names = self.pd_model.parameters()
+        self.assertEqual(len(parameter_names), 2)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.kappa')
+
+        # Test case III: unfix all parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': None,
+            'myokit.lambda_0': None,
+            'myokit.lambda_1': None})
+
+        n_parameters = self.pd_model.n_parameters()
+        self.assertEqual(n_parameters, 5)
+
+        parameter_names = self.pd_model.parameters()
+        self.assertEqual(len(parameter_names), 5)
+        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'myokit.kappa')
+        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+
+    def test_mechanistic_model(self):
+        self.assertIsInstance(
+            self.pd_model.mechanistic_model(), erlo.MechanisticModel)
 
 
 
