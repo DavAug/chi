@@ -238,5 +238,40 @@ class TestErrorModel(unittest.TestCase):
             self.error_model.set_parameter_names(names)
 
 
+class TestReducedErrorModel(unittest.TestCase):
+    """
+    Tests the erlotinib.ReducedErrorModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.error_model = erlo.ReducedErrorModel(error_model)
+
+    def test_compute_log_likelihood(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.1})
+
+        # Compute log-likelihood
+        parameters = [0.2]
+        model_output = [1, 2, 3, 4]
+        observations = [2, 3, 4, 5]
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        # Compute ref score with original error model
+        parameters = [0.1, 0.2]
+        error_model = self.error_model.get_error_model()
+        ref_score = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertEqual(score, ref_score)
+
+        # Unfix model parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+
 if __name__ == '__main__':
     unittest.main()
