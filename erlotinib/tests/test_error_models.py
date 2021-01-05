@@ -322,6 +322,19 @@ class TestReducedErrorModel(unittest.TestCase):
         error_model = self.error_model.get_error_model()
         self.assertIsInstance(error_model, erlo.ErrorModel)
 
+    def test_n_fixed_parameters(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.1})
+
+        self.assertEqual(self.error_model.n_fixed_parameters(), 1)
+
+        # Unfix all parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+        self.assertEqual(self.error_model.n_fixed_parameters(), 0)
+
     def test_n_parameters(self):
         n_parameters = self.error_model.n_parameters()
         self.assertEqual(n_parameters, 2)
