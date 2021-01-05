@@ -378,11 +378,12 @@ class ReducedErrorModel(object):
         """
         Returns the names of the error model parameters.
         """
-        # Get all parameter names
-        names = np.array(self._error_model.get_parameter_names())
-
-        # Filter fixed parameters
-        names = list(names[~self._fixed_params_mask])
+        # Remove fixed model parameters
+        names = self._parameter_names
+        if self._fixed_params_mask is not None:
+            names = np.array(names)
+            names = names[~self._fixed_params_mask]
+            names = list(names)
 
         return names
 
