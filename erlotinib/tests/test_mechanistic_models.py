@@ -587,6 +587,9 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertIsInstance(
             self.pd_model.mechanistic_model(), erlo.MechanisticModel)
 
+    def test_n_outputs(self):
+        self.assertEqual(self.pd_model.n_outputs(), 1)
+
 
 
 
