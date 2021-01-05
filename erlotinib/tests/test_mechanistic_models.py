@@ -499,5 +499,34 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(output.shape, (1, 4))
 
 
+class TestReducedMechanisticModel(unittest.TestCase):
+    """
+    Tests the erlotinib.ReducedMechanisticModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Set up model
+        lib = erlo.ModelLibrary()
+        path = lib.tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        cls.pd_model = erlo.ReducedMechanisticModel(model)
+
+        path = lib.one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central')
+        cls.pk_model = erlo.ReducedMechanisticModel(model)
+
+    def test_dosing_regimen(self):
+        # Test PD model
+        self.assertIsNone(self.pd_model.dosing_regimen())
+
+        # Test PK model
+        self.assertIsNone(self.pk_model.dosing_regimen())
+
+
+
+
+
 if __name__ == '__main__':
     unittest.main()
