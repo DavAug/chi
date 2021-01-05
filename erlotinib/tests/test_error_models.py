@@ -248,6 +248,11 @@ class TestReducedErrorModel(unittest.TestCase):
         error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
         cls.error_model = erlo.ReducedErrorModel(error_model)
 
+    def test_bad_instantiation(self):
+        model = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The error model'):
+            erlo.ReducedErrorModel(model)
+
     def test_compute_log_likelihood(self):
         # Test case I: fix some parameters
         self.error_model.fix_parameters(name_value_dict={
@@ -307,6 +312,11 @@ class TestReducedErrorModel(unittest.TestCase):
         self.assertEqual(len(parameter_names), 2)
         self.assertEqual(parameter_names[0], 'Sigma base')
         self.assertEqual(parameter_names[1], 'Sigma rel.')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.error_model.fix_parameters(name_value_dict)
 
     def test_get_error_model(self):
         error_model = self.error_model.get_error_model()
