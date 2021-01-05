@@ -442,21 +442,10 @@ class PredictiveModel(object):
         self._n_parameters = len(self._parameter_names)
 
     def fix_parameters(self, name_value_dict):
-        #TODO:
-        # 1. Use Reduced M + E Model to implement this method
-        # 2. Change get-set names
-        # 3. Change sample method
-        # 4. Change submodels method
-        # 5. Test RMM
-        # 6. Test REM
-        # 7. Test fix model parameters PM
-        # 8. Test PosteriorPredictiveModel
-        # 9. Complete notebook
-
         # Check type of dictionanry
         try:
             name_value_dict = dict(name_value_dict)
-        except TypeError:
+        except (TypeError, AttributeError):
             raise ValueError(
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
@@ -466,9 +455,11 @@ class PredictiveModel(object):
         error_models = self._error_models
 
         # Convert models to reduced models
-        mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
         for model_id, error_model in enumerate(error_models):
-            error_models[model_id] = erlo.ReducedErrorModel(error_model)
+            if not isinstance(error_model, erlo.ReducedErrorModel):
+                error_models[model_id] = erlo.ReducedErrorModel(error_model)
 
         # Fix model parameters
         mechanistic_model.fix_parameters(name_value_dict)
@@ -620,9 +611,11 @@ class PredictiveModel(object):
 
         error_models = []
         for error_model in self._error_models:
+            # Get original error model
             if isinstance(error_model, erlo.ReducedErrorModel):
                 error_model = error_model.get_error_model()
-                error_models.append(error_model)
+
+            error_models.append(error_model)
 
         submodels = dict({
             'Mechanistic model': mechanistic_model,
