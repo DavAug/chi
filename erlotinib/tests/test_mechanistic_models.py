@@ -653,6 +653,28 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(parameters[3], 'myokit.lambda_0')
         self.assertEqual(parameters[4], 'myokit.lambda_1')
 
+    def test_simulate(self):
+        # Test case I: fix some parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
+
+        # Simulate
+        times = [1, 2, 3]
+        parameters = [0, 0.5, 0.3]
+        sim = self.pd_model.simulate(parameters, times).flatten()
+
+        # Simulate unfixed model with the same parameters
+        model = self.pd_model.mechanistic_model()
+        parameters = [1, 0, 1, 0.5, 0.3]
+        ref_sim = model.simulate(parameters, times).flatten()
+
+        self.assertEqual(len(sim), 3)
+        self.assertEqual(len(ref_sim), 3)
+        self.assertEqual(sim[0], ref_sim[0])
+        self.assertEqual(sim[1], ref_sim[1])
+        self.assertEqual(sim[2], ref_sim[2])
+
 
 if __name__ == '__main__':
     unittest.main()
