@@ -414,7 +414,7 @@ class PredictiveModel(object):
 
                 # Prepend output name
                 output = outputs[output_id]
-                names = [output + name for name in names]
+                names = [output + ' ' + name for name in names]
 
                 # Set new parameter names
                 error_model.set_parameter_names(names)
@@ -442,10 +442,21 @@ class PredictiveModel(object):
         self._n_parameters = len(self._parameter_names)
 
     def fix_parameters(self, name_value_dict):
+        """
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
+
+        Parameters
+        ----------
+        name_value_dict
+            A dictionary with model parameter names as keys, and parameter
+            value as values.
+        """
         # Check type of dictionanry
         try:
             name_value_dict = dict(name_value_dict)
-        except (TypeError, AttributeError):
+        except (TypeError, ValueError):
             raise ValueError(
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
@@ -467,11 +478,11 @@ class PredictiveModel(object):
             error_model.fix_parameters(name_value_dict)
 
         # If no parameters are fixed, get original model back
-        if mechanistic_model._fixed_params_values is None:
+        if mechanistic_model.n_fixed_parameters() == 0:
             mechanistic_model = mechanistic_model.mechanistic_model()
 
         for model_id, error_model in enumerate(error_models):
-            if error_model._fixed_params_values is None:
+            if error_model.n_fixed_parameters() == 0:
                 error_model = error_model.get_error_model()
                 error_models[model_id] = error_model
 
