@@ -209,22 +209,26 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                     'The posterior samples dataframe does not have the key '
                     '<' + str(key) + '>.')
 
-        if param_map is not None:
-            try:
-                param_map = dict(param_map)
-            except (TypeError, ValueError):
-                raise ValueError(
-                    'The parameter map has to be convertable to a python '
-                    'dictionary.')
+        # Set default parameter map (no mapping)
+        if param_map is None:
+            param_map = {}
+
+        try:
+            param_map = dict(param_map)
+        except (TypeError, ValueError):
+            raise ValueError(
+                'The parameter map has to be convertable to a python '
+                'dictionary.')
 
         # Get default individual
-        ids = posterior_samples[id_key].dropna().unique()
+        ids = list(posterior_samples[id_key].dropna().unique())
         if individual is None:
             individual = ids[0]
 
         if individual not in ids:
             raise ValueError(
-                'The individual could not be found in the ID column.')
+                'The individual <' + str(individual) + '> could not be found '
+                'in the ID column.')
 
         # Mask samples for individual
         mask = posterior_samples[id_key] == individual
@@ -242,7 +246,7 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 
         if warm_up_iter >= posterior_samples[iter_key].max():
             raise ValueError(
-                'The number of warm up iterations has to be smaller than '
+                'The number of warm-up iterations has to be smaller than '
                 'the total number of iterations for each run.')
 
         # Exclude warm up iterations
@@ -259,14 +263,12 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 
         # Create map from posterior parameter names to model parameter names
         parameter_names = self._predictive_model.get_parameter_names()
-        if param_map is not None:
-            # Map parameter names
-            for param_id, name in enumerate(parameter_names):
-                try:
-                    parameter_names[param_id] = param_map[name]
-                except KeyError:
-                    # The name is not mapped
-                    pass
+        for param_id, name in enumerate(parameter_names):
+            try:
+                parameter_names[param_id] = param_map[name]
+            except KeyError:
+                # The name is not mapped
+                pass
 
         # Make sure that all parameter names can be found in the dataframe
         df_parameter_names = posterior_samples[param_key].unique()
@@ -314,7 +316,7 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 samples_df = temp_df[mask]
 
                 # Make sure samples are sorted according to iterations
-                samples_df.sort_values(iter_key, inplace=True)
+                samples_df = samples_df.sort_values(iter_key)
 
                 # Add samples as column to dataframe
                 param_df[name] = samples_df[sample_key]
