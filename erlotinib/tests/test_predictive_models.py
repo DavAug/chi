@@ -81,6 +81,115 @@ class TestDataDrivenPredictiveModel(unittest.TestCase):
             self.model.set_dosing_regimen(10, 2)
 
 
+class TestPosteriorPredictiveModel(unittest.TestCase):
+    """
+    Tests the erlotinib.PosteriorPredictiveModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Create predictive model
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = erlo.PharmacodynamicModel(path)
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        cls.pred_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+
+        # Create a posterior samples dataframe
+        parameter_names = list(cls.pred_model.get_parameter_names())
+        n_parameters = cls.pred_model.n_parameters()
+        iterations = \
+            [1] * 2 * n_parameters + \
+            [2] * 2 * n_parameters + \
+            [3] * 2 * n_parameters
+        runs = [1] * n_parameters + [2] * n_parameters
+        runs = runs * 3
+        cls.posterior_samples = pd.DataFrame({
+            'ID': 1,
+            'Parameter': parameter_names * 6,
+            'Sample': 42,
+            'Iteration': iterations,
+            'Run': runs})
+
+        # Create posterior predictive model
+        cls.model = erlo.PosteriorPredictiveModel(
+            cls.pred_model, cls.posterior_samples)
+
+    def test_bad_instantiation(self):
+        # Posterior samples have the wrong type
+        posterior_samples = 'Bad type'
+        with self.assertRaisesRegex(TypeError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, posterior_samples)
+
+        # Bad ID key
+        id_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, id_key=id_key)
+
+        # Bad sample key
+        sample_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, sample_key=sample_key)
+
+        # Bad param key
+        param_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, param_key=param_key)
+
+        # Bad iter key
+        iter_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, iter_key=iter_key)
+
+        # Bad run key
+        run_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, run_key=run_key)
+
+        # Bad parameter map type
+        param_map = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The parameter map'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, param_map=param_map)
+
+        # Non existent ID
+        _id = 'Does not exist'
+        with self.assertRaisesRegex(ValueError, 'The individual <Does not'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, individual=_id)
+
+        # Negative warm-up iterations
+        warmup = -10
+        with self.assertRaisesRegex(ValueError, 'The number of warm-up'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, warm_up_iter=warmup)
+
+        # Too large warm-up iterations
+        warmup = 10
+        with self.assertRaisesRegex(ValueError, 'The number of warm-up'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, warm_up_iter=warmup)
+
+        # The posterior does not have samples for all parameters
+        mask = self.posterior_samples['Parameter'] != 'myokit.tumour_volume'
+        posterior_samples = self.posterior_samples[mask]
+        with self.assertRaisesRegex(ValueError, 'The dimension of the post'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, posterior_samples)
+
+        # The parameter map does not identify all parameters correctly
+        param_map = {'myokit.tumour_volume': 'Does not exist'}
+        with self.assertRaisesRegex(ValueError, 'The parameter <Does not'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, param_map=param_map)
+
+
 class TestPredictiveModel(unittest.TestCase):
     """
     Tests the erlo.PredictiveModel class.
