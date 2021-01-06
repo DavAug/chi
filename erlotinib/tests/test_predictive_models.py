@@ -125,6 +125,63 @@ class TestPredictiveModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Wrong number of error'):
             erlo.PredictiveModel(self.mechanistic_model, error_models)
 
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
+
+        n_parameters = self.model.n_parameters()
+        self.assertEqual(n_parameters, 5)
+
+        parameter_names = self.model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 5)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[2], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[3], 'Sigma base')
+        self.assertEqual(parameter_names[4], 'Sigma rel.')
+
+        # Test case II: fix overlapping set of parameters
+        self.model.fix_parameters(name_value_dict={
+            'myokit.kappa': None,
+            'myokit.lambda_0': 0.5,
+            'Sigma rel.': 0.3})
+
+        n_parameters = self.model.n_parameters()
+        self.assertEqual(n_parameters, 4)
+
+        parameter_names = self.model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 4)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.kappa')
+        self.assertEqual(parameter_names[2], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[3], 'Sigma base')
+
+        # Test case III: unfix all parameters
+        self.model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': None,
+            'myokit.lambda_0': None,
+            'Sigma rel.': None})
+
+        n_parameters = self.model.n_parameters()
+        self.assertEqual(n_parameters, 7)
+
+        parameter_names = self.model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 7)
+        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'myokit.kappa')
+        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[5], 'Sigma base')
+        self.assertEqual(parameter_names[6], 'Sigma rel.')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.model.fix_parameters(name_value_dict)
+
     def test_get_n_outputs(self):
         self.assertEqual(self.model.get_n_outputs(), 1)
 
@@ -134,6 +191,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
 
     def test_get_parameter_names(self):
+        # Test case I: Single output problem
         names = self.model.get_parameter_names()
 
         self.assertEqual(len(names), 7)
@@ -144,6 +202,29 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(names[4], 'myokit.lambda_1')
         self.assertEqual(names[5], 'Sigma base')
         self.assertEqual(names[6], 'Sigma rel.')
+
+        # Test case II: Multi-output problem
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central', direct=False)
+        model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+        error_models = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel(),
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        model = erlo.PredictiveModel(model, error_models)
+
+        names = model.get_parameter_names()
+
+        self.assertEqual(len(names), 9)
+        self.assertEqual(names[0], 'central.drug_amount')
+        self.assertEqual(names[1], 'dose.drug_amount')
+        self.assertEqual(names[2], 'central.size')
+        self.assertEqual(names[3], 'dose.absorption_rate')
+        self.assertEqual(names[4], 'myokit.elimination_rate')
+        self.assertEqual(names[5], 'central.drug_amount Sigma base')
+        self.assertEqual(names[6], 'central.drug_amount Sigma rel.')
+        self.assertEqual(names[7], 'dose.drug_amount Sigma base')
+        self.assertEqual(names[8], 'dose.drug_amount Sigma rel.')
 
     def test_get_set_dosing_regimen(self):
         # Test case I: Mechanistic model does not support dosing regimens
@@ -317,6 +398,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(doses[0], 1)
 
     def test_get_submodels(self):
+        # Test case I: no fixed parameters
         submodels = self.model.get_submodels()
 
         keys = list(submodels.keys())
@@ -330,6 +412,25 @@ class TestPredictiveModel(unittest.TestCase):
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 1)
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
+        # Test case II: some fixed parameters
+        self.model.fix_parameters({'myokit.tumour_volume': 1})
+        submodels = self.model.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 1)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
+        # Unfix parameter
+        self.model.fix_parameters({'myokit.tumour_volume': None})
 
     def test_n_parameters(self):
         self.assertEqual(self.model.n_parameters(), 7)
