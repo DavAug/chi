@@ -158,6 +158,15 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
     warm_up_iter
         Number of warm up iterations which are excluded from the approximate
         posterior distribution.
+    individual
+            The ID of the modelled individual. This argument is used to
+            determine the relevant samples in the dataframe. If ``None``, the
+            first ID in the ID column is selected.
+    param_map
+        A dictionary which can be used to map predictive model parameter
+        names to the parameter names in the parameter column of the
+        posterior dataframe. If ``None``, it is assumed that the naming is
+        identical.
     id_key
         Key label of the :class:`DataFrame` which specifies the ID column.
         The ID refers to the identity of an individual. Defaults to
@@ -181,8 +190,9 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
     """
 
     def __init__(
-            self, predictive_model, posterior_samples, warm_up_iter=0,
-            id_key='ID', param_key='Parameter', sample_key='Sample',
+            self, predictive_model, posterior_samples, warm_up_iter=None,
+            individual=None, param_map=None, id_key='ID',
+            param_key='Parameter', sample_key='Sample',
             iter_key='Iteration', run_key='Run'):
         super(PosteriorPredictiveModel, self).__init__(predictive_model)
 
@@ -192,19 +202,52 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 'The posterior samples have to be in a pandas.DataFrame '
                 'format.')
 
-        keys = [run_key, id_key, sample_key, param_key, iter_key]
+        keys = [id_key, sample_key, param_key, iter_key, run_key]
         for key in keys:
             if key not in posterior_samples.keys():
                 raise ValueError(
-                    'Posterior samples dataframe does not have the key '
+                    'The posterior samples dataframe does not have the key '
                     '<' + str(key) + '>.')
-        self._id_key, self._sample_key, self._param_key, self._iter_key = keys[
-            1:]
+
+        if param_map is not None:
+            try:
+                param_map = dict(param_map)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    'The parameter map has to be convertable to a python '
+                    'dictionary.')
+
+        # Get default individual
+        ids = posterior_samples[id_key].dropna().unique()
+        if individual is None:
+            individual = ids[0]
+
+        if individual not in ids:
+            raise ValueError(
+                'The individual could not be found in the ID column.')
+
+        # Mask samples for individual
+        mask = posterior_samples[id_key] == individual
+        posterior_samples = posterior_samples[mask]
+
+        # Get warm-up iterations
+        if warm_up_iter is None:
+            warm_up_iter = 0
+        warm_up_iter = int(warm_up_iter)
+
+        if warm_up_iter < 0:
+            raise ValueError(
+                'The number of warm-up iterations has to be greater or equal '
+                'to zero.')
 
         if warm_up_iter >= posterior_samples[iter_key].max():
             raise ValueError(
-                'The number of warm up iterations has to be smaller than the '
-                'total number of iterations for each run.')
+                'The number of warm up iterations has to be smaller than '
+                'the total number of iterations for each run.')
+
+        # Exclude warm up iterations
+        mask = posterior_samples[iter_key] > warm_up_iter
+        posterior_samples = posterior_samples[mask]
 
         # Check that posterior has the same dimensionality as the model
         parameter_names = posterior_samples[param_key].unique()
@@ -214,20 +257,78 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 'The dimension of the posterior distribution has to be the '
                 'same as the number of parameters of the predictive model.')
 
-        # Exclude warm up iterations
-        mask = posterior_samples[iter_key] > warm_up_iter
-        posterior_samples = posterior_samples[mask]
+        # Create map from posterior parameter names to model parameter names
+        parameter_names = self._predictive_model.get_parameter_names()
+        if param_map is not None:
+            # Map parameter names
+            for param_id, name in enumerate(parameter_names):
+                try:
+                    parameter_names[param_id] = param_map[name]
+                except KeyError:
+                    # The name is not mapped
+                    pass
 
-        # Create a unique ID for the samples
-        self._posterior = posterior_samples[
-            [id_key, sample_key, param_key]].copy()
-        self._posterior.loc[:, iter_key] = \
-            'Iteration: ' + posterior_samples[iter_key].apply(str) + \
-            ', Run: ' + posterior_samples[run_key].apply(str)
+        # Make sure that all parameter names can be found in the dataframe
+        df_parameter_names = posterior_samples[param_key].unique()
+        for name in parameter_names:
+            if name not in df_parameter_names:
+                raise ValueError(
+                    'The parameter <' + str(name) + '> could not be found in '
+                    'the parameter column of the posterior dataframe.')
+
+        # Transform dataframe into more convenient format for sampling
+        keys = keys[1:]
+        self._format_posterior_samples(
+            posterior_samples, parameter_names, keys)
+
+    def _format_posterior_samples(self, posterior, parameter_names, keys):
+        """
+        Transforms the dataframe of samples into a numpy array of shape
+        (n_samples, n_parameters).
+
+        This will increase the efficiency of sampling from the posterior.
+        """
+        # Unpack keys
+        sample_key, param_key, iter_key, run_key = keys
+
+        # Get number of samples and number of parameters
+        n_iters = len(posterior[iter_key].unique())
+        n_runs = len(posterior[run_key].unique())
+        n_samples = n_runs * n_iters
+        n_parameters = len(posterior[param_key].unique())
+
+        # Create numpy container for samples
+        container = np.empty(shape=(n_samples, n_parameters))
+
+        # Fill container with samples
+        for run_id, run in enumerate(posterior[run_key].unique()):
+            # Mask samples for run
+            mask = posterior[run_key] == run
+            temp_df = posterior[mask][[sample_key, param_key, iter_key]]
+
+            # Create a separate row for each parameter
+            param_df = pd.DataFrame()
+            for name in parameter_names:
+                # Get parameter samples
+                mask = temp_df[param_key] == name
+                samples_df = temp_df[mask]
+
+                # Make sure samples are sorted according to iterations
+                samples_df.sort_values(iter_key, inplace=True)
+
+                # Add samples as column to dataframe
+                param_df[name] = samples_df[sample_key]
+
+            # Add parameter values to container
+            start = n_iters * run_id
+            end = start + n_iters
+            container[start:end, :] = param_df.to_numpy()
+
+        # Remember reformated samples
+        self._posterior = container
 
     def sample(
-            self, times, n_samples=None, seed=None, individual=None,
-            param_map=None, include_regimen=False):
+            self, times, n_samples=None, seed=None, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the posterior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -247,15 +348,6 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
             at each time point.
         seed
             A seed for the pseudo-random number generator.
-        individual
-            The ID of the modelled indiviudal. This argument is used to
-            determine the relevant samples in the dataframe. If ``None``, the
-            first ID in the ID column is selected.
-        param_map
-            A dictionary which can be used to map predictive model parameter
-            names to the parameter names in the parameter column of the
-            posterior dataframe. If ``None``, it is assumed that the naming is
-            identical.
         include_regimen
             A boolean flag which determines whether the information about the
             dosing regimen is included.
@@ -264,38 +356,6 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         if n_samples is None:
             n_samples = 1
         n_samples = int(n_samples)
-
-        # Select which ID is modelled, default to first ID
-        ids = self._posterior[self._id_key].dropna().unique()
-        if individual is None:
-            individual = ids[0]
-
-        if individual not in ids:
-            raise ValueError(
-                'The individual could not be found in the ID column.')
-
-        # Mask samples for individual
-        mask = self._posterior[self._id_key] == individual
-        posterior = self._posterior[mask]
-
-        # Create map from posterior parameter names to model parameter names
-        parameter_names = self._predictive_model.get_parameter_names()
-        if parameter_names is not None:
-            # Map parameter names
-            for param_id, name in enumerate(parameter_names):
-                try:
-                    parameter_names[param_id] = param_map[name]
-                except KeyError:
-                    # The name is not mapped
-                    pass
-
-        # Make sure that all parameter names can be found in the dataframe
-        df_parameter_names = posterior[self._param_key].unique()
-        for name in parameter_names:
-            if name not in df_parameter_names:
-                raise ValueError(
-                    'The parameter <' + str(name) + '> could not be found in '
-                    'the parameter column of the posterior dataframe.')
 
         # Sort times
         times = np.sort(times)
@@ -307,25 +367,14 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         # Get model outputs (biomarkers)
         outputs = self._predictive_model.get_output_names()
 
+        # Instantiate random number generator for sampling from the posterior
+        rng = np.random.default_rng(seed=seed)
+
         # Draw samples
         sample_ids = np.arange(start=1, stop=n_samples+1)
         for sample_id in sample_ids:
-            # Increment seed for each iteration, to avoid repeated patterns
-            if seed is not None:
-                seed += 1
-
-            # Sample parameter
-            posterior_sample_id = posterior[
-                self._iter_key].sample(random_state=seed).iloc[0]
-            mask = posterior[self._iter_key] == posterior_sample_id
-            df_params = posterior[mask][[self._param_key, self._sample_key]]
-
-            # Sort parameters in order expected from model
-            parameters = []
-            for name in parameter_names:
-                mask = df_params[self._param_key] == name
-                value = df_params.loc[mask, self._sample_key].iloc[0]
-                parameters.append(value)
+            # Sample parameter from posterior
+            parameters = rng.choice(self._posterior)
 
             # Increment seed for each iteration, to avoid repeated patterns
             if seed is not None:
