@@ -100,7 +100,7 @@ class DataDrivenPredictiveModel(object):
 
         .. note::
             This method requires a :class:`MechanisticModel` that supports
-            compound administration.
+            dose administration.
 
         Parameters
         ----------
@@ -130,14 +130,14 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
     time based on the inferred posterior distribution of the model parameters.
 
     A posterior predictive model may be used to check whether the inference
-    results agree with observed measurement. A posterior predictive model may
+    results agree with observed measurements. A posterior predictive model may
     also be used to predict future measurements of preclinical or clinical
     biomarkers.
 
     A PosteriorPredictiveModel is instantiated with an instance of a
     :class:`PredictiveModel` and a :class:`pandas.DataFrame` of parameter
-    samples generated e.g. with the :class:`SamplingController`. The samples
-    approximate the posterior distribution of the model parameters. The
+    posterior samples generated e.g. with the :class:`SamplingController`. The
+    samples approximate the posterior distribution of the model parameters. The
     posterior distribution has to be of the same parametric dimension as the
     predictive model. Future biomarker "measurements" can then be predicted by
     first sampling parameter values from the posterior distribution, and then
@@ -152,16 +152,16 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         An instance of a :class:`PredictiveModel`.
     posterior_samples
         A :class:`pandas.DataFrame` with samples from the posterior
-        distribution of the model parameters. The posterior distirbution has
+        distribution of the model parameters. The posterior distribution has
         to be of the same dimension as the number of predictive model
         parameters.
     warm_up_iter
-        Number of warm up iterations which are excluded from the approximate
+        Number of warm-up iterations which are excluded from the approximate
         posterior distribution.
     individual
-            The ID of the modelled individual. This argument is used to
-            determine the relevant samples in the dataframe. If ``None``, the
-            first ID in the ID column is selected.
+        The ID of the modelled individual. This argument is used to
+        determine the relevant samples in the dataframe. If ``None``, the
+        first ID in the ID column is selected.
     param_map
         A dictionary which can be used to map predictive model parameter
         names to the parameter names in the parameter column of the
