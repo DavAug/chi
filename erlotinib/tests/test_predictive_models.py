@@ -763,7 +763,9 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
 
         # Unfix parameter
-        self.model.fix_parameters({'myokit.tumour_volume': None})
+        self.model.fix_parameters({
+            'myokit.tumour_volume': None,
+            'Sigma rel.': None})
 
     def test_n_parameters(self):
         self.assertEqual(self.model.n_parameters(), 7)
