@@ -100,7 +100,7 @@ class DataDrivenPredictiveModel(object):
 
         .. note::
             This method requires a :class:`MechanisticModel` that supports
-            compound administration.
+            dose administration.
 
         Parameters
         ----------
@@ -122,6 +122,284 @@ class DataDrivenPredictiveModel(object):
         """
         self._predictive_model.set_dosing_regimen(
             dose, start, duration, period, num)
+
+
+class PosteriorPredictiveModel(DataDrivenPredictiveModel):
+    """
+    Implements a model that predicts the change of observable biomarkers over
+    time based on the inferred posterior distribution of the model parameters.
+
+    A posterior predictive model may be used to check whether the inference
+    results agree with observed measurements. A posterior predictive model may
+    also be used to predict future measurements of preclinical or clinical
+    biomarkers.
+
+    A PosteriorPredictiveModel is instantiated with an instance of a
+    :class:`PredictiveModel` and a :class:`pandas.DataFrame` of parameter
+    posterior samples generated e.g. with the :class:`SamplingController`. The
+    samples approximate the posterior distribution of the model parameters. The
+    posterior distribution has to be of the same parametric dimension as the
+    predictive model. Future biomarker "measurements" can then be predicted by
+    first sampling parameter values from the posterior distribution, and then
+    generating "virtual" measurements from the predictive model with those
+    parameters.
+
+    Extends :class:`DataDrivenPredictiveModel`.
+
+    Parameters
+    ----------
+    predictive_model
+        An instance of a :class:`PredictiveModel`.
+    posterior_samples
+        A :class:`pandas.DataFrame` with samples from the posterior
+        distribution of the model parameters. The posterior distribution has
+        to be of the same dimension as the number of predictive model
+        parameters.
+    warm_up_iter
+        Number of warm-up iterations which are excluded from the approximate
+        posterior distribution.
+    individual
+        The ID of the modelled individual. This argument is used to
+        determine the relevant samples in the dataframe. If ``None``, the
+        first ID in the ID column is selected.
+    param_map
+        A dictionary which can be used to map predictive model parameter
+        names to the parameter names in the parameter column of the
+        posterior dataframe. If ``None``, it is assumed that the naming is
+        identical.
+    id_key
+        Key label of the :class:`DataFrame` which specifies the ID column.
+        The ID refers to the identity of an individual. Defaults to
+        ``'ID'``.
+    param_key
+        Key label of the :class:`DataFrame` which specifies the parameter
+        name column. Defaults to ``'Parameter'``.
+    sample_key
+        Key label of the :class:`DataFrame` which specifies the parameter
+        sample column. Defaults to ``'Sample'``.
+    iter_key
+        Key label of the :class:`DataFrame` which specifies the iteration
+        column. The iteration refers to the iteration of the sampling
+        routine at which the parameter value was sampled. Defaults to
+        ``'Iteration'``.
+    run_key
+        Key label of the :class:`DataFrame` which specifies the run ID
+        column. The run ID refers to the run of the sampling
+        routine at which the parameter value was sampled. Defaults to
+        ``'Run'``.
+    """
+
+    def __init__(
+            self, predictive_model, posterior_samples, warm_up_iter=None,
+            individual=None, param_map=None, id_key='ID',
+            param_key='Parameter', sample_key='Sample',
+            iter_key='Iteration', run_key='Run'):
+        super(PosteriorPredictiveModel, self).__init__(predictive_model)
+
+        # Check input
+        if not isinstance(posterior_samples, pd.DataFrame):
+            raise TypeError(
+                'The posterior samples have to be in a pandas.DataFrame '
+                'format.')
+
+        keys = [id_key, sample_key, param_key, iter_key, run_key]
+        for key in keys:
+            if key not in posterior_samples.keys():
+                raise ValueError(
+                    'The posterior samples dataframe does not have the key '
+                    '<' + str(key) + '>.')
+
+        # Set default parameter map (no mapping)
+        if param_map is None:
+            param_map = {}
+
+        try:
+            param_map = dict(param_map)
+        except (TypeError, ValueError):
+            raise ValueError(
+                'The parameter map has to be convertable to a python '
+                'dictionary.')
+
+        # Get default individual
+        ids = list(posterior_samples[id_key].dropna().unique())
+        if individual is None:
+            individual = ids[0]
+
+        if individual not in ids:
+            raise ValueError(
+                'The individual <' + str(individual) + '> could not be found '
+                'in the ID column.')
+
+        # Mask samples for individual
+        mask = posterior_samples[id_key] == individual
+        posterior_samples = posterior_samples[mask]
+
+        # Get warm-up iterations
+        if warm_up_iter is None:
+            warm_up_iter = 0
+        warm_up_iter = int(warm_up_iter)
+
+        if warm_up_iter < 0:
+            raise ValueError(
+                'The number of warm-up iterations has to be greater or equal '
+                'to zero.')
+
+        if warm_up_iter >= posterior_samples[iter_key].max():
+            raise ValueError(
+                'The number of warm-up iterations has to be smaller than '
+                'the total number of iterations for each run.')
+
+        # Exclude warm up iterations
+        mask = posterior_samples[iter_key] > warm_up_iter
+        posterior_samples = posterior_samples[mask]
+
+        # Check that posterior has the same dimensionality as the model
+        parameter_names = posterior_samples[param_key].unique()
+        n_parameters = len(parameter_names)
+        if predictive_model.n_parameters() != n_parameters:
+            raise ValueError(
+                'The dimension of the posterior distribution has to be the '
+                'same as the number of parameters of the predictive model.')
+
+        # Create map from posterior parameter names to model parameter names
+        parameter_names = self._predictive_model.get_parameter_names()
+        for param_id, name in enumerate(parameter_names):
+            try:
+                parameter_names[param_id] = param_map[name]
+            except KeyError:
+                # The name is not mapped
+                pass
+
+        # Make sure that all parameter names can be found in the dataframe
+        df_parameter_names = posterior_samples[param_key].unique()
+        for name in parameter_names:
+            if name not in df_parameter_names:
+                raise ValueError(
+                    'The parameter <' + str(name) + '> could not be found in '
+                    'the parameter column of the posterior dataframe.')
+
+        # Transform dataframe into more convenient format for sampling
+        keys = keys[1:]
+        self._format_posterior_samples(
+            posterior_samples, parameter_names, keys)
+
+    def _format_posterior_samples(self, posterior, parameter_names, keys):
+        """
+        Transforms the dataframe of samples into a numpy array of shape
+        (n_samples, n_parameters).
+
+        This will increase the efficiency of sampling from the posterior.
+        """
+        # Unpack keys
+        sample_key, param_key, iter_key, run_key = keys
+
+        # Get number of samples and number of parameters
+        n_iters = len(posterior[iter_key].unique())
+        n_runs = len(posterior[run_key].unique())
+        n_samples = n_runs * n_iters
+        n_parameters = len(posterior[param_key].unique())
+
+        # Create numpy container for samples
+        container = np.empty(shape=(n_samples, n_parameters))
+
+        # Fill container with samples
+        for run_id, run in enumerate(posterior[run_key].unique()):
+            # Mask samples for run
+            mask = posterior[run_key] == run
+            temp_df = posterior[mask][[sample_key, param_key, iter_key]]
+
+            # Get container sample range for this run's samples
+            start = n_iters * run_id
+            end = start + n_iters
+
+            # Fill container with parameter samples
+            for param_id, name in enumerate(parameter_names):
+                # Get parameter samples
+                mask = temp_df[param_key] == name
+                samples_df = temp_df[mask]
+
+                # Make sure samples are sorted according to iterations
+                samples = samples_df.sort_values(iter_key)[sample_key]
+
+                # Add samples to container
+                container[start:end, param_id] = samples.to_numpy()
+
+        # Remember reformated samples
+        self._posterior = container
+
+    def sample(
+            self, times, n_samples=None, seed=None, include_regimen=False):
+        """
+        Samples "measurements" of the biomarkers from the posterior predictive
+        model and returns them in form of a :class:`pandas.DataFrame`.
+
+        For each of the ``n_samples`` a parameter set is drawn from the
+        approximate posterior distribution. These paramaters are then used to
+        sample from the predictive model.
+
+        Parameters
+        ----------
+        times
+            An array-like object with times at which the virtual "measurements"
+            are performed.
+        n_samples
+            The number of virtual "measurements" that are performed at each
+            time point. If ``None`` the biomarkers are measured only once
+            at each time point.
+        seed
+            A seed for the pseudo-random number generator.
+        include_regimen
+            A boolean flag which determines whether the information about the
+            dosing regimen is included.
+        """
+        # Make sure n_samples is an integer
+        if n_samples is None:
+            n_samples = 1
+        n_samples = int(n_samples)
+
+        # Sort times
+        times = np.sort(times)
+
+        # Create container for samples
+        container = pd.DataFrame(
+            columns=['ID', 'Biomarker', 'Time', 'Sample'])
+
+        # Get model outputs (biomarkers)
+        outputs = self._predictive_model.get_output_names()
+
+        # Instantiate random number generator for sampling from the posterior
+        rng = np.random.default_rng(seed=seed)
+
+        # Draw samples
+        sample_ids = np.arange(start=1, stop=n_samples+1)
+        for sample_id in sample_ids:
+            # Sample parameter from posterior
+            parameters = rng.choice(self._posterior)
+
+            # Increment seed for each iteration, to avoid repeated patterns
+            if seed is not None:
+                seed += 1
+
+            # Sample from predictive model
+            sample = self._predictive_model.sample(
+                parameters, times, n_samples, seed, return_df=False)
+
+            # Append samples to dataframe
+            for output_id, name in enumerate(outputs):
+                container = container.append(pd.DataFrame({
+                    'ID': sample_id,
+                    'Biomarker': name,
+                    'Time': times,
+                    'Sample': sample[output_id, :, 0]}))
+
+        # Add dosing regimen, if set
+        final_time = np.max(times)
+        regimen = self.get_dosing_regimen(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Append dosing regimen only once for all samples
+            container = container.append(regimen)
+
+        return container
 
 
 class PredictiveModel(object):
@@ -162,7 +440,7 @@ class PredictiveModel(object):
                     'All provided error models have to be instances of a '
                     'erlo.ErrorModel.')
 
-        # Set ouputs
+        # Set outputs
         if outputs is not None:
             mechanistic_model.set_outputs(outputs)
 
@@ -174,16 +452,95 @@ class PredictiveModel(object):
                 'Wrong number of error models. One error model has to be '
                 'provided for each mechanistic error model.')
 
+        # Rename error model parameters, if more than one output
+        if n_outputs > 1:
+            # Get output names
+            outputs = mechanistic_model.outputs()
+
+            for output_id, error_model in enumerate(error_models):
+                # Get original parameter names
+                names = error_model.get_parameter_names()
+
+                # Prepend output name
+                output = outputs[output_id]
+                names = [output + ' ' + name for name in names]
+
+                # Set new parameter names
+                error_model.set_parameter_names(names)
+
         # Remember models
         self._mechanistic_model = mechanistic_model
         self._error_models = error_models
 
         # Set parameter names and number of parameters
+        self._set_number_and_parameter_names()
+
+    def _set_number_and_parameter_names(self):
+        """
+        Sets the number and names of the free model parameters.
+        """
+        # Get mechanistic model parameters
         parameter_names = self._mechanistic_model.parameters()
-        for error_model in error_models:
+
+        # Get error model parameters
+        for error_model in self._error_models:
             parameter_names += error_model.get_parameter_names()
+
+        # Update number and names
         self._parameter_names = parameter_names
         self._n_parameters = len(self._parameter_names)
+
+    def fix_parameters(self, name_value_dict):
+        """
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
+
+        Parameters
+        ----------
+        name_value_dict
+            A dictionary with model parameter names as keys, and parameter
+            value as values.
+        """
+        # Check type of dictionanry
+        try:
+            name_value_dict = dict(name_value_dict)
+        except (TypeError, ValueError):
+            raise ValueError(
+                'The name-value dictionary has to be convertable to a python '
+                'dictionary.')
+
+        # Get submodels
+        mechanistic_model = self._mechanistic_model
+        error_models = self._error_models
+
+        # Convert models to reduced models
+        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        for model_id, error_model in enumerate(error_models):
+            if not isinstance(error_model, erlo.ReducedErrorModel):
+                error_models[model_id] = erlo.ReducedErrorModel(error_model)
+
+        # Fix model parameters
+        mechanistic_model.fix_parameters(name_value_dict)
+        for error_model in error_models:
+            error_model.fix_parameters(name_value_dict)
+
+        # If no parameters are fixed, get original model back
+        if mechanistic_model.n_fixed_parameters() == 0:
+            mechanistic_model = mechanistic_model.mechanistic_model()
+
+        for model_id, error_model in enumerate(error_models):
+            if error_model.n_fixed_parameters() == 0:
+                error_model = error_model.get_error_model()
+                error_models[model_id] = error_model
+
+        # Safe reduced models
+        self._mechanistic_model = mechanistic_model
+        self._error_models = error_models
+
+        # Update names and number of parameters
+        self._set_number_and_parameter_names()
 
     def get_dosing_regimen(self, final_time=None):
         """
@@ -307,9 +664,22 @@ class PredictiveModel(object):
         """
         Returns the submodels of the predictive model in form of a dictionary.
         """
+        # Get original submodels
+        mechanistic_model = self._mechanistic_model
+        if isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+            mechanistic_model = mechanistic_model.mechanistic_model()
+
+        error_models = []
+        for error_model in self._error_models:
+            # Get original error model
+            if isinstance(error_model, erlo.ReducedErrorModel):
+                error_model = error_model.get_error_model()
+
+            error_models.append(error_model)
+
         submodels = dict({
-            'Mechanistic model': self._mechanistic_model,
-            'Error models': self._error_models})
+            'Mechanistic model': mechanistic_model,
+            'Error models': error_models})
 
         return submodels
 
@@ -489,8 +859,8 @@ class PriorPredictiveModel(DataDrivenPredictiveModel):
     :class:`PredictiveModel` and a :class:`pints.LogPrior` of the same
     parametric dimension as the predictive model. Future biomarker
     "measurements" can then be predicted by first sampling parameter values
-    from the log-prior distribution, and then sampling from the predictive
-    model with those parameters.
+    from the log-prior distribution, and then generating "virtual" measurements
+    from the predictive model with those parameters.
 
     Extends :class:`DataDrivenPredictiveModel`.
 

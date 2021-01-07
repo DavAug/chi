@@ -238,5 +238,161 @@ class TestErrorModel(unittest.TestCase):
             self.error_model.set_parameter_names(names)
 
 
+class TestReducedErrorModel(unittest.TestCase):
+    """
+    Tests the erlotinib.ReducedErrorModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.error_model = erlo.ReducedErrorModel(error_model)
+
+    def test_bad_instantiation(self):
+        model = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The error model'):
+            erlo.ReducedErrorModel(model)
+
+    def test_compute_log_likelihood(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.1})
+
+        # Compute log-likelihood
+        parameters = [0.2]
+        model_output = [1, 2, 3, 4]
+        observations = [2, 3, 4, 5]
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        # Compute ref score with original error model
+        parameters = [0.1, 0.2]
+        error_model = self.error_model.get_error_model()
+        ref_score = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertEqual(score, ref_score)
+
+        # Unfix model parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma rel.': 1})
+
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 1)
+
+        parameter_names = self.error_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 1)
+        self.assertEqual(parameter_names[0], 'Sigma base')
+
+        # Test case II: fix overlapping set of parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.2,
+            'Sigma rel.': 0.1})
+
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 0)
+
+        parameter_names = self.error_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 0)
+
+        # Test case III: unfix all parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None,
+            'Sigma rel.': None})
+
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+        parameter_names = self.error_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 2)
+        self.assertEqual(parameter_names[0], 'Sigma base')
+        self.assertEqual(parameter_names[1], 'Sigma rel.')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.error_model.fix_parameters(name_value_dict)
+
+    def test_get_error_model(self):
+        error_model = self.error_model.get_error_model()
+        self.assertIsInstance(error_model, erlo.ErrorModel)
+
+    def test_n_fixed_parameters(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.1})
+
+        self.assertEqual(self.error_model.n_fixed_parameters(), 1)
+
+        # Unfix all parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+        self.assertEqual(self.error_model.n_fixed_parameters(), 0)
+
+    def test_n_parameters(self):
+        n_parameters = self.error_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+    def test_sample(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.1})
+
+        # Sample
+        seed = 42
+        n_samples = 1
+        parameters = [0.2]
+        model_output = [1, 2, 3, 4]
+        samples = self.error_model.sample(
+            parameters, model_output, n_samples, seed)
+
+        # Compute ref score with original error model
+        parameters = [0.1, 0.2]
+        error_model = self.error_model.get_error_model()
+        ref_samples = error_model.sample(
+            parameters, model_output, n_samples, seed)
+
+        self.assertEqual(samples.shape, (4, 1))
+        self.assertEqual(ref_samples.shape, (4, 1))
+        self.assertEqual(samples[0, 0], ref_samples[0, 0])
+        self.assertEqual(samples[1, 0], ref_samples[1, 0])
+        self.assertEqual(samples[2, 0], ref_samples[2, 0])
+        self.assertEqual(samples[3, 0], ref_samples[3, 0])
+
+        # Unfix model parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+    def test_set_get_parameter_names(self):
+        # Set some parameter names
+        self.error_model.set_parameter_names({
+            'Sigma base': 'Test'})
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Test')
+        self.assertEqual(names[1], 'Sigma rel.')
+
+        # Revert to defaults
+        self.error_model.set_parameter_names({
+            'Test': 'Sigma base'})
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Sigma base')
+        self.assertEqual(names[1], 'Sigma rel.')
+
+    def test_set_parameter_names_bad_input(self):
+        names = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name dictionary'):
+            self.error_model.set_parameter_names(names)
+
+
 if __name__ == '__main__':
     unittest.main()

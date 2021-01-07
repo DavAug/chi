@@ -81,6 +81,337 @@ class TestDataDrivenPredictiveModel(unittest.TestCase):
             self.model.set_dosing_regimen(10, 2)
 
 
+class TestPosteriorPredictiveModel(unittest.TestCase):
+    """
+    Tests the erlotinib.PosteriorPredictiveModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Create predictive model
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = erlo.PharmacodynamicModel(path)
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        cls.pred_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+
+        # Create a posterior samples dataframe
+        parameter_names = list(cls.pred_model.get_parameter_names())
+        n_parameters = cls.pred_model.n_parameters()
+        iterations = \
+            [1] * 2 * n_parameters + \
+            [2] * 2 * n_parameters + \
+            [3] * 2 * n_parameters
+        runs = [1] * n_parameters + [2] * n_parameters
+        runs = runs * 3
+        cls.posterior_samples = pd.DataFrame({
+            'ID': 1,
+            'Parameter': parameter_names * 6,
+            'Sample': 42,
+            'Iteration': iterations,
+            'Run': runs})
+
+        # Create posterior predictive model
+        cls.model = erlo.PosteriorPredictiveModel(
+            cls.pred_model, cls.posterior_samples)
+
+    def test_bad_instantiation(self):
+        # Posterior samples have the wrong type
+        posterior_samples = 'Bad type'
+        with self.assertRaisesRegex(TypeError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, posterior_samples)
+
+        # Bad ID key
+        id_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, id_key=id_key)
+
+        # Bad sample key
+        sample_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, sample_key=sample_key)
+
+        # Bad param key
+        param_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, param_key=param_key)
+
+        # Bad iter key
+        iter_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, iter_key=iter_key)
+
+        # Bad run key
+        run_key = 'Bad key'
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, run_key=run_key)
+
+        # Bad parameter map type
+        param_map = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The parameter map'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, param_map=param_map)
+
+        # Non existent ID
+        _id = 'Does not exist'
+        with self.assertRaisesRegex(ValueError, 'The individual <Does not'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, individual=_id)
+
+        # Negative warm-up iterations
+        warmup = -10
+        with self.assertRaisesRegex(ValueError, 'The number of warm-up'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, warm_up_iter=warmup)
+
+        # Too large warm-up iterations
+        warmup = 10
+        with self.assertRaisesRegex(ValueError, 'The number of warm-up'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, warm_up_iter=warmup)
+
+        # The posterior does not have samples for all parameters
+        mask = self.posterior_samples['Parameter'] != 'myokit.tumour_volume'
+        posterior_samples = self.posterior_samples[mask]
+        with self.assertRaisesRegex(ValueError, 'The dimension of the post'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, posterior_samples)
+
+        # The parameter map does not identify all parameters correctly
+        param_map = {'myokit.tumour_volume': 'Does not exist'}
+        with self.assertRaisesRegex(ValueError, 'The parameter <Does not'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, param_map=param_map)
+
+    def test_sample(self):
+        # Test case I: Just one sample
+        times = [1, 2, 3, 4, 5]
+        seed = 42
+        samples = self.model.sample(times, seed=seed)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 10.25763928014699)
+        self.assertAlmostEqual(values[1], 28.48348944331076)
+        self.assertAlmostEqual(values[2], -24.592234016787202)
+        self.assertAlmostEqual(values[3], -38.164271171263756)
+        self.assertAlmostEqual(values[4], -83.65720486709867)
+
+        # Test case II: More than one sample
+        n_samples = 4
+        samples = self.model.sample(
+            times, n_samples=n_samples, seed=seed)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 4)
+        self.assertEqual(sample_ids[0], 1)
+        self.assertEqual(sample_ids[1], 2)
+        self.assertEqual(sample_ids[2], 3)
+        self.assertEqual(sample_ids[3], 4)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 20)
+        self.assertAlmostEqual(values[0], 10.257639280108956)
+        self.assertAlmostEqual(values[1], -83.6572048670368)
+        self.assertAlmostEqual(values[2], -32.91098481323581)
+        self.assertAlmostEqual(values[18], -39.007231487083104)
+        self.assertAlmostEqual(values[19], -0.2477241745349836)
+
+        # Test case III: include dosing regimen
+
+        # Test case III.1: PD model
+        samples = self.model.sample(times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 10.25763928014699)
+        self.assertAlmostEqual(values[1], 28.48348944331076)
+        self.assertAlmostEqual(values[2], -24.592234016787202)
+        self.assertAlmostEqual(values[3], -38.164271171263756)
+        self.assertAlmostEqual(values[4], -83.65720486709867)
+
+        # Test case III.2: PK model, regimen not set
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model.set_administration('central', direct=False)
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        predictive_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+
+        # Define a map between the parameters to recycle posterior samples
+        param_map = {
+            'central.size': 'myokit.tumour_volume',
+            'dose.absorption_rate': 'myokit.lambda_0',
+            'myokit.elimination_rate': 'myokit.lambda_1',
+            'central.drug_amount': 'myokit.drug_concentration',
+            'dose.drug_amount': 'myokit.kappa'}
+        model = erlo.PosteriorPredictiveModel(
+            predictive_model, self.posterior_samples, param_map=param_map)
+
+        # Sample
+        samples = model.sample(times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'central.drug_concentration')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 10.257639409972427)
+        self.assertAlmostEqual(values[1], 28.483489440306272)
+        self.assertAlmostEqual(values[2], -24.592234019552883)
+        self.assertAlmostEqual(values[3], -38.16427115639449)
+        self.assertAlmostEqual(values[4], -83.65720493975232)
+
+        # Test case III.3: PK model, regimen set
+        model.set_dosing_regimen(1, 1, duration=2, period=2, num=2)
+
+        # Sample
+        samples = model.sample(times, seed=seed, include_regimen=True)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 6)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[4], 'Duration')
+        self.assertEqual(keys[5], 'Dose')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 2)
+        self.assertEqual(sample_ids[0], 1)
+        self.assertTrue(np.isnan(sample_ids[1]))
+
+        biomarkers = samples['Biomarker'].dropna().unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'central.drug_concentration')
+
+        times = samples['Time'].dropna().unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].dropna().unique()
+        self.assertEqual(len(values), 5)
+        self.assertAlmostEqual(values[0], 10.257639409972427)
+        self.assertAlmostEqual(values[1], 28.48397119211002)
+        self.assertAlmostEqual(values[2], -24.589501386669337)
+        self.assertAlmostEqual(values[3], -38.17331623508392)
+        self.assertAlmostEqual(values[4], -83.64232025329919)
+
+        doses = samples['Dose'].dropna().unique()
+        self.assertEqual(len(doses), 1)
+        self.assertAlmostEqual(doses[0], 1)
+
+        durations = samples['Duration'].dropna().unique()
+        self.assertEqual(len(durations), 1)
+        self.assertAlmostEqual(durations[0], 2)
+
+
 class TestPredictiveModel(unittest.TestCase):
     """
     Tests the erlo.PredictiveModel class.
@@ -125,6 +456,63 @@ class TestPredictiveModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Wrong number of error'):
             erlo.PredictiveModel(self.mechanistic_model, error_models)
 
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
+
+        n_parameters = self.model.n_parameters()
+        self.assertEqual(n_parameters, 5)
+
+        parameter_names = self.model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 5)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[2], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[3], 'Sigma base')
+        self.assertEqual(parameter_names[4], 'Sigma rel.')
+
+        # Test case II: fix overlapping set of parameters
+        self.model.fix_parameters(name_value_dict={
+            'myokit.kappa': None,
+            'myokit.lambda_0': 0.5,
+            'Sigma rel.': 0.3})
+
+        n_parameters = self.model.n_parameters()
+        self.assertEqual(n_parameters, 4)
+
+        parameter_names = self.model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 4)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.kappa')
+        self.assertEqual(parameter_names[2], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[3], 'Sigma base')
+
+        # Test case III: unfix all parameters
+        self.model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': None,
+            'myokit.lambda_0': None,
+            'Sigma rel.': None})
+
+        n_parameters = self.model.n_parameters()
+        self.assertEqual(n_parameters, 7)
+
+        parameter_names = self.model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 7)
+        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'myokit.kappa')
+        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[5], 'Sigma base')
+        self.assertEqual(parameter_names[6], 'Sigma rel.')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.model.fix_parameters(name_value_dict)
+
     def test_get_n_outputs(self):
         self.assertEqual(self.model.get_n_outputs(), 1)
 
@@ -134,6 +522,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
 
     def test_get_parameter_names(self):
+        # Test case I: Single output problem
         names = self.model.get_parameter_names()
 
         self.assertEqual(len(names), 7)
@@ -144,6 +533,29 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(names[4], 'myokit.lambda_1')
         self.assertEqual(names[5], 'Sigma base')
         self.assertEqual(names[6], 'Sigma rel.')
+
+        # Test case II: Multi-output problem
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central', direct=False)
+        model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+        error_models = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel(),
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        model = erlo.PredictiveModel(model, error_models)
+
+        names = model.get_parameter_names()
+
+        self.assertEqual(len(names), 9)
+        self.assertEqual(names[0], 'central.drug_amount')
+        self.assertEqual(names[1], 'dose.drug_amount')
+        self.assertEqual(names[2], 'central.size')
+        self.assertEqual(names[3], 'dose.absorption_rate')
+        self.assertEqual(names[4], 'myokit.elimination_rate')
+        self.assertEqual(names[5], 'central.drug_amount Sigma base')
+        self.assertEqual(names[6], 'central.drug_amount Sigma rel.')
+        self.assertEqual(names[7], 'dose.drug_amount Sigma base')
+        self.assertEqual(names[8], 'dose.drug_amount Sigma rel.')
 
     def test_get_set_dosing_regimen(self):
         # Test case I: Mechanistic model does not support dosing regimens
@@ -317,6 +729,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(doses[0], 1)
 
     def test_get_submodels(self):
+        # Test case I: no fixed parameters
         submodels = self.model.get_submodels()
 
         keys = list(submodels.keys())
@@ -330,6 +743,29 @@ class TestPredictiveModel(unittest.TestCase):
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 1)
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
+        # Test case II: some fixed parameters
+        self.model.fix_parameters({
+            'myokit.tumour_volume': 1,
+            'Sigma rel.': 10})
+        submodels = self.model.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 1)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
+        # Unfix parameter
+        self.model.fix_parameters({
+            'myokit.tumour_volume': None,
+            'Sigma rel.': None})
 
     def test_n_parameters(self):
         self.assertEqual(self.model.n_parameters(), 7)

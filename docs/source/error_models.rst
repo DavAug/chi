@@ -26,9 +26,13 @@ Base classes
 ------------
 
 - :class:`ErrorModel`
+- :class:`ReducedErrorModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
 .. autoclass:: ErrorModel
+    :members:
+
+.. autoclass:: ReducedErrorModel
     :members:

@@ -7,6 +7,7 @@
 
 import unittest
 
+import myokit
 import numpy as np
 
 import erlotinib as erlo
@@ -497,6 +498,219 @@ class TestPharmacokineticModel(unittest.TestCase):
         output = self.model.simulate(parameters, times)
         self.assertIsInstance(output, np.ndarray)
         self.assertEqual(output.shape, (1, 4))
+
+
+class TestReducedMechanisticModel(unittest.TestCase):
+    """
+    Tests the erlotinib.ReducedMechanisticModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Set up model
+        lib = erlo.ModelLibrary()
+        path = lib.tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        cls.pd_model = erlo.ReducedMechanisticModel(model)
+
+        path = lib.one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central')
+        cls.pk_model = erlo.ReducedMechanisticModel(model)
+
+    def test_bad_instantiation(self):
+        model = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The mechanistic model'):
+            erlo.ReducedMechanisticModel(model)
+
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
+
+        n_parameters = self.pd_model.n_parameters()
+        self.assertEqual(n_parameters, 3)
+
+        parameter_names = self.pd_model.parameters()
+        self.assertEqual(len(parameter_names), 3)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[2], 'myokit.lambda_1')
+
+        # Test case II: fix overlapping set of parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.kappa': None,
+            'myokit.lambda_0': 0.5,
+            'myokit.lambda_1': 0.3})
+
+        n_parameters = self.pd_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+        parameter_names = self.pd_model.parameters()
+        self.assertEqual(len(parameter_names), 2)
+        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[1], 'myokit.kappa')
+
+        # Test case III: unfix all parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': None,
+            'myokit.lambda_0': None,
+            'myokit.lambda_1': None})
+
+        n_parameters = self.pd_model.n_parameters()
+        self.assertEqual(n_parameters, 5)
+
+        parameter_names = self.pd_model.parameters()
+        self.assertEqual(len(parameter_names), 5)
+        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'myokit.kappa')
+        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.pd_model.fix_parameters(name_value_dict)
+
+    def test_mechanistic_model(self):
+        self.assertIsInstance(
+            self.pd_model.mechanistic_model(), erlo.MechanisticModel)
+
+    def test_n_fixed_parameters(self):
+        # Test case I: fix some parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
+
+        self.assertEqual(self.pd_model.n_fixed_parameters(), 2)
+
+        # Test case II: fix overlapping set of parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.kappa': None,
+            'myokit.lambda_0': 0.5,
+            'myokit.lambda_1': 0.3})
+
+        self.assertEqual(self.pd_model.n_fixed_parameters(), 3)
+
+        # Test case III: unfix all parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': None,
+            'myokit.lambda_0': None,
+            'myokit.lambda_1': None})
+
+        self.assertEqual(self.pd_model.n_fixed_parameters(), 0)
+
+    def test_n_outputs(self):
+        self.assertEqual(self.pd_model.n_outputs(), 1)
+
+    def test_n_parameters(self):
+        self.assertEqual(self.pd_model.n_parameters(), 5)
+
+    def test_pd_output(self):
+        # Test PD model
+        self.assertIsNone(self.pd_model.pd_output())
+
+        # Test PK model
+        self.assertEqual(
+            self.pk_model.pd_output(), 'central.drug_concentration')
+
+    def test_pk_output(self):
+        # Test PD model
+        self.assertEqual(
+            self.pd_model.pk_input(), 'myokit.drug_concentration')
+        self.assertIsNone(self.pd_model.pd_output())
+
+        # Test PK model
+        self.assertIsNone(self.pk_model.pk_input())
+
+    def test_set_get_dosing_regimen(self):
+        # Test case I: dosing regimen unset
+        # Test PD model
+        self.assertIsNone(self.pd_model.dosing_regimen())
+
+        # Test PK model
+        self.assertIsNone(self.pk_model.dosing_regimen())
+
+        # Test case II: dosing regimen set
+        # Test PD model
+        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
+            self.pd_model.set_dosing_regimen(1, 1)
+        self.assertIsNone(self.pd_model.dosing_regimen())
+
+        # Test PK model
+        self.pk_model.set_dosing_regimen(1, 1)
+        self.assertIsInstance(
+            self.pk_model.dosing_regimen(), myokit.Protocol)
+
+    def test_set_get_outputs(self):
+        # Test case I: Set outputs
+        self.pd_model.set_outputs([
+            'myokit.tumour_volume',
+            'myokit.tumour_volume'])
+
+        outputs = self.pd_model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[1], 'myokit.tumour_volume')
+
+        # Test case II: Set outputs back to default
+        self.pd_model.set_outputs(['myokit.tumour_volume'])
+
+        outputs = self.pd_model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+    def test_set_get_parameters(self):
+        # Test case I: set some parameter names
+        self.pd_model.set_parameter_names({
+            'myokit.tumour_volume': 'Test'})
+
+        parameters = self.pd_model.parameters()
+        self.assertEqual(len(parameters), 5)
+        self.assertEqual(parameters[0], 'Test')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+
+        # Test case II: set back to default
+        self.pd_model.set_parameter_names({
+            'Test': 'myokit.tumour_volume'})
+
+        parameters = self.pd_model.parameters()
+        self.assertEqual(len(parameters), 5)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_0')
+        self.assertEqual(parameters[4], 'myokit.lambda_1')
+
+    def test_simulate(self):
+        # Test case I: fix some parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'myokit.tumour_volume': 1,
+            'myokit.kappa': 1})
+
+        # Simulate
+        times = [1, 2, 3]
+        parameters = [0, 0.5, 0.3]
+        sim = self.pd_model.simulate(parameters, times).flatten()
+
+        # Simulate unfixed model with the same parameters
+        model = self.pd_model.mechanistic_model()
+        parameters = [1, 0, 1, 0.5, 0.3]
+        ref_sim = model.simulate(parameters, times).flatten()
+
+        self.assertEqual(len(sim), 3)
+        self.assertEqual(len(ref_sim), 3)
+        self.assertEqual(sim[0], ref_sim[0])
+        self.assertEqual(sim[1], ref_sim[1])
+        self.assertEqual(sim[2], ref_sim[2])
+
+    def test_time_unit(self):
+        self.assertIsInstance(self.pd_model.time_unit(), myokit.Unit)
 
 
 if __name__ == '__main__':
