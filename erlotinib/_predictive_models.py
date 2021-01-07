@@ -440,7 +440,7 @@ class PredictiveModel(object):
                     'All provided error models have to be instances of a '
                     'erlo.ErrorModel.')
 
-        # Set ouputs
+        # Set outputs
         if outputs is not None:
             mechanistic_model.set_outputs(outputs)
 
@@ -452,7 +452,7 @@ class PredictiveModel(object):
                 'Wrong number of error models. One error model has to be '
                 'provided for each mechanistic error model.')
 
-        # Rename error model parameters, if more that one output
+        # Rename error model parameters, if more than one output
         if n_outputs > 1:
             # Get output names
             outputs = mechanistic_model.outputs()
