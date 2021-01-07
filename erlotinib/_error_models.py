@@ -28,7 +28,7 @@ class ErrorModel(object):
 
         In this method, the model output and the observations are compared
         pair-wise. The time-dependence of the values is thus dealt with
-        implicitly, by assuming that ``model_ouput`` and ``observations`` are
+        implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
 
@@ -157,7 +157,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         where :math:`N` is the number of observations.
 
         The time-dependence of the values is dealt with implicitly, by
-        assuming that ``model_ouput`` and ``observations`` are already
+        assuming that ``model_output`` and ``observations`` are already
         ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
 
@@ -298,7 +298,7 @@ class ReducedErrorModel(object):
 
         In this method, the model output and the observations are compared
         pair-wise. The time-dependence of the values is thus dealt with
-        implicitly, by assuming that ``model_ouput`` and ``observations`` are
+        implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
 
@@ -332,7 +332,7 @@ class ReducedErrorModel(object):
         ----------
         name_value_dict
             A dictionary with model parameter names as keys, and parameter
-            value as values.
+            values as values.
         """
         # Check type
         try:
