@@ -668,7 +668,7 @@ class ReducedMechanisticModel(object):
         :class:`myokit.Protocol`. If the protocol has not been set, ``None`` is
         returned.
 
-        If the model does not support a dose administration, ``None`` is
+        If the model does not support dose administration, ``None`` is
         returned.
         """
         try:
@@ -686,7 +686,7 @@ class ReducedMechanisticModel(object):
         ----------
         name_value_dict
             A dictionary with model parameter names as keys, and parameter
-            value as values.
+            values as values.
         """
         # Check type
         try:
