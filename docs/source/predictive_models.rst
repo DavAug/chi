@@ -15,11 +15,16 @@ Each predictive model consists of a :class:`MechanisticModel` and one
 Functional classes
 ------------------
 
+- :class:`PosteriorPredictiveModel`
 - :class:`PredictiveModel`
 - :class:`PriorPredictiveModel`
 
 Detailed API
 ^^^^^^^^^^^^
+
+.. autoclass:: PosteriorPredictiveModel
+    :members:
+    :inherited-members:
 
 .. autoclass:: PredictiveModel
     :members:

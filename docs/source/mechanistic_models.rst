@@ -35,9 +35,13 @@ Base classes
 ------------
 
 - :class:`MechanisticModel`
+- :class:`ReducedMechanisticModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
 .. autoclass:: MechanisticModel
+    :members:
+
+.. autoclass:: ReducedMechanisticModel
     :members:
