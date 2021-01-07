@@ -745,7 +745,9 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
 
         # Test case II: some fixed parameters
-        self.model.fix_parameters({'myokit.tumour_volume': 1})
+        self.model.fix_parameters({
+            'myokit.tumour_volume': 1,
+            'Sigma rel.': 10})
         submodels = self.model.get_submodels()
 
         keys = list(submodels.keys())

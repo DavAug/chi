@@ -388,6 +388,11 @@ class TestReducedErrorModel(unittest.TestCase):
         self.assertEqual(names[0], 'Sigma base')
         self.assertEqual(names[1], 'Sigma rel.')
 
+    def test_set_parameter_names_bad_input(self):
+        names = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name dictionary'):
+            self.error_model.set_parameter_names(names)
+
 
 if __name__ == '__main__':
     unittest.main()
