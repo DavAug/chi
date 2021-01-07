@@ -308,23 +308,21 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
             mask = posterior[run_key] == run
             temp_df = posterior[mask][[sample_key, param_key, iter_key]]
 
-            # Create a separate row for each parameter
-            param_df = pd.DataFrame()
-            for name in parameter_names:
+            # Get container sample range for this run's samples
+            start = n_iters * run_id
+            end = start + n_iters
+
+            # Fill container with parameter samples
+            for param_id, name in enumerate(parameter_names):
                 # Get parameter samples
                 mask = temp_df[param_key] == name
                 samples_df = temp_df[mask]
 
                 # Make sure samples are sorted according to iterations
-                samples_df = samples_df.sort_values(iter_key)
+                samples = samples_df.sort_values(iter_key)[sample_key]
 
-                # Add samples as column to dataframe
-                param_df[name] = samples_df[sample_key]
-
-            # Add parameter values to container
-            start = n_iters * run_id
-            end = start + n_iters
-            container[start:end, :] = param_df.to_numpy()
+                # Add samples to container
+                container[start:end, param_id] = samples.to_numpy()
 
         # Remember reformated samples
         self._posterior = container
