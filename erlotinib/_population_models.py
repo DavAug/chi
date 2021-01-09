@@ -15,10 +15,10 @@ class PopulationModel(object):
     Parameters
     ----------
     n_ids
-        Number of individual bottom level models.
+        Number of individual bottom level models. Defaults to 1.
     """
 
-    def __init__(self, n_ids):
+    def __init__(self, n_ids=1):
         super(PopulationModel, self).__init__()
 
         # This is going to be used to define the number of parameters.
