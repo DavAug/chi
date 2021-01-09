@@ -966,7 +966,6 @@ class PredictivePopulationModel(PredictiveModel):
 
     def fix_parameters(self, name_value_dict):
         """
-        TODO: Implement ReducedPopulationModel
         Fixes the value of model parameters, and effectively removes them as a
         parameter from the model. Fixing the value of a parameter at ``None``,
         sets the parameter free again.
@@ -985,34 +984,26 @@ class PredictivePopulationModel(PredictiveModel):
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
 
-        # Get submodels
-        mechanistic_model = self._mechanistic_model
-        error_models = self._error_models
+        # Get population models
+        pop_models = self._population_models
 
         # Convert models to reduced models
-        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
-            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
-        for model_id, error_model in enumerate(error_models):
-            if not isinstance(error_model, erlo.ReducedErrorModel):
-                error_models[model_id] = erlo.ReducedErrorModel(error_model)
+        for model_id, pop_model in enumerate(pop_models):
+            if not isinstance(pop_model, erlo.ReducedPopulationModel):
+                pop_models[model_id] = erlo.ReducedPopulationModel(pop_model)
 
         # Fix model parameters
-        mechanistic_model.fix_parameters(name_value_dict)
-        for error_model in error_models:
-            error_model.fix_parameters(name_value_dict)
+        for pop_model in pop_models:
+            pop_model.fix_parameters(name_value_dict)
 
         # If no parameters are fixed, get original model back
-        if mechanistic_model.n_fixed_parameters() == 0:
-            mechanistic_model = mechanistic_model.mechanistic_model()
-
-        for model_id, error_model in enumerate(error_models):
-            if error_model.n_fixed_parameters() == 0:
-                error_model = error_model.get_error_model()
-                error_models[model_id] = error_model
+        for model_id, pop_model in enumerate(pop_models):
+            if pop_model.n_fixed_parameters() == 0:
+                pop_model = pop_model.get_population_model()
+                pop_models[model_id] = pop_model
 
         # Safe reduced models
-        self._mechanistic_model = mechanistic_model
-        self._error_models = error_models
+        self._population_models = pop_models
 
         # Update names and number of parameters
         self._set_number_and_parameter_names()
