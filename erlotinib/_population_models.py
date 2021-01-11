@@ -94,7 +94,7 @@ class HeterogeneousModel(PopulationModel):
     Extends :class:`erlotinib.PopulationModel`.
     """
 
-    def __init__(self, n_ids):
+    def __init__(self):
         super(HeterogeneousModel, self).__init__()
 
         # Set number of parameters
