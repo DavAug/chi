@@ -643,6 +643,11 @@ class ReducedMechanisticModel(object):
 
     This may be useful to explore simplified versions of a model before
     defining a new SBML file.
+
+    Parameters
+    ----------
+    mechanistic_model
+        An instance of a :class:`MechanisticModel`.
     """
 
     def __init__(self, mechanistic_model):
