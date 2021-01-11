@@ -430,7 +430,7 @@ class PooledModel(PopulationModel):
         parameter = parameters[0]
 
         # Return 0, if observations is empty
-        if not observations:
+        if len(observations) == 0:
             return 0
 
         # Return - infinity, if any observation deviates from the parameter
