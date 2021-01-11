@@ -66,7 +66,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         population_models = [
             erlo.PooledModel(),
             erlo.PooledModel()]
-        with self.assertRaisesRegex(ValueError, 'Wrong number of population models'):
+        with self.assertRaisesRegex(ValueError, 'Wrong number of population'):
             erlo.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
 
