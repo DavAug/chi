@@ -54,6 +54,11 @@ class HierarchicalLogLikelihood(pints.LogPDF):
                     'All log-likelihoods have to be defined on the same '
                     'parameter space.')
 
+        if len(population_models) != n_parameters:
+            raise ValueError(
+                'Wrong number of population models. One population model has '
+                'to be provided for each model parameters.')
+
         for pop_model in population_models:
             if not isinstance(pop_model, erlo.PopulationModel):
                 raise ValueError(
