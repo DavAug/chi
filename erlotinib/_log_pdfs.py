@@ -60,60 +60,40 @@ class HierarchicalLogLikelihood(pints.LogPDF):
                     'The population models have to be instances of '
                     'erlotinib.PopulationModel')
 
-        n_ids = len(log_likelihoods)
-        for pop_model in population_models:
-            if pop_model.n_ids() != n_ids:
-                raise ValueError(
-                    "Population models' n_ids have to coincide with the "
-                    'number of log-likelihoods.')
-
-        n_params_per_id = 0
-        for pop_model in population_models:
-            n_params_per_id += pop_model.n_parameters_per_id()
-
-        if n_params_per_id != n_parameters:
-            raise ValueError(
-                'Each likelihood parameter has to be assigned to a population '
-                'model. The cumulative number of parameters per individual of '
-                'the population models does however not sum up to the number '
-                'of parameters per likelihood.')
-
         self._log_likelihoods = log_likelihoods
         self._population_models = population_models
 
         # Save number of ids and number of parameters per likelihood
-        self._n_ids = n_ids
         self._n_individual_params = n_parameters
 
         # Save total number of parameters
+        self._n_ids = len(self._log_likelihoods)
         n_parameters = 0
         for pop_model in self._population_models:
-            n_parameters += pop_model.n_parameters()
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+            n_parameters += n_indiv + n_pop
 
         self._n_parameters = n_parameters
 
         # Construct a mask for the indiviudal parameters
-        # Parameters will be order as
+        # Parameters will be ordered as
         # [[psi_i0], [theta _0k], [psi_i1], [theta _1k], ...]
         # where [psi_ij] is the jth parameter in the ith likelihood, and
         # theta_jk is the corresponding kth parameter of the population model.
         indices = []
         start_index = 0
         for pop_model in population_models:
-            # Get end index for individual parameters
-            end_index = start_index + pop_model.n_bottom_parameters()
+            # Get number of individual and population level parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
 
-            # If parameter is pooled, i.e. mark end_index as None for later
-            # convenience
-            if isinstance(pop_model, erlo.PooledModel):
-                end_index = None
+            # Get end index for individual parameters
+            end_index = start_index + n_indiv
 
             # Save start and end index
             indices.append([start_index, end_index])
 
-            # Increment start index by total number of population model
-            # parameters
-            start_index += pop_model.n_parameters()
+            # Increment start index by total number of parameters
+            start_index += n_indiv + n_pop
 
         self._individual_params = indices
 
@@ -128,18 +108,26 @@ class HierarchicalLogLikelihood(pints.LogPDF):
         score = 0
         start_index = 0
         for pop_model in self._population_models:
-            # Compute likelihood score
-            end_index = start_index + pop_model.n_parameters()
-            score += pop_model(parameters[start_index:end_index])
+            # Get number of individual and population level parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+
+            # Get parameter ranges
+            end_indiv = start_index + n_indiv
+            end_pop = end_indiv + n_pop
+
+            # Add score
+            score += pop_model.compute_log_likelihood(
+                parameters=parameters[end_indiv:end_pop],
+                observations=parameters[start_index:end_indiv])
 
             # Shift start index
-            start_index = end_index
+            start_index = end_pop
 
         # Return if values already lead to a rejection
         if score == -np.inf:
             return score
 
-        # Create container for individual values
+        # Create container for individual parameters
         individual_params = np.empty(
             shape=(self._n_ids, self._n_individual_params))
 
@@ -148,12 +136,15 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             start_index = indices[0]
             end_index = indices[1]
 
-            if end_index is None:
-                # This parameter is pooled. Leverage broadcasting
+            if start_index == end_index:
+                # This parameter is pooled, set all parameters to the same
+                # value
                 individual_params[:, param_id] = parameters[start_index]
-            else:
-                individual_params[:, param_id] = parameters[
-                    start_index:end_index]
+                continue
+
+            # Set the parameter values to the input values
+            individual_params[:, param_id] = parameters[
+                start_index:end_index]
 
         # Evaluate individual likelihoods
         for index, log_likelihood in enumerate(self._log_likelihoods):
