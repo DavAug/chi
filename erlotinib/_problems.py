@@ -409,15 +409,17 @@ class ProblemModellingController(object):
         # Construct parameter prefixes
         prefixes = []
         for pop_model in self._population_models:
+            # Get hierarchical model parameters
+            n_indiv, n_params = pop_model.n_hierarchical_parameters(n_ids)
 
             # Create prefix for individual parameters
-            if pop_model.n_bottom_parameters() == n_ids:
+            if n_indiv == n_ids:
                 names = ['ID %s' % n for n in self._ids]
                 prefixes += names
 
             # Create prefix for population-level parameters
-            if pop_model.n_top_parameters() > 0:
-                top_names = pop_model.get_top_parameter_names()
+            if n_params > 0:
+                top_names = pop_model.get_parameter_names()
                 names = ['%s' % pop_prefix for pop_prefix in top_names]
                 prefixes += names
 
@@ -660,10 +662,16 @@ class ProblemModellingController(object):
             # Construct a list that carries the bottom-level parameter meter
             # name once for each population model parameter.
             names = []
-            for pop_model in self._population_models:
-                name = pop_model.get_bottom_parameter_name()
-                number = pop_model.n_parameters()
+            n_ids = len(self._ids)
+            for param_id, pop_model in enumerate(self._population_models):
+                # Get number of hierarchical model parameters
+                n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
+                number = n_indiv + n_pop
+
+                # Copy parameter name `number` times
+                name = self._individual_parameter_names[param_id]
                 names += [name] * number
+
             return names
 
         if self._fixed_params_mask is None:
@@ -957,7 +965,7 @@ class ProblemModellingController(object):
         for pop_model in pop_models:
             if not isinstance(pop_model, erlo.PopulationModel):
                 raise ValueError(
-                    'The population models have to be an instance of a'
+                    'The population models have to be an instance of a '
                     'erlotinib.PopulationModel.')
 
         # Get free individual parameter names
@@ -977,14 +985,14 @@ class ProblemModellingController(object):
             default_pop_models = [
                 erlo.HeterogeneousModel()] * n_individual_parameters
 
-            # Map population models accroding to parameter names
+            # Map population models according to parameter names
             for param_id, name in enumerate(params):
                 try:
                     index = parameter_names.index(name)
                 except ValueError:
                     raise ValueError(
-                        'The parameter names could not be identified '
-                        'in the model')
+                        'The parameter <' + str(name) + '> could not be '
+                        'identified in the model')
                 default_pop_models[index] = pop_models[param_id]
 
             pop_models = default_pop_models
