@@ -452,7 +452,7 @@ class PooledModel(PopulationModel):
         """
         Returns a tuple of the number of individual parameters and the number
         of population parameters that this model expects in context of a
-        :class:`HierarchicalLogLikelihood`, when ``n_ids` individuals are
+        :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
         modelled.
 
         Parameters
