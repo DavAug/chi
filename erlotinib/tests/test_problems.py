@@ -49,7 +49,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1)]
         n_params = 6
-        cls.pop_models = [erlo.PooledModel] * n_params
+        cls.pop_models = [erlo.PooledModel()] * n_params
 
     def test_bad_input(self):
         # Create data of wrong type
@@ -187,7 +187,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             'myokit.lambda_1': 2})
         self.problem.fix_parameters(name_value_dict)
         self.problem.set_population_model(
-            pop_models=[erlo.HeterogeneousModel, erlo.PooledModel])
+            pop_models=[erlo.HeterogeneousModel(), erlo.PooledModel()])
 
         n_ids = 3
         self.assertEqual(self.problem.get_n_parameters(), n_ids + 1)
@@ -276,10 +276,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Set a population model
         pop_models = [
-            erlo.PooledModel,
-            erlo.HeterogeneousModel,
-            erlo.PooledModel,
-            erlo.PooledModel]
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
         self.problem.set_population_model(pop_models)
         self.problem.set_log_prior(self.log_priors)
 
@@ -334,12 +334,12 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.problem.set_mechanistic_model(self.model)
         self.problem.set_error_model(self.error_models)
         pop_models = [
-            erlo.PooledModel,
-            erlo.PooledModel,
-            erlo.HeterogeneousModel,
-            erlo.PooledModel,
-            erlo.PooledModel,
-            erlo.PooledModel]
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
         self.problem.set_population_model(pop_models)
 
         self.assertEqual(self.problem.get_n_parameters(), 8)
@@ -401,12 +401,12 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.problem.set_mechanistic_model(self.model)
         self.problem.set_error_model(self.error_models)
         pop_models = [
-            erlo.PooledModel,
-            erlo.PooledModel,
-            erlo.HeterogeneousModel,
-            erlo.PooledModel,
-            erlo.PooledModel,
-            erlo.PooledModel]
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
         self.problem.set_population_model(pop_models)
 
         param_names = self.problem.get_parameter_names()
@@ -700,7 +700,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[5], 'Pooled Noise param 1')
 
         # Map population model to parameters explicitly (with blanks)
-        pop_models = [erlo.PooledModel] * 5  # 6 paramaters in total
+        pop_models = [erlo.PooledModel()] * 5  # 6 paramaters in total
         params = [
             'myokit.drug_concentration',
             'myokit.kappa',
@@ -749,14 +749,14 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Population models have the wrong type
         problem.set_error_model(self.error_models)
 
-        pop_models = [str, float, int]
-        with self.assertRaisesRegex(ValueError, 'The provided population'):
+        pop_models = ['bad', 'type']
+        with self.assertRaisesRegex(ValueError, 'The population models'):
             problem.set_population_model(pop_models)
 
         # The specified parameters do not match the model parameters
-        pop_models = [erlo.PooledModel, erlo.HeterogeneousModel]
+        pop_models = [erlo.PooledModel(), erlo.HeterogeneousModel()]
         params = ['wrong', 'outputs']
-        with self.assertRaisesRegex(ValueError, 'The provided parameter'):
+        with self.assertRaisesRegex(ValueError, 'The parameter <wrong>'):
             problem.set_population_model(pop_models, params)
 
         # Not one population model for each parameter

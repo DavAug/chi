@@ -9,6 +9,8 @@
 # which is distributed under the BSD 3-clause license.
 #
 
+import copy
+
 import myokit
 import numpy as np
 import pandas as pd
@@ -407,15 +409,17 @@ class ProblemModellingController(object):
         # Construct parameter prefixes
         prefixes = []
         for pop_model in self._population_models:
+            # Get hierarchical model parameters
+            n_indiv, n_params = pop_model.n_hierarchical_parameters(n_ids)
 
             # Create prefix for individual parameters
-            if pop_model.n_bottom_parameters() == n_ids:
+            if n_indiv == n_ids:
                 names = ['ID %s' % n for n in self._ids]
                 prefixes += names
 
             # Create prefix for population-level parameters
-            if pop_model.n_top_parameters() > 0:
-                top_names = pop_model.get_top_parameter_names()
+            if n_params > 0:
+                top_names = pop_model.get_parameter_names()
                 names = ['%s' % pop_prefix for pop_prefix in top_names]
                 prefixes += names
 
@@ -431,23 +435,26 @@ class ProblemModellingController(object):
             <top_parameter_name> <mechanistic-error model param name>
                 for any top parameter
         """
-        # Get the number of individuals
+        # Get number of individuals
         n_ids = len(self._ids)
 
         # Construct parameter names
         parameter_names = []
-        for pop_model in self._population_models:
+        for param_id, pop_model in enumerate(self._population_models):
             # Get mechanistic/error model parameter name
-            name = pop_model.get_bottom_parameter_name()
+            name = self._individual_parameter_names[param_id]
 
             # Create names for individual parameters
-            if pop_model.n_bottom_parameters() == n_ids:
+            n_indiv, _ = pop_model.n_hierarchical_parameters(n_ids)
+            if n_indiv > 0:
+                # If individual parameters are relevant for the hierarchical
+                # model, append them
                 names = ['ID %s: %s' % (n, name) for n in self._ids]
                 parameter_names += names
 
             # Create names for population-level parameters
-            if pop_model.n_top_parameters() > 0:
-                top_names = pop_model.get_top_parameter_names()
+            if pop_model.n_parameters() > 0:
+                top_names = pop_model.get_parameter_names()
                 names = [
                     '%s %s' % (pop_prefix, name) for pop_prefix in top_names]
                 parameter_names += names
@@ -655,10 +662,16 @@ class ProblemModellingController(object):
             # Construct a list that carries the bottom-level parameter meter
             # name once for each population model parameter.
             names = []
-            for pop_model in self._population_models:
-                name = pop_model.get_bottom_parameter_name()
-                number = pop_model.n_parameters()
+            n_ids = len(self._ids)
+            for param_id, pop_model in enumerate(self._population_models):
+                # Get number of hierarchical model parameters
+                n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
+                number = n_indiv + n_pop
+
+                # Copy parameter name `number` times
+                name = self._individual_parameter_names[param_id]
                 names += [name] * number
+
             return names
 
         if self._fixed_params_mask is None:
@@ -950,10 +963,10 @@ class ProblemModellingController(object):
                 'an error model has to be set.')
 
         for pop_model in pop_models:
-            if not issubclass(pop_model, erlo.PopulationModel):
+            if not isinstance(pop_model, erlo.PopulationModel):
                 raise ValueError(
-                    'The provided population models have to be '
-                    'erlotinib.PopulationModel classes.')
+                    'The population models have to be an instance of a '
+                    'erlotinib.PopulationModel.')
 
         # Get free individual parameter names
         parameter_names = self._parameter_names
@@ -970,16 +983,16 @@ class ProblemModellingController(object):
         if params is not None:
             # Create default population model container
             default_pop_models = [
-                erlo.HeterogeneousModel] * n_individual_parameters
+                erlo.HeterogeneousModel()] * n_individual_parameters
 
-            # Map population models to provided parameter names
+            # Map population models according to parameter names
             for param_id, name in enumerate(params):
                 try:
                     index = parameter_names.index(name)
                 except ValueError:
                     raise ValueError(
-                        'The provided parameter names could not be identified '
-                        'in the model')
+                        'The parameter <' + str(name) + '> could not be '
+                        'identified in the model')
                 default_pop_models[index] = pop_models[param_id]
 
             pop_models = default_pop_models
@@ -1001,23 +1014,9 @@ class ProblemModellingController(object):
             self._fixed_params_values = None
             self._fixed_params_mask = None
 
-        # Save individual parameter names
+        # Save individual parameter names and population models
         self._individual_parameter_names = parameter_names
-
-        # Instantiate population models and set parameter names
-        n_ids = len(self._log_likelihoods)
-        for model_id, pop_model in enumerate(pop_models):
-            # Instantiate population model
-            model = pop_model(n_ids)
-
-            # Set name of modelled parameter
-            name = parameter_names[model_id]
-            model.set_bottom_parameter_name(name)
-
-            # Save model in the list
-            pop_models[model_id] = model
-
-        self._population_models = pop_models
+        self._population_models = copy.copy(pop_models)
 
         # Update parameter names and number of parameters
         self._set_population_model_parameter_names()

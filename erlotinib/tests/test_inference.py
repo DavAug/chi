@@ -155,12 +155,12 @@ class TestOptimisationController(unittest.TestCase):
 
         # Model II: Hierarchical model across all individuals
         pop_models = [
-            erlo.PooledModel,
-            erlo.PooledModel,
-            erlo.HeterogeneousModel,
-            erlo.PooledModel,
-            erlo.PooledModel,
-            erlo.PooledModel]
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
         problem.set_population_model(pop_models)
 
         n_parameters = 5 + 8  # IDs in dataset
@@ -355,12 +355,12 @@ class TestSamplingController(unittest.TestCase):
 
         # Model II: Hierarchical model across all individuals
         pop_models = [
-            erlo.PooledModel,
-            erlo.PooledModel,
-            erlo.HeterogeneousModel,
-            erlo.PooledModel,
-            erlo.LogNormalModel,
-            erlo.PooledModel]
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel()]
         problem.set_population_model(pop_models)
 
         n_parameters = 1 + 1 + 8 + 1 + 10 + 1
