@@ -937,10 +937,10 @@ class PredictivePopulationModel(PredictiveModel):
         parameter_names = []
         for param_id, pop_model in enumerate(self._population_models):
             # Get population parameter
-            top_parameter_names = pop_model.get_top_parameter_names()
+            top_parameter_names = pop_model.get_parameter_names()
             if isinstance(pop_model, erlo.HeterogeneousModel):
                 # Use bottom-level parameter as parameter
-                top_parameter_names = ['(heterogeneous)']
+                top_parameter_names = ['Heterogeneous']
 
             if top_parameter_names is None:
                 # All population-level parameters have been fixed
@@ -949,7 +949,7 @@ class PredictivePopulationModel(PredictiveModel):
 
             # Construct parameter names
             bottom_name = bottom_parameter_names[param_id]
-            names = [bottom_name + ' ' + name for name in top_parameter_names]
+            names = [name + ' ' + bottom_name for name in top_parameter_names]
             parameter_names += names
 
         # Update number and names
@@ -1128,14 +1128,15 @@ class PredictivePopulationModel(PredictiveModel):
         times = np.sort(times)
 
         # Create container for "virtual patients"
-        patients = np.empty(shape=(n_samples, self._n_parameters))
+        n_parameters = self._predictive_model.n_parameters()
+        patients = np.empty(shape=(n_samples, n_parameters))
 
         # Sample individuals from population model
         start = 0
-        for model_id, pop_model in self._population_models:
+        for param_id, pop_model in enumerate(self._population_models):
             # If heterogenous model, use input parameter for all patients
             if isinstance(pop_model, erlo.HeterogeneousModel):
-                patients[:, model_id] = parameters[start]
+                patients[:, param_id] = parameters[start]
 
                 # Increment population parameter counter and continue to next
                 # iteration
@@ -1143,11 +1144,11 @@ class PredictivePopulationModel(PredictiveModel):
                 continue
 
             # Get range of relevant population parameters
-            end = start + pop_model.n_top_parameters()
+            end = start + pop_model.n_parameters()
 
             # Sample patient parameters
-            patients[:, model_id] = pop_model.sample(
-                top_parameters=parameters[start:end], n_samples=n_samples,
+            patients[:, param_id] = pop_model.sample(
+                parameters=parameters[start:end], n_samples=n_samples,
                 seed=seed)
 
             # Increment seed for each iteration, to avoid repeated patterns
@@ -1164,8 +1165,9 @@ class PredictivePopulationModel(PredictiveModel):
 
         # Sample measurements for each patient
         for patient_id, patient in enumerate(patients):
-            container[..., patient_id] = self._predictive_model.sample(
+            sample = self._predictive_model.sample(
                 parameters=patient, times=times, seed=seed, return_df=False)
+            container[..., patient_id] = sample[..., 0]
 
         if return_df is False:
             # Return samples in numpy array format
