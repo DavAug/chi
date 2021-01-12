@@ -535,13 +535,12 @@ class PooledModel(PopulationModel):
             raise ValueError(
                 'Length of names does not match n_parameters.')
 
-        self._top_parameter_names = [str(label) for label in names]
+        self._parameter_names = [str(label) for label in names]
 
 
 class ReducedPopulationModel(object):
     """
     #TODO:
-    # 2. Test RPM
     # 3. Try PredPopModel in notebook
     # 4. Write tests for PPM
     A base class for population models.
@@ -680,6 +679,17 @@ class ReducedPopulationModel(object):
             n_pop = int(np.sum(self._fixed_params_mask))
 
         return (n_indiv, n_pop)
+
+    def n_fixed_parameters(self):
+        """
+        Returns the number of fixed model parameters.
+        """
+        if self._fixed_params_mask is None:
+            return 0
+
+        n_fixed = int(np.sum(self._fixed_params_mask))
+
+        return n_fixed
 
     def n_parameters(self):
         """
