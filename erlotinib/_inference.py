@@ -92,11 +92,12 @@ class InferenceController(object):
             # Sample initial population, if model is hierarchical
             log_likelihood = log_posterior.log_likelihood()
             if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
-                population_models = log_likelihood._population_models
+                n_ids = len(log_likelihood.get_log_likelihoods())
+                population_models = log_likelihood.get_population_models()
                 self._initial_params[index] = self._sample_population(
-                        index, population_models)
+                        index, n_ids, population_models)
 
-    def _sample_population(self, index, population_models):
+    def _sample_population(self, index, n_ids, population_models):
         """
         Samples population for initial population model parameters.
         """
@@ -106,27 +107,27 @@ class InferenceController(object):
         # Sample individuals from population model for each run
         start_index = 0
         for pop_model in population_models:
-            # Get number of individual and total parameters
-            n_bottom_params = pop_model.n_bottom_parameters()
-            n_parameters = pop_model.n_parameters()
+            # Get number of individual and population parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
 
             # If number of bottom-level parameters is 0, skip to next iteration
-            if n_bottom_params == 0:
-                start_index += n_parameters
+            if n_indiv == 0:
+                # Shift start index by total number of hierarchical parameters
+                start_index += n_indiv + n_pop
                 continue
 
             # Get population parameters
             # (always trailing parameters in a population model)
-            start = start_index + n_bottom_params
-            end = start_index + n_parameters
+            start = start_index + n_indiv
+            end = start + n_pop
             pop_parameters = self._initial_params[index, :, start:end]
 
             # Substitude individual parameters by population samples
             start = start_index
-            end = start_index + n_bottom_params
+            end = start + n_indiv
             for run_id, pop_params in enumerate(pop_parameters):
                 try:
-                    sample = pop_model.sample(pop_params, n_bottom_params)
+                    sample = pop_model.sample(pop_params, n_indiv)
                 except NotImplementedError:
                     # If sample is not implemented, continue to the next
                     # iteration
@@ -134,8 +135,8 @@ class InferenceController(object):
 
                 container[run_id, start:end] = sample
 
-            # Shift start_index to next position
-            start_index += n_parameters
+            # Shift start_index by total number of hierarchical parameters
+            start_index += n_indiv + n_pop
 
         return container
 
