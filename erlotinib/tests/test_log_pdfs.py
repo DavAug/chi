@@ -39,7 +39,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         cls.log_likelihoods = list(problem._log_likelihoods.values())
         cls.n_individual_params = cls.log_likelihoods[0].n_parameters()
         cls.population_models = [
-            erlo.PooledModel(n_ids=cls.n_ids)] * cls.n_individual_params
+            erlo.PooledModel()] * cls.n_individual_params
         cls.hierarchical_model = erlo.HierarchicalLogLikelihood(
             cls.log_likelihoods, cls.population_models)
 
@@ -57,23 +57,16 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
                 log_likelihoods, self.population_models)
 
         # Population models are not erlotinib.PopulationModel
-        population_models = ['bad', 'type']
+        population_models = ['bad', 'type'] + ['match dimension'] * 4
         with self.assertRaisesRegex(ValueError, 'The population models have'):
-            erlo.HierarchicalLogLikelihood(
-                self.log_likelihoods, population_models)
-
-        # The population models do not model as many individuals as likelihoods
-        population_models = [
-            erlo.PooledModel(n_ids=2), erlo.PooledModel(n_ids=2)]
-        with self.assertRaisesRegex(ValueError, "Population models' n_ids"):
             erlo.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
 
         # Not all parameters of the likelihoods are assigned to a pop model
         population_models = [
-            erlo.PooledModel(n_ids=self.n_ids),
-            erlo.PooledModel(n_ids=self.n_ids)]
-        with self.assertRaisesRegex(ValueError, 'Each likelihood parameter'):
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+        with self.assertRaisesRegex(ValueError, 'Wrong number of population'):
             erlo.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
 
@@ -96,7 +89,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         # Test case II.1: non-pooled model
         pop_models = [
-            erlo.HeterogeneousModel(n_ids=self.n_ids)] \
+            erlo.HeterogeneousModel()] \
             * self.n_individual_params
         likelihood = erlo.HierarchicalLogLikelihood(
             self.log_likelihoods, pop_models)
@@ -131,13 +124,13 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         # Test case III.1: Non-trivial population model.
         pop_models = \
-            [erlo.LogNormalModel(n_ids=self.n_ids)] + \
-            [erlo.PooledModel(n_ids=self.n_ids)] \
+            [erlo.LogNormalModel()] + \
+            [erlo.PooledModel()] \
             * (self.n_individual_params - 1)
         likelihood = erlo.HierarchicalLogLikelihood(
             self.log_likelihoods, pop_models)
 
-        ref_likelihood_part_one = erlo.LogNormalModel(n_ids=self.n_ids)
+        ref_likelihood_part_one = erlo.LogNormalModel()
         ref_likelihood_part_two = pints.PooledLogPDF(
             self.log_likelihoods, pooled=[False] + [True]*5)
 
@@ -155,7 +148,8 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             [parameters[5]]
 
         score = \
-            ref_likelihood_part_one(parameters[:n_ids+2]) + \
+            ref_likelihood_part_one.compute_log_likelihood(
+                pop_params, parameters[:n_ids]) + \
             ref_likelihood_part_two(parameters[:n_ids] + parameters[n_ids+2:])
 
         self.assertNotEqual(score, -np.inf)
@@ -177,6 +171,30 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             [parameters[5]]
 
         self.assertEqual(likelihood(parameters), -np.inf)
+
+    def test_get_log_likelihoods(self):
+        log_likelihoods = self.hierarchical_model.get_log_likelihoods()
+
+        self.assertEqual(len(log_likelihoods), 8)
+        self.assertIsInstance(log_likelihoods[0], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[1], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[2], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[3], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[4], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[5], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[6], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[7], pints.LogPDF)
+
+    def test_get_population_models(self):
+        population_models = self.hierarchical_model.get_population_models()
+
+        self.assertEqual(len(population_models), 6)
+        self.assertIsInstance(population_models[0], erlo.PopulationModel)
+        self.assertIsInstance(population_models[1], erlo.PopulationModel)
+        self.assertIsInstance(population_models[2], erlo.PopulationModel)
+        self.assertIsInstance(population_models[3], erlo.PopulationModel)
+        self.assertIsInstance(population_models[4], erlo.PopulationModel)
+        self.assertIsInstance(population_models[5], erlo.PopulationModel)
 
     def test_n_parameters(self):
         n_parameters = self.log_likelihoods[0].n_parameters()

@@ -23,19 +23,16 @@ Detailed API
     :members:
     :inherited-members:
     :special-members:
-    :exclude-members: __init__, __weakref__
 
 .. autoclass:: LogNormalModel
     :members:
     :inherited-members:
     :special-members:
-    :exclude-members: __init__, __weakref__
 
 .. autoclass:: PooledModel
     :members:
     :inherited-members:
     :special-members:
-    :exclude-members: __init__, __weakref__
 
 Base classes
 ------------
@@ -47,4 +44,3 @@ Detailed API
 .. autoclass:: PopulationModel
     :members:
     :special-members:
-    :exclude-members: __init__, __weakref__

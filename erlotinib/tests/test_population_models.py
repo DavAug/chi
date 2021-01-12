@@ -19,39 +19,37 @@ class TestHeterogeneousModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.n_ids = 10
-        cls.pop_model = erlo.HeterogeneousModel(cls.n_ids)
+        cls.pop_model = erlo.HeterogeneousModel()
 
-    def test_call(self):
+    def test_compute_log_likelihood(self):
         # For efficiency the input is actually not checked, and 0 is returned
         # regardless
-        self.assertEqual(self.pop_model('some values'), 0)
+        parameters = 'some parameters'
+        observations = 'some observations'
+        score = self.pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, 0)
 
-    def test_get_top_parameter_names(self):
-        self.assertIsNone(self.pop_model.get_top_parameter_names())
+    def test_get_parameter_names(self):
+        self.assertIsNone(self.pop_model.get_parameter_names())
 
-    def test_n_bottom_parameters(self):
-        n_individual_input_params = 10
-        self.assertEqual(
-            self.pop_model.n_bottom_parameters(),
-            n_individual_input_params)
+    def test_n_hierarchical_parameters(self):
+        n_ids = 10
+        n_hierachical_params = self.pop_model.n_hierarchical_parameters(n_ids)
+
+        self.assertEqual(len(n_hierachical_params), 2)
+        self.assertEqual(n_hierachical_params[0], n_ids)
+        self.assertEqual(n_hierachical_params[1], 0)
 
     def test_n_parameters(self):
-        n_population_params = 10
-        self.assertEqual(self.pop_model.n_parameters(), n_population_params)
-
-    def test_n_top_parameters(self):
-        n_population_params = 0
-        self.assertEqual(
-            self.pop_model.n_top_parameters(), n_population_params)
+        self.assertEqual(self.pop_model.n_parameters(), 0)
 
     def test_sample(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some params')
 
-    def test_set_top_parameter_names(self):
+    def test_set_parameter_names(self):
         with self.assertRaisesRegex(ValueError, 'A heterogeneous population'):
-            self.pop_model.set_top_parameter_names('some params')
+            self.pop_model.set_parameter_names('some params')
 
 
 class TestLogNormalModel(unittest.TestCase):
@@ -61,21 +59,22 @@ class TestLogNormalModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.n_ids = 10
-        cls.pop_model = erlo.LogNormalModel(cls.n_ids)
+        cls.pop_model = erlo.LogNormalModel()
 
-    def test_call(self):
+    def test_compute_log_likelihood(self):
         # Hard to test exactly, but at least test some edge cases where
         # loglikelihood is straightforward to compute analytically
+
+        n_ids = 10
 
         # Test case I: psis = 1, sigma_log = 1
         # Score reduces to -n_ids * mu_log^2 / 2
 
         # Test case I.1:
-        psis = [1] * self.n_ids
+        psis = [1] * n_ids
         mu_log = 1
         var_log = 1
-        score = -self.n_ids * mu_log**2 / 2  # mu_log = -5
+        ref_score = -n_ids * mu_log**2 / 2  # mu_log = -5
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -87,14 +86,15 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(transformed[0], mu_log)
         self.assertEqual(transformed[1], var_log)
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), score)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, ref_score)
 
         # Test case I.2:
-        psis = [1] * self.n_ids
+        psis = [1] * n_ids
         mu_log = 5
         var_log = 1
-        score = -self.n_ids * mu_log**2 / 2  # mu_log = -125
+        ref_score = -n_ids * mu_log**2 / 2  # mu_log = -125
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -106,18 +106,19 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(transformed[0], mu_log)
         self.assertEqual(transformed[1], var_log)
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), score)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, ref_score)
 
         # Test case II: psis = 1.
         # Score reduces to
         # -n_ids * log(sigma_log) -n_ids * mu_log^2 / (2 * sigma_log^2)
 
         # Test case II.1:
-        psis = [1] * self.n_ids
+        psis = [1] * n_ids
         mu_log = 1
         var_log = np.exp(2)
-        score = -self.n_ids - self.n_ids * mu_log**2 / (2 * var_log)
+        ref_score = -n_ids - n_ids * mu_log**2 / (2 * var_log)
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -129,14 +130,15 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(transformed[0], mu_log)
         self.assertAlmostEqual(transformed[1], var_log)
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), score)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, ref_score)
 
         # Test case II.2:
-        psis = [1] * self.n_ids
+        psis = [1] * n_ids
         mu_log = 3
         var_log = np.exp(3)
-        score = -1.5 * self.n_ids - self.n_ids * mu_log**2 / (2 * var_log)
+        ref_score = -1.5 * n_ids - n_ids * mu_log**2 / (2 * var_log)
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -148,18 +150,19 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(transformed[0], mu_log)
         self.assertAlmostEqual(transformed[1], var_log)
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), score)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, ref_score)
 
         # Test case III: psis all the same, sigma_log = 1.
         # Score reduces to
         # -n_ids * log(psi) - n_ids * (log(psi) - mu_log)^2 / 2
 
         # Test case III.1
-        psis = [np.exp(4)] * self.n_ids
+        psis = [np.exp(4)] * n_ids
         mu_log = 1
         var_log = 1
-        score = -self.n_ids * 4 - self.n_ids * (4 - mu_log)**2 / 2  # -85
+        ref_score = -n_ids * 4 - n_ids * (4 - mu_log)**2 / 2  # -85
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -171,14 +174,15 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(transformed[0], mu_log)
         self.assertAlmostEqual(transformed[1], var_log)
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), score)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, ref_score)
 
         # Test case III.2
-        psis = [np.exp(3)] * self.n_ids
+        psis = [np.exp(3)] * n_ids
         mu_log = 3
         var_log = 1
-        score = -self.n_ids * 3  # -100
+        ref_score = -n_ids * 3  # -100
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -190,62 +194,63 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(transformed[0], mu_log)
         self.assertAlmostEqual(transformed[1], var_log)
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), score)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, ref_score)
 
         # Test case IV: mu_log or sigma_log negative or zero
 
         # Test case IV.1
-        psis = [np.exp(10)] * self.n_ids
+        psis = [np.exp(10)] * n_ids
         mu = 0
         sigma = 1
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), -np.inf)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, -np.inf)
 
         # # Test case IV.2
-        psis = [np.exp(10)] * self.n_ids
+        psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = 0
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), -np.inf)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, -np.inf)
 
         # Test case IV.3
-        psis = [np.exp(10)] * self.n_ids
+        psis = [np.exp(10)] * n_ids
         mu = -10
         sigma = 1
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), -np.inf)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, -np.inf)
 
         # Test case IV.4
-        psis = [np.exp(10)] * self.n_ids
+        psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = -10
 
-        parameters = psis + [mu] + [sigma]
-        self.assertEqual(self.pop_model(parameters), -np.inf)
+        parameters = [mu] + [sigma]
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertEqual(score, -np.inf)
 
-    def test_get_top_parameter_names(self):
+    def test_get_parameter_names(self):
         names = ['Mean', 'Std.']
 
-        self.assertEqual(self.pop_model.get_top_parameter_names(), names)
+        self.assertEqual(self.pop_model.get_parameter_names(), names)
 
-    def test_n_bottom_parameters(self):
-        n_individual_input_params = 10
-        self.assertEqual(
-            self.pop_model.n_bottom_parameters(),
-            n_individual_input_params)
+    def test_n_hierarchical_parameters(self):
+        n_ids = 10
+        n_hierarchical_params = self.pop_model.n_hierarchical_parameters(n_ids)
+
+        self.assertEqual(len(n_hierarchical_params), 2)
+        self.assertEqual(n_hierarchical_params[0], n_ids)
+        self.assertEqual(n_hierarchical_params[1], 2)
 
     def test_n_parameters(self):
-        n_population_params = 12
-        self.assertEqual(self.pop_model.n_parameters(), n_population_params)
-
-    def test_n_top_parameters(self):
-        n_population_params = 2
-        self.assertEqual(
-            self.pop_model.n_top_parameters(), n_population_params)
+        self.assertEqual(self.pop_model.n_parameters(), 2)
 
     def test_sample(self):
         # Test I: sample size 1
@@ -289,26 +294,26 @@ class TestLogNormalModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'A log-normal distribution'):
             self.pop_model.sample(parameters)
 
-    def test_set_top_parameter_names(self):
+    def test_set_parameter_names(self):
         # Test some name
         names = ['test', 'name']
-        self.pop_model.set_top_parameter_names(names)
+        self.pop_model.set_parameter_names(names)
 
         self.assertEqual(
-            self.pop_model.get_top_parameter_names(), names)
+            self.pop_model.get_parameter_names(), names)
 
         # Set back to default name
         names = ['Mean', 'Std.']
-        self.pop_model.set_top_parameter_names(names)
+        self.pop_model.set_parameter_names(names)
 
         self.assertEqual(
-            self.pop_model.get_top_parameter_names(), names)
+            self.pop_model.get_parameter_names(), names)
 
-    def test_set_top_parameter_names_bad_input(self):
+    def test_set_parameter_names_bad_input(self):
         # Wrong number of names
         names = ['only', 'two', 'is', 'allowed']
         with self.assertRaisesRegex(ValueError, 'Length of names'):
-            self.pop_model.set_top_parameter_names(names)
+            self.pop_model.set_parameter_names(names)
 
     def test_transform_parameters(self):
         # Test case I:
@@ -339,33 +344,50 @@ class TestPooledModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.n_ids = 10
-        cls.pop_model = erlo.PooledModel(cls.n_ids)
+        cls.pop_model = erlo.PooledModel()
 
-    def test_call(self):
-        # For efficiency the input is actually not checked, and 0 is returned
-        # regardless
-        self.assertEqual(self.pop_model('some values'), 0)
+    def test_compute_log_likelihood(self):
+        # Test case I: observations empty
+        # (exception where 0 is returned for convenience)
+        parameters = [1]
+        observations = []
+        score = self.pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, 0)
 
-    def test_get_top_parameter_names(self):
+        # Test case II: observation differ from parameter
+        # Test case II.1
+        parameters = [1]
+        observations = [0, 1, 1, 1]
+        score = self.pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, -np.inf)
+
+        # Test case II.1
+        parameters = [1]
+        observations = [1, 1, 1, 10]
+        score = self.pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, -np.inf)
+
+        # Test case III: all values agree with parameter
+        parameters = [1]
+        observations = [1, 1, 1, 1]
+        score = self.pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, 0)
+
+    def test_get_parameter_names(self):
         names = ['Pooled']
 
-        self.assertEqual(self.pop_model.get_top_parameter_names(), names)
+        self.assertEqual(self.pop_model.get_parameter_names(), names)
 
-    def test_n_bottom_parameters(self):
-        n_individual_input_params = 0
-        self.assertEqual(
-            self.pop_model.n_bottom_parameters(),
-            n_individual_input_params)
+    def test_n_hierarchical_parameters(self):
+        n_ids = 10
+        n_hierarchical_params = self.pop_model.n_hierarchical_parameters(n_ids)
+
+        self.assertEqual(len(n_hierarchical_params), 2)
+        self.assertEqual(n_hierarchical_params[0], 0)
+        self.assertEqual(n_hierarchical_params[1], 1)
 
     def test_n_parameters(self):
-        n_population_params = 1
-        self.assertEqual(self.pop_model.n_parameters(), n_population_params)
-
-    def test_n_top_parameters(self):
-        n_population_params = 1
-        self.assertEqual(
-            self.pop_model.n_top_parameters(), n_population_params)
+        self.assertEqual(self.pop_model.n_parameters(), 1)
 
     def test_sample(self):
         # Test one sample size 1
@@ -395,26 +417,26 @@ class TestPooledModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The number of provided'):
             self.pop_model.sample(parameters)
 
-    def test_set_top_parameter_names(self):
+    def test_set_parameter_names(self):
         # Test some name
         names = ['test name']
-        self.pop_model.set_top_parameter_names(names)
+        self.pop_model.set_parameter_names(names)
 
         self.assertEqual(
-            self.pop_model.get_top_parameter_names(), names)
+            self.pop_model.get_parameter_names(), names)
 
         # Set back to default name
         names = ['Pooled']
-        self.pop_model.set_top_parameter_names(names)
+        self.pop_model.set_parameter_names(names)
 
         self.assertEqual(
-            self.pop_model.get_top_parameter_names(), names)
+            self.pop_model.get_parameter_names(), names)
 
-    def test_set_top_parameter_names_bad_input(self):
+    def test_set_parameter_names_bad_input(self):
         # Wrong number of names
         names = ['only', 'one', 'is', 'allowed']
         with self.assertRaisesRegex(ValueError, 'Length of names'):
-            self.pop_model.set_top_parameter_names(names)
+            self.pop_model.set_parameter_names(names)
 
 
 class TestPopulationModel(unittest.TestCase):
@@ -424,77 +446,34 @@ class TestPopulationModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.n_ids = 10
-        cls.pop_model = erlo.PopulationModel(cls.n_ids)
+        cls.pop_model = erlo.PopulationModel()
 
-    def test_call(self):
+    def test_compute_log_likelihood(self):
+        parameters = 'some parameters'
+        observations = 'some observations'
         with self.assertRaisesRegex(NotImplementedError, ''):
-            self.pop_model('some values')
+            self.pop_model.compute_log_likelihood(parameters, observations)
 
-    def test_get_bottom_parameter_name(self):
-        name = 'Bottom param'
-        self.assertEqual(
-            self.pop_model.get_bottom_parameter_name(), name)
-
-    def test_get_set_ids(self):
-        # Set some ids
-        pop_model = erlo.PopulationModel(n_ids=3)
-        ids = ['1', '2', '3']
-        pop_model.set_ids(ids)
-
-        self.assertEqual(pop_model.get_ids(), ids)
-
-    def test_set_ids_bad_input(self):
-        pop_model = erlo.PopulationModel(n_ids=3)
-        ids = ['wrong', 'number', 'of', 'IDs']
-
-        with self.assertRaisesRegex(ValueError, 'Length of IDs'):
-            pop_model.set_ids(ids)
-
-    def test_get_top_parameter_names(self):
+    def test_get_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
-            self.pop_model.get_top_parameter_names()
+            self.pop_model.get_parameter_names()
 
-    def test_n_bottom_parameters(self):
+    def test_n_hierarchical_parameters(self):
+        n_ids = 'some ids'
         with self.assertRaisesRegex(NotImplementedError, ''):
-            self.pop_model.n_bottom_parameters()
-
-    def test_n_ids(self):
-        self.assertEqual(self.pop_model.n_ids(), self.n_ids)
+            self.pop_model.n_hierarchical_parameters(n_ids)
 
     def test_n_parameters(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.n_parameters()
 
-    def test_n_parameters_per_id(self):
-        self.assertEqual(self.pop_model.n_parameters_per_id(), 1)
-
-    def test_n_top_parameters(self):
-        with self.assertRaisesRegex(NotImplementedError, ''):
-            self.pop_model.n_top_parameters()
-
     def test_sample(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some values')
 
-    def test_set_bottom_parameter_name(self):
-        # Check seeting some name
-        name = 'test name'
-        self.pop_model.set_bottom_parameter_name(name)
-
-        self.assertEqual(
-            self.pop_model.get_bottom_parameter_name(), name)
-
-        # Set back to default
-        name = 'Bottom param'
-        self.pop_model.set_bottom_parameter_name(name)
-
-        self.assertEqual(
-            self.pop_model.get_bottom_parameter_name(), name)
-
-    def test_set_top_parameter_names(self):
+    def test_set_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
-            self.pop_model.set_top_parameter_names('some name')
+            self.pop_model.set_parameter_names('some name')
 
 
 if __name__ == '__main__':
