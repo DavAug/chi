@@ -849,10 +849,9 @@ class PredictivePopulationModel(PredictiveModel):
     Implements a model that predicts the change of observable biomarkers over
     time in a population of patients or model organsims.
 
-    This model takes an instance of a :class:`MechanisticModel`, one instance
-    of an :class:`ErrorModel` for each mechanistic model output, and once
-    instance of a :class:`PopulationModel` for each mechanistic and error
-    model parameter.
+    This model takes an instance of a :class:`PredictiveModel`, and one
+    instance of a :class:`PopulationModel` for each predictive model
+    parameter.
 
     Extends :class:`PredictiveModel`.
 
