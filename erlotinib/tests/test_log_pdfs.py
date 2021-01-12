@@ -172,6 +172,30 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertEqual(likelihood(parameters), -np.inf)
 
+    def test_get_log_likelihoods(self):
+        log_likelihoods = self.hierarchical_model.get_log_likelihoods()
+
+        self.assertEqual(len(log_likelihoods), 8)
+        self.assertIsInstance(log_likelihoods[0], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[1], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[2], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[3], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[4], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[5], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[6], pints.LogPDF)
+        self.assertIsInstance(log_likelihoods[7], pints.LogPDF)
+
+    def test_get_population_models(self):
+        population_models = self.hierarchical_model.get_population_models()
+
+        self.assertEqual(len(population_models), 6)
+        self.assertIsInstance(population_models[0], erlo.PopulationModel)
+        self.assertIsInstance(population_models[1], erlo.PopulationModel)
+        self.assertIsInstance(population_models[2], erlo.PopulationModel)
+        self.assertIsInstance(population_models[3], erlo.PopulationModel)
+        self.assertIsInstance(population_models[4], erlo.PopulationModel)
+        self.assertIsInstance(population_models[5], erlo.PopulationModel)
+
     def test_n_parameters(self):
         n_parameters = self.log_likelihoods[0].n_parameters()
         self.assertEqual(
