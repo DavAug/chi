@@ -5,6 +5,8 @@
 # full license details.
 #
 
+import copy
+
 import numpy as np
 import pints
 
@@ -156,6 +158,18 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             score += log_likelihood(individual_params[index, :])
 
         return score
+
+    def get_log_likelihoods(self):
+        """
+        Returns the log-likelihoods.
+        """
+        return copy.copy(self._log_likelihoods)
+
+    def get_population_models(self):
+        """
+        Returns the population models.
+        """
+        return copy.copy(self._population_models)
 
     def n_parameters(self):
         """
