@@ -858,23 +858,15 @@ class PredictivePopulationModel(PredictiveModel):
 
     Parameters
     ----------
-    mechanistic_model
-        An instance of a :class:`MechanisticModel`.
-    error_models
-        A list of :class:`ErrorModel` instances, one for each model output of
-        the mechanistic model.
+    predictive_model
+        An instance of a :class:`PredictiveModel`.
     population_models
-        A list of :class:`PopulationModel` instances, one for each mechanistic
-        model-error model parameter.
-    outputs
-        A list of the model outputs, which maps the error models to the model
-        outputs. If ``None`` the error models are assumed to be listed in the
-        same order as the model outputs.
+        A list of :class:`PopulationModel` instances, one for each predictive
+        model parameter.
     params
         A list of the model parameters, which maps the population models to the
-        mechanistic model-error model parameters. If ``None`` the population
-        models are assumed to be listed in the same order as the model
-        parameters.
+        predictive model parameters. If ``None``, the population models are
+        assumed to be listed in the same order as the model parameters.
     """
 
     def __init__(self, predictive_model, population_models, params=None):
