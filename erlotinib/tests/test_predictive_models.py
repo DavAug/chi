@@ -1142,6 +1142,51 @@ class TestPredictivePopulationModel(unittest.TestCase):
         cls.model = erlo.PredictivePopulationModel(
             cls.predictive_model, cls.population_models)
 
+    def test_instantiation(self):
+        # Define order of population model with params
+        # Get mechanistic and error model
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = erlo.PharmacodynamicModel(path)
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+
+        # Create predictive model
+        predictive_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+
+        # Create population model
+        population_models = [
+            erlo.HeterogeneousModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+
+        params = [
+            'Sigma base',
+            'myokit.tumour_volume',
+            'myokit.kappa',
+            'myokit.lambda_0',
+            'myokit.drug_concentration',
+            'myokit.lambda_1',
+            'Sigma rel.']
+
+        # Create predictive population model
+        model = erlo.PredictivePopulationModel(
+            predictive_model, population_models, params)
+
+        parameter_names = model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 8)
+        self.assertEqual(parameter_names[0], 'Mean myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'Std. myokit.tumour_volume')
+        self.assertEqual(parameter_names[2], 'Pooled myokit.drug_concentration')
+        self.assertEqual(parameter_names[3], 'Pooled myokit.kappa')
+        self.assertEqual(parameter_names[4], 'Pooled myokit.lambda_0')
+        self.assertEqual(parameter_names[5], 'Pooled myokit.lambda_1')
+        self.assertEqual(parameter_names[6], 'Heterogeneous Sigma base')
+        self.assertEqual(parameter_names[7], 'Pooled Sigma rel.')
+
     def test_bad_instantiation(self):
         # Predictive model has wrong type
         predictive_model = 'wrong type'
