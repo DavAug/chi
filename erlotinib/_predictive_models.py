@@ -431,14 +431,14 @@ class PredictiveModel(object):
         # Check inputs
         if not isinstance(mechanistic_model, erlo.MechanisticModel):
             raise TypeError(
-                'The provided mechanistic model has to be an instance of a '
+                'The mechanistic model has to be an instance of a '
                 'erlotinib.MechanisticModel.')
 
         for error_model in error_models:
             if not isinstance(error_model, erlo.ErrorModel):
                 raise TypeError(
-                    'All provided error models have to be instances of a '
-                    'erlo.ErrorModel.')
+                    'All error models have to be instances of a '
+                    'erlotinib.ErrorModel.')
 
         # Set outputs
         if outputs is not None:
@@ -888,8 +888,8 @@ class PredictivePopulationModel(PredictiveModel):
         # Check that there is one population model for each model parameter
         if len(population_models) != n_parameters:
             raise ValueError(
-                'One population model parameter has to be provided for each '
-                'of the <' + str(n_parameters) + '> mechanistic model-error '
+                'One population model has to be provided for each of the '
+                '<' + str(n_parameters) + '> mechanistic model-error '
                 'model parameters.')
 
         # Sort population models according to model parameters
@@ -905,7 +905,7 @@ class PredictivePopulationModel(PredictiveModel):
                 raise ValueError(
                     'The parameter names in <params> have to coincide with '
                     'the parameter names of the non-populational predictive '
-                    'model <' + str(parameter_names) + '>.')
+                    'model parameters <' + str(parameter_names) + '>.')
 
             # Sort population models
             pop_models = ['Place holder'] * n_parameters
@@ -920,11 +920,12 @@ class PredictivePopulationModel(PredictiveModel):
         self._population_models = population_models
 
         # Set number and names of model parameters
+        self._set_population_parameter_names()
         self._set_number_and_parameter_names()
 
-    def _set_number_and_parameter_names(self):
+    def _set_population_parameter_names(self):
         """
-        Sets the number and names of the free population model parameters.
+        Sets the names of the population model parameters.
 
         For erlotinib.HeterogeneousModel the bottom-level parameter is used
         as model parameter name.
@@ -933,23 +934,38 @@ class PredictivePopulationModel(PredictiveModel):
         bottom_parameter_names = self._predictive_model.get_parameter_names()
 
         # Construct model parameter names
-        parameter_names = []
         for param_id, pop_model in enumerate(self._population_models):
             # Get population parameter
-            top_parameter_names = pop_model.get_parameter_names()
-            if isinstance(pop_model, erlo.HeterogeneousModel):
-                # Use bottom-level parameter as parameter
-                top_parameter_names = ['Heterogeneous']
+            pop_params = pop_model.get_parameter_names()
 
-            if top_parameter_names is None:
+            if isinstance(pop_model, erlo.HeterogeneousModel):
+                # Insert a prefix, to have the heterogenous parameter appear
+                # among the model parameters.
+                pop_params = ['Heterogeneous']
+
+            # Construct parameter names
+            bottom_name = bottom_parameter_names[param_id]
+            names = [name + ' ' + bottom_name for name in pop_params]
+
+            # Update population model parameter names
+            pop_model.set_parameter_names(names)
+
+    def _set_number_and_parameter_names(self):
+        """
+        Updates the number and names of the free model parameters.
+        """
+        # Construct model parameter names
+        parameter_names = []
+        for pop_model in self._population_models:
+            # Get population parameter
+            pop_params = pop_model.get_parameter_names()
+
+            if pop_params is None:
                 # All population-level parameters have been fixed
                 # Move to next iteration
                 continue
 
-            # Construct parameter names
-            bottom_name = bottom_parameter_names[param_id]
-            names = [name + ' ' + bottom_name for name in top_parameter_names]
-            parameter_names += names
+            parameter_names += pop_params
 
         # Update number and names
         self._parameter_names = parameter_names
