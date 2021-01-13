@@ -1368,7 +1368,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
     def test_sample(self):
         # Test case I: Just one sample
-        parameters = [1, 1, 1, 1, 1, 1, 0.1]
+        parameters = [1, 1, 1, 1, 1, 1, 0.1, 0.1]
         times = [1, 2, 3, 4, 5]
         seed = 42
 
@@ -1402,11 +1402,11 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.970159924388273)
-        self.assertAlmostEqual(values[1], -0.3837168004345003)
-        self.assertAlmostEqual(values[2], 1.3172158091846213)
-        self.assertAlmostEqual(values[3], 1.4896478457110898)
-        self.assertAlmostEqual(values[4], -1.4664469447762758)
+        self.assertAlmostEqual(values[0], 0.706890541588044)
+        self.assertAlmostEqual(values[1], 0.92377400455709)
+        self.assertAlmostEqual(values[2], 0.6494614629969823)
+        self.assertAlmostEqual(values[3], 0.8096804910998759)
+        self.assertAlmostEqual(values[4], 0.7137169898523077)
 
         # Test case I.2: Return as numpy.ndarray
         samples = self.model.sample(
@@ -1416,11 +1416,11 @@ class TestPredictivePopulationModel(unittest.TestCase):
         n_times = 5
         n_samples = 1
         self.assertEqual(samples.shape, (n_outputs, n_times, n_samples))
-        self.assertAlmostEqual(samples[0, 0, 0], 0.970159924388273)
-        self.assertAlmostEqual(samples[0, 1, 0], -0.3837168004345003)
-        self.assertAlmostEqual(samples[0, 2, 0], 1.3172158091846213)
-        self.assertAlmostEqual(samples[0, 3, 0], 1.4896478457110898)
-        self.assertAlmostEqual(samples[0, 4, 0], -1.4664469447762758)
+        self.assertAlmostEqual(samples[0, 0, 0], 0.706890541588044)
+        self.assertAlmostEqual(samples[0, 1, 0], 0.92377400455709)
+        self.assertAlmostEqual(samples[0, 2, 0], 0.6494614629969823)
+        self.assertAlmostEqual(samples[0, 3, 0], 0.8096804910998759)
+        self.assertAlmostEqual(samples[0, 4, 0], 0.7137169898523077)
 
         # Test case II: More than one sample
         n_samples = 4
@@ -1459,26 +1459,10 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 20)
-        self.assertAlmostEqual(values[0], 1.0556423390683263)
-        self.assertAlmostEqual(values[1], -0.3270113841421633)
-        self.assertAlmostEqual(values[2], 1.609052478543911)
-        self.assertAlmostEqual(values[3], 1.6938106489072702)
-        self.assertAlmostEqual(values[4], -1.3308066638991631)
-        self.assertAlmostEqual(values[5], -0.6770137193349925)
-        self.assertAlmostEqual(values[6], 0.8103166170457382)
-        self.assertAlmostEqual(values[7], 0.3554210376910704)
-        self.assertAlmostEqual(values[8], 0.5926284393333348)
-        self.assertAlmostEqual(values[9], -0.24255566520628413)
-        self.assertAlmostEqual(values[10], 1.5900163762325767)
-        self.assertAlmostEqual(values[11], 1.3392789962107843)
-        self.assertAlmostEqual(values[12], 0.5878641834748815)
-        self.assertAlmostEqual(values[13], 1.6324903256719818)
-        self.assertAlmostEqual(values[14], 1.0513958594002857)
-        self.assertAlmostEqual(values[15], -0.24719096826112444)
-        self.assertAlmostEqual(values[16], 0.8924949457952482)
-        self.assertAlmostEqual(values[17], -0.47361160445867245)
-        self.assertAlmostEqual(values[18], 1.364551743048893)
-        self.assertAlmostEqual(values[19], 0.5143221311427919)
+        self.assertAlmostEqual(values[0], 0.706890541588044)
+        self.assertAlmostEqual(values[1], 1.1819335813039527)
+        self.assertAlmostEqual(values[18], 0.34250343758412044)
+        self.assertAlmostEqual(values[19], 0.22479868804541864)
 
         # Test case II.2: Return as numpy.ndarray
         samples = self.model.sample(
@@ -1487,26 +1471,11 @@ class TestPredictivePopulationModel(unittest.TestCase):
         n_outputs = 1
         n_times = 5
         self.assertEqual(samples.shape, (n_outputs, n_times, n_samples))
-        self.assertAlmostEqual(samples[0, 0, 0], 1.0556423390683263)
-        self.assertAlmostEqual(samples[0, 0, 1], -0.3270113841421633)
-        self.assertAlmostEqual(samples[0, 0, 2], 1.609052478543911)
-        self.assertAlmostEqual(samples[0, 0, 3], 1.6938106489072702)
-        self.assertAlmostEqual(samples[0, 1, 0], -1.3308066638991631)
-        self.assertAlmostEqual(samples[0, 1, 1], -0.6770137193349925)
-        self.assertAlmostEqual(samples[0, 1, 2], 0.8103166170457382)
-        self.assertAlmostEqual(samples[0, 1, 3], 0.3554210376910704)
-        self.assertAlmostEqual(samples[0, 2, 0], 0.5926284393333348)
-        self.assertAlmostEqual(samples[0, 2, 1], -0.24255566520628413)
-        self.assertAlmostEqual(samples[0, 2, 2], 1.5900163762325767)
-        self.assertAlmostEqual(samples[0, 2, 3], 1.3392789962107843)
-        self.assertAlmostEqual(samples[0, 3, 0], 0.5878641834748815)
-        self.assertAlmostEqual(samples[0, 3, 1], 1.6324903256719818)
-        self.assertAlmostEqual(samples[0, 3, 2], 1.0513958594002857)
-        self.assertAlmostEqual(samples[0, 3, 3], -0.24719096826112444)
-        self.assertAlmostEqual(samples[0, 4, 0], 0.8924949457952482)
-        self.assertAlmostEqual(samples[0, 4, 1], -0.47361160445867245)
-        self.assertAlmostEqual(samples[0, 4, 2], 1.364551743048893)
-        self.assertAlmostEqual(samples[0, 4, 3], 0.5143221311427919)
+        self.assertAlmostEqual(samples[0, 0, 0], 0.706890541588044)
+        self.assertAlmostEqual(samples[0, 1, 2], 0.6028704149153622)
+        self.assertAlmostEqual(samples[0, 2, 1], 1.801028233914049)
+        self.assertAlmostEqual(samples[0, 3, 2], 0.46832698042688226)
+        self.assertAlmostEqual(samples[0, 4, 3], 0.22479868804541864)
 
         # Test case III: Return dosing regimen
 
@@ -1542,21 +1511,24 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.970159924388273)
-        self.assertAlmostEqual(values[1], -0.3837168004345003)
-        self.assertAlmostEqual(values[2], 1.3172158091846213)
-        self.assertAlmostEqual(values[3], 1.4896478457110898)
-        self.assertAlmostEqual(values[4], -1.4664469447762758)
+        self.assertAlmostEqual(values[0], 0.706890541588044)
+        self.assertAlmostEqual(values[1], 0.92377400455709)
+        self.assertAlmostEqual(values[2], 0.6494614629969823)
+        self.assertAlmostEqual(values[3], 0.8096804910998759)
+        self.assertAlmostEqual(values[4], 0.7137169898523077)
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
         path = erlo.ModelLibrary().one_compartment_pk_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
-        mechanistic_model.set_administration('central')
-        model = erlo.PredictiveModel(
-            mechanistic_model, self.error_models)
+        mechanistic_model.set_administration('central', direct=False)
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        predictive_model = erlo.PredictiveModel(
+            mechanistic_model, error_models)
+        model = erlo.PredictivePopulationModel(
+            predictive_model, self.population_models)
 
         # Sample
-        parameters = [1, 1, 1, 1, 1]
+        parameters = [1, 1, 1, 1, 1, 1, 0.1, 0.1]
         samples = model.sample(
             parameters, times, seed=seed, include_regimen=True)
 
@@ -1587,17 +1559,16 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.19357442536989605)
-        self.assertAlmostEqual(values[1], -0.8873567434686567)
-        self.assertAlmostEqual(values[2], 0.7844710370969462)
-        self.assertAlmostEqual(values[3], 0.9585509622439399)
-        self.assertAlmostEqual(values[4], -1.9500467417155718)
+        self.assertAlmostEqual(values[0], 0.6010875382040474)
+        self.assertAlmostEqual(values[1], 0.5498109476992113)
+        self.assertAlmostEqual(values[2], 0.19328049998332394)
+        self.assertAlmostEqual(values[3], 0.22922447690250458)
+        self.assertAlmostEqual(values[4], 0.058015876021734025)
 
         # Test case III.3: PKmodel, dosing regimen is set
         model.set_dosing_regimen(1, 1, period=1, num=2)
 
         # Sample
-        parameters = [1, 1, 1, 1, 1]
         samples = model.sample(
             parameters, times, seed=seed, include_regimen=True)
 
@@ -1630,11 +1601,11 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.19357442536989605)
-        self.assertAlmostEqual(values[1], -0.47051946530234423)
-        self.assertAlmostEqual(values[2], 1.1301703133958951)
-        self.assertAlmostEqual(values[3], 1.1414603643105294)
-        self.assertAlmostEqual(values[4], -1.9399955984363169)
+        self.assertAlmostEqual(values[0], 0.6010875382040474)
+        self.assertAlmostEqual(values[1], 0.9494472511510463)
+        self.assertAlmostEqual(values[2], 0.7916608762100437)
+        self.assertAlmostEqual(values[3], 0.6678547210989847)
+        self.assertAlmostEqual(values[4], 0.30760362908683914)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
@@ -1646,7 +1617,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         # Test case III.4: PKmodel, dosing regimen is set, 2 samples
         # Sample
-        parameters = [1, 1, 1, 1, 1]
         samples = model.sample(
             parameters, times, n_samples=2, seed=seed, include_regimen=True)
 
@@ -1680,16 +1650,10 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 10)
-        self.assertAlmostEqual(values[0], 0.9959660719183876)
-        self.assertAlmostEqual(values[1], -0.3861061623036009)
-        self.assertAlmostEqual(values[2], 1.2887071287477976)
-        self.assertAlmostEqual(values[3], 2.0146427922545884)
-        self.assertAlmostEqual(values[4], -1.1360658058662318)
-        self.assertAlmostEqual(values[5], -1.2240387200366378)
-        self.assertAlmostEqual(values[6], 0.4075153414639344)
-        self.assertAlmostEqual(values[7], -0.3078411315299712)
-        self.assertAlmostEqual(values[8], 0.12431122545485368)
-        self.assertAlmostEqual(values[9], -0.7816727453841099)
+        self.assertAlmostEqual(values[0], 0.6010875382040474)
+        self.assertAlmostEqual(values[1], 0.3979077263135499)
+        self.assertAlmostEqual(values[8], 0.30760362908683914)
+        self.assertAlmostEqual(values[9], 0.28454670539055454)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
