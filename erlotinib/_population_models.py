@@ -550,7 +550,7 @@ class ReducedPopulationModel(object):
 
     Parameters
     ----------
-    error_model
+    population_model
         An instance of a :class:`PopulationModel`.
     """
 
