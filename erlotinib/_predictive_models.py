@@ -5,6 +5,8 @@
 # full license details.
 #
 
+import copy
+
 import numpy as np
 import pandas as pd
 import pints
@@ -917,7 +919,8 @@ class PredictivePopulationModel(PredictiveModel):
 
         # Remember predictive model and population models
         self._predictive_model = predictive_model
-        self._population_models = population_models
+        self._population_models = [
+            copy.copy(pop_model) for pop_model in population_models]
 
         # Set number and names of model parameters
         self._set_population_parameter_names()
@@ -1080,12 +1083,12 @@ class PredictivePopulationModel(PredictiveModel):
         pop_models = []
         for pop_model in self._population_models:
             # Get original population model
-            if isinstance(pop_models, erlo.ReducedPopulationModel):
+            if isinstance(pop_model, erlo.ReducedPopulationModel):
                 pop_model = pop_model.get_population_model()
-
+            
             pop_models.append(pop_model)
 
-        submodels['Population model'] = pop_models
+        submodels['Population models'] = pop_models
 
         return submodels
 
