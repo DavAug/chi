@@ -157,11 +157,11 @@ class HeterogeneousModel(PopulationModel):
         return self._n_parameters
 
     def set_parameter_names(self, names):
-        """
+        r"""
         Sets the names of the population model parameters.
 
-        This method raises an error for a heterogenous population model as
-        no top-level model parameter exist.
+        A heterogeneous population model has no population parameters.
+        However, a name may nevertheless be assigned for convience.
 
         Parameters
         ----------
@@ -169,8 +169,11 @@ class HeterogeneousModel(PopulationModel):
             An array-like object with string-convertable entries of length
             :meth:`n_parameters`.
         """
-        raise ValueError(
-            'A heterogeneous population model has no top-level parameters.')
+        if len(names) != 1:
+            raise ValueError(
+                'Length of names has to be 1.')
+
+        self._parameter_names = [str(label) for label in names]
 
 
 class LogNormalModel(PopulationModel):
@@ -540,9 +543,6 @@ class PooledModel(PopulationModel):
 
 class ReducedPopulationModel(object):
     """
-    #TODO:
-    # 3. Try PredPopModel in notebook
-    # 4. Write tests for PPM
     A base class for population models.
 
     Parameters
@@ -610,6 +610,10 @@ class ReducedPopulationModel(object):
             raise ValueError(
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
+
+        # If population model does not have model parameters, break here
+        if self._parameter_names is None:
+            return None
 
         # If no model parameters have been fixed before, instantiate a mask
         # and values
