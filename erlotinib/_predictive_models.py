@@ -962,12 +962,6 @@ class PredictivePopulationModel(PredictiveModel):
         for pop_model in self._population_models:
             # Get population parameter
             pop_params = pop_model.get_parameter_names()
-
-            if pop_params is None:
-                # All population-level parameters have been fixed
-                # Move to next iteration
-                continue
-
             parameter_names += pop_params
 
         # Update number and names
