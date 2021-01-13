@@ -1180,7 +1180,8 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(parameter_names), 8)
         self.assertEqual(parameter_names[0], 'Mean myokit.tumour_volume')
         self.assertEqual(parameter_names[1], 'Std. myokit.tumour_volume')
-        self.assertEqual(parameter_names[2], 'Pooled myokit.drug_concentration')
+        self.assertEqual(
+            parameter_names[2], 'Pooled myokit.drug_concentration')
         self.assertEqual(parameter_names[3], 'Pooled myokit.kappa')
         self.assertEqual(parameter_names[4], 'Pooled myokit.lambda_0')
         self.assertEqual(parameter_names[5], 'Pooled myokit.lambda_1')
