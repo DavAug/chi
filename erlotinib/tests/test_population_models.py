@@ -47,8 +47,21 @@ class TestHeterogeneousModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some params')
 
-    def test_set_parameter_names(self):
-        with self.assertRaisesRegex(ValueError, 'A heterogeneous population'):
+    def test_set_get_parameter_names(self):
+        # Check default name
+        name = self.pop_model.get_parameter_names()
+        self.assertIsNone(name)
+
+        # Set name
+        name = ['some name']
+        self.pop_model.set_parameter_names(name)
+        names = self.pop_model.get_parameter_names()
+
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'some name')
+
+    def test_set_parameter_names_bad_input(self):
+        with self.assertRaisesRegex(ValueError, 'Length of names has to be 1'):
             self.pop_model.set_parameter_names('some params')
 
 
