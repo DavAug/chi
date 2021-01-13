@@ -543,12 +543,15 @@ class PooledModel(PopulationModel):
 
 class ReducedPopulationModel(object):
     """
-    A base class for population models.
+    A class that can be used to permanently fix model parameters of a
+    :class:`PopulationModel` instance.
+
+    This may be useful to explore simplified versions of a model.
 
     Parameters
     ----------
-    n_ids
-        Number of individual bottom level models. Defaults to 1.
+    error_model
+        An instance of a :class:`PopulationModel`.
     """
 
     def __init__(self, population_model):

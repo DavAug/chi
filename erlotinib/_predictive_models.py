@@ -43,7 +43,7 @@ class DataDrivenPredictiveModel(object):
         administered in units of the drug amount variable of the mechanistic
         model.
 
-        If a dosing regimen is set which is administered indefinitely, i.e. a
+        If an indefinitely administered dosing regimen is set, i.e. a
         finite duration and undefined number of doses, see
         :meth:`set_dosing_regimen`, only the first administration of the
         dose will appear in the dataframe. Alternatively, a final dose time
@@ -556,7 +556,7 @@ class PredictiveModel(object):
         administered in units of the drug amount variable of the mechanistic
         model.
 
-        If a dosing regimen is set which is administered indefinitely, i.e. a
+        If an indefinitely administered dosing regimen is set, i.e. a
         finite duration and undefined number of doses, see
         :meth:`set_dosing_regimen`, only the first administration of the
         dose will appear in the dataframe. Alternatively, a final dose time
@@ -849,7 +849,7 @@ class PredictiveModel(object):
 class PredictivePopulationModel(PredictiveModel):
     """
     Implements a model that predicts the change of observable biomarkers over
-    time in a population of patients or model organsims.
+    time in a population of patients or model organisms.
 
     This model takes an instance of a :class:`PredictiveModel`, and one
     instance of a :class:`PopulationModel` for each predictive model
@@ -990,7 +990,7 @@ class PredictivePopulationModel(PredictiveModel):
         ----------
         name_value_dict
             A dictionary with model parameter names as keys, and parameter
-            value as values.
+            values as values.
         """
         # Check type of dictionanry
         try:
@@ -1036,7 +1036,7 @@ class PredictivePopulationModel(PredictiveModel):
         administered in units of the drug amount variable of the mechanistic
         model.
 
-        If a dosing regimen is set which is administered indefinitely, i.e. a
+        If an indefinitely administered dosing regimen is set, i.e. a
         finite duration and undefined number of doses, see
         :meth:`set_dosing_regimen`, only the first administration of the
         dose will appear in the dataframe. Alternatively, a final dose time
@@ -1085,7 +1085,7 @@ class PredictivePopulationModel(PredictiveModel):
             # Get original population model
             if isinstance(pop_model, erlo.ReducedPopulationModel):
                 pop_model = pop_model.get_population_model()
-            
+
             pop_models.append(pop_model)
 
         submodels['Population models'] = pop_models
@@ -1102,16 +1102,18 @@ class PredictivePopulationModel(PredictiveModel):
             self, parameters, times, n_samples=None, seed=None,
             return_df=True, include_regimen=False):
         """
-        Samples "measurements" of the biomarkers from the predictive model and
+        Samples "measurements" of the biomarkers from virtual "patients" and
         returns them in form of a :class:`pandas.DataFrame` or a
         :class:`numpy.ndarray`.
 
-        The mechanistic model is solved for the provided parameters and times,
-        and samples around this solution are drawn from the error models for
-        each time point.
+        Virtual patients are sampled from the population models in form of
+        predictive model parameters. Those parameters are then used to sample
+        virtual measurements from the predictive model. For each virtual
+        patient one measurement is performed at each of the provided time
+        points.
 
-        The number of samples for each time point can be specified with
-        ``n_samples``.
+        The number of virtual patients that is being measured can be specified
+        with ``n_samples``.
 
         Parameters
         ----------
@@ -1122,9 +1124,9 @@ class PredictivePopulationModel(PredictiveModel):
             An array-like object with times at which the virtual "measurements"
             are performed.
         n_samples
-            The number of virtual "measurements" that are performed at each
-            time point. If ``None`` the biomarkers are measured only once
-            at each time point.
+            The number of virtual "patients" that are measured at each
+            time point. If ``None`` the biomarkers are measured only for one
+            patient.
         seed
             A seed for the pseudo-random number generator.
         return_df
