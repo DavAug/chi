@@ -47,8 +47,21 @@ class TestHeterogeneousModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some params')
 
-    def test_set_parameter_names(self):
-        with self.assertRaisesRegex(ValueError, 'A heterogeneous population'):
+    def test_set_get_parameter_names(self):
+        # Check default name
+        name = self.pop_model.get_parameter_names()
+        self.assertIsNone(name)
+
+        # Set name
+        name = ['some name']
+        self.pop_model.set_parameter_names(name)
+        names = self.pop_model.get_parameter_names()
+
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'some name')
+
+    def test_set_parameter_names_bad_input(self):
+        with self.assertRaisesRegex(ValueError, 'Length of names has to be 1'):
             self.pop_model.set_parameter_names('some params')
 
 
@@ -474,6 +487,177 @@ class TestPopulationModel(unittest.TestCase):
     def test_set_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.set_parameter_names('some name')
+
+
+class TestReducedPopulationModel(unittest.TestCase):
+    """
+    Tests the erlotinib.ReducedPopulationModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        pop_model = erlo.LogNormalModel()
+        cls.pop_model = erlo.ReducedPopulationModel(pop_model)
+
+    def test_bad_instantiation(self):
+        model = 'Bad type'
+        with self.assertRaisesRegex(TypeError, 'The population model'):
+            erlo.ReducedPopulationModel(model)
+
+    def test_compute_log_likelihood(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 1})
+
+        # Compute log-likelihood
+        parameters = [2]
+        observations = [2, 3, 4, 5]
+        score = self.pop_model.compute_log_likelihood(
+            parameters, observations)
+
+        # Compute ref score with original error model
+        parameters = [1, 2]
+        error_model = self.pop_model.get_population_model()
+        ref_score = error_model.compute_log_likelihood(
+            parameters, observations)
+
+        self.assertEqual(score, ref_score)
+
+        # Unfix model parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 1})
+
+        n_parameters = self.pop_model.n_parameters()
+        self.assertEqual(n_parameters, 1)
+
+        parameter_names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 1)
+        self.assertEqual(parameter_names[0], 'Std.')
+
+        # Test case II: fix overlapping set of parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 0.2,
+            'Std.': 0.1})
+
+        n_parameters = self.pop_model.n_parameters()
+        self.assertEqual(n_parameters, 0)
+
+        parameter_names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 0)
+
+        # Test case III: unfix all parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': None,
+            'Std.': None})
+
+        n_parameters = self.pop_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+        parameter_names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(parameter_names), 2)
+        self.assertEqual(parameter_names[0], 'Mean')
+        self.assertEqual(parameter_names[1], 'Std.')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.pop_model.fix_parameters(name_value_dict)
+
+    def test_get_population_model(self):
+        pop_model = self.pop_model.get_population_model()
+        self.assertIsInstance(pop_model, erlo.PopulationModel)
+
+    def test_n_hierarchical_parameters(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Std.': 0.1})
+
+        n_ids = 10
+        n_indiv, n_pop = self.pop_model.n_hierarchical_parameters(n_ids)
+        self.assertEqual(n_indiv, 10)
+        self.assertEqual(n_pop, 1)
+
+        # Unfix all parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Std.': None})
+
+        n_ids = 10
+        n_indiv, n_pop = self.pop_model.n_hierarchical_parameters(n_ids)
+        self.assertEqual(n_indiv, 10)
+        self.assertEqual(n_pop, 2)
+
+    def test_n_fixed_parameters(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Std.': 0.1})
+
+        self.assertEqual(self.pop_model.n_fixed_parameters(), 1)
+
+        # Unfix all parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Std.': None})
+
+        self.assertEqual(self.pop_model.n_fixed_parameters(), 0)
+
+    def test_n_parameters(self):
+        n_parameters = self.pop_model.n_parameters()
+        self.assertEqual(n_parameters, 2)
+
+    def test_sample(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 0.1})
+
+        # Sample
+        seed = 42
+        n_samples = 4
+        parameters = [0.2]
+        samples = self.pop_model.sample(parameters, n_samples, seed)
+
+        # Compute ref score with original population model
+        parameters = [0.1, 0.2]
+        pop_model = self.pop_model.get_population_model()
+        ref_samples = pop_model.sample(parameters, n_samples, seed)
+
+        self.assertEqual(samples.shape, (4,))
+        self.assertEqual(ref_samples.shape, (4,))
+        self.assertEqual(samples[0], ref_samples[0])
+        self.assertEqual(samples[1], ref_samples[1])
+        self.assertEqual(samples[2], ref_samples[2])
+        self.assertEqual(samples[3], ref_samples[3])
+
+        # Unfix model parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': None})
+
+    def test_set_get_parameter_names(self):
+        # Set some parameter names
+        self.pop_model.set_parameter_names({
+            'Mean': 'Test'})
+
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Test')
+        self.assertEqual(names[1], 'Std.')
+
+        # Revert to defaults
+        self.pop_model.set_parameter_names({
+            'Test': 'Mean'})
+
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Mean')
+        self.assertEqual(names[1], 'Std.')
+
+    def test_set_parameter_names_bad_input(self):
+        names = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name dictionary'):
+            self.pop_model.set_parameter_names(names)
 
 
 if __name__ == '__main__':

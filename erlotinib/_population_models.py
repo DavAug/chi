@@ -79,6 +79,12 @@ class PopulationModel(object):
     def set_parameter_names(self, names):
         """
         Sets the names of the population model parameters.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`.
         """
         raise NotImplementedError
 
@@ -151,14 +157,23 @@ class HeterogeneousModel(PopulationModel):
         return self._n_parameters
 
     def set_parameter_names(self, names):
-        """
+        r"""
         Sets the names of the population model parameters.
 
-        This method raises an error for a heterogenous population model as
-        no top-level model parameter exist.
+        A heterogeneous population model has no population parameters.
+        However, a name may nevertheless be assigned for convience.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`.
         """
-        raise ValueError(
-            'A heterogeneous population model has no top-level parameters.')
+        if len(names) != 1:
+            raise ValueError(
+                'Length of names has to be 1.')
+
+        self._parameter_names = [str(label) for label in names]
 
 
 class LogNormalModel(PopulationModel):
@@ -285,20 +300,20 @@ class LogNormalModel(PopulationModel):
         """
         return self._n_parameters
 
-    def sample(self, top_parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, seed=None):
         r"""
         Returns random samples from the underlying population
         distribution.
 
         For a LogNormalModel random samples from a log-normal
         distribution are returned, where the population model parameters
-        :math:`\mu` and :math:`\sigma` are given by ``top_parameters``.
+        :math:`\mu` and :math:`\sigma` are given by ``parameters``.
 
         The returned value is a NumPy array with shape ``(n_samples,)``.
 
         Parameters
         ----------
-        top_parameters
+        parameters
             Parameter values of the top-level parameters that are used for the
             simulation.
         n_samples
@@ -306,7 +321,7 @@ class LogNormalModel(PopulationModel):
         seed
             A seed for the pseudo-random number generator.
         """
-        if len(top_parameters) != self._n_parameters:
+        if len(parameters) != self._n_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
@@ -317,7 +332,7 @@ class LogNormalModel(PopulationModel):
         sample_shape = (int(n_samples),)
 
         # Get parameters
-        mean, std = top_parameters
+        mean, std = parameters
 
         if mean <= 0 or std <= 0:
             raise ValueError(
@@ -341,10 +356,16 @@ class LogNormalModel(PopulationModel):
 
         The population parameter of a LogNormalModel are the population mean
         and standard deviation of the parameter :math:`\psi`.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`.
         """
         if len(names) != self._n_parameters:
             raise ValueError(
-                'Length of names does not match n_top_parameters.')
+                'Length of names does not match the number of parameters.')
 
         self._parameter_names = [str(label) for label in names]
 
@@ -468,7 +489,7 @@ class PooledModel(PopulationModel):
         """
         return self._n_parameters
 
-    def sample(self, top_parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, seed=None):
         r"""
         Returns random samples from the underlying population
         distribution.
@@ -480,7 +501,7 @@ class PooledModel(PopulationModel):
 
         Parameters
         ----------
-        top_parameters
+        parameters
             Parameter values of the top-level parameters that are used for the
             simulation.
         n_samples
@@ -488,11 +509,11 @@ class PooledModel(PopulationModel):
         seed
             A seed for the pseudo-random number generator.
         """
-        if len(top_parameters) != self._n_parameters:
+        if len(parameters) != self._n_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
-        samples = np.asarray(top_parameters)
+        samples = np.asarray(parameters)
 
         # If only one sample is wanted, return input parameter
         if n_samples is None:
@@ -506,9 +527,243 @@ class PooledModel(PopulationModel):
     def set_parameter_names(self, names):
         """
         Sets the names of the population model parameters.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`.
         """
         if len(names) != self._n_parameters:
             raise ValueError(
-                'Length of names does not match n_top_parameters.')
+                'Length of names does not match n_parameters.')
 
         self._parameter_names = [str(label) for label in names]
+
+
+class ReducedPopulationModel(object):
+    """
+    A class that can be used to permanently fix model parameters of a
+    :class:`PopulationModel` instance.
+
+    This may be useful to explore simplified versions of a model.
+
+    Parameters
+    ----------
+    population_model
+        An instance of a :class:`PopulationModel`.
+    """
+
+    def __init__(self, population_model):
+        super(ReducedPopulationModel, self).__init__()
+
+        # Check inputs
+        if not isinstance(population_model, PopulationModel):
+            raise TypeError(
+                'The population model has to be an instance of a '
+                'erlotinib.PopulationModel.')
+
+        self._population_model = population_model
+
+        # Set defaults
+        self._fixed_params_mask = None
+        self._fixed_params_values = None
+        self._n_parameters = population_model.n_parameters()
+        self._parameter_names = population_model.get_parameter_names()
+
+    def compute_log_likelihood(self, parameters, observations):
+        """
+        Returns the unnormalised log-likelihood score of the population model.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        # Compute log-likelihood
+        score = self._population_model.compute_log_likelihood(
+            parameters, observations)
+
+        return score
+
+    def fix_parameters(self, name_value_dict):
+        """
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
+
+        Parameters
+        ----------
+        name_value_dict
+            A dictionary with model parameter names as keys, and parameter
+            values as values.
+        """
+        # Check type
+        try:
+            name_value_dict = dict(name_value_dict)
+        except (TypeError, ValueError):
+            raise ValueError(
+                'The name-value dictionary has to be convertable to a python '
+                'dictionary.')
+
+        # If population model does not have model parameters, break here
+        if self._n_parameters == 0:
+            return None
+
+        # If no model parameters have been fixed before, instantiate a mask
+        # and values
+        if self._fixed_params_mask is None:
+            self._fixed_params_mask = np.zeros(
+                shape=self._n_parameters, dtype=bool)
+
+        if self._fixed_params_values is None:
+            self._fixed_params_values = np.empty(shape=self._n_parameters)
+
+        # Update the mask and values
+        for index, name in enumerate(self._parameter_names):
+            try:
+                value = name_value_dict[name]
+            except KeyError:
+                # KeyError indicates that parameter name is not being fixed
+                continue
+
+            # Fix parameter if value is not None, else unfix it
+            self._fixed_params_mask[index] = value is not None
+            self._fixed_params_values[index] = value
+
+        # If all parameters are free, set mask and values to None again
+        if np.alltrue(~self._fixed_params_mask):
+            self._fixed_params_mask = None
+            self._fixed_params_values = None
+
+    def get_parameter_names(self):
+        """
+        Returns the name of the the population model parameters. If name were
+        not set, defaults are returned.
+        """
+        # Remove fixed model parameters
+        names = self._parameter_names
+        if self._fixed_params_mask is not None:
+            names = np.array(names)
+            names = names[~self._fixed_params_mask]
+            names = list(names)
+
+        return names
+
+    def get_population_model(self):
+        """
+        Returns the original population model.
+        """
+        return self._population_model
+
+    def n_hierarchical_parameters(self, n_ids):
+        """
+        Returns a tuple of the number of individual parameters and the number
+        of population parameters that this model expects in context of a
+        :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
+        modelled.
+
+        Parameters
+        ----------
+        n_ids
+            Number of individuals.
+        """
+        # Get individual parameters
+        n_indiv, n_pop = self._population_model.n_hierarchical_parameters(
+            n_ids)
+
+        # If parameters have been fixed, updated number of population
+        # parameters
+        if self._fixed_params_mask is not None:
+            n_pop = int(np.sum(self._fixed_params_mask))
+
+        return (n_indiv, n_pop)
+
+    def n_fixed_parameters(self):
+        """
+        Returns the number of fixed model parameters.
+        """
+        if self._fixed_params_mask is None:
+            return 0
+
+        n_fixed = int(np.sum(self._fixed_params_mask))
+
+        return n_fixed
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the population model.
+        """
+        # Get number of fixed parameters
+        n_fixed = 0
+        if self._fixed_params_mask is not None:
+            n_fixed = int(np.sum(self._fixed_params_mask))
+
+        # Subtract fixed parameters from total number
+        n_parameters = self._n_parameters - n_fixed
+
+        return n_parameters
+
+    def sample(self, parameters, n_samples=None, seed=None):
+        r"""
+        Returns random samples from the underlying population distribution.
+
+        The returned value is a NumPy array with shape ``(n_samples,)``.
+
+        Parameters
+        ----------
+        parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n_samples
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        # Sample from population model
+        sample = self._population_model.sample(parameters, n_samples, seed)
+
+        return sample
+
+    def set_parameter_names(self, names):
+        """
+        Sets the names of the population model parameters.
+
+        Parameters
+        ----------
+        names
+            A dictionary that maps the current parameter names to new names.
+        """
+        # Check type
+        try:
+            names = dict(names)
+        except (TypeError, ValueError):
+            raise ValueError(
+                'The name dictionary has to be convertable to a python '
+                'dictionary.')
+
+        parameter_names = self._parameter_names
+        for index, parameter in enumerate(self._parameter_names):
+            try:
+                parameter_names[index] = str(names[parameter])
+            except KeyError:
+                # KeyError indicates that a current parameter is not being
+                # replaced.
+                pass
+
+        # Set parameter names
+        self._population_model.set_parameter_names(parameter_names)
+        self._parameter_names = self._population_model.get_parameter_names()

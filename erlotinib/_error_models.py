@@ -272,6 +272,11 @@ class ReducedErrorModel(object):
     :class:`ErrorModel` instance.
 
     This may be useful to explore simplified versions of a model.
+
+    Parameters
+    ----------
+    error_model
+        An instance of a :class:`ErrorModel`.
     """
 
     def __init__(self, error_model):

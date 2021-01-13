@@ -47,13 +47,15 @@ from ._population_models import (  # noqa
     HeterogeneousModel,
     LogNormalModel,
     PooledModel,
-    PopulationModel
+    PopulationModel,
+    ReducedPopulationModel
 )
 
 from ._predictive_models import (  # noqa
     DataDrivenPredictiveModel,
     PosteriorPredictiveModel,
     PredictiveModel,
+    PredictivePopulationModel,
     PriorPredictiveModel
 )
 

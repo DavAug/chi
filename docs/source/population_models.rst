@@ -22,25 +22,25 @@ Detailed API
 .. autoclass:: HeterogeneousModel
     :members:
     :inherited-members:
-    :special-members:
 
 .. autoclass:: LogNormalModel
     :members:
     :inherited-members:
-    :special-members:
 
 .. autoclass:: PooledModel
     :members:
     :inherited-members:
-    :special-members:
 
 Base classes
 ------------
 - :class:`PopulationModel`
+- :class:`ReducedPopulationModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
 .. autoclass:: PopulationModel
     :members:
-    :special-members:
+
+.. autoclass:: ReducedPopulationModel
+    :members:

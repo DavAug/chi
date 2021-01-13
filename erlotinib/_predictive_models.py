@@ -5,6 +5,8 @@
 # full license details.
 #
 
+import copy
+
 import numpy as np
 import pandas as pd
 import pints
@@ -41,7 +43,7 @@ class DataDrivenPredictiveModel(object):
         administered in units of the drug amount variable of the mechanistic
         model.
 
-        If a dosing regimen is set which is administered indefinitely, i.e. a
+        If an indefinitely administered dosing regimen is set, i.e. a
         finite duration and undefined number of doses, see
         :meth:`set_dosing_regimen`, only the first administration of the
         dose will appear in the dataframe. Alternatively, a final dose time
@@ -405,7 +407,7 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 class PredictiveModel(object):
     """
     Implements a model that predicts the change of observable biomarkers over
-    time.
+    time in a patient or a model organism.
 
     This model takes an instance of a :class:`MechanisticModel` and an instance
     of an :class:`ErrorModel` for each mechanistic model output, and predicts
@@ -430,15 +432,15 @@ class PredictiveModel(object):
 
         # Check inputs
         if not isinstance(mechanistic_model, erlo.MechanisticModel):
-            raise ValueError(
-                'The provided mechanistic model has to be an instance of a '
+            raise TypeError(
+                'The mechanistic model has to be an instance of a '
                 'erlotinib.MechanisticModel.')
 
         for error_model in error_models:
             if not isinstance(error_model, erlo.ErrorModel):
-                raise ValueError(
-                    'All provided error models have to be instances of a '
-                    'erlo.ErrorModel.')
+                raise TypeError(
+                    'All error models have to be instances of a '
+                    'erlotinib.ErrorModel.')
 
         # Set outputs
         if outputs is not None:
@@ -554,7 +556,7 @@ class PredictiveModel(object):
         administered in units of the drug amount variable of the mechanistic
         model.
 
-        If a dosing regimen is set which is administered indefinitely, i.e. a
+        If an indefinitely administered dosing regimen is set, i.e. a
         finite duration and undefined number of doses, see
         :meth:`set_dosing_regimen`, only the first administration of the
         dose will appear in the dataframe. Alternatively, a final dose time
@@ -842,6 +844,418 @@ class PredictiveModel(object):
                 'regimens. This may be because the underlying '
                 'erlotinib.MechanisticModel is a '
                 'erlotinib.PharmacodynamicModel.')
+
+
+class PredictivePopulationModel(PredictiveModel):
+    """
+    Implements a model that predicts the change of observable biomarkers over
+    time in a population of patients or model organisms.
+
+    This model takes an instance of a :class:`PredictiveModel`, and one
+    instance of a :class:`PopulationModel` for each predictive model
+    parameter.
+
+    Extends :class:`PredictiveModel`.
+
+    Parameters
+    ----------
+    predictive_model
+        An instance of a :class:`PredictiveModel`.
+    population_models
+        A list of :class:`PopulationModel` instances, one for each predictive
+        model parameter.
+    params
+        A list of the model parameters, which maps the population models to the
+        predictive model parameters. If ``None``, the population models are
+        assumed to be listed in the same order as the model parameters.
+    """
+
+    def __init__(self, predictive_model, population_models, params=None):
+        # Check inputs
+        if not isinstance(predictive_model, erlo.PredictiveModel):
+            raise TypeError(
+                'The predictive model has to be an instance of a '
+                'erlotinib.PredictiveModel.')
+
+        for pop_model in population_models:
+            if not isinstance(pop_model, erlo.PopulationModel):
+                raise TypeError(
+                    'All population models have to be instances of a '
+                    'erlotinib.PopulationModel.')
+
+        # Get number and names of non-population predictive model
+        n_parameters = predictive_model.n_parameters()
+        parameter_names = predictive_model.get_parameter_names()
+
+        # Check that there is one population model for each model parameter
+        if len(population_models) != n_parameters:
+            raise ValueError(
+                'One population model has to be provided for each of the '
+                '<' + str(n_parameters) + '> mechanistic model-error '
+                'model parameters.')
+
+        # Sort population models according to model parameters
+        if params is not None:
+            # Check that params has the right length, and the correct
+            # parameter names
+            if len(params) != n_parameters:
+                raise ValueError(
+                    'Params does not have the correct length. Params is '
+                    'expected to contain all model parameter names.')
+
+            if sorted(parameter_names) != sorted(params):
+                raise ValueError(
+                    'The parameter names in <params> have to coincide with '
+                    'the parameter names of the non-populational predictive '
+                    'model parameters <' + str(parameter_names) + '>.')
+
+            # Sort population models
+            pop_models = ['Place holder'] * n_parameters
+            for param_id, name in enumerate(params):
+                index = parameter_names.index(name)
+                pop_models[index] = population_models[param_id]
+
+            population_models = pop_models
+
+        # Remember predictive model and population models
+        self._predictive_model = predictive_model
+        self._population_models = [
+            copy.copy(pop_model) for pop_model in population_models]
+
+        # Set number and names of model parameters
+        self._set_population_parameter_names()
+        self._set_number_and_parameter_names()
+
+    def _set_population_parameter_names(self):
+        """
+        Sets the names of the population model parameters.
+
+        For erlotinib.HeterogeneousModel the bottom-level parameter is used
+        as model parameter name.
+        """
+        # Get predictive model parameters
+        bottom_parameter_names = self._predictive_model.get_parameter_names()
+
+        # Construct model parameter names
+        for param_id, pop_model in enumerate(self._population_models):
+            # Get population parameter
+            pop_params = pop_model.get_parameter_names()
+
+            if isinstance(pop_model, erlo.HeterogeneousModel):
+                # Insert a prefix, to have the heterogenous parameter appear
+                # among the model parameters.
+                pop_params = ['Heterogeneous']
+
+            # Construct parameter names
+            bottom_name = bottom_parameter_names[param_id]
+            names = [name + ' ' + bottom_name for name in pop_params]
+
+            # Update population model parameter names
+            pop_model.set_parameter_names(names)
+
+    def _set_number_and_parameter_names(self):
+        """
+        Updates the number and names of the free model parameters.
+        """
+        # Construct model parameter names
+        parameter_names = []
+        for pop_model in self._population_models:
+            # Get population parameter
+            pop_params = pop_model.get_parameter_names()
+            parameter_names += pop_params
+
+        # Update number and names
+        self._parameter_names = parameter_names
+        self._n_parameters = len(self._parameter_names)
+
+    def fix_parameters(self, name_value_dict):
+        """
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
+
+        .. note:
+            Parameters modelled by a :class:`HeterogeneousModel` cannot be
+            fixed on the population level. If you would like to fix the
+            associated parameter, fix it in the corresponding
+            :class:`PredictiveModel`.
+
+        Parameters
+        ----------
+        name_value_dict
+            A dictionary with model parameter names as keys, and parameter
+            values as values.
+        """
+        # Check type of dictionanry
+        try:
+            name_value_dict = dict(name_value_dict)
+        except (TypeError, ValueError):
+            raise ValueError(
+                'The name-value dictionary has to be convertable to a python '
+                'dictionary.')
+
+        # Get population models
+        pop_models = self._population_models
+
+        # Convert models to reduced models
+        for model_id, pop_model in enumerate(pop_models):
+            if not isinstance(pop_model, erlo.ReducedPopulationModel):
+                pop_models[model_id] = erlo.ReducedPopulationModel(pop_model)
+
+        # Fix model parameters
+        for pop_model in pop_models:
+            pop_model.fix_parameters(name_value_dict)
+
+        # If no parameters are fixed, get original model back
+        for model_id, pop_model in enumerate(pop_models):
+            if pop_model.n_fixed_parameters() == 0:
+                pop_model = pop_model.get_population_model()
+                pop_models[model_id] = pop_model
+
+        # Safe reduced models
+        self._population_models = pop_models
+
+        # Update names and number of parameters
+        self._set_number_and_parameter_names()
+
+    def get_dosing_regimen(self, final_time=None):
+        """
+        Returns the dosing regimen of the compound in form of a
+        :class:`pandas.DataFrame`.
+
+        The dataframe has a time, a duration, and a dose column, which indicate
+        the time point and duration of the dose administration in the time
+        units of the mechanistic model, :meth:`MechanisticModel.time_unit`. The
+        dose column specifies the amount of the compound that is being
+        administered in units of the drug amount variable of the mechanistic
+        model.
+
+        If an indefinitely administered dosing regimen is set, i.e. a
+        finite duration and undefined number of doses, see
+        :meth:`set_dosing_regimen`, only the first administration of the
+        dose will appear in the dataframe. Alternatively, a final dose time
+        ``final_time`` can be provided, up to which the dose events are
+        registered.
+
+        If no dosing regimen has been set, ``None`` is returned.
+
+        Parameters
+        ----------
+        final_time
+            Time up to which dose events are registered in the dataframe. If
+            ``None``, all dose events are registered, except for indefinite
+            dosing regimens. Here, only the first dose event is registered.
+        """
+        return self._predictive_model.get_dosing_regimen(final_time)
+
+    def get_n_outputs(self):
+        """
+        Returns the number of outputs.
+        """
+        return self._predictive_model.get_n_outputs()
+
+    def get_output_names(self):
+        """
+        Returns the output names.
+        """
+        return self._predictive_model.get_output_names()
+
+    def get_parameter_names(self):
+        """
+        Returns the parameter names of the predictive model.
+        """
+        return self._parameter_names
+
+    def get_submodels(self):
+        """
+        Returns the submodels of the predictive model in form of a dictionary.
+        """
+        # Get submodels from predictive model
+        submodels = self._predictive_model.get_submodels()
+
+        # Get original models
+        pop_models = []
+        for pop_model in self._population_models:
+            # Get original population model
+            if isinstance(pop_model, erlo.ReducedPopulationModel):
+                pop_model = pop_model.get_population_model()
+
+            pop_models.append(pop_model)
+
+        submodels['Population models'] = pop_models
+
+        return submodels
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the predictive model.
+        """
+        return self._n_parameters
+
+    def sample(
+            self, parameters, times, n_samples=None, seed=None,
+            return_df=True, include_regimen=False):
+        """
+        Samples "measurements" of the biomarkers from virtual "patients" and
+        returns them in form of a :class:`pandas.DataFrame` or a
+        :class:`numpy.ndarray`.
+
+        Virtual patients are sampled from the population models in form of
+        predictive model parameters. Those parameters are then used to sample
+        virtual measurements from the predictive model. For each virtual
+        patient one measurement is performed at each of the provided time
+        points.
+
+        The number of virtual patients that is being measured can be specified
+        with ``n_samples``.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameter values of the predictive
+            model.
+        times
+            An array-like object with times at which the virtual "measurements"
+            are performed.
+        n_samples
+            The number of virtual "patients" that are measured at each
+            time point. If ``None`` the biomarkers are measured only for one
+            patient.
+        seed
+            A seed for the pseudo-random number generator.
+        return_df
+            A boolean flag which determines whether the output is returned as a
+            :class:`pandas.DataFrame` or a :class:`numpy.ndarray`. If ``False``
+            the samples are returned as a numpy array of shape
+            ``(n_outputs, n_times, n_samples)``.
+        include_regimen
+            A boolean flag which determines whether the dosing regimen
+            information is included in the output. If the samples are returned
+            as a :class:`numpy.ndarray`, the dosing information is not
+            included.
+        """
+        # Check inputs
+        parameters = np.asarray(parameters)
+        if len(parameters) != self._n_parameters:
+            raise ValueError(
+                'The length of parameters does not match n_parameters.')
+
+        if n_samples is None:
+            n_samples = 1
+        n_samples = int(n_samples)
+
+        # Sort times
+        times = np.sort(times)
+
+        # Create container for "virtual patients"
+        n_parameters = self._predictive_model.n_parameters()
+        patients = np.empty(shape=(n_samples, n_parameters))
+
+        # Sample individuals from population model
+        start = 0
+        for param_id, pop_model in enumerate(self._population_models):
+            # If heterogenous model, use input parameter for all patients
+            if isinstance(pop_model, erlo.HeterogeneousModel):
+                patients[:, param_id] = parameters[start]
+
+                # Increment population parameter counter and continue to next
+                # iteration
+                start += 1
+                continue
+
+            # Get range of relevant population parameters
+            end = start + pop_model.n_parameters()
+
+            # Sample patient parameters
+            patients[:, param_id] = pop_model.sample(
+                parameters=parameters[start:end], n_samples=n_samples,
+                seed=seed)
+
+            # Increment seed for each iteration, to avoid repeated patterns
+            if seed is not None:
+                seed += 1
+
+            # Increment population parameter counter
+            start = end
+
+        # Create numpy container for samples (measurements of virtual patients)
+        n_outputs = self._predictive_model.get_n_outputs()
+        n_times = len(times)
+        container = np.empty(shape=(n_outputs, n_times, n_samples))
+
+        # Sample measurements for each patient
+        for patient_id, patient in enumerate(patients):
+            sample = self._predictive_model.sample(
+                parameters=patient, times=times, seed=seed, return_df=False)
+            container[..., patient_id] = sample[..., 0]
+
+        if return_df is False:
+            # Return samples in numpy array format
+            return container
+
+        # Structure samples in a pandas.DataFrame
+        output_names = self._predictive_model.get_output_names()
+        sample_ids = np.arange(start=1, stop=n_samples+1)
+        samples = pd.DataFrame(
+            columns=['ID', 'Biomarker', 'Time', 'Sample'])
+
+        # Fill in all samples at a specific time point at once
+        for output_id, name in enumerate(output_names):
+            for time_id, time in enumerate(times):
+                samples = samples.append(pd.DataFrame({
+                    'ID': sample_ids,
+                    'Time': time,
+                    'Biomarker': name,
+                    'Sample': container[output_id, time_id, :]}))
+
+        # Add dosing regimen information, if set
+        final_time = np.max(times)
+        regimen = self.get_dosing_regimen(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Add dosing regimen for each sample
+            for _id in sample_ids:
+                regimen['ID'] = _id
+                samples = samples.append(regimen)
+
+        return samples
+
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
+        """
+        Sets the dosing regimen with which the compound is administered.
+
+        By default the dose is administered as a bolus injection (duration on
+        a time scale that is 100 fold smaller than the basic time unit). To
+        model an infusion of the dose over a longer time period, the
+        ``duration`` can be adjusted to the appropriate time scale.
+
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
+
+        .. note::
+            This method requires a :class:`MechanisticModel` that supports
+            compound administration.
+
+        Parameters
+        ----------
+        dose
+            The amount of the compound that is injected at each administration.
+        start
+            Start time of the treatment.
+        duration
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
+            duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
+        num
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
+        """
+        self._predictive_model.set_dosing_regimen(
+            dose, start, duration, period, num)
 
 
 class PriorPredictiveModel(DataDrivenPredictiveModel):
