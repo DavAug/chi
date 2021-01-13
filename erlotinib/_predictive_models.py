@@ -405,7 +405,7 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 
 
 class PredictiveModel(object):
-    """
+    r"""
     Implements a model that predicts the change of observable biomarkers over
     time in a patient or a model organism.
 
@@ -413,6 +413,18 @@ class PredictiveModel(object):
     of an :class:`ErrorModel` for each mechanistic model output, and predicts
     biomarker values that may be measured in preclinical or clinical
     experiments.
+
+    Formally, the distribution of measureable observables may be expressed as
+
+    .. math::
+        X \sim \mathbb{P}
+        \left( f(t, \psi _{\text{m}}), \psi _{\text{e}} \right) ,
+
+    where :math:`X` is a measureable biomarker value at time :math:`t`.
+    :math:`f(t, \psi _{\text{m}})` is the output of the mechanistic model for
+    model parameters :math:`\psi _{\text{m}}`, and :math:`\mathbb{P}` is the
+    distribution around the mechanistic model for error model parameters
+    :math:`\psi _{\text{e}}`.
 
     Parameters
     ----------
@@ -847,13 +859,27 @@ class PredictiveModel(object):
 
 
 class PredictivePopulationModel(PredictiveModel):
-    """
+    r"""
     Implements a model that predicts the change of observable biomarkers over
     time in a population of patients or model organisms.
 
     This model takes an instance of a :class:`PredictiveModel`, and one
     instance of a :class:`PopulationModel` for each predictive model
     parameter.
+
+    Formally, the distribution of measureable observables may be expressed as
+
+    .. math::
+        X \sim
+        \mathbb{P}\left( t; \psi _{\text{m}}, \psi _{\text{e}} \right)
+        \mathbb{P}\left(\psi _{\text{m}}, \psi _{\text{e}} | \theta \right),
+
+    where :math:`X` is a measureable biomarker value at time :math:`t`.
+    :math:`\mathbb{P}\left( t; \psi _{\text{m}}, \psi _{\text{e}} \right)` is
+    the predictive model for an individual patient defined by the predictive
+    model, and
+    :math:`\mathbb{P}\left(\psi _{\text{m}}, \psi _{\text{e}} | \theta \right)`
+    is the population distribution with parameters :math:`\theta`.
 
     Extends :class:`PredictiveModel`.
 
