@@ -1180,21 +1180,24 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
+        # (Heterogenous params cannot be fixed)
         self.model.fix_parameters(name_value_dict={
             'Heterogeneous myokit.tumour_volume': 1,
             'Mean myokit.drug_concentration': 1,
             'Pooled myokit.kappa': 1})
 
         n_parameters = self.model.n_parameters()
-        self.assertEqual(n_parameters, 5)
+        self.assertEqual(n_parameters, 6)
 
         parameter_names = self.model.get_parameter_names()
-        self.assertEqual(len(parameter_names), 5)
-        self.assertEqual(parameter_names[0], 'Std. myokit.drug_concentration')
-        self.assertEqual(parameter_names[1], 'Pooled myokit.lambda_0')
-        self.assertEqual(parameter_names[2], 'Pooled myokit.lambda_1')
-        self.assertEqual(parameter_names[3], 'Pooled Sigma base')
-        self.assertEqual(parameter_names[4], 'Pooled Sigma rel.')
+        self.assertEqual(len(parameter_names), 6)
+        self.assertEqual(
+            parameter_names[0], 'Heterogeneous myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'Std. myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'Pooled myokit.lambda_0')
+        self.assertEqual(parameter_names[3], 'Pooled myokit.lambda_1')
+        self.assertEqual(parameter_names[4], 'Pooled Sigma base')
+        self.assertEqual(parameter_names[5], 'Pooled Sigma rel.')
 
         # Test case II: fix overlapping set of parameters
         self.model.fix_parameters(name_value_dict={
@@ -1203,19 +1206,20 @@ class TestPredictivePopulationModel(unittest.TestCase):
             'Pooled Sigma rel.': 0.3})
 
         n_parameters = self.model.n_parameters()
-        self.assertEqual(n_parameters, 4)
+        self.assertEqual(n_parameters, 5)
 
         parameter_names = self.model.get_parameter_names()
-        self.assertEqual(len(parameter_names), 4)
-        self.assertEqual(parameter_names[0], 'Std. myokit.drug_concentration')
-        self.assertEqual(parameter_names[1], 'Pooled myokit.kappa')
-        self.assertEqual(parameter_names[2], 'Pooled myokit.lambda_1')
-        self.assertEqual(parameter_names[3], 'Pooled Sigma base')
+        self.assertEqual(len(parameter_names), 5)
+        self.assertEqual(
+            parameter_names[0], 'Heterogeneous myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'Std. myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'Pooled myokit.kappa')
+        self.assertEqual(parameter_names[3], 'Pooled myokit.lambda_1')
+        self.assertEqual(parameter_names[4], 'Pooled Sigma base')
 
         # Test case III: unfix all parameters
         self.model.fix_parameters(name_value_dict={
             'Mean myokit.drug_concentration': None,
-            'Heterogeneous myokit.tumour_volume': None,
             'Pooled myokit.lambda_0': None,
             'Pooled Sigma rel.': None})
 
@@ -1251,14 +1255,16 @@ class TestPredictivePopulationModel(unittest.TestCase):
         # Test case I: Single output problem
         names = self.model.get_parameter_names()
 
-        self.assertEqual(len(names), 7)
-        self.assertEqual(names[0], 'myokit.tumour_volume')
-        self.assertEqual(names[1], 'myokit.drug_concentration')
-        self.assertEqual(names[2], 'myokit.kappa')
-        self.assertEqual(names[3], 'myokit.lambda_0')
-        self.assertEqual(names[4], 'myokit.lambda_1')
-        self.assertEqual(names[5], 'Sigma base')
-        self.assertEqual(names[6], 'Sigma rel.')
+        self.assertEqual(len(names), 8)
+        self.assertEqual(
+            names[0], 'Heterogeneous myokit.tumour_volume')
+        self.assertEqual(names[1], 'Mean myokit.drug_concentration')
+        self.assertEqual(names[2], 'Std. myokit.drug_concentration')
+        self.assertEqual(names[3], 'Pooled myokit.kappa')
+        self.assertEqual(names[4], 'Pooled myokit.lambda_0')
+        self.assertEqual(names[5], 'Pooled myokit.lambda_1')
+        self.assertEqual(names[6], 'Pooled Sigma base')
+        self.assertEqual(names[7], 'Pooled Sigma rel.')
 
         # Test case II: Multi-output problem
         path = erlo.ModelLibrary().one_compartment_pk_model()
@@ -1269,199 +1275,42 @@ class TestPredictivePopulationModel(unittest.TestCase):
             erlo.ConstantAndMultiplicativeGaussianErrorModel(),
             erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         model = erlo.PredictiveModel(model, error_models)
+        pop_models = self.population_models + [erlo.PooledModel()] * 2
+        model = erlo.PredictivePopulationModel(model, pop_models)
 
         names = model.get_parameter_names()
 
-        self.assertEqual(len(names), 9)
-        self.assertEqual(names[0], 'central.drug_amount')
-        self.assertEqual(names[1], 'dose.drug_amount')
-        self.assertEqual(names[2], 'central.size')
-        self.assertEqual(names[3], 'dose.absorption_rate')
-        self.assertEqual(names[4], 'myokit.elimination_rate')
-        self.assertEqual(names[5], 'central.drug_amount Sigma base')
-        self.assertEqual(names[6], 'central.drug_amount Sigma rel.')
-        self.assertEqual(names[7], 'dose.drug_amount Sigma base')
-        self.assertEqual(names[8], 'dose.drug_amount Sigma rel.')
+        self.assertEqual(len(names), 10)
+        self.assertEqual(
+            names[0], 'Heterogeneous central.drug_amount')
+        self.assertEqual(names[1], 'Mean dose.drug_amount')
+        self.assertEqual(names[2], 'Std. dose.drug_amount')
+        self.assertEqual(names[3], 'Pooled central.size')
+        self.assertEqual(names[4], 'Pooled dose.absorption_rate')
+        self.assertEqual(names[5], 'Pooled myokit.elimination_rate')
+        self.assertEqual(names[6], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(names[7], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(names[8], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(names[9], 'Pooled dose.drug_amount Sigma rel.')
 
     def test_get_set_dosing_regimen(self):
-        # Test case I: Mechanistic model does not support dosing regimens
-        # (PharmacodynaimcModel)
-        with self.assertRaisesRegex(AttributeError, 'The mechanistic model'):
-            self.model.set_dosing_regimen(1, 1, 1)
+        # This just wraps the method from the PredictiveModel. So shallow
+        # tests should suffice.j
+        ref_dosing_regimen = self.predictive_model.get_dosing_regimen()
+        dosing_regimen = self.model.get_dosing_regimen()
 
-        self.assertIsNone(self.model.get_dosing_regimen())
-
-        # Test case II: Mechanistic model supports dosing regimens
-        path = erlo.ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
-        mechanistic_model.set_administration('central')
-        model = erlo.PredictiveModel(
-            mechanistic_model, self.error_models)
-
-        # Test case II.1: Dosing regimen not set
-        self.assertIsNone(model.get_dosing_regimen())
-
-        # Test case II.2 Set single bolus dose
-        model.set_dosing_regimen(dose=1, start=1)
-        regimen_df = model.get_dosing_regimen()
-
-        self.assertIsInstance(regimen_df, pd.DataFrame)
-
-        keys = regimen_df.keys()
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(keys[0], 'Time')
-        self.assertEqual(keys[1], 'Duration')
-        self.assertEqual(keys[2], 'Dose')
-
-        times = regimen_df['Time'].to_numpy()
-        self.assertEqual(len(times), 1)
-        self.assertEqual(times[0], 1)
-
-        durations = regimen_df['Duration'].unique()
-        self.assertEqual(len(durations), 1)
-        self.assertEqual(durations[0], 0.01)
-
-        doses = regimen_df['Dose'].unique()
-        self.assertEqual(len(doses), 1)
-        self.assertEqual(doses[0], 1)
-
-        # Test case II.3 Set single infusion
-        model.set_dosing_regimen(dose=1, start=1, duration=1)
-        regimen_df = model.get_dosing_regimen()
-
-        self.assertIsInstance(regimen_df, pd.DataFrame)
-
-        keys = regimen_df.keys()
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(keys[0], 'Time')
-        self.assertEqual(keys[1], 'Duration')
-        self.assertEqual(keys[2], 'Dose')
-
-        times = regimen_df['Time'].to_numpy()
-        self.assertEqual(len(times), 1)
-        self.assertEqual(times[0], 1)
-
-        durations = regimen_df['Duration'].unique()
-        self.assertEqual(len(durations), 1)
-        self.assertEqual(durations[0], 1)
-
-        doses = regimen_df['Dose'].unique()
-        self.assertEqual(len(doses), 1)
-        self.assertEqual(doses[0], 1)
-
-        # Test case II.4 Multiple doses
-        model.set_dosing_regimen(dose=1, start=1, period=1, num=3)
-        regimen_df = model.get_dosing_regimen()
-
-        self.assertIsInstance(regimen_df, pd.DataFrame)
-
-        keys = regimen_df.keys()
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(keys[0], 'Time')
-        self.assertEqual(keys[1], 'Duration')
-        self.assertEqual(keys[2], 'Dose')
-
-        times = regimen_df['Time'].to_numpy()
-        self.assertEqual(len(times), 3)
-        self.assertEqual(times[0], 1)
-        self.assertEqual(times[1], 2)
-        self.assertEqual(times[2], 3)
-
-        durations = regimen_df['Duration'].unique()
-        self.assertEqual(len(durations), 1)
-        self.assertEqual(durations[0], 0.01)
-
-        doses = regimen_df['Dose'].unique()
-        self.assertEqual(len(doses), 1)
-        self.assertEqual(doses[0], 1)
-
-        # Set final time
-        regimen_df = model.get_dosing_regimen(final_time=1.5)
-
-        self.assertIsInstance(regimen_df, pd.DataFrame)
-
-        keys = regimen_df.keys()
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(keys[0], 'Time')
-        self.assertEqual(keys[1], 'Duration')
-        self.assertEqual(keys[2], 'Dose')
-
-        times = regimen_df['Time'].to_numpy()
-        self.assertEqual(len(times), 1)
-        self.assertEqual(times[0], 1)
-
-        durations = regimen_df['Duration'].unique()
-        self.assertEqual(len(durations), 1)
-        self.assertEqual(durations[0], 0.01)
-
-        doses = regimen_df['Dose'].unique()
-        self.assertEqual(len(doses), 1)
-        self.assertEqual(doses[0], 1)
-
-        # Set final time, such that regimen dataframe would be empty
-        regimen_df = model.get_dosing_regimen(final_time=0)
-
-        self.assertIsNone(regimen_df, pd.DataFrame)
-
-        # Test case II.3 Indefinite dosing regimen
-        model.set_dosing_regimen(dose=1, start=1, period=1)
-        regimen_df = model.get_dosing_regimen()
-
-        self.assertIsInstance(regimen_df, pd.DataFrame)
-
-        keys = regimen_df.keys()
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(keys[0], 'Time')
-        self.assertEqual(keys[1], 'Duration')
-        self.assertEqual(keys[2], 'Dose')
-
-        times = regimen_df['Time'].to_numpy()
-        self.assertEqual(len(times), 1)
-        self.assertEqual(times[0], 1)
-
-        durations = regimen_df['Duration'].unique()
-        self.assertEqual(len(durations), 1)
-        self.assertEqual(durations[0], 0.01)
-
-        doses = regimen_df['Dose'].unique()
-        self.assertEqual(len(doses), 1)
-        self.assertEqual(doses[0], 1)
-
-        # Set final time
-        regimen_df = model.get_dosing_regimen(final_time=5)
-
-        self.assertIsInstance(regimen_df, pd.DataFrame)
-
-        keys = regimen_df.keys()
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(keys[0], 'Time')
-        self.assertEqual(keys[1], 'Duration')
-        self.assertEqual(keys[2], 'Dose')
-
-        times = regimen_df['Time'].to_numpy()
-        self.assertEqual(len(times), 5)
-        self.assertEqual(times[0], 1)
-        self.assertEqual(times[1], 2)
-        self.assertEqual(times[2], 3)
-        self.assertEqual(times[3], 4)
-        self.assertEqual(times[4], 5)
-
-        durations = regimen_df['Duration'].unique()
-        self.assertEqual(len(durations), 1)
-        self.assertEqual(durations[0], 0.01)
-
-        doses = regimen_df['Dose'].unique()
-        self.assertEqual(len(doses), 1)
-        self.assertEqual(doses[0], 1)
+        self.assertIsNone(ref_dosing_regimen)
+        self.assertIsNone(dosing_regimen)
 
     def test_get_submodels(self):
         # Test case I: no fixed parameters
         submodels = self.model.get_submodels()
 
         keys = list(submodels.keys())
-        self.assertEqual(len(keys), 2)
+        self.assertEqual(len(keys), 3)
         self.assertEqual(keys[0], 'Mechanistic model')
         self.assertEqual(keys[1], 'Error models')
+        self.assertEqual(keys[2], 'Population models')
 
         mechanistic_model = submodels['Mechanistic model']
         self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
@@ -1469,17 +1318,28 @@ class TestPredictivePopulationModel(unittest.TestCase):
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 1)
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
+
+        pop_models = submodels['Population models']
+        self.assertEqual(len(pop_models), 7)
+        self.assertIsInstance(pop_models[0], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[1], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[2], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[3], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[4], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[5], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[6], erlo.PopulationModel)
 
         # Test case II: some fixed parameters
         self.model.fix_parameters({
-            'myokit.tumour_volume': 1,
-            'Sigma rel.': 10})
+            'Pooled myokit.kappa': 1,
+            'Pooled Sigma rel.': 10})
         submodels = self.model.get_submodels()
 
         keys = list(submodels.keys())
-        self.assertEqual(len(keys), 2)
+        self.assertEqual(len(keys), 3)
         self.assertEqual(keys[0], 'Mechanistic model')
         self.assertEqual(keys[1], 'Error models')
+        self.assertEqual(keys[2], 'Population models')
 
         mechanistic_model = submodels['Mechanistic model']
         self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
@@ -1488,13 +1348,23 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(error_models), 1)
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
 
+        pop_models = submodels['Population models']
+        self.assertEqual(len(pop_models), 7)
+        self.assertIsInstance(pop_models[0], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[1], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[2], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[3], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[4], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[5], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[6], erlo.PopulationModel)
+
         # Unfix parameter
         self.model.fix_parameters({
-            'myokit.tumour_volume': None,
-            'Sigma rel.': None})
+            'Pooled myokit.kappa': None,
+            'Pooled Sigma rel.': None})
 
     def test_n_parameters(self):
-        self.assertEqual(self.model.n_parameters(), 7)
+        self.assertEqual(self.model.n_parameters(), 8)
 
     def test_sample(self):
         # Test case I: Just one sample
