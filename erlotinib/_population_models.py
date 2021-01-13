@@ -612,7 +612,7 @@ class ReducedPopulationModel(object):
                 'dictionary.')
 
         # If population model does not have model parameters, break here
-        if self._parameter_names is None:
+        if self._n_parameters == 0:
             return None
 
         # If no model parameters have been fixed before, instantiate a mask
