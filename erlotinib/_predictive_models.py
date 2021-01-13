@@ -977,6 +977,12 @@ class PredictivePopulationModel(PredictiveModel):
         parameter from the model. Fixing the value of a parameter at ``None``,
         sets the parameter free again.
 
+        .. note:
+            Parameters modelled by a :class:`HeterogeneousModel` cannot be
+            fixed on the population level. If you would like to fix the
+            associated parameter, fix it in the corresponding
+            :class:`PredictiveModel`.
+
         Parameters
         ----------
         name_value_dict
