@@ -14,6 +14,7 @@ Functional classes
 ------------------
 
 - :class:`HierarchicalLogLikelihood`
+- :class:`LogLikelihood`
 - :class:`LogPosterior`
 - :class:`ReducedLogPDF`
 
@@ -21,6 +22,9 @@ Detailed API
 ^^^^^^^^^^^^
 
 .. autoclass:: HierarchicalLogLikelihood
+    :members:
+
+.. autoclass:: LogLikelihood
     :members:
 
 .. autoclass:: LogPosterior
