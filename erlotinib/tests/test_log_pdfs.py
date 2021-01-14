@@ -275,7 +275,6 @@ class TestLogLikelihood(unittest.TestCase):
             erlo.LogLikelihood(
                 self.model, self.error_models, observations, times)
 
-
     def test_call(self):
         # Test case I: Compute reference score manually
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -327,6 +326,35 @@ class TestLogLikelihood(unittest.TestCase):
 
         # Reset number of outputs
         self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+
+    def test_get_error_models(self):
+        error_models = self.log_likelihood.get_error_models()
+
+        self.assertEqual(len(error_models), 2)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[1], erlo.ErrorModel)
+
+    def test_get_mechanistic_model(self):
+        mechanistic_model = self.log_likelihood.get_mechanistic_model()
+
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+    def test_n_parameters(self):
+        # Test case I:
+        n_parameters = self.log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 9)
+
+        # Test case II:
+        times = self.times[0]
+        observations = self.observations[0]
+        self.model.set_outputs(['central.drug_amount'])
+        error_model = self.error_models[0]
+        log_likelihood = erlo.LogLikelihood(
+            self.model, error_model, observations, times)
+
+        n_parameters = log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 7)
+
 
 
 class TestLogPosterior(unittest.TestCase):
