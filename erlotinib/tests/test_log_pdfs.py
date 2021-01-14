@@ -202,6 +202,133 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             self.hierarchical_model.n_parameters(), n_parameters)
 
 
+class TestLogLikelihood(unittest.TestCase):
+    """
+    Test the erlotinib.LogLikelihood class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Create test data
+        obs_1 = [1, 1.1, 1.2, 1.3]
+        times_1 = [1, 2, 3, 4]
+        obs_2 = [2, 2.1, 2.2]
+        times_2 = [2, 5, 6]
+
+        cls.observations = [obs_1, obs_2]
+        cls.times = [times_1, times_2]
+
+        # Set up mechanistic and error models
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        cls.model = erlo.PharmacokineticModel(path)
+        cls.model.set_administration('central', direct=False)
+        cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+        cls.error_models = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
+
+        # Create log-likelihood
+        cls.log_likelihood = erlo.LogLikelihood(
+            cls.model, cls.error_models, cls.observations, cls.times)
+
+    def test_bad_instantiation(self):
+        # Mechantic model has wrong type
+        mechanistic_model = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The mechanistic model'):
+            erlo.LogLikelihood(
+                mechanistic_model, self.error_models, self.observations,
+                self.times)
+
+        # Wrong number of error models
+        error_models = ['There', 'are', 'only two outputs']
+        with self.assertRaisesRegex(ValueError, 'One error model has to'):
+            erlo.LogLikelihood(
+                self.model, error_models, self.observations, self.times)
+
+        # Wrong number of error models
+        error_models = ['Wrong', 'type']
+        with self.assertRaisesRegex(TypeError, 'The error models have to'):
+            erlo.LogLikelihood(
+                self.model, error_models, self.observations, self.times)
+
+        # Wrong length of observations
+        observations = [['There'], ['are'], ['only two outputs']]
+        with self.assertRaisesRegex(ValueError, 'The observations have'):
+            erlo.LogLikelihood(
+                self.model, self.error_models, observations, self.times)
+
+        # Wrong length of times
+        times = [['There'], ['are'], ['only two outputs']]
+        with self.assertRaisesRegex(ValueError, 'The times have the wrong'):
+            erlo.LogLikelihood(
+                self.model, self.error_models, self.observations, times)
+
+        # Observations and times don't match
+        observations = [[1, 2], [1, 2]]  # Times have 4 and 3
+        with self.assertRaisesRegex(ValueError, 'The observations and times'):
+            erlo.LogLikelihood(
+                self.model, self.error_models, observations, self.times)
+
+        # Observations or times have some weird higher dimensional structure
+        observations = [[[1, 2], [1, 2]], [1, 2, 3, 4]]
+        times = [[[1, 2], [1, 2]], [1, 2, 3, 4]]
+        with self.assertRaisesRegex(ValueError, 'The observations for each'):
+            erlo.LogLikelihood(
+                self.model, self.error_models, observations, times)
+
+
+    def test_call(self):
+        # Test case I: Compute reference score manually
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+        times = self.times[0]
+        observations = self.observations[0]
+        model_output = self.model.simulate(parameters[:5], times)
+        model_output = model_output[0]
+        error_model = self.error_models[0]
+        ref_score_1 = error_model.compute_log_likelihood(
+            parameters[5:7], model_output, observations)
+
+        times = self.times[1]
+        observations = self.observations[1]
+        model_output = self.model.simulate(parameters[:5], times)
+        model_output = model_output[1]
+        error_model = self.error_models[1]
+        ref_score_2 = error_model.compute_log_likelihood(
+            parameters[7:9], model_output, observations)
+
+        ref_score = ref_score_1 + ref_score_2
+        score = self.log_likelihood(parameters)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case II: Compute reference score with two likelihoods
+        parameters = [9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+        times = self.times[0]
+        observations = self.observations[0]
+        self.model.set_outputs(['central.drug_amount'])
+        error_model = self.error_models[0]
+        log_likelihood = erlo.LogLikelihood(
+            self.model, error_model, observations, times)
+        ref_score_1 = log_likelihood(parameters[:7])
+
+        times = self.times[1]
+        observations = self.observations[1]
+        self.model.set_outputs(['dose.drug_amount'])
+        error_model = self.error_models[1]
+        log_likelihood = erlo.LogLikelihood(
+            self.model, error_model, observations, times)
+        ref_score_2 = log_likelihood(parameters[:5] + parameters[7:9])
+
+        ref_score = ref_score_1 + ref_score_2
+        score = self.log_likelihood(parameters)
+
+        self.assertAlmostEqual(score, ref_score)
+
+        # Reset number of outputs
+        self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+
+
 class TestLogPosterior(unittest.TestCase):
     """
     Tests the erlotinib.LogPosterior class.
