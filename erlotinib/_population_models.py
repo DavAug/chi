@@ -97,7 +97,7 @@ class HeterogeneousModel(PopulationModel):
     A heterogeneous model assumes that the parameters across individuals are
     independent.
 
-    Extends :class:`erlotinib.PopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):
@@ -212,7 +212,7 @@ class LogNormalModel(PopulationModel):
     :math:`\psi` for the observed individuals, and the remaining 2 parameters
     are :math:`\mu` and :math:`\sigma`.
 
-    Extends :class:`erlotinib.PopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):
@@ -415,7 +415,7 @@ class PooledModel(PopulationModel):
     A pooled model assumes that the parameters across individuals do not vary.
     As a result, all individual parameters are set to the same value.
 
-    Extends :class:`erlotinib.PopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):
