@@ -337,12 +337,21 @@ class LogLikelihood(pints.LogPDF):
 
     def get_error_models(self):
         """
-        TODO:
-        1. Test call method
-        2. Implement get methods
-        3. Test them
+        Returns the error models.
         """
-        pass
+        return copy.copy(self._error_models)
+
+    def get_mechanistic_model(self):
+        """
+        Returns the mechanistic model.
+        """
+        return copy.deepcopy(self._mechanistic_model)
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters.
+        """
+        return self._n_parameters
 
 
 class LogPosterior(pints.LogPosterior):
