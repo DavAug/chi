@@ -179,8 +179,80 @@ class HierarchicalLogLikelihood(pints.LogPDF):
 
 
 class LogLikelihood(pints.LogPDF):
-    """
-    TODO:
+    r"""
+    A class which defines the log-likelihood of the model parameters.
+
+    A log-likelihood takes an instance of a :class:`MechanisticModel` and one
+    instance of a :class:`ErrorModel` for each mechanistic model output. These
+    submodels define a time-dependent distribution of observable biomarkers
+    equivalent to a :class:`PredictiveModel`
+
+    .. math::
+        p(x | t; \psi _{\text{m}}, \psi _{\text{e}}),
+
+    where :math:`p` is the probability density of the observable biomarker
+    :math:`x` at time :math:`t`. :math:`\psi _{\text{m}}` and
+    :math:`\psi _{\text{e}}` are the model parameters of the mechanistic model
+    and the error model respectively. For multiple outputs of the mechanistic
+    model, this distribution will be multi-dimensional.
+
+    The log-likelihood for given observations and times is the given by
+    the sum of :math:`\log p` evaluated at the observations
+
+    .. math::
+        L(\psi _{\text{m}}, \psi _{\text{e}}) = \sum _{i=1}^N
+        \log p(x^{\text{obs}}_i | t^{\text{obs}}_i;
+        \psi _{\text{m}}, \psi _{\text{e}}),
+
+    where :math:`N` is the total number of observations, and
+    :math:`x^{\text{obs}}` and :math:`t^{\text{obs}}` the observed biomarker
+    values and times.
+
+    The error models are expected to be in the same order as the mechanistic
+    model outputs :meth:`MechanisticModel.outputs`. The observations and times
+    are equally expected to order in the same way as the model outputs.
+
+    Calling the log-likelihood for some parameters returns the unnormalised
+    log-likelihood score for those paramters.
+
+    Example
+    -------
+
+    ::
+
+        # Create log-likelihood
+        log_likelihood = erlotinib.LogLikelihood(
+            mechanistic_model,
+            error_models,
+            observations,
+            times)
+
+        # Compute log-likelihood score
+        score = log_likelihood(parameters)
+
+    .. note::
+        The parameters are expected to be ordered according to the mechanistic
+        model and error models, where the mechanistic model parameters are
+        first, then the parameters of the first error model, then the
+        parameters of the second error model, etc.
+
+    Extends :class:`pints.LogPDF`.
+
+    Parameters
+    ----------
+    mechanistic_model
+        An instance of a :class:`MechanisticModel`.
+    error_models
+        A list of instances of a :class:`ErrorModel`. The error models are
+        expected to be ordered in the same way as the mechanistic model
+        outputs.
+    observations
+        A list of one dimensional array-like objects with measured values of
+        the biomarkers. The list is expected to ordered in the same way as the
+        mechanistic model outputs.
+    times
+        A list of one dimensional array-like objects with measured times
+        associated to the observations.
     """
     def __init__(self, mechanistic_model, error_models, observations, times):
         super(LogLikelihood, self).__init__()
