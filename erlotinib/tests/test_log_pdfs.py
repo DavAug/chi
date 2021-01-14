@@ -356,7 +356,6 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(n_parameters, 7)
 
 
-
 class TestLogPosterior(unittest.TestCase):
     """
     Tests the erlotinib.LogPosterior class.
