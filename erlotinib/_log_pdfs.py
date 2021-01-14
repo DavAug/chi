@@ -178,6 +178,173 @@ class HierarchicalLogLikelihood(pints.LogPDF):
         return self._n_parameters
 
 
+class LogLikelihood(pints.LogPDF):
+    """
+    TODO:
+    """
+    def __init__(self, mechanistic_model, error_models, observations, times):
+        super(LogLikelihood, self).__init__()
+
+        # Check inputs
+        if not isinstance(mechanistic_model, erlo.MechanisticModel):
+            raise TypeError(
+                'The mechanistic model as to be an instance of a '
+                'erlotinib.MechanisticModel.')
+
+        if not isinstance(error_models, list):
+            error_models = [error_models]
+
+        n_outputs = mechanistic_model.n_outputs()
+        if len(error_models) != n_outputs:
+            raise ValueError(
+                'One error model has to be provided for each mechanistic '
+                'model output.')
+
+        for error_model in error_models:
+            if not isinstance(error_model, erlo.ErrorModel):
+                raise TypeError(
+                    'The error models have to instances of a '
+                    'erlotinib.ErrorModel.')
+
+        if n_outputs == 1:
+            # For single-output problems the observations can be provided as a
+            # simple one dimensional list / array. To match the multi-output
+            # scenario wrap values by a list
+            if len(observations) != n_outputs:
+                observations = [observations]
+
+            if len(times) != n_outputs:
+                times = [times]
+
+        if len(observations) != n_outputs:
+            raise ValueError(
+                'The observations have the wrong length. For a '
+                'multi-output problem the observations are expected to be '
+                'a list of array-like objects with measurements for each '
+                'of the mechanistic model outputs.')
+
+        if len(times) != n_outputs:
+            raise ValueError(
+                'The times have the wrong length. For a multi-output problem '
+                'the times are expected to be a list of array-like objects '
+                'with the measurement time points for each of the mechanistic '
+                'model outputs.')
+
+        # Transform observations and times to numpy arrays
+        observations = [np.array(obs) for obs in observations]
+        times = [np.array(t) for t in times]
+
+        # Make sure that the observation-time pairs match
+        for output_id, output_times in enumerate(times):
+            if observations[output_id].shape != output_times.shape:
+                raise ValueError(
+                    'The observations and times have to be of the same '
+                    'dimension.')
+
+            if observations[output_id].ndim != 1:
+                raise ValueError(
+                    'The observations for each output have to be provided '
+                    'as a one dimensional array-like object.')
+
+            # Sort times and observations
+            order = np.argsort(output_times)
+            times[output_id] = output_times[order]
+            observations[output_id] = observations[output_id][order]
+
+        self._mechanistic_model = copy.deepcopy(mechanistic_model)
+        self._error_models = error_models
+        self._observations = observations
+
+        self._arange_times_for_mechanistic_model(times)
+
+        # Get number of parameters
+        self._n_mechanistic_params = self._mechanistic_model.n_parameters()
+        self._n_error_params = [em.n_parameters() for em in error_models]
+        self._n_parameters = int(
+            self._n_mechanistic_params + np.sum(self._n_error_params))
+
+    def __call__(self, parameters):
+        """
+        Computes the log-likelihood score of the parameters.
+        """
+        # Solve the mechanistic model
+        outputs = self._mechanistic_model.simulate(
+            parameters=parameters[:self._n_mechanistic_params],
+            times=self._times)
+
+        # Remember only error parameters
+        parameters = parameters[self._n_mechanistic_params:]
+
+        # Compute log-likelihood score
+        score = 0
+        start = 0
+        for output_id, error_model in enumerate(self._error_models):
+            # Get relevant mechanistic model outputs and parameters
+            output = outputs[output_id, self._obs_masks[output_id]]
+            end = start + self._n_error_params[output_id]
+            params = parameters[start:end]
+
+            # Compute log-likelihood score for this output
+            score += error_model.compute_log_likelihood(
+                parameters=params,
+                model_output=output,
+                observations=self._observations[output_id])
+
+            # Shift start index
+            start = end
+
+        return score
+
+    def _arange_times_for_mechanistic_model(self, times):
+        """
+        Sets the evaluation time points for the mechanistic time points.
+
+        The challenge is to avoid solving the mechanistic model multiple
+        times for each observed output separately. So here we define a
+        union of all time points and track which time points correspond
+        to observations.
+        """
+        # Get unique times and sort them
+        unique_times = []
+        for output_times in times:
+            unique_times += list(output_times)
+        unique_times = set(unique_times)
+        unique_times = sorted(unique_times)
+        unique_times = np.array(unique_times)
+
+        # Create a container for the observation masks
+        n_outputs = len(times)
+        n_unique_times = len(unique_times)
+        obs_masks = np.zeros(shape=(n_outputs, n_unique_times), dtype=bool)
+
+        # Find relevant time points for each output
+        for output_id, output_times in enumerate(times):
+            if np.array_equal(output_times, unique_times):
+                n_times = len(output_times)
+                obs_masks[output_id] = np.ones(shape=n_times, dtype=bool)
+
+                # Continue to the next iteration
+                continue
+
+            for time in output_times:
+                # If time is in unique times, flip position to True
+                if time in unique_times:
+                    mask = unique_times == time
+                    obs_masks[output_id, mask] = True
+
+        self._times = unique_times
+        self._obs_masks = obs_masks
+
+    def get_error_models(self):
+        """
+        TODO:
+        1. Test call method
+        2. Implement get methods
+        3. Test them
+        """
+        pass
+
+
 class LogPosterior(pints.LogPosterior):
     """
     A log-posterior class which can be used with the
