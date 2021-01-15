@@ -268,16 +268,8 @@ class HierarchicalLogLikelihood(pints.LogPDF):
         # Get submodels from log-likelihoods
         submodels = self._log_likelihoods[0].get_submodels()
 
-        # Get original models
-        pop_models = []
-        for pop_model in self._population_models:
-            # Get original population model
-            if isinstance(pop_model, erlo.ReducedPopulationModel):
-                pop_model = pop_model.get_population_model()
-
-            pop_models.append(pop_model)
-
-        submodels['Population models'] = pop_models
+        # Add population models
+        submodels['Population models'] = self._population_models
 
         return submodels
 
