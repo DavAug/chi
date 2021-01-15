@@ -323,17 +323,39 @@ class LogLikelihood(pints.LogPDF):
             times[output_id] = output_times[order]
             observations[output_id] = observations[output_id][order]
 
+        # Copy error models, such that renaming doesn't affect input models
+        error_models = [copy.copy(error_model) for error_model in error_models]
+
+        # Rename error model parameters, if more than one output
+        if n_outputs > 1:
+            # Get output names
+            outputs = mechanistic_model.outputs()
+
+            for output_id, error_model in enumerate(error_models):
+                # Get original parameter names
+                names = error_model.get_parameter_names()
+
+                # Prepend output name
+                output = outputs[output_id]
+                names = [output + ' ' + name for name in names]
+
+                # Set new parameter names
+                error_model.set_parameter_names(names)
+
+        # Remember models and observations
+        # (Mechanistic model needs to be copied, such that it's dosing regimen
+        # cannot be altered by the input model.)
         self._mechanistic_model = copy.deepcopy(mechanistic_model)
         self._error_models = error_models
         self._observations = observations
 
         self._arange_times_for_mechanistic_model(times)
 
-        # Get number of parameters
-        self._n_mechanistic_params = self._mechanistic_model.n_parameters()
-        self._n_error_params = [em.n_parameters() for em in error_models]
-        self._n_parameters = int(
-            self._n_mechanistic_params + np.sum(self._n_error_params))
+        # Set parameter names and number of parameters
+        self._set_number_and_parameter_names()
+
+        # Set default ID
+        self._id = None
 
     def __call__(self, parameters):
         """
@@ -407,23 +429,134 @@ class LogLikelihood(pints.LogPDF):
         self._times = unique_times
         self._obs_masks = obs_masks
 
-    def get_error_models(self):
+    def _set_number_and_parameter_names(self):
         """
-        Returns the error models.
+        Sets the number and names of the free model parameters.
         """
-        return copy.copy(self._error_models)
+        # Get mechanistic model parameters
+        parameter_names = self._mechanistic_model.parameters()
 
-    def get_mechanistic_model(self):
+        # Get error model parameters
+        n_error_params = []
+        for error_model in self._error_models:
+            parameter_names += error_model.get_parameter_names()
+            n_error_params.append(error_model.n_parameters())
+
+        # Update number and names
+        self._parameter_names = parameter_names
+        self._n_parameters = len(self._parameter_names)
+
+        # Get number of mechanistic and error model parameters
+        self._n_mechanistic_params = self._mechanistic_model.n_parameters()
+        self._n_error_params = n_error_params
+
+    def fix_parameters(self, name_value_dict):
         """
-        Returns the mechanistic model.
+        Fixes the value of model parameters, and effectively removes them as a
+        parameter from the model. Fixing the value of a parameter at ``None``,
+        sets the parameter free again.
+
+        Parameters
+        ----------
+        name_value_dict
+            A dictionary with model parameter names as keys, and parameter
+            value as values.
         """
-        return copy.deepcopy(self._mechanistic_model)
+        # Check type of dictionanry
+        try:
+            name_value_dict = dict(name_value_dict)
+        except (TypeError, ValueError):
+            raise ValueError(
+                'The name-value dictionary has to be convertable to a python '
+                'dictionary.')
+
+        # Get submodels
+        mechanistic_model = self._mechanistic_model
+        error_models = self._error_models
+
+        # Convert models to reduced models
+        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        for model_id, error_model in enumerate(error_models):
+            if not isinstance(error_model, erlo.ReducedErrorModel):
+                error_models[model_id] = erlo.ReducedErrorModel(error_model)
+
+        # Fix model parameters
+        mechanistic_model.fix_parameters(name_value_dict)
+        for error_model in error_models:
+            error_model.fix_parameters(name_value_dict)
+
+        # If no parameters are fixed, get original model back
+        if mechanistic_model.n_fixed_parameters() == 0:
+            mechanistic_model = mechanistic_model.mechanistic_model()
+
+        for model_id, error_model in enumerate(error_models):
+            if error_model.n_fixed_parameters() == 0:
+                error_model = error_model.get_error_model()
+                error_models[model_id] = error_model
+
+        # Safe reduced models
+        self._mechanistic_model = mechanistic_model
+        self._error_models = error_models
+
+        # Update names and number of parameters
+        self._set_number_and_parameter_names()
+
+    def get_id(self):
+        """
+        Returns the ID of the log-likelihood. If not set, ``None`` is returned.
+
+        The ID is used as meta data to identify the origin of the data.
+        """
+        return self._id
+
+    def get_parameter_names(self):
+        """
+        Returns the parameter names of the predictive model.
+        """
+        return self._parameter_names
+
+    def get_submodels(self):
+        """
+        Returns the submodels of the predictive model in form of a dictionary.
+        """
+        # Get original submodels
+        mechanistic_model = self._mechanistic_model
+        if isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+            mechanistic_model = mechanistic_model.mechanistic_model()
+
+        error_models = []
+        for error_model in self._error_models:
+            # Get original error model
+            if isinstance(error_model, erlo.ReducedErrorModel):
+                error_model = error_model.get_error_model()
+
+            error_models.append(error_model)
+
+        submodels = dict({
+            'Mechanistic model': mechanistic_model,
+            'Error models': error_models})
+
+        return submodels
 
     def n_parameters(self):
         """
         Returns the number of parameters.
         """
         return self._n_parameters
+
+    def set_id(self, label):
+        """
+        Sets the ID of the log-likelihood.
+
+        The ID is used as meta data to identify the origin of the data.
+
+        Parameters
+        ----------
+        label
+            ID of the log-likelihood.
+        """
+        self._id = str(label)
 
 
 class LogPosterior(pints.LogPosterior):
