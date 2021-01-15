@@ -18,12 +18,14 @@ class HierarchicalLogLikelihood(pints.LogPDF):
     A hierarchical log-likelihood class which can be used for population-level
     inference.
 
-    A hierarchical log-likelihood takes a list of :class:`pints.LogPDF`
-    instances, and a list of :class:`erlotinib.PopulationModel` instances. Each
-    :class:`pints.LogPDF` in the list is expected to model an independent
-    dataset, and must be defined on the same parameter space. For each
-    parameter of the :class:`pints.LogPDF` instances, a
-    :class:`erlotinib.PopulationModel` has to be provided which models the
+    A hierarchical log-likelihood takes a list of :class:`LogLikelihood`
+    instances, and a list of :class:`PopulationModel` instances. Each
+    :class:`LogLikelihood` in the list is expected to model an independent
+    dataset, and must be defined on the same parameter space. For example,
+    one likelihood is defined for each patient in a clinical trial.
+
+    For each parameter of the :class:`LogLikelihood`, a
+    :class:`PopulationModel` has to be provided which models the
     distribution of the respective parameter across individuals in the
     population.
 
@@ -33,10 +35,10 @@ class HierarchicalLogLikelihood(pints.LogPDF):
     ----------
 
     log_likelihoods
-        A list of :class:`pints.LogPDF` instances defined on the same
+        A list of :class:`LogLikelihood` instances defined on the same
         parameter space.
     population_models
-        A list of :class:`erlotinib.PopulationModel` instances with one
+        A list of :class:`PopulationModel` instances with one
         population model for each parameter of the log-likelihoods.
     """
 
@@ -44,15 +46,24 @@ class HierarchicalLogLikelihood(pints.LogPDF):
         super(HierarchicalLogLikelihood, self).__init__()
 
         for log_likelihood in log_likelihoods:
-            if not isinstance(log_likelihood, pints.LogPDF):
+            if not isinstance(log_likelihood, LogLikelihood):
                 raise ValueError(
                     'The log-likelihoods have to be instances of a '
-                    'pints.LogPDF.')
+                    'erlotinib.LogLikelihood.')
 
         n_parameters = log_likelihoods[0].n_parameters()
         for log_likelihood in log_likelihoods:
             if log_likelihood.n_parameters() != n_parameters:
                 raise ValueError(
+                    'The number of parameters of the log-likelihoods differ. '
+                    'All log-likelihoods have to be defined on the same '
+                    'parameter space.')
+
+        names = log_likelihoods[0].get_parameter_names()
+        for log_likelihood in log_likelihoods:
+            if not np.array_equal(log_likelihood.get_parameter_names(), names):
+                raise ValueError(
+                    'The parameter names of the log-likelihoods differ.'
                     'All log-likelihoods have to be defined on the same '
                     'parameter space.')
 
@@ -67,42 +78,16 @@ class HierarchicalLogLikelihood(pints.LogPDF):
                     'The population models have to be instances of '
                     'erlotinib.PopulationModel')
 
+        # Remember models and number of individuals
         self._log_likelihoods = log_likelihoods
         self._population_models = population_models
+        self._n_ids = len(log_likelihoods)
 
-        # Save number of ids and number of parameters per likelihood
-        self._n_individual_params = n_parameters
+        # Set IDs
+        self._set_ids()
 
-        # Save total number of parameters
-        self._n_ids = len(self._log_likelihoods)
-        n_parameters = 0
-        for pop_model in self._population_models:
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
-            n_parameters += n_indiv + n_pop
-
-        self._n_parameters = n_parameters
-
-        # Construct a mask for the indiviudal parameters
-        # Parameters will be ordered as
-        # [[psi_i0], [theta _0k], [psi_i1], [theta _1k], ...]
-        # where [psi_ij] is the jth parameter in the ith likelihood, and
-        # theta_jk is the corresponding kth parameter of the population model.
-        indices = []
-        start_index = 0
-        for pop_model in population_models:
-            # Get number of individual and population level parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
-
-            # Get end index for individual parameters
-            end_index = start_index + n_indiv
-
-            # Save start and end index
-            indices.append([start_index, end_index])
-
-            # Increment start index by total number of parameters
-            start_index += n_indiv + n_pop
-
-        self._individual_params = indices
+        # Set parameter names and number of parameters
+        self._set_number_and_parameter_names()
 
     def __call__(self, parameters):
         """
@@ -136,10 +121,10 @@ class HierarchicalLogLikelihood(pints.LogPDF):
 
         # Create container for individual parameters
         individual_params = np.empty(
-            shape=(self._n_ids, self._n_individual_params))
+            shape=(self._n_ids, self._n_indiv_params))
 
         # Fill conrainer with parameter values
-        for param_id, indices in enumerate(self._individual_params):
+        for param_id, indices in enumerate(self._indiv_params):
             start_index = indices[0]
             end_index = indices[1]
 
@@ -159,17 +144,142 @@ class HierarchicalLogLikelihood(pints.LogPDF):
 
         return score
 
-    def get_log_likelihoods(self):
+    def _set_ids(self):
         """
-        Returns the log-likelihoods.
-        """
-        return copy.copy(self._log_likelihoods)
+        Sets the IDs of the hierarchical model.
 
-    def get_population_models(self):
+        The IDs can also be interpreted as prefix of the model parameters,
+        which allow to distingish parameters of the same name.
         """
-        Returns the population models.
+        # Get IDs of individual log-likelihoods
+        indiv_ids = []
+        for index, log_likelihood in enumerate(self._log_likelihoods):
+            _id = log_likelihood.get_id()
+
+            # If ID not set, give some arbitrary ID
+            if _id is None:
+                _id = 'automatic-id-%d' % index
+
+            indiv_ids.append(_id)
+
+        # Construct IDs (prefixes) for hierarchical model
+        ids = []
+        for pop_model in self._population_models:
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+
+            # If population model has individual parameters, add IDs
+            if n_indiv > 0:
+                ids += indiv_ids
+
+            # If population model has population model parameters, add them as
+            # prefixes.
+            if n_pop > 0:
+                names = pop_model.get_parameter_names()
+                ids += names
+
+        # Remember IDs
+        self._ids = ids
+
+    def _set_number_and_parameter_names(self):
         """
-        return copy.copy(self._population_models)
+        Sets the number and names of the parameters.
+
+        The model parameters are arranged by keeping the order of the
+        parameters of the individual log-likelihoods and expanding them such
+        that the parameters associated with individuals come first and the
+        the population parameters.
+
+        Example:
+        Parameters of hierarchical log-likelihood:
+        [
+        log-likelihood 1 parameter 1, ..., log-likelihood N parameter 1,
+        population model 1 parameter 1, ..., population model 1 parameter K,
+        log-likelihood 1 parameter 2, ..., log-likelihood N parameter 2,
+        population model 2 parameter 1, ..., population model 2 parameter L,
+        ...
+        ]
+        where N is the number of parameters of the individual log-likelihoods,
+        and K and L are the varying numbers of parameters of the respective
+        population models.
+        """
+        # Get individual parameter names
+        indiv_names = self._log_likelihoods[0].get_parameter_names()
+
+        # Construct parameter names
+        start = 0
+        indiv_params = []
+        parameter_names = []
+        for param_id, pop_model in enumerate(self._population_models):
+            # Get number of hierarchical parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+            n_parameters = n_indiv + n_pop
+
+            # Add a copy of the parameter name for each hierarchical parameter
+            parameter_names += [indiv_names[param_id]] * n_parameters
+
+            # Remember positions of individual parameters
+            end = start + n_indiv
+            indiv_params.append([start, end])
+
+            # Shift start index
+            start += n_parameters
+
+        # Remember parameter names and number of parameters
+        self._parameter_names = parameter_names
+        self._n_parameters = len(parameter_names)
+        self._n_indiv_params = len(indiv_names)
+
+        # Remember positions of individual parameters
+        self._indiv_params = indiv_params
+
+    def get_id(self):
+        """
+        Returns the IDs (prefixes) of the model parameters.
+        """
+        return self._ids
+
+    def get_parameter_names(self, include_ids=False):
+        """
+        Returns the parameter names of the predictive model.
+
+        Parameters
+        ----------
+        include_ids
+            A boolean flag which determines whether the IDs (prefixes) of the
+            model parameters are included.
+        """
+        if not include_ids:
+            # Return names without ids
+            return self._parameter_names
+
+        # Construct parameters names as <ID> <Name>
+        names = []
+        for index in range(self._n_parameters):
+            _id = self._ids[index]
+            name = self._parameter_names[index]
+            names.append(_id + ' ' + name)
+
+        return names
+
+    def get_submodels(self):
+        """
+        Returns the submodels of the log-likelihood in form of a dictionary.
+        """
+        # Get submodels from log-likelihoods
+        submodels = self._log_likelihoods[0].get_submodels()
+
+        # Get original models
+        pop_models = []
+        for pop_model in self._population_models:
+            # Get original population model
+            if isinstance(pop_model, erlo.ReducedPopulationModel):
+                pop_model = pop_model.get_population_model()
+
+            pop_models.append(pop_model)
+
+        submodels['Population models'] = pop_models
+
+        return submodels
 
     def n_parameters(self):
         """
@@ -556,6 +666,14 @@ class LogLikelihood(pints.LogPDF):
         label
             ID of the log-likelihood.
         """
+        _id = str(label)
+
+        # Make sure that the ID is a single word, i.e. does not include spaces
+        if ' ' in _id:
+            raise ValueError(
+                'The ID cannot contain spaces.')
+
+        # Remember ID
         self._id = str(label)
 
 
