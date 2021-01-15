@@ -108,107 +108,130 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             erlo.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
 
-    # def test_call(self):
-    #     # Create reference model
-    #     pooled_log_pdf = pints.PooledLogPDF(
-    #         self.log_likelihoods, pooled=[True]*6)
+    def test_call(self):
+        # Test case I: All parameters pooled
+        model = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=self.log_likelihoods,
+            population_models=[erlo.PooledModel()] * 9)
 
-    #     # Test case I.1
-    #     parameters = [1, 1, 1, 1, 1, 1]
-    #     score = pooled_log_pdf(parameters)
+        # Create reference model
+        pooled_log_pdf = pints.PooledLogPDF(
+            self.log_likelihoods, pooled=[True]*9)
 
-    #     self.assertEqual(self.hierarchical_model(parameters), score)
+        # Test case I.1
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        score = pooled_log_pdf(parameters)
 
-    #     # Test case I.2
-    #     parameters = [10, 1, 0.1, 1, 3, 1]
-    #     score = pooled_log_pdf(parameters)
+        self.assertEqual(model(parameters), score)
 
-    #     self.assertEqual(self.hierarchical_model(parameters), score)
+        # Test case I.2
+        parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
+        score = pooled_log_pdf(parameters)
 
-    #     # Test case II.1: non-pooled model
-    #     pop_models = [
-    #         erlo.HeterogeneousModel()] \
-    #         * self.n_individual_params
-    #     likelihood = erlo.HierarchicalLogLikelihood(
-    #         self.log_likelihoods, pop_models)
+        self.assertEqual(model(parameters), score)
 
-    #     # Compute score from individual likelihoods
-    #     parameters = [1, 1, 1, 1, 1, 1]
-    #     score = 0
-    #     for ll in self.log_likelihoods:
-    #         score += ll(parameters)
+        # Test case II.1: Heterogeneous model
+        likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=self.log_likelihoods,
+            population_models=[
+                erlo.HeterogeneousModel()] * 9)
 
-    #     n_parameters = 6
-    #     n_ids = 8
-    #     parameters = [1] * n_parameters * n_ids
-    #     self.assertEqual(likelihood(parameters), score)
+        # Compute score from individual likelihoods
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
 
-    #     # Test case II.2
-    #     # Compute score from individual likelihoods
-    #     parameters = [10, 1, 0.1, 1, 3, 1]
-    #     score = 0
-    #     for ll in self.log_likelihoods:
-    #         score += ll(parameters)
+        n_parameters = 9
+        n_ids = 2
+        parameters = [1] * n_parameters * n_ids
+        self.assertEqual(likelihood(parameters), score)
 
-    #     n_ids = 8
-    #     parameters = \
-    #         [parameters[0]] * n_ids + \
-    #         [parameters[1]] * n_ids + \
-    #         [parameters[2]] * n_ids + \
-    #         [parameters[3]] * n_ids + \
-    #         [parameters[4]] * n_ids + \
-    #         [parameters[5]] * n_ids
-    #     self.assertEqual(likelihood(parameters), score)
+        # Test case II.2
+        # Compute score from individual likelihoods
+        parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
 
-    #     # Test case III.1: Non-trivial population model.
-    #     pop_models = \
-    #         [erlo.LogNormalModel()] + \
-    #         [erlo.PooledModel()] \
-    #         * (self.n_individual_params - 1)
-    #     likelihood = erlo.HierarchicalLogLikelihood(
-    #         self.log_likelihoods, pop_models)
+        parameters = \
+            [parameters[0]] * n_ids + \
+            [parameters[1]] * n_ids + \
+            [parameters[2]] * n_ids + \
+            [parameters[3]] * n_ids + \
+            [parameters[4]] * n_ids + \
+            [parameters[5]] * n_ids + \
+            [parameters[6]] * n_ids + \
+            [parameters[7]] * n_ids + \
+            [parameters[8]] * n_ids
+        self.assertEqual(likelihood(parameters), score)
 
-    #     ref_likelihood_part_one = erlo.LogNormalModel()
-    #     ref_likelihood_part_two = pints.PooledLogPDF(
-    #         self.log_likelihoods, pooled=[False] + [True]*5)
+        # Test case III.1: Non-trivial population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
 
-    #     parameters = [10, 1, 0.1, 1, 3, 1]
-    #     pop_params = [1, 1]
+        # Create reference pop model
+        ref_pop_model = erlo.LogNormalModel()
+        indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
 
-    #     n_ids = 8
-    #     parameters = \
-    #         [parameters[0]] * n_ids + \
-    #         pop_params + \
-    #         [parameters[1]] + \
-    #         [parameters[2]] + \
-    #         [parameters[3]] + \
-    #         [parameters[4]] + \
-    #         [parameters[5]]
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
 
-    #     score = \
-    #         ref_likelihood_part_one.compute_log_likelihood(
-    #             pop_params, parameters[:n_ids]) + \
-    #         ref_likelihood_part_two(parameters[:n_ids] + parameters[n_ids+2:])
+        score = \
+            ref_pop_model.compute_log_likelihood(
+                parameters=pop_params,
+                observations=[0.1, 0.2]) + \
+            self.log_likelihoods[0](indiv_parameters_1) + \
+            self.log_likelihoods[1](indiv_parameters_2)
 
-    #     self.assertNotEqual(score, -np.inf)
-    #     self.assertAlmostEqual(likelihood(parameters), score)
+        self.assertNotEqual(score, -np.inf)
+        self.assertAlmostEqual(self.hierarchical_model(parameters), score)
 
-    #     # Test case III.2: Returns -np.inf if individuals are far away from
-    #     # pop distribution
-    #     parameters = [100000, 1, 0.1, 1, 3, 1]
-    #     pop_params = [0, 0.00001]
+        # Test case III.2: Returns -np.inf if individuals are far away from
+        # pop distribution
+        indiv_parameters_1 = [10, 1, 10E20, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 10E-10]
 
-    #     n_ids = 8
-    #     parameters = \
-    #         [parameters[0]] * n_ids + \
-    #         pop_params + \
-    #         [parameters[1]] + \
-    #         [parameters[2]] + \
-    #         [parameters[3]] + \
-    #         [parameters[4]] + \
-    #         [parameters[5]]
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
 
-    #     self.assertEqual(likelihood(parameters), -np.inf)
+        self.assertEqual(self.hierarchical_model(parameters), -np.inf)
 
     def test_get_id(self):
         ids = self.hierarchical_model.get_id()
