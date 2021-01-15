@@ -269,6 +269,10 @@ class LogNormalModel(PopulationModel):
         score = -n_ids * np.log(var_log) / 2 - np.sum(log_psis) \
             - np.sum((log_psis - mean_log) ** 2) / (2 * var_log)
 
+        # If score evaluates to NaN, return -infinity
+        if np.isnan(score):
+            return -np.inf
+
         return score
 
     def get_parameter_names(self):
