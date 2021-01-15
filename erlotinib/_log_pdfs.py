@@ -158,7 +158,7 @@ class HierarchicalLogLikelihood(pints.LogPDF):
 
             # If ID not set, give some arbitrary ID
             if _id is None:
-                _id = 'automatic-id-%d' % index
+                _id = 'automatic-id-%d' % (index + 1)
 
             indiv_ids.append(_id)
 
