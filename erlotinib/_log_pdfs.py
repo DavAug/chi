@@ -673,7 +673,7 @@ class LogPosterior(pints.LogPosterior):
     """
     A log-posterior class which can be used with the
     :class:`OptimisationController` or the :class:`SamplingController`
-    to find either the maximum a posteriori
+    to find either the maximum a posteriori (MAP)
     estimates of the model parameters, or to sample from the posterior
     probability distribution of the model parameters directly.
 
@@ -693,76 +693,36 @@ class LogPosterior(pints.LogPosterior):
         super(LogPosterior, self).__init__(log_likelihood, log_prior)
 
         # Set defaults
-        self._id = None
         n_params = self._n_parameters
-        self._parameter_names = ['Param %d' % (n+1) for n in range(n_params)]
+        self._default_names = ['Parameter %d' % (n+1) for n in range(n_params)]
 
     def get_id(self):
         """
         Returns the id of the log-posterior. If no id is set, ``None`` is
         returned.
         """
-        return self._id
+        # Get ID of likelihood
+        try:
+            _id = self._log_likelihood.get_id()
+        except AttributeError:
+            # If a pints likelihood is used, it won't have an ID
+            _id = None
+
+        return _id
 
     def get_parameter_names(self):
         """
         Returns the names of the model parameters. By default the parameters
         are enumerated and assigned with the names 'Param #'.
         """
-        return self._parameter_names
+        # Get parameter names
+        try:
+            names = self._log_likelihood.get_parameter_names()
+        except AttributeError:
+            # If a pints likelihood is used, it won't have an parameter names
+            names = self._default_names
 
-    def set_id(self, posterior_id):
-        """
-        Sets the posterior id(s).
-
-        This can be used to tag the log-posterior to distinguish it from
-        other structurally identical log-posteriors, e.g. when the same
-        model is used to describe the PKPD of different individuals.
-
-        Alternatively a list of IDs may be provided which sets the ID for
-        each model parameter individually. This may be useful for
-        log-posteiors that are derived from a
-        :class:`HierarchicalLoglikelihood`.
-
-        Parameters
-        ----------
-        posterior_id
-            An ID (or a list of IDs) that can be used to identify the
-            log-posterior. A valid ID has to be convertable to a string
-            object, or be a list of length of IDs of length ``n_parameters``.
-        """
-        if isinstance(posterior_id, list):
-            if len(posterior_id) != self.n_parameters():
-                raise ValueError(
-                    'If a list of IDs is provided, it needs to be of the same '
-                    'length as the number of parameters.')
-
-            self._id = [str(label) for label in posterior_id]
-
-        else:
-            self._id = str(posterior_id)
-
-    def set_parameter_names(self, names):
-        """
-        Sets the names of the model parameters.
-
-        The list of parameters has to match the length of the number of
-        parameters. The first parameter name in the list is assigned to the
-        first parameter, the second name in the list is assigned to second
-        parameter, and so on.
-
-        Parameters
-        ----------
-
-        names
-            A list of string-convertable objects that is used to assign names
-            to the model parameters.
-        """
-        if len(names) != self._n_parameters:
-            raise ValueError(
-                'The list of parameter names has to match the number of model '
-                'parameters.')
-        self._parameter_names = [str(name) for name in names]
+        return names
 
 
 class ReducedLogPDF(pints.LogPDF):
