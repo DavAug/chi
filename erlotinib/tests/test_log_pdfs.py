@@ -404,8 +404,13 @@ class TestLogLikelihood(unittest.TestCase):
         # Test case I: Check default
         self.assertIsNone(self.log_likelihood.get_id())
 
-        # Test case II: Set ID
+        # Test case II: Set ID with space
         _id = 'some ID'
+        with self.assertRaisesRegex(ValueError, 'The ID cannot contain'):
+            self.log_likelihood.set_id(_id)
+
+        # Test case II: Set ID with space
+        _id = 'some-ID'
         self.log_likelihood.set_id(_id)
         self.assertEqual(self.log_likelihood.get_id(), _id)
 
