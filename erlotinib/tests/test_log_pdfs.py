@@ -327,17 +327,128 @@ class TestLogLikelihood(unittest.TestCase):
         # Reset number of outputs
         self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
 
-    def test_get_error_models(self):
-        error_models = self.log_likelihood.get_error_models()
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'central.drug_amount': 1,
+            'dose.absorption_rate': 1})
 
+        n_parameters = self.log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 7)
+
+        parameter_names = self.log_likelihood.get_parameter_names()
+        self.assertEqual(len(parameter_names), 7)
+        self.assertEqual(parameter_names[0], 'dose.drug_amount')
+        self.assertEqual(parameter_names[1], 'central.size')
+        self.assertEqual(parameter_names[2], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[3], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[4], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[5], 'dose.drug_amount Sigma base')
+        self.assertEqual(parameter_names[6], 'dose.drug_amount Sigma rel.')
+
+        # Test case II: fix overlapping set of parameters
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'dose.absorption_rate': None,
+            'dose.drug_amount Sigma base': 0.5,
+            'myokit.elimination_rate': 0.3})
+
+        n_parameters = self.log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 6)
+
+        parameter_names = self.log_likelihood.get_parameter_names()
+        self.assertEqual(len(parameter_names), 6)
+        self.assertEqual(parameter_names[0], 'dose.drug_amount')
+        self.assertEqual(parameter_names[1], 'central.size')
+        self.assertEqual(parameter_names[2], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[3], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[4], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[5], 'dose.drug_amount Sigma rel.')
+
+        # Test case III: unfix all parameters
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'central.drug_amount': None,
+            'dose.drug_amount Sigma base': None,
+            'myokit.elimination_rate': None})
+
+        n_parameters = self.log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 9)
+
+        parameter_names = self.log_likelihood.get_parameter_names()
+        self.assertEqual(len(parameter_names), 9)
+        self.assertEqual(parameter_names[0], 'central.drug_amount')
+        self.assertEqual(parameter_names[1], 'dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[4], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[5], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[6], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[7], 'dose.drug_amount Sigma base')
+        self.assertEqual(parameter_names[8], 'dose.drug_amount Sigma rel.')
+
+    def test_get_parameter_names(self):
+        # Test case I: Single output problem
+        parameter_names = self.log_likelihood.get_parameter_names()
+
+        self.assertEqual(len(parameter_names), 9)
+        self.assertEqual(parameter_names[0], 'central.drug_amount')
+        self.assertEqual(parameter_names[1], 'dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[4], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[5], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[6], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[7], 'dose.drug_amount Sigma base')
+        self.assertEqual(parameter_names[8], 'dose.drug_amount Sigma rel.')
+
+    def test_get_set_id(self):
+        # Test case I: Check default
+        self.assertIsNone(self.log_likelihood.get_id())
+
+        # Test case II: Set ID
+        _id = 'some ID'
+        self.log_likelihood.set_id(_id)
+        self.assertEqual(self.log_likelihood.get_id(), _id)
+
+    def test_get_submodels(self):
+        # Test case I: no fixed parameters
+        submodels = self.log_likelihood.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
         self.assertEqual(len(error_models), 2)
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
         self.assertIsInstance(error_models[1], erlo.ErrorModel)
 
-    def test_get_mechanistic_model(self):
-        mechanistic_model = self.log_likelihood.get_mechanistic_model()
+        # Test case II: some fixed parameters
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'central.drug_amount': 1,
+            'dose.absorption_rate': 1})
+        submodels = self.log_likelihood.get_submodels()
 
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
         self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 2)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[1], erlo.ErrorModel)
+
+        # Unfix parameter
+        self.log_likelihood.fix_parameters({
+            'central.drug_amount': None,
+            'dose.absorption_rate': None})
 
     def test_n_parameters(self):
         # Test case I:
@@ -354,6 +465,9 @@ class TestLogLikelihood(unittest.TestCase):
 
         n_parameters = log_likelihood.n_parameters()
         self.assertEqual(n_parameters, 7)
+
+        # Reset number of outputs
+        self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
 
 
 class TestLogPosterior(unittest.TestCase):
