@@ -466,6 +466,9 @@ class PredictiveModel(object):
                 'Wrong number of error models. One error model has to be '
                 'provided for each mechanistic error model.')
 
+        # Copy error models, such that renaming doesn't affect input models
+        error_models = [copy.copy(error_model) for error_model in error_models]
+
         # Rename error model parameters, if more than one output
         if n_outputs > 1:
             # Get output names
