@@ -625,9 +625,11 @@ class TestLogPosterior(unittest.TestCase):
         # Create test model
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
-        problem = erlo.InverseProblem(model, times, values)
-        log_likelihood = pints.GaussianLogLikelihood(problem)
+        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        log_likelihood = erlo.LogLikelihood(model, error_model, values, times)
+        log_likelihood.set_id('42')
         log_prior = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
@@ -636,48 +638,52 @@ class TestLogPosterior(unittest.TestCase):
             pints.UniformLogPrior(0, 1))
         cls.log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
 
-    def test_set_id_bad_input(self):
-        # Provide the wrong number of labels
-        labels = ['wrong', 'number']
+        # Create a pints test model
+        problem = erlo.InverseProblem(model, values, times)
+        log_likelihood = pints.GaussianLogLikelihood(problem)
+        log_prior = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1))
+        cls.pints_log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
 
-        with self.assertRaisesRegex(ValueError, 'If a list of IDs is'):
-            self.log_posterior.set_id(labels)
+    def test_get_id(self):
+        # Test case I: Non-trivial IDs
+        _id = self.log_posterior.get_id()
 
-    def test_set_get_id(self):
-        # Check default
-        self.assertIsNone(self.log_posterior.get_id())
+        self.assertEqual(_id, '42')
 
-        # Set some id
-        index = 'Test id'
-        self.log_posterior.set_id(index)
+        # Test case II: Trivial ID (because pints likelihood)
+        _id = self.pints_log_posterior.get_id()
 
-        self.assertEqual(self.log_posterior.get_id(), index)
+        self.assertIsNone(_id)
 
-        # Set an ID for each parameter individually
-        labels = [
-            'ID 1', 'ID 2', 'ID 3', 'ID 4', 'ID 5', 'ID 6']
-        self.log_posterior.set_id(labels)
+    def test_get_parameter_names(self):
+        # Test case I: Non-trivial parameters
+        parameter_names = self.log_posterior.get_parameter_names()
 
-        self.assertEqual(self.log_posterior.get_id(), labels)
+        self.assertEqual(len(parameter_names), 7)
+        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'myokit.kappa')
+        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[5], 'Sigma base')
+        self.assertEqual(parameter_names[6], 'Sigma rel.')
 
-    def test_set_get_parameter_names(self):
-        # Check default
-        default = [
-            'Param 1', 'Param 2', 'Param 3', 'Param 4', 'Param 5', 'Param 6']
-        self.assertEqual(self.log_posterior.get_parameter_names(), default)
+        # Test case II: Trivial ID (because pints likelihood)
+        parameter_names = self.pints_log_posterior.get_parameter_names()
 
-        # Set some parameter names
-        names = ['A', 'B', 'C', 'D', 'E', 'F']
-        self.log_posterior.set_parameter_names(names)
-
-        self.assertEqual(self.log_posterior.get_parameter_names(), names)
-
-    def test_set_parameter_names_bad_input(self):
-        # Number of names does not match the number of parameters
-        names = ['too', 'few', 'params']
-
-        with self.assertRaisesRegex(ValueError, 'The list of param'):
-            self.log_posterior.set_parameter_names(names)
+        self.assertEqual(len(parameter_names), 6)
+        self.assertEqual(parameter_names[0], 'Parameter 1')
+        self.assertEqual(parameter_names[1], 'Parameter 2')
+        self.assertEqual(parameter_names[2], 'Parameter 3')
+        self.assertEqual(parameter_names[3], 'Parameter 4')
+        self.assertEqual(parameter_names[4], 'Parameter 5')
+        self.assertEqual(parameter_names[5], 'Parameter 6')
 
 
 class TestReducedLogPDF(unittest.TestCase):
