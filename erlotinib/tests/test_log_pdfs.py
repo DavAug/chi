@@ -210,6 +210,102 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
     #     self.assertEqual(likelihood(parameters), -np.inf)
 
+    def test_get_id(self):
+        ids = self.hierarchical_model.get_id()
+
+        self.assertEqual(len(ids), 13)
+        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(ids[1], 'Pooled')
+        self.assertEqual(ids[2], 'automatic-id-1')
+        self.assertEqual(ids[3], 'automatic-id-2')
+        self.assertEqual(ids[4], 'Mean')
+        self.assertEqual(ids[5], 'Std.')
+        self.assertEqual(ids[6], 'Pooled')
+        self.assertEqual(ids[7], 'automatic-id-1')
+        self.assertEqual(ids[8], 'automatic-id-2')
+        self.assertEqual(ids[9], 'Pooled')
+        self.assertEqual(ids[10], 'Pooled')
+        self.assertEqual(ids[11], 'Pooled')
+        self.assertEqual(ids[12], 'Pooled')
+
+    def test_get_parameter_names(self):
+        # Test case I: without ids
+        parameter_names = self.hierarchical_model.get_parameter_names()
+
+        self.assertEqual(len(parameter_names), 13)
+        self.assertEqual(parameter_names[0], 'central.drug_amount')
+        self.assertEqual(parameter_names[1], 'dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'central.size')
+        self.assertEqual(parameter_names[4], 'central.size')
+        self.assertEqual(parameter_names[5], 'central.size')
+        self.assertEqual(parameter_names[6], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[7], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[8], 'myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[9], 'central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[11], 'dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[12], 'dose.drug_amount Sigma rel.')
+
+        # Test case II: with ids
+        parameter_names = self.hierarchical_model.get_parameter_names(
+            include_ids=True)
+
+        self.assertEqual(len(parameter_names), 13)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'automatic-id-1 central.size')
+        self.assertEqual(parameter_names[3], 'automatic-id-2 central.size')
+        self.assertEqual(parameter_names[4], 'Mean central.size')
+        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
+        self.assertEqual(
+            parameter_names[7], 'automatic-id-1 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[8], 'automatic-id-2 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[9], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[11], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
+
+    def test_get_submodels(self):
+        # Test case I: no fixed parameters
+        submodels = self.hierarchical_model.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 3)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+        self.assertEqual(keys[2], 'Population models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 2)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[1], erlo.ErrorModel)
+
+        pop_models = submodels['Population models']
+        self.assertEqual(len(pop_models), 9)
+        self.assertIsInstance(pop_models[0], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[1], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[2], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[3], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[4], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[5], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[6], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[7], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[8], erlo.PopulationModel)
+
     def test_n_parameters(self):
         # 9 individual parameters, from which 1 is modelled heterogeneously,
         # 1 log-normally and the rest is pooled
