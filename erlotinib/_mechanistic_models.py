@@ -5,7 +5,7 @@
 # full license details.
 #
 
-from copy
+import copy
 
 import myokit
 import myokit.formats.sbml as sbml
