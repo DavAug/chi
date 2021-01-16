@@ -5,7 +5,7 @@
 # full license details.
 #
 
-from copy import copy
+from copy
 
 import myokit
 import myokit.formats.sbml as sbml
@@ -113,13 +113,13 @@ class MechanisticModel(object):
         """
         Returns the output names of the model.
         """
-        return copy(self._output_names)
+        return copy.copy(self._output_names)
 
     def parameters(self):
         """
         Returns the parameter names of the model.
         """
-        return copy(self._parameter_names)
+        return copy.copy(self._parameter_names)
 
     def set_outputs(self, outputs):
         """
@@ -786,7 +786,7 @@ class ReducedMechanisticModel(object):
             names = names[~self._fixed_params_mask]
             names = list(names)
 
-        return names
+        return copy.copy(names)
 
     def pd_output(self):
         """

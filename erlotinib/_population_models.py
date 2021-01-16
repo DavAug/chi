@@ -132,7 +132,7 @@ class HeterogeneousModel(PopulationModel):
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -471,7 +471,7 @@ class PooledModel(PopulationModel):
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -660,7 +660,7 @@ class ReducedPopulationModel(object):
             names = names[~self._fixed_params_mask]
             names = list(names)
 
-        return names
+        return copy.copy(names)
 
     def get_population_model(self):
         """

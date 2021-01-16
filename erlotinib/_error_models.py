@@ -5,6 +5,8 @@
 # full license details.
 #
 
+import copy
+
 import numpy as np
 
 
@@ -49,7 +51,7 @@ class ErrorModel(object):
         """
         Returns the names of the error model parameters.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def n_parameters(self):
         """
@@ -390,7 +392,7 @@ class ReducedErrorModel(object):
             names = names[~self._fixed_params_mask]
             names = list(names)
 
-        return names
+        return copy.copy(names)
 
     def n_fixed_parameters(self):
         """
