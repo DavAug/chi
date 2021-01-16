@@ -222,19 +222,27 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 'The parameter map has to be convertable to a python '
                 'dictionary.')
 
-        # Get default individual
-        ids = list(posterior_samples[id_key].dropna().unique())
-        if individual is None:
-            individual = ids[0]
+        # Check individual for population model
+        if isinstance(predictive_model, erlo.PredictivePopulationModel):
+            if individual is not None:
+                raise ValueError(
+                    "Individual ID's cannot be selected for a "
+                    "erlotinib.PredictivePopulationModel. To model an "
+                    "individual create a erlotinib.PosteriorPredictiveModel "
+                    "with a erlotinib.PredictiveModel.")
 
-        if individual not in ids:
-            raise ValueError(
-                'The individual <' + str(individual) + '> could not be found '
-                'in the ID column.')
+        # Check individual for individual predictive model
+        else:
+            ids = list(posterior_samples[id_key].dropna().unique())
+            # Get default individual
+            if individual is None:
+                individual = ids[0]
 
-        # Mask samples for individual
-        mask = posterior_samples[id_key] == individual
-        posterior_samples = posterior_samples[mask]
+            # Make sure individual exists
+            if individual not in ids:
+                raise ValueError(
+                    'The individual <' + str(individual) + '> could not be '
+                    'found in the ID column.')
 
         # Get warm-up iterations
         if warm_up_iter is None:
@@ -255,37 +263,69 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         mask = posterior_samples[iter_key] > warm_up_iter
         posterior_samples = posterior_samples[mask]
 
-        # Check that posterior has the same dimensionality as the model
-        parameter_names = posterior_samples[param_key].unique()
-        n_parameters = len(parameter_names)
-        if predictive_model.n_parameters() != n_parameters:
-            raise ValueError(
-                'The dimension of the posterior distribution has to be the '
-                'same as the number of parameters of the predictive model.')
+        # Check that the parameters of the posterior can be identified in the
+        # dataframe
+        self._check_parameters(posterior_samples, id_key, param_key, param_map)
 
+        # Filter dataframe for relevant data
+        posterior_samples = self._get_relevant_data(
+            posterior_samples, individual, keys)
+
+        # Transform dataframe into more convenient format for sampling
+        keys = keys[1:]
+        self._format_posterior_samples(posterior_samples, keys)
+
+    def _check_parameters(
+            self, posterior_samples, id_key, param_key, param_map):
+        """
+        Checks whether the parameters of the posterior exist in the dataframe.
+
+        Note that for a erlotinib.PredictivePopulationModel the parameter
+        names are a composition of the entries in the ID column and the
+        parameter column.
+
+        Exception are heterogeneously modelled parameters. Here the name of the
+        PredictivePopulationModel is 'Heterogenous <name>', and any ID should
+        be accepted.
+        """
         # Create map from posterior parameter names to model parameter names
-        parameter_names = self._predictive_model.get_parameter_names()
-        for param_id, name in enumerate(parameter_names):
+        model_names = self._predictive_model.get_parameter_names()
+        for param_id, name in enumerate(model_names):
             try:
-                parameter_names[param_id] = param_map[name]
+                model_names[param_id] = param_map[name]
             except KeyError:
                 # The name is not mapped
                 pass
 
+        # Get unique parameter names in dataframe
+        df_names = posterior_samples[param_key].unique()
+        if isinstance(self._predictive_model, erlo.PredictivePopulationModel):
+            # Construct all ID-name pairs
+            all_id_name_pairs = \
+                posterior_samples[id_key].apply(str) + ' ' + \
+                posterior_samples[param_key].apply(str)
+            df_names = all_id_name_pairs.unique()
+
+            # If the model parameter is heterogenously modelled, replace the
+            # prefix 'Heterogeneous' by any ID in the dataframe
+            for param_id, parameter_name in enumerate(df_names):
+                prefix, name = parameter_name.split(maxsplit=1)
+                if prefix == 'Heterogeneous':
+                    # Get any ID
+                    mask = posterior_samples[param_key] == name
+                    prefix = posterior_samples[mask][id_key].iloc[0]
+
+                    # Replace parameter name
+                    df_names[param_id] = prefix + ' ' + name
+
         # Make sure that all parameter names can be found in the dataframe
-        df_parameter_names = posterior_samples[param_key].unique()
-        for name in parameter_names:
-            if name not in df_parameter_names:
+        for name in model_names:
+            if name not in df_names:
                 raise ValueError(
                     'The parameter <' + str(name) + '> could not be found in '
                     'the parameter column of the posterior dataframe.')
 
-        # Transform dataframe into more convenient format for sampling
-        keys = keys[1:]
-        self._format_posterior_samples(
-            posterior_samples, parameter_names, keys)
-
-    def _format_posterior_samples(self, posterior, parameter_names, keys):
+    def _format_posterior_samples(self, posterior, keys):
         """
         Transforms the dataframe of samples into a numpy array of shape
         (n_samples, n_parameters).
@@ -299,12 +339,13 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         n_iters = len(posterior[iter_key].unique())
         n_runs = len(posterior[run_key].unique())
         n_samples = n_runs * n_iters
-        n_parameters = len(posterior[param_key].unique())
+        n_parameters = self._predictive_model.n_parameters()
 
         # Create numpy container for samples
         container = np.empty(shape=(n_samples, n_parameters))
 
         # Fill container with samples
+        parameter_names = self._predictive_model.get_parameter_names()
         for run_id, run in enumerate(posterior[run_key].unique()):
             # Mask samples for run
             mask = posterior[run_key] == run
@@ -323,11 +364,80 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 # Make sure samples are sorted according to iterations
                 samples = samples_df.sort_values(iter_key)[sample_key]
 
+                # Check that samples does not exceed n_iters, otherwise
+                # draw n_iters samples
+                # (This is especially relevant for Heterogenous population
+                # models)
+                samples = samples.to_numpy()
+                if len(samples) > n_iters:
+                    samples = np.random.choice(samples, size=n_iters)
+
                 # Add samples to container
                 container[start:end, param_id] = samples.to_numpy()
 
         # Remember reformated samples
         self._posterior = container
+
+    def _get_relevant_data(self, posterior_samples, individual, keys):
+        """
+        Filters the dataframe for the relevant samples.
+
+        For a PredictiveModel (can be identified by non-None individual), the
+        samples are filter for the individual's ID.
+
+        For a PredictivePopulationModel, each parameter is filtered for the
+        corresponding population IDs (prefixes).
+        """
+        # Unpack keys
+        id_key, sample_key, param_key, iter_key, run_key = keys
+
+        # If indvidual is not None, mask and return samples
+        # (This only happens for an individual's PredictiveModel)
+        if individual is not None:
+            # Mask samples for individual
+            mask = posterior_samples[id_key] == individual
+            posterior_samples = posterior_samples[mask]
+
+            return posterior_samples
+
+        # Get for each parameter name the relevant prefixes
+        name_id_dict = {}
+        parameter_names = self._predictive_model.get_parameter_names()
+        for parameter_name in parameter_names:
+            # Split the ID (prefix) from the name
+            _id, name = parameter_name.split(maxsplit=1)
+
+            # Add name to dictionary
+            if name not in name_id_dict:
+                name_id_dict[name] = []
+
+            # Add prefix to dictionary
+            name_id_dict[name].append(_id)
+
+        # Create container for relevant data
+        container = pd.DataFrame(columns=keys[1:])
+
+        # Get samples for each parameter
+        for name, ids in name_id_dict.items():
+            # Mask samples for name
+            mask = posterior_samples[param_key] == name
+            temp = posterior_samples[mask]
+
+            for _id in ids:
+                # Mask for ID (except heterogenous, here all IDs are OK)
+                temp2 = temp
+                if _id != 'Heterogeneous':
+                    mask = temp[id_key] == _id
+                    temp2 = temp[mask]
+
+                # Add samples to container
+                container = container.append(pd.DataFrame({
+                    param_key: _id + ' ' + name,
+                    sample_key: temp2[sample_key],
+                    iter_key: temp2[iter_key],
+                    run_key: temp2[iter_key]}))
+
+        return container
 
     def sample(
             self, times, n_samples=None, seed=None, include_regimen=False):
