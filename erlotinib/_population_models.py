@@ -91,7 +91,7 @@ class PopulationModel(object):
 
 class HeterogeneousModel(PopulationModel):
     """
-    A population model that imposes no relationship on the model parameters
+    A population model which imposes no relationship on the model parameters
     across individuals.
 
     A heterogeneous model assumes that the parameters across individuals are
@@ -178,7 +178,7 @@ class HeterogeneousModel(PopulationModel):
 
 class LogNormalModel(PopulationModel):
     r"""
-    A population model that assumes that model parameters across individuals
+    A population model which assumes that model parameters across individuals
     are log-normally distributed.
 
     A log-normal population model assumes that a model parameter :math:`\psi`
@@ -414,7 +414,7 @@ class LogNormalModel(PopulationModel):
 
 class PooledModel(PopulationModel):
     """
-    A population model that pools the model parameters across individuals.
+    A population model which pools the model parameters across individuals.
 
     A pooled model assumes that the parameters across individuals do not vary.
     As a result, all individual parameters are set to the same value.
