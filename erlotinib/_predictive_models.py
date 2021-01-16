@@ -265,20 +265,23 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 
         # Check that the parameters of the posterior can be identified in the
         # dataframe
-        self._check_parameters(posterior_samples, id_key, param_key, param_map)
+        parameter_names = self._check_parameters(
+            posterior_samples, id_key, param_key, param_map)
 
         # Filter dataframe for relevant data
         posterior_samples = self._get_relevant_data(
-            posterior_samples, individual, keys)
+            posterior_samples, parameter_names, individual, keys)
 
         # Transform dataframe into more convenient format for sampling
         keys = keys[1:]
-        self._format_posterior_samples(posterior_samples, keys)
+        self._format_posterior_samples(
+            posterior_samples, parameter_names, keys)
 
     def _check_parameters(
             self, posterior_samples, id_key, param_key, param_map):
         """
-        Checks whether the parameters of the posterior exist in the dataframe.
+        Checks whether the parameters of the posterior exist in the dataframe,
+        and returns them.
 
         Note that for a erlotinib.PredictivePopulationModel the parameter
         names are a composition of the entries in the ID column and the
@@ -306,9 +309,11 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 posterior_samples[param_key].apply(str)
             df_names = all_id_name_pairs.unique()
 
-            # If the model parameter is heterogenously modelled, replace the
-            # prefix 'Heterogeneous' by any ID in the dataframe
-            for param_id, parameter_name in enumerate(df_names):
+        # If the model parameter is heterogenously modelled, replace the
+        # prefix 'Heterogeneous' by any ID in the dataframe
+        temp_model_names = copy.copy(model_names)
+        if isinstance(self._predictive_model, erlo.PredictivePopulationModel):
+            for param_id, parameter_name in enumerate(temp_model_names):
                 prefix, name = parameter_name.split(maxsplit=1)
                 if prefix == 'Heterogeneous':
                     # Get any ID
@@ -316,16 +321,18 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                     prefix = posterior_samples[mask][id_key].iloc[0]
 
                     # Replace parameter name
-                    df_names[param_id] = prefix + ' ' + name
+                    temp_model_names[param_id] = str(prefix) + ' ' + name
 
         # Make sure that all parameter names can be found in the dataframe
-        for name in model_names:
+        for name in temp_model_names:
             if name not in df_names:
                 raise ValueError(
                     'The parameter <' + str(name) + '> could not be found in '
                     'the parameter column of the posterior dataframe.')
 
-    def _format_posterior_samples(self, posterior, keys):
+        return model_names
+
+    def _format_posterior_samples(self, posterior, parameter_names, keys):
         """
         Transforms the dataframe of samples into a numpy array of shape
         (n_samples, n_parameters).
@@ -345,7 +352,6 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         container = np.empty(shape=(n_samples, n_parameters))
 
         # Fill container with samples
-        parameter_names = self._predictive_model.get_parameter_names()
         for run_id, run in enumerate(posterior[run_key].unique()):
             # Mask samples for run
             mask = posterior[run_key] == run
@@ -378,7 +384,8 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         # Remember reformated samples
         self._posterior = container
 
-    def _get_relevant_data(self, posterior_samples, individual, keys):
+    def _get_relevant_data(
+            self, posterior_samples, parameter_names, individual, keys):
         """
         Filters the dataframe for the relevant samples.
 
@@ -402,7 +409,6 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 
         # Get for each parameter name the relevant prefixes
         name_id_dict = {}
-        parameter_names = self._predictive_model.get_parameter_names()
         for parameter_name in parameter_names:
             # Split the ID (prefix) from the name
             _id, name = parameter_name.split(maxsplit=1)
@@ -435,7 +441,7 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                     param_key: _id + ' ' + name,
                     sample_key: temp2[sample_key],
                     iter_key: temp2[iter_key],
-                    run_key: temp2[iter_key]}))
+                    run_key: temp2[run_key]}))
 
         return container
 
@@ -785,7 +791,7 @@ class PredictiveModel(object):
         """
         Returns the parameter names of the predictive model.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def get_submodels(self):
         """
@@ -1203,7 +1209,7 @@ class PredictivePopulationModel(PredictiveModel):
         """
         Returns the parameter names of the predictive model.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def get_submodels(self):
         """
