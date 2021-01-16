@@ -179,7 +179,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         # The posterior does not have samples for all parameters
         mask = self.posterior_samples['Parameter'] != 'myokit.tumour_volume'
         posterior_samples = self.posterior_samples[mask]
-        with self.assertRaisesRegex(ValueError, 'The dimension of the post'):
+        with self.assertRaisesRegex(ValueError, 'The parameter <myokit.'):
             erlo.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
