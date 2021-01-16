@@ -528,7 +528,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertIsNone(self.log_likelihood.get_id())
 
         # Test case II: Set ID
-        _id = 'some ID'
+        _id = 123
         self.log_likelihood.set_id(_id)
         self.assertEqual(self.log_likelihood.get_id(), 'ID ' + _id)
 
@@ -636,7 +636,7 @@ class TestLogPosterior(unittest.TestCase):
         # Test case I: Non-trivial IDs
         _id = self.log_posterior.get_id()
 
-        self.assertEqual(_id, '42')
+        self.assertEqual(_id, 'ID 42')
 
         # Test case II: Trivial ID (because pints likelihood)
         _id = self.pints_log_posterior.get_id()
