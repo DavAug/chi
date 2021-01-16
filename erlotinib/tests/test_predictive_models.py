@@ -216,6 +216,12 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             erlo.PosteriorPredictiveModel(
                 self.pred_model, self.posterior_samples, individual=_id)
 
+        # Set ID despite using PredictivePopulationModel
+        _id = 'Some ID'
+        with self.assertRaisesRegex(ValueError, "Individual ID's cannot be"):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, self.posterior_samples, individual=_id)
+
         # Negative warm-up iterations
         warmup = -10
         with self.assertRaisesRegex(ValueError, 'The number of warm-up'):
