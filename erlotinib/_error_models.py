@@ -118,8 +118,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     :math:`x^{\text{obs}}` are realisations of the random variable
     :math:`X`.
 
-    The distribution of the observable biomarkers can then be expressed in
-    terms of a Gaussian distribution
+    At each time point :math:`t` the distribution of the observable biomarkers
+    can be expressed in terms of a Gaussian distribution
 
     .. math::
         p(x | \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
