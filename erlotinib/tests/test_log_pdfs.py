@@ -555,9 +555,11 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertIsInstance(error_models[1], erlo.ErrorModel)
 
         # Test case II: some fixed parameters
+        print(self.log_likelihood.get_parameter_names())
         self.log_likelihood.fix_parameters(name_value_dict={
             'central.drug_amount': 1,
-            'Sigma base': 1})
+            'dose.drug_amount Sigma base': 1})
+        print(self.log_likelihood.get_parameter_names())
         submodels = self.log_likelihood.get_submodels()
 
         keys = list(submodels.keys())
@@ -576,7 +578,7 @@ class TestLogLikelihood(unittest.TestCase):
         # Unfix parameter
         self.log_likelihood.fix_parameters({
             'central.drug_amount': None,
-            'dose.absorption_rate': None})
+            'dose.drug_amount Sigma base': None})
 
     def test_n_parameters(self):
         # Test case I:
