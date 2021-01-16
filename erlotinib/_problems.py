@@ -412,14 +412,6 @@ class ProblemModellingController(object):
             raise ValueError(
                 'The error model has not been set.')
 
-        # Check type of dictionanry
-        try:
-            name_value_dict = dict(name_value_dict)
-        except (TypeError, ValueError):
-            raise ValueError(
-                'The name-value dictionary has to be convertable to a python '
-                'dictionary.')
-
         # Fix model parameters in each log_likelihood
         for log_likelihood in self._log_likelihoods:
             log_likelihood.fix_parameters(name_value_dict)
