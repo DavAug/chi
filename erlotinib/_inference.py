@@ -92,7 +92,7 @@ class InferenceController(object):
             # Sample initial population, if model is hierarchical
             log_likelihood = log_posterior.log_likelihood()
             if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
-                n_ids = len(log_likelihood.get_log_likelihoods())
+                n_ids = log_likelihood.n_log_likelihoods()
                 population_models = log_likelihood.get_population_models()
                 self._initial_params[index] = self._sample_population(
                         index, n_ids, population_models)

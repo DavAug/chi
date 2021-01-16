@@ -31,32 +31,35 @@ class TestInferenceController(unittest.TestCase):
         observed_volumes = data[mask]['Measurement'].to_numpy()
 
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
+        mechanistic_model = erlo.PharmacodynamicModel(path)
+        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.log_likelihood = erlo.LogLikelihood(
+            mechanistic_model, error_model, observed_volumes, times)
+        cls.log_likelihood.set_id(individual)
 
-        # Create inverse problem
-        problem = erlo.InverseProblem(model, times, observed_volumes)
-        cls.log_likelihood = pints.GaussianLogLikelihood(problem)
+        # Create posterior
         log_prior_tumour_volume = pints.UniformLogPrior(1E-3, 1E1)
         log_prior_drug_conc = pints.UniformLogPrior(-1E-3, 1E-3)
         log_prior_kappa = pints.UniformLogPrior(-1E-3, 1E-3)
         log_prior_lambda_0 = pints.UniformLogPrior(1E-3, 1E1)
         log_prior_lambda_1 = pints.UniformLogPrior(1E-3, 1E1)
-        log_prior_sigma = pints.HalfCauchyLogPrior(location=0, scale=3)
+        log_prior_sigma_base = pints.HalfCauchyLogPrior(location=0, scale=3)
+        log_prior_sigma_rel = pints.HalfCauchyLogPrior(location=0, scale=3)
         cls.log_prior = pints.ComposedLogPrior(
             log_prior_tumour_volume,
             log_prior_drug_conc,
             log_prior_kappa,
             log_prior_lambda_0,
             log_prior_lambda_1,
-            log_prior_sigma)
+            log_prior_sigma_base,
+            log_prior_sigma_rel)
         log_posterior = erlo.LogPosterior(cls.log_likelihood, cls.log_prior)
-        log_posterior.set_id(individual)
 
         # Set up optmisation controller
         cls.controller = erlo.InferenceController(log_posterior)
 
         cls.n_ids = 1
-        cls.n_params = 6
+        cls.n_params = 7
 
     def test_call_bad_input(self):
         # Wrong type of log-posterior
@@ -104,7 +107,7 @@ class TestInferenceController(unittest.TestCase):
 
     def test_set_transform(self):
         # Apply transform
-        transform = pints.LogTransformation(n_parameters=6)
+        transform = pints.LogTransformation(n_parameters=7)
         self.controller.set_transform(transform)
 
         self.assertEqual(self.controller._transform, transform)
@@ -143,10 +146,10 @@ class TestOptimisationController(unittest.TestCase):
         model = erlo.PharmacodynamicModel(path)
         problem.set_mechanistic_model(model)
 
-        error_models = [pints.GaussianLogLikelihood]
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         problem.set_error_model(error_models)
 
-        n_parameters = 6
+        n_parameters = 7
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
@@ -160,10 +163,11 @@ class TestOptimisationController(unittest.TestCase):
             erlo.HeterogeneousModel(),
             erlo.PooledModel(),
             erlo.PooledModel(),
-            erlo.PooledModel()]
+            erlo.PooledModel(),
+            erlo.LogNormalModel()]
         problem.set_population_model(pop_models)
 
-        n_parameters = 5 + 8  # IDs in dataset
+        n_parameters = 5 + 8 * 2 + 2
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
@@ -196,7 +200,7 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(len(ids), 1)
         self.assertEqual(ids[0], 'ID 40')
 
-        n_parameters = 6
+        n_parameters = 7
         parameters = result['Parameter'].unique()
         self.assertEqual(len(parameters), n_parameters)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
@@ -204,7 +208,8 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(parameters[2], 'myokit.kappa')
         self.assertEqual(parameters[3], 'myokit.lambda_0')
         self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Noise param 1')
+        self.assertEqual(parameters[5], 'Sigma base')
+        self.assertEqual(parameters[6], 'Sigma rel.')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -233,7 +238,7 @@ class TestOptimisationController(unittest.TestCase):
 
         # One ID for each prefix
         ids = result['ID'].unique()
-        self.assertEqual(len(ids), 9)  # nids + 'Pooled'
+        self.assertEqual(len(ids), 11)  # nids + 'Pooled'
         self.assertEqual(ids[0], 'Pooled')
         self.assertEqual(ids[1], 'ID ' + str(self.ids[0]))
         self.assertEqual(ids[2], 'ID ' + str(self.ids[1]))
@@ -243,16 +248,18 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
         self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
         self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
+        self.assertEqual(ids[9], 'Mean')
+        self.assertEqual(ids[10], 'Std.')
 
-        n_parameters = 6
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), n_parameters)
+        self.assertEqual(len(parameters), 7)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.drug_concentration')
         self.assertEqual(parameters[2], 'myokit.kappa')
         self.assertEqual(parameters[3], 'myokit.lambda_0')
         self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Noise param 1')
+        self.assertEqual(parameters[5], 'Sigma base')
+        self.assertEqual(parameters[6], 'Sigma rel.')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -276,13 +283,15 @@ class TestOptimisationController(unittest.TestCase):
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         problem.set_mechanistic_model(model)
-        problem.set_error_model([pints.GaussianLogLikelihood])
+        problem.set_error_model([
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()])
         problem.fix_parameters({
             'myokit.drug_concentration': 1,
             'myokit.kappa': 1,
             'myokit.lambda_0': 1,
             'myokit.lambda_1': 1,
-            'Noise param 1': 1})
+            'Sigma base': 1,
+            'Sigma rel.': 1})
         problem.set_log_prior([pints.UniformLogPrior(1E-3, 1E1)])
         log_posteriors = problem.get_log_posteriors()
 
@@ -343,10 +352,10 @@ class TestSamplingController(unittest.TestCase):
         model = erlo.PharmacodynamicModel(path)
         problem.set_mechanistic_model(model)
 
-        error_models = [pints.GaussianLogLikelihood]
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         problem.set_error_model(error_models)
 
-        n_parameters = 6
+        n_parameters = 7
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
@@ -359,11 +368,12 @@ class TestSamplingController(unittest.TestCase):
             erlo.PooledModel(),
             erlo.HeterogeneousModel(),
             erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel()]
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel()]
         problem.set_population_model(pop_models)
 
-        n_parameters = 1 + 1 + 8 + 1 + 10 + 1
+        n_parameters = 5 + 8 * 2 + 2
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
@@ -396,15 +406,15 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(len(ids), 1)
         self.assertEqual(ids[0], 'ID 40')
 
-        n_parameters = 6
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), n_parameters)
+        self.assertEqual(len(parameters), 7)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.drug_concentration')
         self.assertEqual(parameters[2], 'myokit.kappa')
         self.assertEqual(parameters[3], 'myokit.lambda_0')
         self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Noise param 1')
+        self.assertEqual(parameters[5], 'Sigma base')
+        self.assertEqual(parameters[6], 'Sigma rel.')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -446,15 +456,15 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(ids[9], 'Mean')
         self.assertEqual(ids[10], 'Std.')
 
-        n_parameters = 6
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), n_parameters)
+        self.assertEqual(len(parameters), 7)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.drug_concentration')
         self.assertEqual(parameters[2], 'myokit.kappa')
         self.assertEqual(parameters[3], 'myokit.lambda_0')
         self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Noise param 1')
+        self.assertEqual(parameters[5], 'Sigma base')
+        self.assertEqual(parameters[6], 'Sigma rel.')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -490,7 +500,7 @@ class TestSamplingController(unittest.TestCase):
         new_params = sampler._initial_params
 
         n_ids = 1
-        n_parameters = 6
+        n_parameters = 7
         self.assertEqual(
             default_params.shape, (n_ids, n_runs, n_parameters))
         self.assertEqual(new_params.shape, (n_ids, n_runs, n_parameters))

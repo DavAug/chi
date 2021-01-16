@@ -21,25 +21,41 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # Set up toy problem
-        data = erlo.DataLibrary().lung_cancer_control_group()
-        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
-        data = data[mask]
-        data = data[['ID', 'Time', 'Measurement']].rename(
-            columns={'Measurement': 'Biomarker'})
-        cls.n_ids = len(data['ID'].unique())
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
+        # Create data
+        obs_1 = [1, 1.1, 1.2, 1.3]
+        times_1 = [1, 2, 3, 4]
+        obs_2 = [2, 2.1, 2.2]
+        times_2 = [2, 5, 6]
+        cls.observations = [obs_1, obs_2]
+        cls.times = [times_1, times_2]
 
-        problem = erlo.ProblemModellingController(data)
-        problem.set_mechanistic_model(model)
-        problem.set_error_model([pints.GaussianLogLikelihood])
+        # Set up mechanistic and error models
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        cls.model = erlo.PharmacokineticModel(path)
+        cls.model.set_administration('central', direct=False)
+        cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+        cls.error_models = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
 
-        # Instantiate HierarchicalLogLikelihood from likelihoods in problem
-        cls.log_likelihoods = list(problem._log_likelihoods.values())
-        cls.n_individual_params = cls.log_likelihoods[0].n_parameters()
+        # Create log-likelihoods
+        cls.log_likelihoods = [
+            erlo.LogLikelihood(
+                cls.model, cls.error_models, cls.observations, cls.times),
+            erlo.LogLikelihood(
+                cls.model, cls.error_models, cls.observations, cls.times)]
+
+        # Create population models
         cls.population_models = [
-            erlo.PooledModel()] * cls.n_individual_params
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+
         cls.hierarchical_model = erlo.HierarchicalLogLikelihood(
             cls.log_likelihoods, cls.population_models)
 
@@ -51,13 +67,35 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
                 log_likelihoods, self.population_models)
 
         # Log-likelihoods are defined on different parameter spaces
-        log_likelihoods = [pints.toy.AnnulusLogPDF(), pints.toy.ConeLogPDF(10)]
-        with self.assertRaisesRegex(ValueError, 'All log-likelihoods have'):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central', direct=False)
+        error_models = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        log_likelihoods = [
+            self.log_likelihoods[0],
+            erlo.LogLikelihood(
+                model, error_models, self.observations[0], self.times[0])]
+
+        with self.assertRaisesRegex(ValueError, 'The number of parameters'):
+            erlo.HierarchicalLogLikelihood(
+                log_likelihoods, self.population_models)
+
+        # The log-likelihood parameter names differ
+        model.set_outputs(['central.drug_concentration', 'dose.drug_amount'])
+        error_models = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
+        log_likelihoods = [
+            self.log_likelihoods[0],
+            erlo.LogLikelihood(
+                model, error_models, self.observations, self.times)]
+
+        with self.assertRaisesRegex(ValueError, 'The parameter names'):
             erlo.HierarchicalLogLikelihood(
                 log_likelihoods, self.population_models)
 
         # Population models are not erlotinib.PopulationModel
-        population_models = ['bad', 'type'] + ['match dimension'] * 4
+        population_models = ['bad', 'type'] + ['match dimension'] * 7
         with self.assertRaisesRegex(ValueError, 'The population models have'):
             erlo.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
@@ -71,133 +109,218 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
                 self.log_likelihoods, population_models)
 
     def test_call(self):
+        # Test case I: All parameters pooled
+        model = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=self.log_likelihoods,
+            population_models=[erlo.PooledModel()] * 9)
+
         # Create reference model
         pooled_log_pdf = pints.PooledLogPDF(
-            self.log_likelihoods, pooled=[True]*6)
+            self.log_likelihoods, pooled=[True]*9)
 
         # Test case I.1
-        parameters = [1, 1, 1, 1, 1, 1]
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         score = pooled_log_pdf(parameters)
 
-        self.assertEqual(self.hierarchical_model(parameters), score)
+        self.assertEqual(model(parameters), score)
 
         # Test case I.2
-        parameters = [10, 1, 0.1, 1, 3, 1]
+        parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
         score = pooled_log_pdf(parameters)
 
-        self.assertEqual(self.hierarchical_model(parameters), score)
+        self.assertEqual(model(parameters), score)
 
-        # Test case II.1: non-pooled model
-        pop_models = [
-            erlo.HeterogeneousModel()] \
-            * self.n_individual_params
+        # Test case II.1: Heterogeneous model
         likelihood = erlo.HierarchicalLogLikelihood(
-            self.log_likelihoods, pop_models)
+            log_likelihoods=self.log_likelihoods,
+            population_models=[
+                erlo.HeterogeneousModel()] * 9)
 
         # Compute score from individual likelihoods
-        parameters = [1, 1, 1, 1, 1, 1]
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         score = 0
         for ll in self.log_likelihoods:
             score += ll(parameters)
 
-        n_parameters = 6
-        n_ids = 8
+        n_parameters = 9
+        n_ids = 2
         parameters = [1] * n_parameters * n_ids
         self.assertEqual(likelihood(parameters), score)
 
         # Test case II.2
         # Compute score from individual likelihoods
-        parameters = [10, 1, 0.1, 1, 3, 1]
+        parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
         score = 0
         for ll in self.log_likelihoods:
             score += ll(parameters)
 
-        n_ids = 8
         parameters = \
             [parameters[0]] * n_ids + \
             [parameters[1]] * n_ids + \
             [parameters[2]] * n_ids + \
             [parameters[3]] * n_ids + \
             [parameters[4]] * n_ids + \
-            [parameters[5]] * n_ids
+            [parameters[5]] * n_ids + \
+            [parameters[6]] * n_ids + \
+            [parameters[7]] * n_ids + \
+            [parameters[8]] * n_ids
         self.assertEqual(likelihood(parameters), score)
 
-        # Test case III.1: Non-trivial population model.
-        pop_models = \
-            [erlo.LogNormalModel()] + \
-            [erlo.PooledModel()] \
-            * (self.n_individual_params - 1)
-        likelihood = erlo.HierarchicalLogLikelihood(
-            self.log_likelihoods, pop_models)
+        # Test case III.1: Non-trivial population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
 
-        ref_likelihood_part_one = erlo.LogNormalModel()
-        ref_likelihood_part_two = pints.PooledLogPDF(
-            self.log_likelihoods, pooled=[False] + [True]*5)
+        # Create reference pop model
+        ref_pop_model = erlo.LogNormalModel()
+        indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
 
-        parameters = [10, 1, 0.1, 1, 3, 1]
-        pop_params = [1, 1]
-
-        n_ids = 8
-        parameters = \
-            [parameters[0]] * n_ids + \
-            pop_params + \
-            [parameters[1]] + \
-            [parameters[2]] + \
-            [parameters[3]] + \
-            [parameters[4]] + \
-            [parameters[5]]
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
 
         score = \
-            ref_likelihood_part_one.compute_log_likelihood(
-                pop_params, parameters[:n_ids]) + \
-            ref_likelihood_part_two(parameters[:n_ids] + parameters[n_ids+2:])
+            ref_pop_model.compute_log_likelihood(
+                parameters=pop_params,
+                observations=[0.1, 0.2]) + \
+            self.log_likelihoods[0](indiv_parameters_1) + \
+            self.log_likelihoods[1](indiv_parameters_2)
 
         self.assertNotEqual(score, -np.inf)
-        self.assertAlmostEqual(likelihood(parameters), score)
+        self.assertAlmostEqual(self.hierarchical_model(parameters), score)
 
         # Test case III.2: Returns -np.inf if individuals are far away from
         # pop distribution
-        parameters = [100000, 1, 0.1, 1, 3, 1]
-        pop_params = [0, 0.00001]
+        indiv_parameters_1 = [10, 1, 10E20, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 10E-10]
 
-        n_ids = 8
-        parameters = \
-            [parameters[0]] * n_ids + \
-            pop_params + \
-            [parameters[1]] + \
-            [parameters[2]] + \
-            [parameters[3]] + \
-            [parameters[4]] + \
-            [parameters[5]]
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
 
-        self.assertEqual(likelihood(parameters), -np.inf)
+        self.assertEqual(self.hierarchical_model(parameters), -np.inf)
 
-    def test_get_log_likelihoods(self):
-        log_likelihoods = self.hierarchical_model.get_log_likelihoods()
+    def test_get_id(self):
+        ids = self.hierarchical_model.get_id()
 
-        self.assertEqual(len(log_likelihoods), 8)
-        self.assertIsInstance(log_likelihoods[0], pints.LogPDF)
-        self.assertIsInstance(log_likelihoods[1], pints.LogPDF)
-        self.assertIsInstance(log_likelihoods[2], pints.LogPDF)
-        self.assertIsInstance(log_likelihoods[3], pints.LogPDF)
-        self.assertIsInstance(log_likelihoods[4], pints.LogPDF)
-        self.assertIsInstance(log_likelihoods[5], pints.LogPDF)
-        self.assertIsInstance(log_likelihoods[6], pints.LogPDF)
-        self.assertIsInstance(log_likelihoods[7], pints.LogPDF)
+        self.assertEqual(len(ids), 13)
+        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(ids[1], 'Pooled')
+        self.assertEqual(ids[2], 'automatic-id-1')
+        self.assertEqual(ids[3], 'automatic-id-2')
+        self.assertEqual(ids[4], 'Mean')
+        self.assertEqual(ids[5], 'Std.')
+        self.assertEqual(ids[6], 'Pooled')
+        self.assertEqual(ids[7], 'automatic-id-1')
+        self.assertEqual(ids[8], 'automatic-id-2')
+        self.assertEqual(ids[9], 'Pooled')
+        self.assertEqual(ids[10], 'Pooled')
+        self.assertEqual(ids[11], 'Pooled')
+        self.assertEqual(ids[12], 'Pooled')
+
+    def test_get_parameter_names(self):
+        # Test case I: without ids
+        parameter_names = self.hierarchical_model.get_parameter_names()
+
+        self.assertEqual(len(parameter_names), 13)
+        self.assertEqual(parameter_names[0], 'central.drug_amount')
+        self.assertEqual(parameter_names[1], 'dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'central.size')
+        self.assertEqual(parameter_names[4], 'central.size')
+        self.assertEqual(parameter_names[5], 'central.size')
+        self.assertEqual(parameter_names[6], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[7], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[8], 'myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[9], 'central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[11], 'dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[12], 'dose.drug_amount Sigma rel.')
+
+        # Test case II: with ids
+        parameter_names = self.hierarchical_model.get_parameter_names(
+            include_ids=True)
+
+        self.assertEqual(len(parameter_names), 13)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'automatic-id-1 central.size')
+        self.assertEqual(parameter_names[3], 'automatic-id-2 central.size')
+        self.assertEqual(parameter_names[4], 'Mean central.size')
+        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
+        self.assertEqual(
+            parameter_names[7], 'automatic-id-1 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[8], 'automatic-id-2 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[9], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[11], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
 
     def test_get_population_models(self):
-        population_models = self.hierarchical_model.get_population_models()
+        pop_models = self.hierarchical_model.get_population_models()
+        self.assertEqual(len(pop_models), 9)
+        self.assertIsInstance(pop_models[0], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[1], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[2], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[3], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[4], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[5], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[6], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[7], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[8], erlo.PopulationModel)
 
-        self.assertEqual(len(population_models), 6)
-        self.assertIsInstance(population_models[0], erlo.PopulationModel)
-        self.assertIsInstance(population_models[1], erlo.PopulationModel)
-        self.assertIsInstance(population_models[2], erlo.PopulationModel)
-        self.assertIsInstance(population_models[3], erlo.PopulationModel)
-        self.assertIsInstance(population_models[4], erlo.PopulationModel)
-        self.assertIsInstance(population_models[5], erlo.PopulationModel)
+    def test_n_log_likelihoods(self):
+        n_ids = self.hierarchical_model.n_log_likelihoods()
+        self.assertEqual(n_ids, 2)
 
     def test_n_parameters(self):
-        n_parameters = self.log_likelihoods[0].n_parameters()
+        # 9 individual parameters, from which 1 is modelled heterogeneously,
+        # 1 log-normally and the rest is pooled
+        # And there are 2 individuals
+        n_parameters = 2 + 4 + 1 + 1 + 1 + 1 + 1 + 1 + 1
         self.assertEqual(
             self.hierarchical_model.n_parameters(), n_parameters)
 
@@ -327,17 +450,135 @@ class TestLogLikelihood(unittest.TestCase):
         # Reset number of outputs
         self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
 
-    def test_get_error_models(self):
-        error_models = self.log_likelihood.get_error_models()
+    def test_fix_parameters(self):
+        # Test case I: fix some parameters
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'central.drug_amount': 1,
+            'dose.absorption_rate': 1})
 
+        n_parameters = self.log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 7)
+
+        parameter_names = self.log_likelihood.get_parameter_names()
+        self.assertEqual(len(parameter_names), 7)
+        self.assertEqual(parameter_names[0], 'dose.drug_amount')
+        self.assertEqual(parameter_names[1], 'central.size')
+        self.assertEqual(parameter_names[2], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[3], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[4], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[5], 'dose.drug_amount Sigma base')
+        self.assertEqual(parameter_names[6], 'dose.drug_amount Sigma rel.')
+
+        # Test case II: fix overlapping set of parameters
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'dose.absorption_rate': None,
+            'dose.drug_amount Sigma base': 0.5,
+            'myokit.elimination_rate': 0.3})
+
+        n_parameters = self.log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 6)
+
+        parameter_names = self.log_likelihood.get_parameter_names()
+        self.assertEqual(len(parameter_names), 6)
+        self.assertEqual(parameter_names[0], 'dose.drug_amount')
+        self.assertEqual(parameter_names[1], 'central.size')
+        self.assertEqual(parameter_names[2], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[3], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[4], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[5], 'dose.drug_amount Sigma rel.')
+
+        # Test case III: unfix all parameters
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'central.drug_amount': None,
+            'dose.drug_amount Sigma base': None,
+            'myokit.elimination_rate': None})
+
+        n_parameters = self.log_likelihood.n_parameters()
+        self.assertEqual(n_parameters, 9)
+
+        parameter_names = self.log_likelihood.get_parameter_names()
+        self.assertEqual(len(parameter_names), 9)
+        self.assertEqual(parameter_names[0], 'central.drug_amount')
+        self.assertEqual(parameter_names[1], 'dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[4], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[5], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[6], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[7], 'dose.drug_amount Sigma base')
+        self.assertEqual(parameter_names[8], 'dose.drug_amount Sigma rel.')
+
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.log_likelihood.fix_parameters(name_value_dict)
+
+    def test_get_parameter_names(self):
+        # Test case I: Single output problem
+        parameter_names = self.log_likelihood.get_parameter_names()
+
+        self.assertEqual(len(parameter_names), 9)
+        self.assertEqual(parameter_names[0], 'central.drug_amount')
+        self.assertEqual(parameter_names[1], 'dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[4], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[5], 'central.drug_amount Sigma base')
+        self.assertEqual(parameter_names[6], 'central.drug_amount Sigma rel.')
+        self.assertEqual(parameter_names[7], 'dose.drug_amount Sigma base')
+        self.assertEqual(parameter_names[8], 'dose.drug_amount Sigma rel.')
+
+    def test_get_set_id(self):
+        # Test case I: Check default
+        self.assertIsNone(self.log_likelihood.get_id())
+
+        # Test case II: Set ID
+        _id = '123'
+        self.log_likelihood.set_id(_id)
+        self.assertEqual(self.log_likelihood.get_id(), 'ID ' + _id)
+
+    def test_get_submodels(self):
+        # Test case I: no fixed parameters
+        submodels = self.log_likelihood.get_submodels()
+
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
+        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
         self.assertEqual(len(error_models), 2)
         self.assertIsInstance(error_models[0], erlo.ErrorModel)
         self.assertIsInstance(error_models[1], erlo.ErrorModel)
 
-    def test_get_mechanistic_model(self):
-        mechanistic_model = self.log_likelihood.get_mechanistic_model()
+        # Test case II: some fixed parameters
+        print(self.log_likelihood.get_parameter_names())
+        self.log_likelihood.fix_parameters(name_value_dict={
+            'central.drug_amount': 1,
+            'dose.drug_amount Sigma base': 1})
+        print(self.log_likelihood.get_parameter_names())
+        submodels = self.log_likelihood.get_submodels()
 
+        keys = list(submodels.keys())
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], 'Mechanistic model')
+        self.assertEqual(keys[1], 'Error models')
+
+        mechanistic_model = submodels['Mechanistic model']
         self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+
+        error_models = submodels['Error models']
+        self.assertEqual(len(error_models), 2)
+        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[1], erlo.ErrorModel)
+
+        # Unfix parameter
+        self.log_likelihood.fix_parameters({
+            'central.drug_amount': None,
+            'dose.drug_amount Sigma base': None})
 
     def test_n_parameters(self):
         # Test case I:
@@ -355,6 +596,9 @@ class TestLogLikelihood(unittest.TestCase):
         n_parameters = log_likelihood.n_parameters()
         self.assertEqual(n_parameters, 7)
 
+        # Reset number of outputs
+        self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+
 
 class TestLogPosterior(unittest.TestCase):
     """
@@ -370,9 +614,11 @@ class TestLogPosterior(unittest.TestCase):
         # Create test model
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
-        problem = erlo.InverseProblem(model, times, values)
-        log_likelihood = pints.GaussianLogLikelihood(problem)
+        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        log_likelihood = erlo.LogLikelihood(model, error_model, values, times)
+        log_likelihood.set_id('42')
         log_prior = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
@@ -381,48 +627,52 @@ class TestLogPosterior(unittest.TestCase):
             pints.UniformLogPrior(0, 1))
         cls.log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
 
-    def test_set_id_bad_input(self):
-        # Provide the wrong number of labels
-        labels = ['wrong', 'number']
+        # Create a pints test model
+        problem = erlo.InverseProblem(model, values, times)
+        log_likelihood = pints.GaussianLogLikelihood(problem)
+        log_prior = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(0, 1))
+        cls.pints_log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
 
-        with self.assertRaisesRegex(ValueError, 'If a list of IDs is'):
-            self.log_posterior.set_id(labels)
+    def test_get_id(self):
+        # Test case I: Non-trivial IDs
+        _id = self.log_posterior.get_id()
 
-    def test_set_get_id(self):
-        # Check default
-        self.assertIsNone(self.log_posterior.get_id())
+        self.assertEqual(_id, 'ID 42')
 
-        # Set some id
-        index = 'Test id'
-        self.log_posterior.set_id(index)
+        # Test case II: Trivial ID (because pints likelihood)
+        _id = self.pints_log_posterior.get_id()
 
-        self.assertEqual(self.log_posterior.get_id(), index)
+        self.assertIsNone(_id)
 
-        # Set an ID for each parameter individually
-        labels = [
-            'ID 1', 'ID 2', 'ID 3', 'ID 4', 'ID 5', 'ID 6']
-        self.log_posterior.set_id(labels)
+    def test_get_parameter_names(self):
+        # Test case I: Non-trivial parameters
+        parameter_names = self.log_posterior.get_parameter_names()
 
-        self.assertEqual(self.log_posterior.get_id(), labels)
+        self.assertEqual(len(parameter_names), 7)
+        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
+        self.assertEqual(parameter_names[2], 'myokit.kappa')
+        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
+        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[5], 'Sigma base')
+        self.assertEqual(parameter_names[6], 'Sigma rel.')
 
-    def test_set_get_parameter_names(self):
-        # Check default
-        default = [
-            'Param 1', 'Param 2', 'Param 3', 'Param 4', 'Param 5', 'Param 6']
-        self.assertEqual(self.log_posterior.get_parameter_names(), default)
+        # Test case II: Trivial ID (because pints likelihood)
+        parameter_names = self.pints_log_posterior.get_parameter_names()
 
-        # Set some parameter names
-        names = ['A', 'B', 'C', 'D', 'E', 'F']
-        self.log_posterior.set_parameter_names(names)
-
-        self.assertEqual(self.log_posterior.get_parameter_names(), names)
-
-    def test_set_parameter_names_bad_input(self):
-        # Number of names does not match the number of parameters
-        names = ['too', 'few', 'params']
-
-        with self.assertRaisesRegex(ValueError, 'The list of param'):
-            self.log_posterior.set_parameter_names(names)
+        self.assertEqual(len(parameter_names), 6)
+        self.assertEqual(parameter_names[0], 'Parameter 1')
+        self.assertEqual(parameter_names[1], 'Parameter 2')
+        self.assertEqual(parameter_names[2], 'Parameter 3')
+        self.assertEqual(parameter_names[3], 'Parameter 4')
+        self.assertEqual(parameter_names[4], 'Parameter 5')
+        self.assertEqual(parameter_names[5], 'Parameter 6')
 
 
 class TestReducedLogPDF(unittest.TestCase):

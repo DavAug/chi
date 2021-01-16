@@ -5,6 +5,8 @@
 # full license details.
 #
 
+import copy
+
 import numpy as np
 
 
@@ -49,7 +51,7 @@ class ErrorModel(object):
         """
         Returns the names of the error model parameters.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def n_parameters(self):
         """
@@ -116,8 +118,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     :math:`x^{\text{obs}}` are realisations of the random variable
     :math:`X`.
 
-    The distribution of the observable biomarkers can then be expressed in
-    terms of a Gaussian distribution
+    At each time point :math:`t` the distribution of the observable biomarkers
+    can be expressed in terms of a Gaussian distribution
 
     .. math::
         p(x | \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
@@ -390,7 +392,7 @@ class ReducedErrorModel(object):
             names = names[~self._fixed_params_mask]
             names = list(names)
 
-        return names
+        return copy.copy(names)
 
     def n_fixed_parameters(self):
         """
