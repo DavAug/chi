@@ -88,6 +88,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Test model I: Individual predictive model
         # Create predictive model
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
@@ -96,7 +97,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             mechanistic_model, error_models)
 
         # Create a posterior samples dataframe
-        parameter_names = list(cls.pred_model.get_parameter_names())
+        parameter_names = cls.pred_model.get_parameter_names()
         n_parameters = cls.pred_model.n_parameters()
         iterations = \
             [1] * 2 * n_parameters + \
@@ -114,6 +115,55 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         # Create posterior predictive model
         cls.model = erlo.PosteriorPredictiveModel(
             cls.pred_model, cls.posterior_samples)
+
+        # Test model II: PredictivePopulation model
+        pop_models = [
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel()]
+        cls.pred_pop_model = erlo.PredictivePopulationModel(
+            cls.pred_model, pop_models)
+
+        ids = [
+            'Pooled',
+            1,
+            'Pooled',
+            'Pooled',
+            'Pooled',
+            'Pooled',
+            'Pooled',
+            'Mean',
+            'Std.'] * 6
+        parameter_names = [
+            'myokit.tumour_volume',
+            'myokit.drug_concentration',
+            'myokit.kappa',
+            'myokit.lambda_0',
+            'myokit.lambda_1',
+            'Sigma base',
+            'Sigma rel.',
+            'Sigma rel.',
+            'Sigma rel.']
+        n_parameters = len(parameter_names)
+        iterations = \
+            [1] * 2 * n_parameters + \
+            [2] * 2 * n_parameters + \
+            [3] * 2 * n_parameters
+        runs = [1] * n_parameters + [2] * n_parameters
+        runs = runs * 3
+        cls.pop_post_samples = pd.DataFrame({
+            'ID': ids,
+            'Parameter': parameter_names * 6,
+            'Sample': 42,
+            'Iteration': iterations,
+            'Run': runs})
+
+        cls.pop_model = erlo.PosteriorPredictiveModel(
+            cls.pred_pop_model, cls.pop_post_samples)
 
     def test_bad_instantiation(self):
         # Posterior samples have the wrong type
