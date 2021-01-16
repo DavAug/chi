@@ -162,8 +162,10 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         posterior distribution.
     individual
         The ID of the modelled individual. This argument is used to
-        determine the relevant samples in the dataframe. If ``None``, the
-        first ID in the ID column is selected.
+        determine the relevant samples in the dataframe. If ``None``, either
+        the first ID in the ID column is selected, or if a
+        :class:`PredictivePopulationModel` is provided, the population is
+        modelled.
     param_map
         A dictionary which can be used to map predictive model parameter
         names to the parameter names in the parameter column of the
