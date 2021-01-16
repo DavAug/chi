@@ -131,6 +131,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         ids = [
             'Pooled',
             1,
+            2,
             'Pooled',
             'Pooled',
             'Pooled',
@@ -140,6 +141,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'Std.'] * 6
         parameter_names = [
             'myokit.tumour_volume',
+            'myokit.drug_concentration',
             'myokit.drug_concentration',
             'myokit.kappa',
             'myokit.lambda_0',
