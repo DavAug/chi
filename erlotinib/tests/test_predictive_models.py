@@ -220,7 +220,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         _id = 'Some ID'
         with self.assertRaisesRegex(ValueError, "Individual ID's cannot be"):
             erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, individual=_id)
+                self.pred_pop_model, self.posterior_samples, individual=_id)
 
         # Negative warm-up iterations
         warmup = -10
