@@ -528,7 +528,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertIsNone(self.log_likelihood.get_id())
 
         # Test case II: Set ID
-        _id = 123
+        _id = '123'
         self.log_likelihood.set_id(_id)
         self.assertEqual(self.log_likelihood.get_id(), 'ID ' + _id)
 
