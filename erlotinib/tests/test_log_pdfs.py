@@ -508,6 +508,11 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(parameter_names[7], 'dose.drug_amount Sigma base')
         self.assertEqual(parameter_names[8], 'dose.drug_amount Sigma rel.')
 
+    def test_fix_parameters_bad_input(self):
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.log_likelihood.fix_parameters(name_value_dict)
+
     def test_get_parameter_names(self):
         # Test case I: Single output problem
         parameter_names = self.log_likelihood.get_parameter_names()
@@ -552,7 +557,7 @@ class TestLogLikelihood(unittest.TestCase):
         # Test case II: some fixed parameters
         self.log_likelihood.fix_parameters(name_value_dict={
             'central.drug_amount': 1,
-            'dose.absorption_rate': 1})
+            'Sigma base': 1})
         submodels = self.log_likelihood.get_submodels()
 
         keys = list(submodels.keys())
