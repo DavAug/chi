@@ -373,7 +373,7 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                     samples = np.random.choice(samples, size=n_iters)
 
                 # Add samples to container
-                container[start:end, param_id] = samples.to_numpy()
+                container[start:end, param_id] = samples
 
         # Remember reformated samples
         self._posterior = container
