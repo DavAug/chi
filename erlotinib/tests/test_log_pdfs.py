@@ -299,25 +299,8 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(
             parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
 
-    def test_get_submodels(self):
-        # Test case I: no fixed parameters
-        submodels = self.hierarchical_model.get_submodels()
-
-        keys = list(submodels.keys())
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(keys[0], 'Mechanistic model')
-        self.assertEqual(keys[1], 'Error models')
-        self.assertEqual(keys[2], 'Population models')
-
-        mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
-
-        error_models = submodels['Error models']
-        self.assertEqual(len(error_models), 2)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
-        self.assertIsInstance(error_models[1], erlo.ErrorModel)
-
-        pop_models = submodels['Population models']
+    def test_get_population_models(self):
+        pop_models = self.hierarchical_model.get_population_models()
         self.assertEqual(len(pop_models), 9)
         self.assertIsInstance(pop_models[0], erlo.PopulationModel)
         self.assertIsInstance(pop_models[1], erlo.PopulationModel)
@@ -328,6 +311,10 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertIsInstance(pop_models[6], erlo.PopulationModel)
         self.assertIsInstance(pop_models[7], erlo.PopulationModel)
         self.assertIsInstance(pop_models[8], erlo.PopulationModel)
+
+    def test_n_log_likelihoods(self):
+        n_ids = self.hierarchical_model.n_log_likelihoods()
+        self.assertEqual(n_ids, 2)
 
     def test_n_parameters(self):
         # 9 individual parameters, from which 1 is modelled heterogeneously,

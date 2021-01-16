@@ -261,17 +261,17 @@ class HierarchicalLogLikelihood(pints.LogPDF):
 
         return names
 
-    def get_submodels(self):
+    def get_population_models(self):
         """
-        Returns the submodels of the log-likelihood in form of a dictionary.
+        Returns the population models.
         """
-        # Get submodels from log-likelihoods
-        submodels = self._log_likelihoods[0].get_submodels()
+        return copy.copy(self._population_models)
 
-        # Add population models
-        submodels['Population models'] = self._population_models
-
-        return submodels
+    def n_log_likelihoods(self):
+        """
+        Returns the number of individual likelihoods.
+        """
+        return len(self._log_likelihoods)
 
     def n_parameters(self):
         """
