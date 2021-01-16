@@ -656,17 +656,12 @@ class LogLikelihood(pints.LogPDF):
         Parameters
         ----------
         label
-            ID of the log-likelihood.
+            Integer value which is used as ID for the log-likelihood.
         """
-        _id = str(label)
+        label = int(label)
 
-        # Make sure that the ID is a single word, i.e. does not include spaces
-        if ' ' in _id:
-            raise ValueError(
-                'The ID cannot contain spaces.')
-
-        # Remember ID
-        self._id = str(label)
+        # Construct ID as <ID: #> for convenience
+        self._id = 'ID ' + str(label)
 
 
 class LogPosterior(pints.LogPosterior):
