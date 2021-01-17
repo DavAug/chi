@@ -360,7 +360,9 @@ class LogLikelihood(pints.LogPDF):
         super(LogLikelihood, self).__init__()
 
         # Check inputs
-        if not isinstance(mechanistic_model, erlo.MechanisticModel):
+        if not isinstance(
+                mechanistic_model,
+                (erlo.MechanisticModel, erlo.ReducedMechanisticModel)):
             raise TypeError(
                 'The mechanistic model as to be an instance of a '
                 'erlotinib.MechanisticModel.')
@@ -375,7 +377,8 @@ class LogLikelihood(pints.LogPDF):
                 'model output.')
 
         for error_model in error_models:
-            if not isinstance(error_model, erlo.ErrorModel):
+            if not isinstance(
+                    error_model, (erlo.ErrorModel, erlo.ReducedErrorModel)):
                 raise TypeError(
                     'The error models have to instances of a '
                     'erlotinib.ErrorModel.')

@@ -561,13 +561,16 @@ class PredictiveModel(object):
         super(PredictiveModel, self).__init__()
 
         # Check inputs
-        if not isinstance(mechanistic_model, erlo.MechanisticModel):
+        if not isinstance(
+                mechanistic_model,
+                (erlo.MechanisticModel, erlo.ReducedErrorModel)):
             raise TypeError(
                 'The mechanistic model has to be an instance of a '
                 'erlotinib.MechanisticModel.')
 
         for error_model in error_models:
-            if not isinstance(error_model, erlo.ErrorModel):
+            if not isinstance(
+                    error_model, (erlo.ErrorModel, erlo.ReducedErrorModel)):
                 raise TypeError(
                     'All error models have to be instances of a '
                     'erlotinib.ErrorModel.')
