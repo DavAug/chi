@@ -403,8 +403,10 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         # If indvidual is not None, mask and return samples
         # (This only happens for an individual's PredictiveModel)
         if individual is not None:
-            # Mask samples for individual
-            mask = posterior_samples[id_key] == individual
+            # Mask samples for individual (pooled models are also accepted)
+            mask_id = posterior_samples[id_key] == individual
+            mask_pooled = posterior_samples[id_key] == 'Pooled'
+            mask = mask_id | mask_pooled
             posterior_samples = posterior_samples[mask]
 
             return posterior_samples
@@ -563,7 +565,7 @@ class PredictiveModel(object):
         # Check inputs
         if not isinstance(
                 mechanistic_model,
-                (erlo.MechanisticModel, erlo.ReducedErrorModel)):
+                (erlo.MechanisticModel, erlo.ReducedMechanisticModel)):
             raise TypeError(
                 'The mechanistic model has to be an instance of a '
                 'erlotinib.MechanisticModel.')
