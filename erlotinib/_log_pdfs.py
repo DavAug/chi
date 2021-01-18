@@ -407,9 +407,9 @@ class LogLikelihood(pints.LogPDF):
                 'with the measurement time points for each of the mechanistic '
                 'model outputs.')
 
-        # Transform observations and times to numpy arrays
-        observations = [np.array(obs) for obs in observations]
-        times = [np.array(t) for t in times]
+        # Transform observations and times to read-only arrays
+        observations = [pints.vector(obs) for obs in observations]
+        times = [pints.vector(t) for t in times]
 
         # Make sure that the observation-time pairs match
         for output_id, output_times in enumerate(times):
