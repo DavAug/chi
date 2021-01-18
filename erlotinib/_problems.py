@@ -171,64 +171,74 @@ class ProblemModellingController(object):
         column. If ``None`` no dose is administered. Defaults to ``None``.
     """
 
-    def __init__(
-            self, data, id_key='ID', time_key='Time', biom_keys=['Biomarker'],
-            dose_key=None, dose_duration_key=None):
+    def __init__(self, mechanistic_model, error_models, outputs=None):
         super(ProblemModellingController, self).__init__()
 
-        # Check input format
-        if not isinstance(data, pd.DataFrame):
+        # Check inputs
+        if not isinstance(mechanistic_model, erlo.MechanisticModel):
+            raise TypeError(
+                'The mechanistic model has to be an instance of a '
+                'erlotinib.MechanisticModel.')
+
+        if not isinstance(error_models, list):
+            error_models = [error_models]
+
+        for error_model in error_models:
+            if not isinstance(error_model, erlo.ErrorModel):
+                raise TypeError(
+                    'All error models have to be instances of a '
+                    'erlotinib.ErrorModel.')
+
+        # Copy mechanistic model
+        mechanistic_model = copy.deepcopy(mechanistic_model)
+
+        # Set outputs
+        if outputs is not None:
+            mechanistic_model.set_outputs(outputs)
+
+        # Get number of outputs
+        n_outputs = mechanistic_model.n_outputs()
+
+        if len(error_models) != n_outputs:
             raise ValueError(
-                'Data has to be pandas.DataFrame.')
+                'Wrong number of error models. One error model has to be '
+                'provided for each mechanistic error model.')
 
-        keys = [id_key, time_key] + biom_keys
-        if dose_key is not None:
-            keys += [dose_key]
-        if dose_duration_key is not None:
-            keys += [dose_duration_key]
+        # Copy error models
+        error_models = [copy.copy(error_model) for error_model in error_models]
 
-        for key in keys:
-            if key not in data.keys():
-                raise ValueError(
-                    'Data does not have the key <' + str(key) + '>.')
-
-        self._id_key, self._time_key = [id_key, time_key]
-        self._biom_keys = biom_keys
-        self._data = data[keys]
-
-        # Make sure data is formatted correctly
-        self._clean_data(dose_key, dose_duration_key)
-        self._ids = self._data[self._id_key].unique()
-
-        # Extract dosing regimens
-        self._applied_regimens = None
-        if dose_key is not None:
-            self._applied_regimens = self._extract_dosing_regimens(
-                dose_key, dose_duration_key)
+        # Remember models
+        self._mechanistic_model = mechanistic_model
+        self._error_models = error_models
 
         # Set defaults
-        self._mechanistic_model = None
-        self._log_likelihoods = None
         self._population_models = None
         self._log_prior = None
-        self._n_parameters = None
-        self._parameter_names = None
-        self._individual_parameter_names = None
+        self._data = None
+        self._dosing_regimens = None
+
+        # Set parameter names and number of parameters
+        self._n_parameters, self._parameter_names = \
+            self._get_number_and_parameter_names()
 
     def _clean_data(self, dose_key, dose_duration_key):
         """
         Makes sure that the data is formated properly.
 
-        1. ids can be converted to strings
+        1. ids are strings
         2. time are numerics or NaN
-        3. biomarker are numerics or NaN
-        4. dose are numerics or NaN
-        5. duration are numerics or NaN
+        3. biomarkers are strings
+        4. measurements are numerics or NaN
+        5. dose are numerics or NaN
+        6. duration are numerics or NaN
         """
         # Create container for data
-        columns = [self._id_key, self._time_key] + self._biom_keys
+        columns = [
+            self._id_key, self._time_key, self._biom_key, self._meas_key]
         if dose_key is not None:
             columns += [dose_key]
+        if dose_duration_key is not None:
+            columns += [dose_duration_key]
         data = pd.DataFrame(columns=columns)
 
         # Convert IDs to strings
@@ -238,9 +248,12 @@ class ProblemModellingController(object):
         # Convert times to numerics
         data[self._time_key] = pd.to_numeric(self._data[self._time_key])
 
-        # Convert biomarkers to numerics
-        for biom_key in self._biom_keys:
-            data[biom_key] = pd.to_numeric(self._data[biom_key])
+        # Convert biomarkers to strings
+        data[self._biom_key] = self._data[self._biom_key].astype(
+            "string")
+
+        # Convert measurements to numerics
+        data[self._meas_key] = pd.to_numeric(self._data[self._meas_key])
 
         # Convert dose to numerics
         if dose_key is not None:
@@ -254,7 +267,7 @@ class ProblemModellingController(object):
 
         self._data = data
 
-    def _create_log_likelihoods(self, error_models):
+    def _create_log_likelihoods(self):
         """
         Returns a dict of log-likelihoods, one for each individual in the
         dataset. The keys are the individual IDs and the values are the
@@ -265,19 +278,18 @@ class ProblemModellingController(object):
         for individual in self._ids:
             # Set dosing regimen
             try:
-                self._mechanistic_model._sim.set_protocol(
-                    self._applied_regimens[individual])
+                self._mechanistic_model.simulator.set_protocol(
+                    self._dosing_regimens[individual])
             except TypeError:
                 # TypeError is raised when applied regimens is still None,
                 # i.e. no doses were defined by the datasets.
                 pass
 
-            log_likelihoods.append(self._create_log_likelihood(
-                individual, error_models))
+            log_likelihoods.append(self._create_log_likelihood(individual))
 
         return log_likelihoods
 
-    def _create_log_likelihood(self, individual, error_models):
+    def _create_log_likelihood(self, individual):
         """
         Gets the relevant data for the individual and returns the resulting
         erlotinib.LogLikelihood.
@@ -286,21 +298,27 @@ class ProblemModellingController(object):
         times = []
         observations = []
         mask = self._data[self._id_key] == individual
-        data = self._data[mask][[self._time_key] + self._biom_keys]
-        for biom_key in self._biom_keys:
+        data = self._data[mask][
+            [self._time_key, self._biom_key, self._meas_key]]
+        for output in self._mechanistic_model.outputs():
+            # Mask data for biomarker
+            biomarker = self._output_biomarker_dict[output]
+            mask = data[self._biom_key] == biomarker
+            temp_df = data[mask]
+
             # Filter times and observations for non-NaN entries
-            mask = data[biom_key].notnull()
-            biomarker_data = data[[self._time_key, biom_key]][mask]
-            mask = biomarker_data[self._time_key].notnull()
-            biomarker_data = biomarker_data[mask]
+            mask = temp_df[self._meas_key].notnull()
+            temp_df = temp_df[[self._time_key, self._meas_key]][mask]
+            mask = temp_df[self._time_key].notnull()
+            temp_df = temp_df[mask]
 
             # Collect data for output
-            times.append(biomarker_data[self._time_key].to_numpy())
-            observations.append(biomarker_data[biom_key].to_numpy())
+            times.append(temp_df[self._time_key].to_numpy())
+            observations.append(temp_df[self._meas_key].to_numpy())
 
         # Create log-likelihood and set ID to individual
         log_likelihood = erlo.LogLikelihood(
-            self._mechanistic_model, error_models, observations, times)
+            self._mechanistic_model, self._error_models, observations, times)
         log_likelihood.set_id(individual)
 
         return log_likelihood
@@ -352,24 +370,46 @@ class ProblemModellingController(object):
 
         return regimens
 
-    def _set_population_model_parameter_names(self):
+    def _get_number_and_parameter_names(self, exclude_pop_model=False):
         """
-        Sets the parameter names of the (complete) population model.
+        Returns the number and names of the log-likelihood.
 
-        Parameters are named as
-            ID: <ID> <mechanistic-error model param name>,
-                if n_bottom_parameter = nids
-            <top_parameter_name> <mechanistic-error model param name>
-                for any top parameter
+        The parameters of the HierarchicalLogLikelihood depend on the
+        data, and the population model. So unless both are set, the
+        parameters will reflect the parameters of the individual
+        log-likelihoods.
         """
-        # Get number of individuals
+        # Get mechanistic model parameters
+        parameter_names = self._mechanistic_model.parameters()
+
+        # Get error model parameters
+        n_outputs = self._mechanistic_model.n_outputs()
+        outputs = self._mechanistic_model.outputs()
+        for output_id, error_model in enumerate(self._error_models):
+            # Get original parameter names
+            names = error_model.get_parameter_names()
+
+            # Prepend output name for multi-output problem
+            if n_outputs > 1:
+                output = outputs[output_id]
+                names = [output + ' ' + name for name in names]
+
+            parameter_names += names
+
+        # Stop here if no population model or data has been set
+        if (self._population_models is None) or (self._data is None) or (
+                exclude_pop_model is True):
+            # Get number of parameters
+            n_parameters = len(parameter_names)
+
+            return (n_parameters, parameter_names)
+
+        # Construct population parameter names
+        pop_parameter_names = []
         n_ids = len(self._ids)
-
-        # Construct parameter names
-        parameter_names = []
         for param_id, pop_model in enumerate(self._population_models):
             # Get mechanistic/error model parameter name
-            name = self._individual_parameter_names[param_id]
+            name = parameter_names[param_id]
 
             # Create names for individual parameters
             n_indiv, _ = pop_model.n_hierarchical_parameters(n_ids)
@@ -377,17 +417,19 @@ class ProblemModellingController(object):
                 # If individual parameters are relevant for the hierarchical
                 # model, append them
                 names = ['ID %s: %s' % (n, name) for n in self._ids]
-                parameter_names += names
+                pop_parameter_names += names
 
             # Create names for population-level parameters
             if pop_model.n_parameters() > 0:
                 top_names = pop_model.get_parameter_names()
                 names = [
                     '%s %s' % (pop_prefix, name) for pop_prefix in top_names]
-                parameter_names += names
+                pop_parameter_names += names
 
-        # Save parameter names
-        self._parameter_names = parameter_names
+        # Get number of parameters
+        n_parameters = len(pop_parameter_names)
+
+        return (n_parameters, pop_parameter_names)
 
     def fix_parameters(self, name_value_dict):
         """
@@ -404,25 +446,46 @@ class ProblemModellingController(object):
             A dictionary with model parameters as keys, and the value to be
             fixed at as values.
         """
-        if self._mechanistic_model is None:
+        # Check type of dictionanry
+        try:
+            name_value_dict = dict(name_value_dict)
+        except (TypeError, ValueError):
             raise ValueError(
-                'The mechanistic model has not been set.')
+                'The name-value dictionary has to be convertable to a python '
+                'dictionary.')
 
-        if self._log_likelihoods is None:
-            raise ValueError(
-                'The error model has not been set.')
+        # Get submodels
+        mechanistic_model = self._mechanistic_model
+        error_models = self._error_models
 
-        # Fix model parameters in each log_likelihood
-        for log_likelihood in self._log_likelihoods:
-            log_likelihood.fix_parameters(name_value_dict)
+        # Convert models to reduced models
+        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        for model_id, error_model in enumerate(error_models):
+            if not isinstance(error_model, erlo.ReducedErrorModel):
+                error_models[model_id] = erlo.ReducedErrorModel(error_model)
+
+        # Fix model parameters
+        mechanistic_model.fix_parameters(name_value_dict)
+        for error_model in error_models:
+            error_model.fix_parameters(name_value_dict)
+
+        # If no parameters are fixed, get original model back
+        if mechanistic_model.n_fixed_parameters() == 0:
+            mechanistic_model = mechanistic_model.mechanistic_model()
+
+        for model_id, error_model in enumerate(error_models):
+            if error_model.n_fixed_parameters() == 0:
+                error_model = error_model.get_error_model()
+                error_models[model_id] = error_model
+
+        # Safe reduced models
+        self._mechanistic_model = mechanistic_model
+        self._error_models = error_models
 
         # Update names and number of parameters
-        self._n_parameters = self._log_likelihoods[0].n_parameters()
-        self._parameter_names = self._log_likelihoods[0].get_parameter_names()
-
-        # Reset other settings that depend on the error model
-        self._population_models = None
-        self._log_prior = None
+        self._n_parameters, self._parameter_names = \
+            self._get_number_and_parameter_names()
 
     def get_dosing_regimens(self):
         """
@@ -431,7 +494,7 @@ class ProblemModellingController(object):
         The dosing regimens are extracted from the dataset if a dose key is
         provided. If no dose key is provided ``None`` is returned.
         """
-        return self._applied_regimens
+        return self._dosing_regimens
 
     def get_log_posteriors(self):
         """
@@ -449,23 +512,16 @@ class ProblemModellingController(object):
         :meth:`set_mechanistic_model`, :meth:`set_error_model` and
         :meth:`set_log_prior`.
         """
-        if self._mechanistic_model is None:
-            raise ValueError(
-                'The mechanistic model has not been set.')
-
-        if self._log_likelihoods is None:
-            raise ValueError(
-                'The error model has not been set.')
-
         if self._log_prior is None:
             raise ValueError(
                 'The log-prior has not been set.')
 
-        log_likelihoods = self._log_likelihoods
+        # Create log-likelihoods
+        log_likelihoods = self._create_log_likelihoods()
         if self._population_models is not None:
             # Compose HierarchicalLogLikelihoods
             log_likelihoods = [erlo.HierarchicalLogLikelihood(
-                self._log_likelihoods, self._population_models)]
+                log_likelihoods, self._population_models)]
 
         # Compose the log-posteriors
         log_posteriors = []
@@ -493,17 +549,11 @@ class ProblemModellingController(object):
         (once for each individual). To get the number of mechanistic and error
         model parameters prior to setting a population model the
         ``exlude_pop_model`` flag can be set to ``True``.
-
-        Parameters
-        ----------
-        exclude_pop_model
-            A boolean flag which determines whether the number of parameters
-            of the full model are returned, or just the number of parameters
-            of the mechanistic and error model, prior to setting a population
-            model.
         """
-        if exclude_pop_model and (self._population_models is not None):
-            return len(self._individual_parameter_names)
+        if exclude_pop_model is True:
+            n_parameters, _ = self._get_number_and_parameter_names(
+                exclude_pop_model=True)
+            return n_parameters
 
         return self._n_parameters
 
@@ -526,86 +576,108 @@ class ProblemModellingController(object):
         for each individual). To get the mechanistic and error model parameters
         prior to setting a population model the ``exlude_pop_model`` flag can
         be set to ``True``.
-
-        Parameters
-        ----------
-        exclude_pop_model
-            A boolean flag which determines whether the parameter names of the
-            full model are returned, or just the mechanistic and error model
-            parameters prior to setting a population model.
         """
-        # If `True`, return the parameter names of an individual model
-        if exclude_pop_model and (self._population_models is not None):
-            return copy.copy(self._individual_parameter_names)
+        if exclude_pop_model is True:
+            _, parameter_names = self._get_number_and_parameter_names(
+                exclude_pop_model=True)
+            return copy.copy(parameter_names)
 
         return copy.copy(self._parameter_names)
 
-    def set_error_model(self, error_models, outputs=None):
+    def get_predictive_model(self, exclude_pop_model=False):
         """
-        Sets the error model for each observed biomarker-model output pair.
-
-        An error model is a subclass of a
-        :class:`pints.ProblemLogLikelihood`. The error models capture the
-        deviations of the measured biomarkers from the outputs of the
-        mechanistic model in form of a probabilistic model.
-
-        Setting the error model, resets the population model, the prior
-        probability distributions for the model parameters, any fixed model
-        parameters, and parameter names.
-
-        Parameters
-        ----------
-
-        error_models
-            A list of :class:`pints.ProblemLikelihood` subclasses which
-            specify the error model for each measured biomarker-model output
-            pair.
-        outputs
-            A list of the model outputs, which maps the error models to the
-            model outputs. By default the error models are assumed to be
-            listed in the same order as the model outputs.
+        #TODO:
+        Returns the predictive model.
         """
-        if self._mechanistic_model is None:
+        # Create predictive model
+        predictive_model = erlo.PredictiveModel(
+            self._mechanistic_model, self._error_models)
+
+        # Return if no population model has been set, or is excluded
+        if (self._population_models is None) or (exclude_pop_model is True):
+            return predictive_model
+
+        # Create predictive population model
+        predictive_model = erlo.PredictivePopulationModel(
+            predictive_model, self._population_models)
+
+        return predictive_model
+
+    def set_data(
+            self, data, output_biomarker_dict=None, id_key='ID',
+            time_key='Time', biom_key='Biomarker', meas_key='Measurement',
+            dose_key='Dose', dose_duration_key='Duration'):
+        """
+        #TODO: add data
+        If no dose or duration information exists, they can be set to None.
+        """
+        # Check input format
+        if not isinstance(data, pd.DataFrame):
             raise ValueError(
-                'Before setting an error model for the mechanistic model '
-                'outputs, a mechanistic model has to be set.')
+                'Data has to be pandas.DataFrame.')
 
-        for error_model in error_models:
-            if not isinstance(error_model, erlo.ErrorModel):
+        # If model does not support dose administration, set dose keys to None
+        if isinstance(self._mechanistic_model, erlo.PharmacodynamicModel):
+            dose_key = None
+            dose_duration_key = None
+
+        keys = [id_key, time_key, biom_key, meas_key]
+        if dose_key is not None:
+            keys += [dose_key]
+        if dose_duration_key is not None:
+            keys += [dose_duration_key]
+
+        for key in keys:
+            if key not in data.keys():
                 raise ValueError(
-                    'The error models have to be instances of a '
-                    'erlotinib.ErrorModel.')
+                    'Data does not have the key <' + str(key) + '>.')
 
-        if len(error_models) != self._mechanistic_model.n_outputs():
-            raise ValueError(
-                'The number of error models does not match the number of '
-                'model outputs.')
-
-        if outputs is not None:
-            model_outputs = self._mechanistic_model.outputs()
-            if sorted(list(outputs)) != sorted(model_outputs):
+        # Get default output-biomarker map
+        # (only possible if single output-problem, and only one biomarker in
+        # dataframe)
+        outputs = self._mechanistic_model.outputs()
+        biomarkers = data[biom_key].dropna().unique()
+        if output_biomarker_dict is None:
+            if (len(outputs) > 1) or (len(biomarkers) > 1):
                 raise ValueError(
-                    'The specified outputs do not match the model outputs.')
+                    'If more than one model output is set, or more than one '
+                    'biomarker in the dataframe exists, a output-biomarker '
+                    'map has to be provided.')
 
-            # Sort likelihoods according to outputs
-            ordered = []
-            for output in model_outputs:
-                index = outputs.index(output)
-                ordered.append(error_models[index])
+            # Create trivial map
+            output_biomarker_dict = {outputs[0]: biomarkers[0]}
 
-            error_models = ordered
+        # Check that output-biomarker map is valid
+        for output in outputs:
+            if output not in list(output_biomarker_dict.keys()):
+                raise ValueError(
+                    'The output <' + str(output) + '> could not be identified '
+                    'in the output-biomarker map.')
 
-        # Create one log-likelihood for each individual
-        # (likelihoods are identical except for the data)
-        self._log_likelihoods = self._create_log_likelihoods(error_models)
+            biomarker = output_biomarker_dict[output]
+            if biomarker not in biomarkers:
+                raise ValueError(
+                    'The biomarker <' + str(biomarker) + '> could not be '
+                    'identified in the dataframe.')
 
-        # Update number of parameters and names
-        self._n_parameters = self._log_likelihoods[0].n_parameters()
-        self._parameter_names = self._log_likelihoods[0].get_parameter_names()
+        self._id_key, self._time_key, self._biom_key, self._meas_key = [
+            id_key, time_key, biom_key, meas_key]
+        self._data = data[keys]
+        self._output_biomarker_dict = output_biomarker_dict
 
-        # Reset other settings that depend on the error model
-        self._population_models = None
-        self._log_prior = None
+        # Make sure data is formatted correctly
+        self._clean_data(dose_key, dose_duration_key)
+        self._ids = self._data[self._id_key].unique()
+
+        # Extract dosing regimens
+        self._dosing_regimens = None
+        if dose_key is not None:
+            self._dosing_regimens = self._extract_dosing_regimens(
+                dose_key, dose_duration_key)
+
+        # Update number and names of parameters
+        self._n_parameters, self._parameter_names = \
+            self._get_number_and_parameter_names()
 
     def set_log_prior(self, log_priors, param_names=None):
         """
@@ -636,16 +708,6 @@ class ProblemModellingController(object):
             log-priors to the model parameters.
         """
         # Check inputs
-        if self._mechanistic_model is None:
-            raise ValueError(
-                'Before setting log-priors for the model parameters, a '
-                'mechanistic model has to be set.')
-
-        if self._log_likelihoods is None:
-            raise ValueError(
-                'Before setting log-priors for the model parameters, an '
-                'error model has to be set.')
-
         for log_prior in log_priors:
             if not isinstance(log_prior, pints.LogPrior):
                 raise ValueError(
@@ -668,100 +730,20 @@ class ProblemModellingController(object):
                 'multi-dimensional.')
 
         if param_names is not None:
-            if sorted(list(param_names)) != sorted(self.get_parameter_names()):
+            if sorted(list(param_names)) != sorted(self._parameter_names):
                 raise ValueError(
                     'The specified parameter names do not match the model '
                     'parameter names.')
 
             # Sort log-priors according to parameter names
             ordered = []
-            names = self.get_parameter_names()
-            for name in names:
+            for name in self._parameter_names:
                 index = param_names.index(name)
                 ordered.append(log_priors[index])
 
             log_priors = ordered
 
         self._log_prior = pints.ComposedLogPrior(*log_priors)
-
-    def set_mechanistic_model(self, model, output_biom_map=None):
-        """
-        Sets the mechanistic model of the PKPD modelling problem.
-
-        A mechanistic model is an instance of a
-        :class:`MechanisticModel`.
-
-        The model outputs are mapped to the measured biomarkers in the dataset.
-        By default the first output is mapped to the first biomarker, the
-        second output to the second biomarker, and so on. The output-biomarker
-        map can alternatively also be explicitly specified by a dictionary,
-        with the model output names as keys, and the dataframe's biomarker keys
-        as values.
-
-        Setting the mechanistic model, resets the error model, the population
-        model, the prior probability distributions for the model parameters,
-        any fixed model parameters, and parameter names.
-
-        Parameters
-        ----------
-
-        model
-            A mechanistic model of the pharmacokinetics and/or the
-            pharmacodynamics in form of an instance of a
-            :class:`MechanisticModel`.
-        output_biom_map
-            A dictionary that maps the model outputs to the measured
-            biomarkers. The keys of the dictionary identify the output names
-            of the model, and the values the corresponding biomarker key in
-            the dataset.
-        """
-        if not isinstance(
-                model, (erlo.PharmacokineticModel, erlo.PharmacodynamicModel)):
-            raise ValueError(
-                'The model has to be an instance of a '
-                'erlotinib.PharmacokineticModel, a '
-                'erlotinib.PharmacodynamicModel or a erlotinib.PKPDModel')
-
-        if output_biom_map is not None:
-            try:
-                outputs = list(output_biom_map.keys())
-                biomarkers = list(output_biom_map.values())
-            except AttributeError:
-                raise ValueError(
-                    'The output-biomarker map has to be a dictionary.')
-
-            if sorted(biomarkers) != sorted(self._biom_keys):
-                raise ValueError(
-                    'The provided output-biomarker map does not assign '
-                    'a model output to each biomarker in the dataset.')
-
-            # Set new model outputs
-            model.set_outputs(outputs)
-
-            # Overwrite biomarker keys to have the same order as model outputs
-            self._biom_keys = biomarkers
-
-        # Make sure that there is one model output for each biomarker
-        n_biom = len(self._biom_keys)
-        if model.n_outputs() < n_biom:
-            raise ValueError(
-                'The model does not have enough outputs to model all '
-                'biomarkers in the dataset.')
-
-        # If the model has too many outputs, return only the relevant number
-        # of outputs.
-        outputs = model.outputs()
-        model.set_outputs(outputs[:n_biom])
-
-        # Set mechanistic model
-        self._mechanistic_model = model
-
-        # Reset other settings that depend on the mechanistic model
-        self._log_likelihoods = None
-        self._population_models = None
-        self._log_prior = None
-        self._n_parameters = None
-        self._parameter_names = None
 
     def set_population_model(self, pop_models, params=None):
         """
@@ -779,12 +761,6 @@ class ProblemModellingController(object):
         names of the mechanistic-error model parameters can be retrieved with
         :meth:`get_parameter_names` with ``exclude_pop_model=True``.
 
-        If not all model parameters need to be modelled by a population model,
-        and can vary independently between individuals, a list of parameter
-        names can be specified with ``params``. The list of parameters has to
-        be of the same length as the list of population models, and specifies
-        the population model-model parameter map.
-
         Setting a population model resets the log-prior to ``None``.
 
         Parameters
@@ -800,16 +776,6 @@ class ProblemModellingController(object):
             to the parameter names.
         """
         # Check inputs
-        if self._mechanistic_model is None:
-            raise ValueError(
-                'Before setting a population model for the model parameters, '
-                'a mechanistic model has to be set.')
-
-        if self._log_likelihoods is None:
-            raise ValueError(
-                'Before setting a population model for the model parameters, '
-                'an error model has to be set.')
-
         for pop_model in pop_models:
             if not isinstance(pop_model, erlo.PopulationModel):
                 raise ValueError(
@@ -817,44 +783,38 @@ class ProblemModellingController(object):
                     'erlotinib.PopulationModel.')
 
         # Get individual parameter names
-        parameter_names = self._parameter_names
-        if self._population_models is not None:
-            # If population model has been set before, parameter names is
-            # population parameters and not individual ones
-            parameter_names = self._individual_parameter_names
-
-        # Sort inputs according to `params` and fill blanks
-        n_individual_parameters = len(parameter_names)
-        if params is not None:
-            # Create default population model container
-            default_pop_models = [
-                erlo.HeterogeneousModel()] * n_individual_parameters
-
-            # Map population models according to parameter names
-            for param_id, name in enumerate(params):
-                try:
-                    index = parameter_names.index(name)
-                except ValueError:
-                    raise ValueError(
-                        'The parameter <' + str(name) + '> could not be '
-                        'identified in the model')
-                default_pop_models[index] = pop_models[param_id]
-
-            pop_models = default_pop_models
+        n_parameters, parameter_names = self._get_number_and_parameter_names(
+            exclude_pop_model=True)
 
         # Make sure that each parameter is assigned to a population model
-        if len(pop_models) != n_individual_parameters:
+        if len(pop_models) != n_parameters:
             raise ValueError(
                 'If no parameter names are specified, exactly one population '
                 'model has to be provided for each free parameter.')
 
+        # Sort inputs according to `params`
+        if params is not None:
+            # Create default population model container
+            ordered_pop_models = []
+
+            # Map population models according to parameter names
+            for name in parameter_names:
+                try:
+                    index = params.index(name)
+                except ValueError:
+                    raise ValueError(
+                        'The parameter <' + str(name) + '> could not be '
+                        'identified in the model')
+                ordered_pop_models.append(pop_models[index])
+
+            pop_models = ordered_pop_models
+
         # Save individual parameter names and population models
-        self._individual_parameter_names = parameter_names
         self._population_models = copy.copy(pop_models)
 
         # Update parameter names and number of parameters
-        self._set_population_model_parameter_names()
-        self._n_parameters = len(self._parameter_names)
+        self._n_parameters, self._parameter_names = \
+            self._get_number_and_parameter_names()
 
         # Set prior to default
         self._log_prior = None
