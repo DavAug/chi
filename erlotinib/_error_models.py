@@ -80,7 +80,7 @@ class ErrorModel(object):
         """
         raise NotImplementedError
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Sets the names of the error model parameters.
 
@@ -88,7 +88,8 @@ class ErrorModel(object):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
         raise NotImplementedError
 
@@ -251,7 +252,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         return samples
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Sets the names of the error model parameters.
 
@@ -259,8 +260,14 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = ['Sigma base', 'Sigma rel.']
+            return None
+
         if len(names) != self._n_parameters:
             raise ValueError(
                 'Length of names does not match n_parameters.')
@@ -449,16 +456,23 @@ class ReducedErrorModel(object):
 
         return sample
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Assigns names to the parameters. By default the the default parameter
-        names of the :class:`ErrorModel` are kept.
+        names of the :class:`ErrorModel` are kept. If ``None``, parameter
+        names are reset to defaults.
 
         Parameters
         ----------
         names
             A dictionary that maps the current parameter names to new names.
         """
+        if names is None:
+            # Reset names to defaults
+            self._error_model.set_parameter_names()
+            self._parameter_names = self._error_model.get_parameter_names()
+            return None
+
         # Check type
         try:
             names = dict(names)
