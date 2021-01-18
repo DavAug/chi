@@ -409,7 +409,14 @@ class LogLikelihood(pints.LogPDF):
 
         # Transform observations and times to read-only arrays
         observations = [pints.vector(obs) for obs in observations]
-        times = [pints.vector(t) for t in times]
+        times = [pints.vector(ts) for ts in times]
+
+        # Make sure times are strictly increasing
+        for ts in times:
+            if np.any(ts < 0):
+                raise ValueError('Times cannot be negative.')
+            if np.any(ts[:-1] > ts[1:]):
+                raise ValueError('Times must be increasing.')
 
         # Make sure that the observation-time pairs match
         for output_id, output_times in enumerate(times):
@@ -417,11 +424,6 @@ class LogLikelihood(pints.LogPDF):
                 raise ValueError(
                     'The observations and times have to be of the same '
                     'dimension.')
-
-            if observations[output_id].ndim != 1:
-                raise ValueError(
-                    'The observations for each output have to be provided '
-                    'as a one dimensional array-like object.')
 
             # Sort times and observations
             order = np.argsort(output_times)
@@ -509,7 +511,7 @@ class LogLikelihood(pints.LogPDF):
             unique_times += list(output_times)
         unique_times = set(unique_times)
         unique_times = sorted(unique_times)
-        unique_times = np.array(unique_times)
+        unique_times = pints.vector(unique_times)
 
         # Create a container for the observation masks
         n_outputs = len(times)
@@ -531,7 +533,7 @@ class LogLikelihood(pints.LogPDF):
                     mask = unique_times == time
                     obs_masks[output_id, mask] = True
 
-        self._times = unique_times
+        self._times = pints.vector(unique_times)
         self._obs_masks = obs_masks
 
     def _set_number_and_parameter_names(self):
