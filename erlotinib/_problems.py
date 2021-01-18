@@ -134,41 +134,25 @@ class InverseProblem(object):
 
 class ProblemModellingController(object):
     """
-    A controller class which simplifies the modelling process of a PKPD
-    dataset.
+    A problem modelling controller which simplifies the model building process
+    of a pharmacokinetic and pharmacodynamic problem.
 
-    The class is instantiated with a PKPD dataset in form of a
-    :class:`pandas.DataFrame`. This dataframe is expected to have an ID column,
-    a time column, possibly several biomarker columns, and optionally a dose
-    column. By default the keys for the columns are assumed to be ``ID``,
-    ``Time``, and (for just one biomarker) ``Biomarker``. The dose key is by
-    default ``None``, indicating that no dose information is contained in the
-    dataset. If the keys in the dataset deviate from the defaults, they can be
-    specified with the respective key arguments.
-
-    The ProblemModellingController simplifies the process of generating a
-    :class:`LogPosterior` for parameters of a model that describes the PKPD
-    dataset. Such a model consists of a mechanistic model, an error model, and
-    optionally a population model.
+    The class is instantiated with an instance of a :class:`MechanisticModel`
+    and one instance of an :class:`ErrorModel` for each mechanistic model
+    output.
 
     Parameters
     ----------
-    data
-        A :class:`pandas.DataFrame` with the time series data in form of
-        an ID, time, and (multiple) biomarker columns.
-    id_key
-        Key label of the :class:`DataFrame` which specifies the ID column.
-        The ID refers to the identity of an individual. Defaults to
-        ``'ID'``.
-    time_key
-        Key label of the :class:`DataFrame` which specifies the time
-        column. Defaults to ``'Time'``.
-    biom_keys
-        A list of key labels of the :class:`DataFrame` which specifies the PK
-        or PD biomarker columns. Defaults to ``['Biomarker']``.
-    dose_key
-        Key label of the :class:`DataFrame` which specifies the dose amount
-        column. If ``None`` no dose is administered. Defaults to ``None``.
+    mechanistic_model
+        An instance of a :class:`MechanisticModel`.
+    error_models
+        A list of :class:`ErrorModel` instances. One error model has to be
+        provided for each mechanistic model output.
+    outputs
+        A list of mechanistic model output names, which can be used to map
+        the error models to mechanistic model outputs. If ``None``, the
+        error models are assumed to be ordered in the same order as
+        :meth:`MechanisticModel.outputs`.
     """
 
     def __init__(self, mechanistic_model, error_models, outputs=None):
@@ -186,7 +170,7 @@ class ProblemModellingController(object):
         for error_model in error_models:
             if not isinstance(error_model, erlo.ErrorModel):
                 raise TypeError(
-                    'All error models have to be instances of a '
+                    'Error models have to be instances of a '
                     'erlotinib.ErrorModel.')
 
         # Copy mechanistic model
