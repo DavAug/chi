@@ -577,6 +577,9 @@ class PredictiveModel(object):
                     'All error models have to be instances of a '
                     'erlotinib.ErrorModel.')
 
+        # Copy mechanistic model
+        mechanistic_model = copy.deepcopy(mechanistic_model)
+
         # Set outputs
         if outputs is not None:
             mechanistic_model.set_outputs(outputs)
@@ -589,7 +592,7 @@ class PredictiveModel(object):
                 'Wrong number of error models. One error model has to be '
                 'provided for each mechanistic error model.')
 
-        # Copy error models, such that renaming doesn't affect input models
+        # Copy error models
         error_models = [copy.copy(error_model) for error_model in error_models]
 
         # Rename error model parameters, if more than one output
