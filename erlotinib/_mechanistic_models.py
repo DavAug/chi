@@ -34,8 +34,8 @@ class MechanisticModel(object):
         # Get time unit
         self._time_unit = self._get_time_unit(model)
 
-        # Create simulator
-        self._sim = myokit.Simulation(model)
+        # Create simulator (intentionally public property)
+        self.simulator = myokit.Simulation(model)
 
     def _get_time_unit(self, model):
         """
@@ -55,7 +55,7 @@ class MechanisticModel(object):
         Sets values of constant model parameters.
         """
         for id_var, var in enumerate(self._const_names):
-            self._sim.set_constant(var, float(parameters[id_var]))
+            self.simulator.set_constant(var, float(parameters[id_var]))
 
     def _set_state(self, parameters):
         """
@@ -63,7 +63,7 @@ class MechanisticModel(object):
         """
         parameters = np.array(parameters)
         parameters = parameters[self._original_order]
-        self._sim.set_state(parameters)
+        self.simulator.set_state(parameters)
 
     def _set_number_and_names(self, model):
         """
@@ -134,7 +134,7 @@ class MechanisticModel(object):
         # Check that outputs are valid
         for output in outputs:
             try:
-                self._sim._model.get(output)
+                self.simulator._model.get(output)
             except KeyError:
                 raise KeyError(
                     'The variable <' + str(output) + '> does not exist in the '
@@ -186,7 +186,7 @@ class MechanisticModel(object):
             values are returned.
         """
         # Reset simulation
-        self._sim.reset()
+        self.simulator.reset()
 
         # Set initial conditions
         self._set_state(parameters[:self._n_states])
@@ -195,7 +195,7 @@ class MechanisticModel(object):
         self._set_const(parameters[self._n_states:])
 
         # Simulate
-        output = self._sim.run(
+        output = self.simulator.run(
             times[-1] + 1, log=self._output_names, log_times=times)
         result = [output[name] for name in self._output_names]
 
@@ -228,7 +228,7 @@ class PharmacodynamicModel(MechanisticModel):
         # Set default pharmacokinetic input variable
         # (Typically drug concentration)
         self._pk_input = None
-        model = self._sim._model
+        model = self.simulator._model
         if model.has_variable('myokit.drug_concentration'):
             self._pk_input = 'myokit.drug_concentration'
 
@@ -308,7 +308,7 @@ class PharmacokineticModel(MechanisticModel):
         super(PharmacokineticModel, self).__init__(sbml_file)
 
         # Remember vanilla model (important for administration reset)
-        self._default_model = self._sim._model.clone()
+        self._default_model = self.simulator._model.clone()
 
         # Set default dose administration
         self._administration = None
@@ -418,7 +418,7 @@ class PharmacokineticModel(MechanisticModel):
         :class:`myokit.Protocol`. If the protocol has not been set, ``None`` is
         returned.
         """
-        return self._sim._protocol
+        return self.simulator._protocol
 
     def set_administration(
             self, compartment, amount_var='drug_amount', direct=True):
@@ -499,7 +499,7 @@ class PharmacokineticModel(MechanisticModel):
 
         # Update simulator
         # (otherwise simulator won't know about pace bound variable)
-        self._sim = myokit.Simulation(model)
+        self.simulator = myokit.Simulation(model)
 
         # Remember type of administration
         self._administration = dict(
@@ -561,7 +561,7 @@ class PharmacokineticModel(MechanisticModel):
         dosing_regimen = myokit.pacing.blocktrain(
             period=period, duration=duration, offset=start, level=dose_rate,
             limit=num)
-        self._sim.set_protocol(dosing_regimen)
+        self.simulator.set_protocol(dosing_regimen)
 
     def set_parameter_names(self, names):
         """
@@ -626,7 +626,7 @@ class PharmacokineticModel(MechanisticModel):
         """
         # Get intermediate variable names
         inter_names = [
-            var.qname() for var in self._sim._model.variables(inter=True)]
+            var.qname() for var in self.simulator._model.variables(inter=True)]
 
         names = inter_names + self._parameter_names
         if name not in names:
@@ -660,6 +660,7 @@ class ReducedMechanisticModel(object):
                 'erlotinib.MechanisticModel')
 
         self._mechanistic_model = mechanistic_model
+        self.simulator = mechanistic_model.simulator
 
         # Set defaults
         self._fixed_params_mask = None
