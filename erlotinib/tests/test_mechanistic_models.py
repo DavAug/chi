@@ -108,6 +108,9 @@ class TestModel(unittest.TestCase):
         self.assertIsInstance(output, np.ndarray)
         self.assertEqual(output.shape, (1, 4))
 
+    def test_simulator(self):
+        self.assertIsInstance(self.model.simulator, myokit.Simulation)
+
 
 class TestPharmacodynamicModel(unittest.TestCase):
     """
@@ -708,6 +711,10 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(sim[0], ref_sim[0])
         self.assertEqual(sim[1], ref_sim[1])
         self.assertEqual(sim[2], ref_sim[2])
+
+    def test_simulator(self):
+        self.assertIsInstance(self.pd_model.simulator, myokit.Simulation)
+        self.assertIsInstance(self.pk_model.simulator, myokit.Simulation)
 
     def test_time_unit(self):
         self.assertIsInstance(self.pd_model.time_unit(), myokit.Unit)
