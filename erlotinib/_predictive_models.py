@@ -595,12 +595,30 @@ class PredictiveModel(object):
         # Copy error models
         error_models = [copy.copy(error_model) for error_model in error_models]
 
+        # Remember models
+        self._mechanistic_model = mechanistic_model
+        self._error_models = error_models
+
+        # Set parameter names and number of parameters
+        self._set_error_model_parameter_names()
+        self._set_number_and_parameter_names()
+
+    def _set_error_model_parameter_names(self):
+        """
+        Resets the error model parameter names and prepends the output name
+        if more than one output exists.
+        """
+        # Reset error model parameter names to defaults
+        for error_model in self._error_models:
+            error_model.set_parameter_names(None)
+
         # Rename error model parameters, if more than one output
+        n_outputs = self._mechanistic_model.n_outputs()
         if n_outputs > 1:
             # Get output names
-            outputs = mechanistic_model.outputs()
+            outputs = self._mechanistic_model.outputs()
 
-            for output_id, error_model in enumerate(error_models):
+            for output_id, error_model in enumerate(self._error_models):
                 # Get original parameter names
                 names = error_model.get_parameter_names()
 
@@ -610,13 +628,6 @@ class PredictiveModel(object):
 
                 # Set new parameter names
                 error_model.set_parameter_names(names)
-
-        # Remember models
-        self._mechanistic_model = mechanistic_model
-        self._error_models = error_models
-
-        # Set parameter names and number of parameters
-        self._set_number_and_parameter_names()
 
     def _set_number_and_parameter_names(self):
         """

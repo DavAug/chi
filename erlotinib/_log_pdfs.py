@@ -355,8 +355,13 @@ class LogLikelihood(pints.LogPDF):
     times
         A list of one dimensional array-like objects with measured times
         associated to the observations.
+    outputs
+        A list of output names, which sets the mechanistic model outputs. If
+        ``None`` the previously set outputs are assumed.
     """
-    def __init__(self, mechanistic_model, error_models, observations, times):
+    def __init__(
+            self, mechanistic_model, error_models, observations, times,
+            outputs=None):
         super(LogLikelihood, self).__init__()
 
         # Check inputs
@@ -369,6 +374,13 @@ class LogLikelihood(pints.LogPDF):
 
         if not isinstance(error_models, list):
             error_models = [error_models]
+
+        # Copy mechanistic model
+        mechanistic_model = copy.deepcopy(mechanistic_model)
+
+        # Set outputs
+        if outputs is not None:
+            mechanistic_model.set_outputs(outputs)
 
         n_outputs = mechanistic_model.n_outputs()
         if len(error_models) != n_outputs:
@@ -433,32 +445,17 @@ class LogLikelihood(pints.LogPDF):
         # Copy error models, such that renaming doesn't affect input models
         error_models = [copy.copy(error_model) for error_model in error_models]
 
-        # Rename error model parameters, if more than one output
-        if n_outputs > 1:
-            # Get output names
-            outputs = mechanistic_model.outputs()
-
-            for output_id, error_model in enumerate(error_models):
-                # Get original parameter names
-                names = error_model.get_parameter_names()
-
-                # Prepend output name
-                output = outputs[output_id]
-                names = [output + ' ' + name for name in names]
-
-                # Set new parameter names
-                error_model.set_parameter_names(names)
-
         # Remember models and observations
         # (Mechanistic model needs to be copied, such that it's dosing regimen
         # cannot be altered by the input model.)
-        self._mechanistic_model = copy.deepcopy(mechanistic_model)
+        self._mechanistic_model = mechanistic_model
         self._error_models = error_models
         self._observations = observations
 
         self._arange_times_for_mechanistic_model(times)
 
         # Set parameter names and number of parameters
+        self._set_error_model_parameter_names()
         self._set_number_and_parameter_names()
 
         # Set default ID
@@ -535,6 +532,32 @@ class LogLikelihood(pints.LogPDF):
 
         self._times = pints.vector(unique_times)
         self._obs_masks = obs_masks
+
+    def _set_error_model_parameter_names(self):
+        """
+        Resets the error model parameter names and prepends the output name
+        if more than one output exists.
+        """
+        # Reset error model parameter names to defaults
+        for error_model in self._error_models:
+            error_model.set_parameter_names(None)
+
+        # Rename error model parameters, if more than one output
+        n_outputs = self._mechanistic_model.n_outputs()
+        if n_outputs > 1:
+            # Get output names
+            outputs = self._mechanistic_model.outputs()
+
+            for output_id, error_model in enumerate(self._error_models):
+                # Get original parameter names
+                names = error_model.get_parameter_names()
+
+                # Prepend output name
+                output = outputs[output_id]
+                names = [output + ' ' + name for name in names]
+
+                # Set new parameter names
+                error_model.set_parameter_names(names)
 
     def _set_number_and_parameter_names(self):
         """
