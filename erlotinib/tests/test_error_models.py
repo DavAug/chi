@@ -188,7 +188,7 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
         self.assertEqual(parameters[1], 'names')
 
         # Reset parameter names
-        names = ['Sigma base', 'Sigma rel.']
+        names = None
         self.error_model.set_parameter_names(names)
         parameters = self.error_model.get_parameter_names()
 
@@ -379,9 +379,8 @@ class TestReducedErrorModel(unittest.TestCase):
         self.assertEqual(names[0], 'Test')
         self.assertEqual(names[1], 'Sigma rel.')
 
-        # Revert to defaults
-        self.error_model.set_parameter_names({
-            'Test': 'Sigma base'})
+        # Reset to defaults
+        self.error_model.set_parameter_names(None)
 
         names = self.error_model.get_parameter_names()
         self.assertEqual(len(names), 2)
