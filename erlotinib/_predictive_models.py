@@ -1104,7 +1104,8 @@ class PredictivePopulationModel(PredictiveModel):
 
         # Construct model parameter names
         for param_id, pop_model in enumerate(self._population_models):
-            # Get population parameter
+            # Get original population parameters
+            pop_model.set_parameter_names(None)
             pop_params = pop_model.get_parameter_names()
 
             if isinstance(pop_model, erlo.HeterogeneousModel):
