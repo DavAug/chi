@@ -458,37 +458,32 @@ class ReducedErrorModel(object):
 
     def set_parameter_names(self, names=None):
         """
-        Assigns names to the parameters. By default the the default parameter
-        names of the :class:`ErrorModel` are kept. If ``None``, parameter
-        names are reset to defaults.
+        Sets the names of the error model parameters.
 
         Parameters
         ----------
         names
-            A dictionary that maps the current parameter names to new names.
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
         if names is None:
             # Reset names to defaults
-            self._error_model.set_parameter_names()
+            self._error_model.set_parameter_names(None)
             self._parameter_names = self._error_model.get_parameter_names()
             return None
 
-        # Check type
-        try:
-            names = dict(names)
-        except (TypeError, ValueError):
+        if len(names) != self.n_parameters():
             raise ValueError(
-                'The name dictionary has to be convertable to a python '
-                'dictionary.')
+                'Length of names does not match n_parameters.')
 
-        parameter_names = self._parameter_names
-        for index, parameter in enumerate(self._parameter_names):
-            try:
-                parameter_names[index] = str(names[parameter])
-            except KeyError:
-                # KeyError indicates that a current parameter is not being
-                # replaced.
-                pass
+        parameter_names = [str(label) for label in names]
+
+        # Reconstruct full list of error model parameters
+        if self._fixed_params_mask is not None:
+            names = np.array(self._error_model.get_parameter_names())
+            names[~self._fixed_params_mask] = parameter_names
+            parameter_names = names
 
         # Set parameter names
         self._error_model.set_parameter_names(parameter_names)

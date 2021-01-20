@@ -371,13 +371,12 @@ class TestReducedErrorModel(unittest.TestCase):
 
     def test_set_get_parameter_names(self):
         # Set some parameter names
-        self.error_model.set_parameter_names({
-            'Sigma base': 'Test'})
+        self.error_model.set_parameter_names(['Test 1', 'Test 2'])
 
         names = self.error_model.get_parameter_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Test')
-        self.assertEqual(names[1], 'Sigma rel.')
+        self.assertEqual(names[0], 'Test 1')
+        self.assertEqual(names[1], 'Test 2')
 
         # Reset to defaults
         self.error_model.set_parameter_names(None)
@@ -387,9 +386,29 @@ class TestReducedErrorModel(unittest.TestCase):
         self.assertEqual(names[0], 'Sigma base')
         self.assertEqual(names[1], 'Sigma rel.')
 
+        # Fix parameter and set parameter name
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 1})
+        self.error_model.set_parameter_names(['Test'])
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Test')
+
+        # Reset to defaults
+        self.error_model.set_parameter_names(None)
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Sigma rel.')
+
+        # Unfix model parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
     def test_set_parameter_names_bad_input(self):
-        names = 'Bad type'
-        with self.assertRaisesRegex(ValueError, 'The name dictionary'):
+        names = ['Wrong length']
+        with self.assertRaisesRegex(ValueError, 'Length of names does not'):
             self.error_model.set_parameter_names(names)
 
 
