@@ -593,7 +593,8 @@ class PredictiveModel(object):
                 'provided for each mechanistic error model.')
 
         # Copy error models
-        error_models = [copy.copy(error_model) for error_model in error_models]
+        error_models = [
+            copy.deepcopy(error_model) for error_model in error_models]
 
         # Remember models
         self._mechanistic_model = mechanistic_model
