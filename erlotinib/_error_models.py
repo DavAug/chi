@@ -477,11 +477,18 @@ class ReducedErrorModel(object):
             raise ValueError(
                 'Length of names does not match n_parameters.')
 
+        # Limit the length of parameter names
+        for name in names:
+            if len(name) > 50:
+                raise ValueError(
+                    'Parameter names cannot exceed 50 characters.')
+
         parameter_names = [str(label) for label in names]
 
         # Reconstruct full list of error model parameters
         if self._fixed_params_mask is not None:
-            names = np.array(self._error_model.get_parameter_names())
+            names = np.array(
+                self._error_model.get_parameter_names(), dtype='U50')
             names[~self._fixed_params_mask] = parameter_names
             parameter_names = names
 

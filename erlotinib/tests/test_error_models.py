@@ -389,11 +389,12 @@ class TestReducedErrorModel(unittest.TestCase):
         # Fix parameter and set parameter name
         self.error_model.fix_parameters(name_value_dict={
             'Sigma base': 1})
-        self.error_model.set_parameter_names(['Test'])
+        self.error_model.set_parameter_names(
+            ['myokit.tumour_volume Sigma rel.'])
 
         names = self.error_model.get_parameter_names()
         self.assertEqual(len(names), 1)
-        self.assertEqual(names[0], 'Test')
+        self.assertEqual(names[0], 'myokit.tumour_volume Sigma rel.')
 
         # Reset to defaults
         self.error_model.set_parameter_names(None)
@@ -407,8 +408,16 @@ class TestReducedErrorModel(unittest.TestCase):
             'Sigma base': None})
 
     def test_set_parameter_names_bad_input(self):
+        # Wrong number of names
         names = ['Wrong length']
         with self.assertRaisesRegex(ValueError, 'Length of names does not'):
+            self.error_model.set_parameter_names(names)
+
+        # A parameter exceeds 50 characters
+        names = [
+            '0123456789-0123456789-0123456789-0123456789-0123456789-0123456789',
+            'Sigma base']
+        with self.assertRaisesRegex(ValueError, 'Parameter names cannot'):
             self.error_model.set_parameter_names(names)
 
 
