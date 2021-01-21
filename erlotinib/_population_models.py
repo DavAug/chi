@@ -76,7 +76,7 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Sets the names of the population model parameters.
 
@@ -84,7 +84,8 @@ class PopulationModel(object):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
         raise NotImplementedError
 
@@ -156,7 +157,7 @@ class HeterogeneousModel(PopulationModel):
         """
         return self._n_parameters
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         r"""
         Sets the names of the population model parameters.
 
@@ -167,8 +168,14 @@ class HeterogeneousModel(PopulationModel):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = None
+            return None
+
         if len(names) != 1:
             raise ValueError(
                 'Length of names has to be 1.')
@@ -354,7 +361,7 @@ class LogNormalModel(PopulationModel):
 
         return samples
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         r"""
         Sets the names of the population model parameters.
 
@@ -365,8 +372,14 @@ class LogNormalModel(PopulationModel):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = ['Mean', 'Std.']
+            return None
+
         if len(names) != self._n_parameters:
             raise ValueError(
                 'Length of names does not match the number of parameters.')
@@ -528,7 +541,7 @@ class PooledModel(PopulationModel):
         samples = np.broadcast_to(samples, shape=(n_samples,))
         return samples
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Sets the names of the population model parameters.
 
@@ -536,8 +549,14 @@ class PooledModel(PopulationModel):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = ['Pooled']
+            return None
+
         if len(names) != self._n_parameters:
             raise ValueError(
                 'Length of names does not match n_parameters.')
@@ -742,7 +761,7 @@ class ReducedPopulationModel(object):
 
         return sample
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Sets the names of the population model parameters.
 
@@ -750,7 +769,15 @@ class ReducedPopulationModel(object):
         ----------
         names
             A dictionary that maps the current parameter names to new names.
+            If ``None``, parameter names are reset to defaults.
         """
+        if names is None:
+            # Reset names to defaults
+            self._population_model.set_parameter_names()
+            self._parameter_names = \
+                self._population_model.get_parameter_names()
+            return None
+
         # Check type
         try:
             names = dict(names)
