@@ -60,6 +60,11 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertEqual(len(names), 1)
         self.assertEqual(names[0], 'some name')
 
+        # Set to default
+        self.pop_model.set_parameter_names(None)
+        name = self.pop_model.get_parameter_names()
+        self.assertIsNone(name)
+
     def test_set_parameter_names_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Length of names has to be 1'):
             self.pop_model.set_parameter_names('some params')
@@ -316,11 +321,12 @@ class TestLogNormalModel(unittest.TestCase):
             self.pop_model.get_parameter_names(), names)
 
         # Set back to default name
-        names = ['Mean', 'Std.']
-        self.pop_model.set_parameter_names(names)
+        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
 
-        self.assertEqual(
-            self.pop_model.get_parameter_names(), names)
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Mean')
+        self.assertEqual(names[1], 'Std.')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
@@ -439,11 +445,11 @@ class TestPooledModel(unittest.TestCase):
             self.pop_model.get_parameter_names(), names)
 
         # Set back to default name
-        names = ['Pooled']
-        self.pop_model.set_parameter_names(names)
+        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
 
-        self.assertEqual(
-            self.pop_model.get_parameter_names(), names)
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Pooled')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
@@ -646,8 +652,7 @@ class TestReducedPopulationModel(unittest.TestCase):
         self.assertEqual(names[1], 'Std.')
 
         # Revert to defaults
-        self.pop_model.set_parameter_names({
-            'Test': 'Mean'})
+        self.pop_model.set_parameter_names(None)
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 2)
