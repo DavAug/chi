@@ -443,7 +443,8 @@ class LogLikelihood(pints.LogPDF):
             observations[output_id] = observations[output_id][order]
 
         # Copy error models, such that renaming doesn't affect input models
-        error_models = [copy.copy(error_model) for error_model in error_models]
+        error_models = [
+            copy.deepcopy(error_model) for error_model in error_models]
 
         # Remember models and observations
         # (Mechanistic model needs to be copied, such that it's dosing regimen
