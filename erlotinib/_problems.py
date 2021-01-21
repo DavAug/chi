@@ -202,6 +202,7 @@ class ProblemModellingController(object):
         self._dosing_regimens = None
 
         # Set parameter names and number of parameters
+        self._set_error_model_parameter_names()
         self._n_parameters, self._parameter_names = \
             self._get_number_and_parameter_names()
 
@@ -367,37 +368,31 @@ class ProblemModellingController(object):
         parameter_names = self._mechanistic_model.parameters()
 
         # Get error model parameters
-        n_outputs = self._mechanistic_model.n_outputs()
-        outputs = self._mechanistic_model.outputs()
-        for output_id, error_model in enumerate(self._error_models):
-            # Get original parameter names
-            names = error_model.get_parameter_names()
+        for error_model in self._error_models:
+            parameter_names += error_model.get_parameter_names()
 
-            # Prepend output name for multi-output problem
-            if n_outputs > 1:
-                output = outputs[output_id]
-                names = [output + ' ' + name for name in names]
-
-            parameter_names += names
-
-        # Stop here if no population model or data has been set
-        if (self._population_models is None) or (self._data is None) or (
+        # Stop here if population model is excluded or isn't set
+        if (self._population_models is None) or (
                 exclude_pop_model is True):
             # Get number of parameters
             n_parameters = len(parameter_names)
 
             return (n_parameters, parameter_names)
 
+        # Set default number of individuals
+        n_ids = 0
+        if self._data is not None:
+            n_ids = len(self._ids)
+
         # Construct population parameter names
         pop_parameter_names = []
-        n_ids = len(self._ids)
         for param_id, pop_model in enumerate(self._population_models):
             # Get mechanistic/error model parameter name
             name = parameter_names[param_id]
 
             # Create names for individual parameters
             n_indiv, _ = pop_model.n_hierarchical_parameters(n_ids)
-            if n_indiv > 0:
+            if (n_indiv > 0):
                 # If individual parameters are relevant for the hierarchical
                 # model, append them
                 names = ['ID %s: %s' % (n, name) for n in self._ids]
@@ -405,9 +400,15 @@ class ProblemModellingController(object):
 
             # Create names for population-level parameters
             if pop_model.n_parameters() > 0:
+                # Get original parameter names
+                pop_model.set_parameter_names()
                 top_names = pop_model.get_parameter_names()
+
+                # Append individual names
                 names = [
                     '%s %s' % (pop_prefix, name) for pop_prefix in top_names]
+
+                # Add to parameter list
                 pop_parameter_names += names
 
         # Get number of parameters
@@ -415,14 +416,42 @@ class ProblemModellingController(object):
 
         return (n_parameters, pop_parameter_names)
 
+    def _set_error_model_parameter_names(self):
+        """
+        Resets the error model parameter names and prepends the output name
+        if more than one output exists.
+        """
+        # Reset error model parameter names to defaults
+        for error_model in self._error_models:
+            error_model.set_parameter_names(None)
+
+        # Rename error model parameters, if more than one output
+        n_outputs = self._mechanistic_model.n_outputs()
+        if n_outputs > 1:
+            # Get output names
+            outputs = self._mechanistic_model.outputs()
+
+            for output_id, error_model in enumerate(self._error_models):
+                # Get original parameter names
+                names = error_model.get_parameter_names()
+
+                # Prepend output name
+                output = outputs[output_id]
+                names = [output + ' ' + name for name in names]
+
+                # Set new parameter names
+                error_model.set_parameter_names(names)
+
     def fix_parameters(self, name_value_dict):
         """
         Fixes the value of model parameters, and effectively removes them as a
         parameter from the model. Fixing the value of a parameter at ``None``,
         sets the parameter free again.
 
-        Fixing model parameters resets the population models and the log-prior
-        to ``None``.
+        .. note::
+            1. Fixing model parameters resets the log-prior to ``None``.
+            2. Once a population model is set, only population model
+               parameters can be fixed.
 
         Parameters
         ----------
@@ -437,6 +466,38 @@ class ProblemModellingController(object):
             raise ValueError(
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
+
+        # If a population model is set, fix only population parameters
+        if self._population_models is not None:
+            pop_models = self._population_models
+
+            # Convert models to reduced models
+            for model_id, pop_model in enumerate(pop_models):
+                if not isinstance(pop_model, erlo.ReducedPopulationModel):
+                    pop_models[model_id] = erlo.ReducedPopulationModel(
+                        pop_model)
+
+            # Fix parameters
+            for pop_model in pop_models:
+                pop_model.fix_parameters(name_value_dict)
+
+            # If no parameters are fixed, get original model back
+            for model_id, pop_model in enumerate(pop_models):
+                if pop_model.n_fixed_parameters() == 0:
+                    pop_model = pop_model.get_population_model()
+                    pop_models[model_id] = pop_model
+
+            # Safe reduced models and reset priors
+            self._population_models = pop_models
+            self._log_prior = None
+
+            # Update names and number of parameters
+            self._n_parameters, self._parameter_names = \
+                self._get_number_and_parameter_names()
+
+            # Stop here
+            # (individual parameters cannot be fixed when pop model is set)
+            return None
 
         # Get submodels
         mechanistic_model = self._mechanistic_model
@@ -463,9 +524,10 @@ class ProblemModellingController(object):
                 error_model = error_model.get_error_model()
                 error_models[model_id] = error_model
 
-        # Safe reduced models
+        # Safe reduced models and reset priors
         self._mechanistic_model = mechanistic_model
         self._error_models = error_models
+        self._log_prior = None
 
         # Update names and number of parameters
         self._n_parameters, self._parameter_names = \
