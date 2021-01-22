@@ -267,10 +267,14 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
             self.pd_problem.fix_parameters(name_value_dict)
 
-    # def test_get_dosing_regimens(self):
-    #     regimens = self.problem.get_dosing_regimens()
+    def test_get_dosing_regimens(self):
+        # Test case I: PD problem
+        regimens = self.pd_problem.get_dosing_regimens()
+        self.assertIsNone(regimens)
 
-    #     self.assertIsNone(regimens)
+        # Test case II: PKPD problem
+        regimens = self.pkpd_problem.get_dosing_regimens()
+        self.assertIsNone(regimens)
 
     # def test_get_log_posteriors(self):
     #     # Create posterior with no fixed parameters
