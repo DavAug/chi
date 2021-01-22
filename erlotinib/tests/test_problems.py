@@ -261,25 +261,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
         self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
 
-    # def test_fix_parameters_bad_input(self):
-    #     name_value_dict = dict({
-    #         'myokit.lambda_1': 2,
-    #         'myokit.kappa': None})
-
-    #     # No mechanistic model set
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker'])
-
-    #     with self.assertRaisesRegex(ValueError, 'The mechanistic'):
-    #         problem.fix_parameters(name_value_dict)
-
-    #     # No error model set
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model)
-
-    #     with self.assertRaisesRegex(ValueError, 'The error model'):
-    #         problem.fix_parameters(name_value_dict)
+    def test_fix_parameters_bad_input(self):
+        # Input is not a dictionary
+        name_value_dict = 'Bad type'
+        with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
+            self.pd_problem.fix_parameters(name_value_dict)
 
     # def test_get_dosing_regimens(self):
     #     regimens = self.problem.get_dosing_regimens()
