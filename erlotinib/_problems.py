@@ -403,7 +403,7 @@ class ProblemModellingController(object):
             # Get mechanistic/error model parameter name
             name = parameter_names[param_id]
 
-            # Create names for individual parameters
+            # Add names for individual parameters
             n_indiv, _ = pop_model.n_hierarchical_parameters(n_ids)
             if (n_indiv > 0):
                 # If individual parameters are relevant for the hierarchical
@@ -411,18 +411,9 @@ class ProblemModellingController(object):
                 names = ['ID %s: %s' % (n, name) for n in self._ids]
                 pop_parameter_names += names
 
-            # Create names for population-level parameters
+            # Add population-level parameters
             if pop_model.n_parameters() > 0:
-                # Get original parameter names
-                pop_model.set_parameter_names()
-                top_names = pop_model.get_parameter_names()
-
-                # Append individual names
-                names = [
-                    '%s %s' % (pop_prefix, name) for pop_prefix in top_names]
-
-                # Add to parameter list
-                pop_parameter_names += names
+                pop_parameter_names += pop_model.get_parameter_names()
 
         # Get number of parameters
         n_parameters = len(pop_parameter_names)
@@ -454,6 +445,31 @@ class ProblemModellingController(object):
 
                 # Set new parameter names
                 error_model.set_parameter_names(names)
+
+    def _set_population_model_parameter_names(self):
+        """
+        Resets the population model parameter names and appends the individual
+        parameter names.
+        """
+        # Get individual parameter names
+        parameter_names = self.get_parameter_names(exclude_pop_model=True)
+
+        # Construct population parameter names
+        for param_id, pop_model in enumerate(self._population_models):
+            # Get mechanistic/error model parameter name
+            name = parameter_names[param_id]
+
+            # Create names for population-level parameters
+            if pop_model.n_parameters() > 0:
+                # Get original parameter names
+                pop_model.set_parameter_names()
+                pop_names = pop_model.get_parameter_names()
+
+                # Append individual names and rename population model
+                # parameters
+                names = [
+                    '%s %s' % (pop_prefix, name) for pop_prefix in pop_names]
+                pop_model.set_parameter_names(names)
 
     def fix_parameters(self, name_value_dict):
         """
@@ -872,6 +888,7 @@ class ProblemModellingController(object):
         self._population_models = copy.copy(pop_models)
 
         # Update parameter names and number of parameters
+        self._set_population_model_parameter_names()
         self._n_parameters, self._parameter_names = \
             self._get_number_and_parameter_names()
 
