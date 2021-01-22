@@ -5,6 +5,7 @@
 # full license details.
 #
 
+import copy
 import unittest
 
 import numpy as np
@@ -35,7 +36,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         cls.data = pd.DataFrame({
             'ID': ids_v + ids_c + ids_d,
             'Time': times_v + times_c + times_d,
-            'Biomarker': volumes + cytokines + [np.nan]*6,
+            'Biomarker':
+                ['Tumour volume']*8 + ['IL 6']*6 + [np.nan]*6,
+            'Measurement': volumes + cytokines + [np.nan]*6,
             'Dose': [np.nan]*14 + dose,
             'Duration': [np.nan]*14 + duration})
 
@@ -51,14 +54,17 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         lib = erlo.ModelLibrary()
         path = lib.erlotinib_tumour_growth_inhibition_model()
         cls.pkpd_model = erlo.PharmacokineticModel(path)
-        cls.pkpd_model.set_outputs({
+        cls.pkpd_model.set_outputs([
             'central.drug_concentration',
-            'myokit.tumour_volume'})
+            'myokit.tumour_volume'])
         cls.error_models = [
             erlo.ConstantAndMultiplicativeGaussianErrorModel(),
             erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         cls.pkpd_problem = erlo.ProblemModellingController(
-            cls.pkpd_model, cls.error_models)
+            cls.pkpd_model, cls.error_models,
+            outputs=[
+                'central.drug_concentration',
+                'myokit.tumour_volume'])
 
     def test_bad_input(self):
         # Mechanistic model has wrong type
@@ -91,139 +97,169 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             erlo.ProblemModellingController(
                 self.pd_model, error_models)
 
-    # def test_data_keys(self):
-    #     # Rename ID key
-    #     data = self.data.rename(columns={'ID': 'SOME NON-STANDARD KEY'})
+    def test_fix_parameters(self):
+        # Test case I: PD model
+        # Fix model parameters
+        name_value_dict = dict({
+            'myokit.drug_concentration': 0,
+            'Sigma base': 1})
+        self.pd_problem.fix_parameters(name_value_dict)
 
-    #     # Test that it works with correct mapping
-    #     erlo.ProblemModellingController(
-    #         data=data, id_key='SOME NON-STANDARD KEY')
+        self.assertEqual(self.pd_problem.get_n_parameters(), 5)
+        param_names = self.pd_problem.get_parameter_names()
+        self.assertEqual(len(param_names), 5)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.kappa')
+        self.assertEqual(param_names[2], 'myokit.lambda_0')
+        self.assertEqual(param_names[3], 'myokit.lambda_1')
+        self.assertEqual(param_names[4], 'Sigma rel.')
 
-    #     # Test that it fails with wrong mapping
-    #     with self.assertRaisesRegex(
-    #             ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-    #         erlo.ProblemModellingController(
-    #             data=data, id_key='SOME WRONG KEY')
+        # Free and fix a parameter
+        name_value_dict = dict({
+            'myokit.lambda_1': 2,
+            'Sigma base': None})
+        self.pd_problem.fix_parameters(name_value_dict)
 
-    #     # Rename time key
-    #     data = self.data.rename(columns={'Time': 'SOME NON-STANDARD KEY'})
+        self.assertEqual(self.pd_problem.get_n_parameters(), 5)
+        param_names = self.pd_problem.get_parameter_names()
+        self.assertEqual(len(param_names), 5)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.kappa')
+        self.assertEqual(param_names[2], 'myokit.lambda_0')
+        self.assertEqual(param_names[3], 'Sigma base')
+        self.assertEqual(param_names[4], 'Sigma rel.')
 
-    #     # Test that it works with correct mapping
-    #     erlo.ProblemModellingController(
-    #         data=data, time_key='SOME NON-STANDARD KEY')
+        # Free all parameters again
+        name_value_dict = dict({
+            'myokit.lambda_1': None,
+            'myokit.drug_concentration': None})
+        self.pd_problem.fix_parameters(name_value_dict)
 
-    #     # Test that it fails with wrong mapping
-    #     with self.assertRaisesRegex(
-    #             ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-    #         erlo.ProblemModellingController(
-    #             data=data, time_key='SOME WRONG KEY')
+        self.assertEqual(self.pd_problem.get_n_parameters(), 7)
+        param_names = self.pd_problem.get_parameter_names()
+        self.assertEqual(len(param_names), 7)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Sigma base')
+        self.assertEqual(param_names[6], 'Sigma rel.')
 
-    #     # Rename biomarker key
-    #     data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+        # Fix parameters before setting a population model
+        problem = copy.copy(self.pd_problem)
+        name_value_dict = dict({
+            'myokit.tumour_volume': 1,
+            'myokit.drug_concentration': 0,
+            'myokit.kappa': 1,
+            'myokit.lambda_1': 2})
+        problem.fix_parameters(name_value_dict)
+        problem.set_population_model(
+            pop_models=[
+                erlo.HeterogeneousModel(),
+                erlo.PooledModel(),
+                erlo.LogNormalModel()])
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
 
-    #     # Test that it works with correct mapping
-    #     erlo.ProblemModellingController(
-    #         data=data, biom_keys=['SOME NON-STANDARD KEY'])
+        n_ids = 3
+        self.assertEqual(problem.get_n_parameters(), 2 * n_ids + 1 + 2)
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 9)
+        self.assertEqual(param_names[0], 'ID 0: myokit.lambda_0')
+        self.assertEqual(param_names[1], 'ID 1: myokit.lambda_0')
+        self.assertEqual(param_names[2], 'ID 2: myokit.lambda_0')
+        self.assertEqual(param_names[3], 'Pooled Sigma base')
+        self.assertEqual(param_names[4], 'ID 0: Sigma rel.')
+        self.assertEqual(param_names[5], 'ID 1: Sigma rel.')
+        self.assertEqual(param_names[6], 'ID 2: Sigma rel.')
+        self.assertEqual(param_names[7], 'Mean Sigma rel.')
+        self.assertEqual(param_names[8], 'Std. Sigma rel.')
 
-    #     # Test that it fails with wrong mapping
-    #     with self.assertRaisesRegex(
-    #             ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-    #         erlo.ProblemModellingController(
-    #             data=data, biom_keys=['SOME WRONG KEY'])
+        # Fix parameters after setting a population model
+        # (Only population models can be fixed)
+        name_value_dict = dict({
+            'ID 1: myokit.lambda_0': 1,
+            'ID 2: myokit.lambda_0': 4,
+            'Pooled Sigma base': 2})
+        problem.fix_parameters(name_value_dict)
 
-    # def test_fix_parameters(self):
-    #     # Fix model parameters
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     name_value_dict = dict({
-    #         'myokit.drug_concentration': 0,
-    #         'myokit.kappa': 1})
+        # self.assertEqual(problem.get_n_parameters(), 8)
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 8)
+        self.assertEqual(param_names[0], 'ID 0: myokit.lambda_0')
+        self.assertEqual(param_names[1], 'ID 1: myokit.lambda_0')
+        self.assertEqual(param_names[2], 'ID 2: myokit.lambda_0')
+        self.assertEqual(param_names[3], 'ID 0: Sigma rel.')
+        self.assertEqual(param_names[4], 'ID 1: Sigma rel.')
+        self.assertEqual(param_names[5], 'ID 2: Sigma rel.')
+        self.assertEqual(param_names[6], 'Mean Sigma rel.')
+        self.assertEqual(param_names[7], 'Std. Sigma rel.')
 
-    #     self.problem.fix_parameters(name_value_dict)
+        # Test case II: PKPD model
+        # Fix model parameters
+        name_value_dict = dict({
+            'myokit.kappa': 0,
+            'central.drug_concentration Sigma base': 1})
+        self.pkpd_problem.fix_parameters(name_value_dict)
 
-    #     self.assertEqual(self.problem.get_n_parameters(), 5)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 5)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[2], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[3], 'Sigma base')
-    #     self.assertEqual(param_names[4], 'Sigma rel.')
+        self.assertEqual(self.pkpd_problem.get_n_parameters(), 9)
+        param_names = self.pkpd_problem.get_parameter_names()
+        self.assertEqual(len(param_names), 9)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'myokit.critical_volume')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'myokit.lambda')
+        self.assertEqual(
+            param_names[6], 'central.drug_concentration Sigma rel.')
+        self.assertEqual(param_names[7], 'myokit.tumour_volume Sigma base')
+        self.assertEqual(param_names[8], 'myokit.tumour_volume Sigma rel.')
 
-    #     # Free kappa and fix lambda_1
-    #     name_value_dict = dict({
-    #         'myokit.lambda_1': 2,
-    #         'myokit.kappa': None})
+        # Free and fix a parameter
+        name_value_dict = dict({
+            'myokit.lambda': 2,
+            'myokit.kappa': None})
+        self.pkpd_problem.fix_parameters(name_value_dict)
 
-    #     self.problem.fix_parameters(name_value_dict)
+        self.assertEqual(self.pkpd_problem.get_n_parameters(), 9)
+        param_names = self.pkpd_problem.get_parameter_names()
+        self.assertEqual(len(param_names), 9)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'myokit.critical_volume')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'myokit.kappa')
+        self.assertEqual(
+            param_names[6], 'central.drug_concentration Sigma rel.')
+        self.assertEqual(param_names[7], 'myokit.tumour_volume Sigma base')
+        self.assertEqual(param_names[8], 'myokit.tumour_volume Sigma rel.')
 
-    #     self.assertEqual(self.problem.get_n_parameters(), 5)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 5)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.kappa')
-    #     self.assertEqual(param_names[2], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[3], 'Sigma base')
-    #     self.assertEqual(param_names[4], 'Sigma rel.')
+        # Free all parameters again
+        name_value_dict = dict({
+            'myokit.lambda': None,
+            'central.drug_concentration Sigma base': None})
+        self.pkpd_problem.fix_parameters(name_value_dict)
 
-    #     # Free all parameters again
-    #     name_value_dict = dict({
-    #         'myokit.lambda_1': None,
-    #         'myokit.drug_concentration': None})
-
-    #     self.problem.fix_parameters(name_value_dict)
-
-    #     self.assertEqual(self.problem.get_n_parameters(), 7)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 7)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Sigma base')
-    #     self.assertEqual(param_names[6], 'Sigma rel.')
-
-    #     # Fix parameters before setting a population model
-    #     name_value_dict = dict({
-    #         'myokit.tumour_volume': 1,
-    #         'myokit.drug_concentration': 0,
-    #         'myokit.kappa': 1,
-    #         'myokit.lambda_1': 2})
-    #     self.problem.fix_parameters(name_value_dict)
-    #     self.problem.set_population_model(
-    #         pop_models=[
-    #             erlo.HeterogeneousModel(),
-    #             erlo.PooledModel(),
-    #             erlo.LogNormalModel()])
-
-    #     n_ids = 3
-    #     self.assertEqual(self.problem.get_n_parameters(), 2 * n_ids + 1 + 2)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 9)
-    #     self.assertEqual(param_names[0], 'ID 0: myokit.lambda_0')
-    #     self.assertEqual(param_names[1], 'ID 1: myokit.lambda_0')
-    #     self.assertEqual(param_names[2], 'ID 2: myokit.lambda_0')
-    #     self.assertEqual(param_names[3], 'Pooled Sigma base')
-    #     self.assertEqual(param_names[4], 'ID 0: Sigma rel.')
-    #     self.assertEqual(param_names[5], 'ID 1: Sigma rel.')
-    #     self.assertEqual(param_names[6], 'ID 2: Sigma rel.')
-    #     self.assertEqual(param_names[7], 'Mean Sigma rel.')
-    #     self.assertEqual(param_names[8], 'Std. Sigma rel.')
-
-    #     # Fix parameters after setting a population model
-    #     # (resets population model, and parameters cannot be found)
-    #     name_value_dict = dict({
-    #         'ID 1: myokit.lambda_0': 1,
-    #         'ID 2: myokit.lambda_0': 4})
-    #     self.problem.fix_parameters(name_value_dict)
-
-    #     self.assertEqual(self.problem.get_n_parameters(), 3)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 3)
-    #     self.assertEqual(param_names[0], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[1], 'Sigma base')
-    #     self.assertEqual(param_names[2], 'Sigma rel.')
+        self.assertEqual(self.pkpd_problem.get_n_parameters(), 11)
+        param_names = self.pkpd_problem.get_parameter_names()
+        self.assertEqual(len(param_names), 11)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'myokit.critical_volume')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'myokit.kappa')
+        self.assertEqual(param_names[6], 'myokit.lambda')
+        self.assertEqual(
+            param_names[7], 'central.drug_concentration Sigma base')
+        self.assertEqual(
+            param_names[8], 'central.drug_concentration Sigma rel.')
+        self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
+        self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
 
     # def test_fix_parameters_bad_input(self):
     #     name_value_dict = dict({
