@@ -778,22 +778,25 @@ class ReducedPopulationModel(object):
                 self._population_model.get_parameter_names()
             return None
 
-        # Check type
-        try:
-            names = dict(names)
-        except (TypeError, ValueError):
+        # Check input
+        if len(names) != self.n_parameters():
             raise ValueError(
-                'The name dictionary has to be convertable to a python '
-                'dictionary.')
+                'Length of names does not match n_parameters.')
 
-        parameter_names = self._parameter_names
-        for index, parameter in enumerate(self._parameter_names):
-            try:
-                parameter_names[index] = str(names[parameter])
-            except KeyError:
-                # KeyError indicates that a current parameter is not being
-                # replaced.
-                pass
+        # Limit the length of parameter names
+        for name in names:
+            if len(name) > 50:
+                raise ValueError(
+                    'Parameter names cannot exceed 50 characters.')
+
+        parameter_names = [str(label) for label in names]
+
+        # Reconstruct full list of error model parameters
+        if self._fixed_params_mask is not None:
+            names = np.array(
+                self._population_model.get_parameter_names(), dtype='U50')
+            names[~self._fixed_params_mask] = parameter_names
+            parameter_names = names
 
         # Set parameter names
         self._population_model.set_parameter_names(parameter_names)
