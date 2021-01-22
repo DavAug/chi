@@ -148,7 +148,7 @@ class ProblemModellingController(object):
     error_models
         A list of :class:`ErrorModel` instances. One error model has to be
         provided for each mechanistic model output.
-    outputs
+    optional outputs
         A list of mechanistic model output names, which can be used to map
         the error models to mechanistic model outputs. If ``None``, the
         error models are assumed to be ordered in the same order as
@@ -252,15 +252,19 @@ class ProblemModellingController(object):
 
         self._data = data
 
-    def _create_log_likelihoods(self):
+    def _create_log_likelihoods(self, individual):
         """
-        Returns a dict of log-likelihoods, one for each individual in the
-        dataset. The keys are the individual IDs and the values are the
-        log-likelihoods.
+        Returns a list of log-likelihoods, one for each individual in the
+        dataset.
         """
+        # Get IDs
+        ids = self._ids
+        if individual is not None:
+            ids = [individual]
+
         # Create a likelihood for each individual
         log_likelihoods = []
-        for individual in self._ids:
+        for individual in ids:
             # Set dosing regimen
             try:
                 self._mechanistic_model.simulator.set_protocol(
@@ -571,28 +575,47 @@ class ProblemModellingController(object):
         """
         return self._dosing_regimens
 
-    def get_log_posteriors(self):
-        """
-        Returns a list of :class:`LogPosterior` instances, defined by
-        the dataset, the mechanistic model, the error model, the log-prior,
-        and optionally the population model and the fixed model parameters.
+    def get_log_posterior(self, individual=None):
+        r"""
+        Returns the :class:`LogPosterior` defined by the observed biomarkers,
+        the administered dosing regimen, the mechanistic model, the error
+        model, the log-prior, and optionally the population model and the
+        fixed model parameters.
 
-        If a population model has been set, the list will contain only a single
-        log-posterior for the populational inference. If no population model
-        has been set, the list contains a log-posterior for each individual
-        separately.
+        If measurements of multiple individuals exist in the dataset, the
+        indiviudals ID can be passed to return the log-posterior associate
+        to that individual. If no ID is selected, and no population model
+        has been set, a list of the individuals' log-posteriors is returned.
 
-        This method raises an error if the mechanistic model, the error
-        model, or the log-prior has not been set. They can be set with
-        :meth:`set_mechanistic_model`, :meth:`set_error_model` and
-        :meth:`set_log_prior`.
+        This method raises an error if the log-prior has not been set.
+        See :meth:`set_log_prior`.
+
+        .. note::
+            When a population model has been set, individual log-posteriors
+            can no longer be selected and ``individual`` is ignored.
+
+        Parameters
+        ----------
+        optional individual
+            The ID of an individual. If ``None`` the log-posteriors for all
+            individuals is returned.
         """
+        # Check that priors have been set
         if self._log_prior is None:
             raise ValueError(
                 'The log-prior has not been set.')
 
+        # Make sure individual is None, when population model is set
+        _id = individual if self._population_models is None else None
+
+        # Check that individual is in ids
+        if (_id is not None) and (_id not in self._ids):
+            raise ValueError(
+                'The individual cannot be found in the ID column of the '
+                'dataset.')
+
         # Create log-likelihoods
-        log_likelihoods = self._create_log_likelihoods()
+        log_likelihoods = self._create_log_likelihoods(_id)
         if self._population_models is not None:
             # Compose HierarchicalLogLikelihoods
             log_likelihoods = [erlo.HierarchicalLogLikelihood(
@@ -603,6 +626,10 @@ class ProblemModellingController(object):
         for log_likelihood in log_likelihoods:
             log_posterior = erlo.LogPosterior(log_likelihood, self._log_prior)
             log_posteriors.append(log_posterior)
+
+        # If only one log-posterior in list, unwrap the list
+        if len(log_posteriors) == 1:
+            return log_posteriors[0]
 
         return log_posteriors
 
