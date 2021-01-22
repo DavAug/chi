@@ -270,7 +270,10 @@ class ProblemModellingController(object):
                 # i.e. no doses were defined by the datasets.
                 pass
 
-            log_likelihoods.append(self._create_log_likelihood(individual))
+            log_likelihood = self._create_log_likelihood(individual)
+            if log_likelihood is not None:
+                # If data exists for this individual, append to log-likelihoods
+                log_likelihoods.append(log_likelihood)
 
         return log_likelihoods
 
@@ -300,6 +303,16 @@ class ProblemModellingController(object):
             # Collect data for output
             times.append(temp_df[self._time_key].to_numpy())
             observations.append(temp_df[self._meas_key].to_numpy())
+
+        # Count outputs that were measured
+        n_measured_outputs = 0
+        for output_measurements in observations:
+            if len(output_measurements) > 0:
+                n_measured_outputs += 1
+
+        # If no outputs were measured, do not construct a likelihood
+        if n_measured_outputs == 0:
+            return None
 
         # Create log-likelihood and set ID to individual
         log_likelihood = erlo.LogLikelihood(
