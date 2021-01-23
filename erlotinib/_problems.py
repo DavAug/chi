@@ -602,10 +602,6 @@ class ProblemModellingController(object):
             individuals is returned.
         """
         # Check prerequesites
-        if self._data is None:
-            raise ValueError(
-                'The data has not been set.')
-
         if self._log_prior is None:
             raise ValueError(
                 'The log-prior has not been set.')
@@ -823,31 +819,32 @@ class ProblemModellingController(object):
         """
         Sets the log-prior probability distribution of the model parameters.
 
-        The log-priors input is a list of :class:`pints.LogPrior` instances of
-        the same length as the number of parameters, :meth:`n_parameters`.
-
-        Correlations between model parameters is currently not supported. Each
-        model parameter is assigned with an independent prior distribution,
-        i.e. the joint log-prior for the model parameters is assumed to be a
-        product of the marginal log-priors.
-
-        If a population model has not been set, the provided log-prior is used
-        for the parameters across all individuals.
-
         By default the log-priors are assumed to be ordered according to
         :meth:`get_parameter_names`. Alternatively, the mapping of the
-        log-priors can be specified explicitly with ``param_names``.
+        log-priors can be specified explicitly with the input argument
+        ``param_names``.
+
+        If a population model has not been set, the provided log-prior is used
+        for all individuals.
+
+        .. note::
+            This method requires that the data has been set, since the number
+            of parameters of an hierarchical log-posterior vary with the number
+            of individuals in the dataset.
 
         Parameters
         ----------
         log_priors
             A list of :class:`pints.LogPrior` of the length
             :meth:`n_parameters`.
-        param_names
+        optional param_names
             A list of model parameter names, which is used to map the
-            log-priors to the model parameters.
+            log-priors to the model parameters. If ``None`` the log-priors are
+            assumed to be ordered according to :meth:`get_parameter_names`.
         """
-        #TODO: data has to be set first! Remove data assert from log-posterior
+        # Check prerequesites
+        if self._data is None:
+            raise ValueError('The data has not been set.')
 
         # Check inputs
         for log_prior in log_priors:
