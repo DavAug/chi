@@ -757,8 +757,8 @@ class ProblemModellingController(object):
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
-            raise ValueError(
-                'Data has to be pandas.DataFrame.')
+            raise TypeError(
+                'Data has to be a pandas.DataFrame.')
 
         # If model does not support dose administration, set dose keys to None
         if isinstance(self._mechanistic_model, erlo.PharmacodynamicModel):
@@ -785,7 +785,7 @@ class ProblemModellingController(object):
                 output_biomarker_dict = {outputs[0]: biomarkers[0]}
             else:
                 # Assume trivial map
-                {output: output for output in outputs}
+                output_biomarker_dict = {output: output for output in outputs}
 
         # Check that output-biomarker map is valid
         for output in outputs:
