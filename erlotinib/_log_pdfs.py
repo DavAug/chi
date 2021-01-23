@@ -174,6 +174,10 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             # If population model has population model parameters, add them as
             # prefixes.
             if n_pop > 0:
+                # Reset parameter names to original names
+                pop_model.set_parameter_names(None)
+
+                # Add population parameters
                 names = pop_model.get_parameter_names()
                 ids += names
 
