@@ -817,7 +817,14 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
     def test_set_data(self):
-        pass
+        # Set data with explicit output-biomarker map
+        problem = copy.deepcopy(self.pd_problem)
+        output_biomarker_dict = {'myokit.tumour_volume': 'Tumour volume'}
+        problem.set_data(self.data, output_biomarker_dict)
+
+        # Set data with implicit output-biomarker map
+        mask = self.data['Biomarker'] == 'Tumour volume'
+        problem.set_data(self.data[mask])
 
     def test_set_data_bad_input(self):
         # Data has the wrong type
