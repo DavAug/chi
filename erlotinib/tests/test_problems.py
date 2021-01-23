@@ -410,10 +410,6 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
     def test_get_log_posteriors_bad_input(self):
         problem = copy.deepcopy(self.pd_problem)
 
-        # No data has been set
-        with self.assertRaisesRegex(ValueError, 'The data has not'):
-            problem.get_log_posterior()
-
         # No log-prior has been set
         problem.set_data(
             self.data,
@@ -877,22 +873,25 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The biomarker <central.'):
             self.pkpd_problem.set_data(self.data)
 
-    # def test_set_log_prior(self):
-    #     # Map priors to parameters automatically
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     self.problem.set_log_prior(self.log_priors)
+    def test_set_log_prior(self):
+        # Test case I: PD model
+        problem = copy.deepcopy(self.pd_problem)
+        problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
+        log_priors = [pints.HalfCauchyLogPrior(0, 1)] * 7
 
-    #     # Specify prior parameter map explicitly
-    #     parameters = [
-    #         'myokit.kappa',
-    #         'Sigma base',
-    #         'Sigma rel.',
-    #         'myokit.tumour_volume',
-    #         'myokit.lambda_1',
-    #         'myokit.drug_concentration',
-    #         'myokit.lambda_0']
-    #     self.problem.set_log_prior(self.log_priors, parameters)
+        # Map priors to parameters automatically
+        problem.set_log_prior(log_priors)
+
+        # Specify prior parameter map explicitly
+        param_names = [
+            'myokit.kappa',
+            'Sigma base',
+            'Sigma rel.',
+            'myokit.tumour_volume',
+            'myokit.lambda_1',
+            'myokit.drug_concentration',
+            'myokit.lambda_0']
+        problem.set_log_prior(log_priors, param_names)
 
     # def test_set_log_prior_bad_input(self):
     #     # No mechanistic model set
