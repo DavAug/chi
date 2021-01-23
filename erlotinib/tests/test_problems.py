@@ -276,72 +276,136 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         regimens = self.pkpd_problem.get_dosing_regimens()
         self.assertIsNone(regimens)
 
-    # def test_get_log_posteriors(self):
-    #     # Create posterior with no fixed parameters
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     self.problem.set_log_prior(self.log_priors)
-    #     posteriors = self.problem.get_log_posteriors()
+    def test_get_log_posteriors(self):
+        # Test case I: Create posterior with no fixed parameters
+        problem = copy.deepcopy(self.pd_problem)
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+        problem.set_log_prior([
+            pints.HalfCauchyLogPrior(0, 1)]*7)
 
-    #     self.assertEqual(len(posteriors), 3)
-    #     self.assertEqual(posteriors[0].n_parameters(), 7)
-    #     self.assertEqual(posteriors[0].get_id(), 'ID 0')
-    #     self.assertEqual(posteriors[1].n_parameters(), 7)
-    #     self.assertEqual(posteriors[1].get_id(), 'ID 1')
-    #     self.assertEqual(posteriors[2].n_parameters(), 7)
-    #     self.assertEqual(posteriors[2].get_id(), 'ID 2')
+        # Get all posteriors
+        posteriors = problem.get_log_posterior()
 
-    #     # Fix some parameters
-    #     name_value_dict = dict({
-    #         'myokit.drug_concentration': 0,
-    #         'myokit.kappa': 1})
-    #     self.problem.fix_parameters(name_value_dict)
-    #     self.problem.set_log_prior(self.log_priors[:-2])
-    #     posteriors = self.problem.get_log_posteriors()
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 7)
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
+        self.assertEqual(posteriors[1].n_parameters(), 7)
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
+        self.assertEqual(posteriors[2].n_parameters(), 7)
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
 
-    #     self.assertEqual(len(posteriors), 3)
-    #     self.assertEqual(posteriors[0].n_parameters(), 5)
-    #     self.assertEqual(posteriors[0].get_id(), 'ID 0')
-    #     self.assertEqual(posteriors[1].n_parameters(), 5)
-    #     self.assertEqual(posteriors[1].get_id(), 'ID 1')
-    #     self.assertEqual(posteriors[2].n_parameters(), 5)
-    #     self.assertEqual(posteriors[2].get_id(), 'ID 2')
+        # Get only one posterior
+        posterior = problem.get_log_posterior(individual='0')
 
-    #     # Set a population model
-    #     pop_models = [
-    #         erlo.PooledModel(),
-    #         erlo.HeterogeneousModel(),
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel()]
-    #     self.problem.set_population_model(pop_models)
-    #     self.problem.set_log_prior(self.log_priors)
+        self.assertIsInstance(posterior, erlo.LogPosterior)
+        self.assertEqual(posterior.n_parameters(), 7)
+        self.assertEqual(posterior.get_id(), 'ID 0')
 
-    #     posteriors = self.problem.get_log_posteriors()
+        # Test case II: Fix some parameters
+        name_value_dict = dict({
+            'myokit.drug_concentration': 0,
+            'myokit.kappa': 1})
+        problem.fix_parameters(name_value_dict)
+        problem.set_log_prior([
+            pints.HalfCauchyLogPrior(0, 1)]*5)
 
-    #     self.assertEqual(len(posteriors), 1)
-    #     posterior = posteriors[0]
-    #     self.assertEqual(posterior.n_parameters(), 7)
+        # Get all posteriors
+        posteriors = problem.get_log_posterior()
 
-    #     names = posterior.get_parameter_names()
-    #     ids = posterior.get_id()
-    #     self.assertEqual(len(names), 7)
-    #     self.assertEqual(len(ids), 7)
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 5)
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
+        self.assertEqual(posteriors[1].n_parameters(), 5)
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
+        self.assertEqual(posteriors[2].n_parameters(), 5)
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
 
-    #     self.assertEqual(names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(ids[0], 'Pooled')
-    #     self.assertEqual(names[1], 'myokit.lambda_0')
-    #     self.assertEqual(ids[1], 'ID 0')
-    #     self.assertEqual(names[2], 'myokit.lambda_0')
-    #     self.assertEqual(ids[2], 'ID 1')
-    #     self.assertEqual(names[3], 'myokit.lambda_0')
-    #     self.assertEqual(ids[3], 'ID 2')
-    #     self.assertEqual(names[4], 'myokit.lambda_1')
-    #     self.assertEqual(ids[4], 'Pooled')
-    #     self.assertEqual(names[5], 'Sigma base')
-    #     self.assertEqual(ids[5], 'Pooled')
-    #     self.assertEqual(names[6], 'Sigma rel.')
-    #     self.assertEqual(ids[6], 'Pooled')
+        # Get only one posterior
+        posterior = problem.get_log_posterior(individual='1')
+
+        self.assertIsInstance(posterior, erlo.LogPosterior)
+        self.assertEqual(posterior.n_parameters(), 5)
+        self.assertEqual(posterior.get_id(), 'ID 1')
+
+        # Set a population model
+        pop_models = [
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel()]
+        problem.set_population_model(pop_models)
+        problem.set_log_prior([
+            pints.HalfCauchyLogPrior(0, 1)]*11)
+        posterior = problem.get_log_posterior()
+
+        self.assertIsInstance(posterior, erlo.LogPosterior)
+        self.assertEqual(posterior.n_parameters(), 11)
+
+        names = posterior.get_parameter_names()
+        ids = posterior.get_id()
+        self.assertEqual(len(names), 11)
+        self.assertEqual(len(ids), 11)
+
+        self.assertEqual(names[0], 'myokit.tumour_volume')
+        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(names[1], 'myokit.lambda_0')
+        self.assertEqual(ids[1], 'ID 0')
+        self.assertEqual(names[2], 'myokit.lambda_0')
+        self.assertEqual(ids[2], 'ID 1')
+        self.assertEqual(names[3], 'myokit.lambda_0')
+        self.assertEqual(ids[3], 'ID 2')
+        self.assertEqual(names[4], 'myokit.lambda_1')
+        self.assertEqual(ids[4], 'Pooled')
+        self.assertEqual(names[5], 'Sigma base')
+        self.assertEqual(ids[5], 'Pooled')
+        self.assertEqual(names[6], 'Sigma rel.')
+        self.assertEqual(ids[6], 'ID 0')
+        self.assertEqual(names[7], 'Sigma rel.')
+        self.assertEqual(ids[7], 'ID 1')
+        self.assertEqual(names[8], 'Sigma rel.')
+        self.assertEqual(ids[8], 'ID 2')
+        self.assertEqual(names[9], 'Sigma rel.')
+        self.assertEqual(ids[9], 'Mean')
+        self.assertEqual(names[10], 'Sigma rel.')
+        self.assertEqual(ids[10], 'Std.')
+
+        # Make sure that selecting an individual is ignored for population
+        # models
+        posterior = problem.get_log_posterior(individual='some individual')
+
+        self.assertIsInstance(posterior, erlo.LogPosterior)
+        self.assertEqual(posterior.n_parameters(), 11)
+
+        names = posterior.get_parameter_names()
+        ids = posterior.get_id()
+        self.assertEqual(len(names), 11)
+        self.assertEqual(len(ids), 11)
+
+        self.assertEqual(names[0], 'myokit.tumour_volume')
+        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(names[1], 'myokit.lambda_0')
+        self.assertEqual(ids[1], 'ID 0')
+        self.assertEqual(names[2], 'myokit.lambda_0')
+        self.assertEqual(ids[2], 'ID 1')
+        self.assertEqual(names[3], 'myokit.lambda_0')
+        self.assertEqual(ids[3], 'ID 2')
+        self.assertEqual(names[4], 'myokit.lambda_1')
+        self.assertEqual(ids[4], 'Pooled')
+        self.assertEqual(names[5], 'Sigma base')
+        self.assertEqual(ids[5], 'Pooled')
+        self.assertEqual(names[6], 'Sigma rel.')
+        self.assertEqual(ids[6], 'ID 0')
+        self.assertEqual(names[7], 'Sigma rel.')
+        self.assertEqual(ids[7], 'ID 1')
+        self.assertEqual(names[8], 'Sigma rel.')
+        self.assertEqual(ids[8], 'ID 2')
+        self.assertEqual(names[9], 'Sigma rel.')
+        self.assertEqual(ids[9], 'Mean')
+        self.assertEqual(names[10], 'Sigma rel.')
+        self.assertEqual(ids[10], 'Std.')
 
     # def test_get_log_posteriors_bad_input(self):
     #     # No mechanistic model set
