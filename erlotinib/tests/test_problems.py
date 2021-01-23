@@ -747,76 +747,74 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
         self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
 
-    # def test_set_error_model(self):
-    #     # Map error model to output automatically
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
+    def test_get_predictive_model(self):
+        # Test case I: PD model
+        problem = copy.deepcopy(self.pd_problem)
 
-    #     self.assertEqual(self.problem.get_n_parameters(), 7)
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Sigma base')
-    #     self.assertEqual(param_names[6], 'Sigma rel.')
+        # Test case I.1: No population model
+        predictive_model = problem.get_predictive_model()
+        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
-    #     # Set error model-output mapping explicitly
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker 1', 'Biomarker 2'])
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     output_biomarker_map = dict({
-    #         'myokit.tumour_volume': 'Biomarker 2',
-    #         'myokit.drug_concentration': 'Biomarker 1'})
-    #     problem.set_mechanistic_model(model, output_biomarker_map)
-    #     log_likelihoods = [
-    #         erlo.ConstantAndMultiplicativeGaussianErrorModel(),
-    #         erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-    #     outputs = ['myokit.tumour_volume', 'myokit.drug_concentration']
-    #     problem.set_error_model(log_likelihoods, outputs)
+        # Exclude population model
+        predictive_model = problem.get_predictive_model(
+            exclude_pop_model=True)
+        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
-    #     self.assertEqual(problem.get_n_parameters(), 9)
-    #     param_names = problem.get_parameter_names()
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'myokit.tumour_volume Sigma base')
-    #     self.assertEqual(param_names[6], 'myokit.tumour_volume Sigma rel.')
-    #     self.assertEqual(
-    #         param_names[7], 'myokit.drug_concentration Sigma base')
-    #     self.assertEqual(
-    #         param_names[8], 'myokit.drug_concentration Sigma rel.')
+        # Test case I.2: Population model
+        problem.set_population_model([
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.LogNormalModel()])
+        predictive_model = problem.get_predictive_model()
+        self.assertIsInstance(
+            predictive_model, erlo.PredictivePopulationModel)
 
-    # def test_set_error_model_bad_input(self):
-    #     # No mechanistic model set
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker'])
+        # Exclude population model
+        predictive_model = problem.get_predictive_model(
+            exclude_pop_model=True)
+        self.assertNotIsInstance(
+            predictive_model, erlo.PredictivePopulationModel)
+        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
-    #     with self.assertRaisesRegex(ValueError, 'Before setting'):
-    #         problem.set_error_model(self.error_models)
+        # Test case II: PKPD model
+        problem = copy.deepcopy(self.pkpd_problem)
 
-    #     # Error models have the wrong type
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model)
+        # Test case II.1: No population model
+        predictive_model = problem.get_predictive_model()
+        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
-    #     error_models = [str, float, int]
-    #     with self.assertRaisesRegex(ValueError, 'The error models have'):
-    #         problem.set_error_model(error_models)
+        # Exclude population model
+        predictive_model = problem.get_predictive_model(
+            exclude_pop_model=True)
+        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
-    #     # Number of error_models does not match the number of outputs
-    #     error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
-    #     with self.assertRaisesRegex(ValueError, 'The number of error'):
-    #         problem.set_error_model(error_models)
+        # Test case II.2: Population model
+        problem.set_population_model([
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()])
+        predictive_model = problem.get_predictive_model()
+        self.assertIsInstance(
+            predictive_model, erlo.PredictivePopulationModel)
 
-    #     # The specified outputs do not match the model outputs
-    #     outputs = ['wrong', 'outputs']
-    #     with self.assertRaisesRegex(ValueError, 'The specified outputs'):
-    #         problem.set_error_model(self.error_models, outputs)
+        # Exclude population model
+        predictive_model = problem.get_predictive_model(
+            exclude_pop_model=True)
+        self.assertNotIsInstance(
+            predictive_model, erlo.PredictivePopulationModel)
+        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
     # def test_set_log_prior(self):
     #     # Map priors to parameters automatically
