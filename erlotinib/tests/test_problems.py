@@ -816,6 +816,60 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             predictive_model, erlo.PredictivePopulationModel)
         self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
+    def test_set_data(self):
+        pass
+
+    def test_set_data_bad_input(self):
+        # Data has the wrong type
+        data = 'Wrong type'
+        with self.assertRaisesRegex(TypeError, 'Data has to be a'):
+            self.pd_problem.set_data(data)
+
+        # Data has the wrong ID key
+        data = self.data.rename(columns={'ID': 'Some key'})
+        with self.assertRaisesRegex(ValueError, 'Data does not have the'):
+            self.pkpd_problem.set_data(data)
+
+        # Data has the wrong time key
+        data = self.data.rename(columns={'Time': 'Some key'})
+        with self.assertRaisesRegex(ValueError, 'Data does not have the'):
+            self.pkpd_problem.set_data(data)
+
+        # Data has the wrong biomarker key
+        data = self.data.rename(columns={'Biomarker': 'Some key'})
+        with self.assertRaisesRegex(ValueError, 'Data does not have the'):
+            self.pkpd_problem.set_data(data)
+
+        # Data has the wrong measurement key
+        data = self.data.rename(columns={'Measurement': 'Some key'})
+        with self.assertRaisesRegex(ValueError, 'Data does not have the'):
+            self.pkpd_problem.set_data(data)
+
+        # Data has the wrong dose key
+        data = self.data.rename(columns={'Dose': 'Some key'})
+        with self.assertRaisesRegex(ValueError, 'Data does not have the'):
+            self.pkpd_problem.set_data(data)
+
+        # Data has the wrong duration key
+        data = self.data.rename(columns={'Duration': 'Some key'})
+        with self.assertRaisesRegex(ValueError, 'Data does not have the'):
+            self.pkpd_problem.set_data(data)
+
+        # The output-biomarker map does not contain a model output
+        output_biomarker_dict = {'some ouput': 'some biomarker'}
+        with self.assertRaisesRegex(ValueError, 'The output <central.drug'):
+            self.pkpd_problem.set_data(self.data, output_biomarker_dict)
+
+        # The output-biomarker map references a biomarker that is not in the
+        # dataframe
+        output_biomarker_dict = {'myokit.tumour_volume': 'some biomarker'}
+        with self.assertRaisesRegex(ValueError, 'The biomarker <some'):
+            self.pd_problem.set_data(self.data, output_biomarker_dict)
+
+        # The model outputs and dataframe biomarker cannot be trivially mapped
+        with self.assertRaisesRegex(ValueError, 'The biomarker <central.'):
+            self.pkpd_problem.set_data(self.data)
+
     # def test_set_log_prior(self):
     #     # Map priors to parameters automatically
     #     self.problem.set_mechanistic_model(self.model)
