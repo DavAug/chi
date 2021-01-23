@@ -407,27 +407,27 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(names[10], 'Sigma rel.')
         self.assertEqual(ids[10], 'Std.')
 
-    # def test_get_log_posteriors_bad_input(self):
-    #     # No mechanistic model set
-    #     problem = erlo.ProblemModellingController(
-    #         self.data, biom_keys=['Biomarker'])
+    def test_get_log_posteriors_bad_input(self):
+        problem = copy.deepcopy(self.pd_problem)
 
-    #     with self.assertRaisesRegex(ValueError, 'The mechanistic'):
-    #         problem.get_log_posteriors()
+        # No data has been set
+        with self.assertRaisesRegex(ValueError, 'The data has not'):
+            problem.get_log_posterior()
 
-    #     # No error model set
-    #     path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-    #     model = erlo.PharmacodynamicModel(path)
-    #     problem.set_mechanistic_model(model)
+        # No log-prior has been set
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
 
-    #     with self.assertRaisesRegex(ValueError, 'The error model'):
-    #         problem.get_log_posteriors()
+        with self.assertRaisesRegex(ValueError, 'The log-prior has not'):
+            problem.get_log_posterior()
 
-    #     # No log-prior set
-    #     problem.set_error_model(self.error_models)
+        # The selected individual does not exist
+        individual = 'Not existent'
+        problem.set_log_prior([pints.HalfCauchyLogPrior(0, 1)]*7)
 
-    #     with self.assertRaisesRegex(ValueError, 'The log-prior'):
-    #         problem.get_log_posteriors()
+        with self.assertRaisesRegex(ValueError, 'The individual cannot'):
+            problem.get_log_posterior(individual)
 
     # def test_get_n_parameters(self):
     #     # Test whether exclude pop models work
