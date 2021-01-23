@@ -583,12 +583,13 @@ class ProblemModellingController(object):
         fixed model parameters.
 
         If measurements of multiple individuals exist in the dataset, the
-        indiviudals ID can be passed to return the log-posterior associate
-        to that individual. If no ID is selected, and no population model
-        has been set, a list of the individuals' log-posteriors is returned.
+        indiviudals ID can be passed to return the log-posterior associated
+        to that individual. If no ID is selected and no population model
+        has been set, a list of log-posteriors is returned correspodning to
+        each of the individuals.
 
-        This method raises an error if the log-prior has not been set.
-        See :meth:`set_log_prior`.
+        This method raises an error if the data or the log-prior has not been
+        set. See :meth:`set_data` and :meth:`set_log_prior`.
 
         .. note::
             When a population model has been set, individual log-posteriors
@@ -600,7 +601,11 @@ class ProblemModellingController(object):
             The ID of an individual. If ``None`` the log-posteriors for all
             individuals is returned.
         """
-        # Check that priors have been set
+        # Check prerequesites
+        if self._data is None:
+            raise ValueError(
+                'The data has not been set.')
+
         if self._log_prior is None:
             raise ValueError(
                 'The log-prior has not been set.')
@@ -710,7 +715,7 @@ class ProblemModellingController(object):
             time_key='Time', biom_key='Biomarker', meas_key='Measurement',
             dose_key='Dose', dose_duration_key='Duration'):
         """
-        #TODO: add data
+        #TODO:
         If no dose or duration information exists, they can be set to None.
         """
         # Check input format
@@ -809,6 +814,7 @@ class ProblemModellingController(object):
             A list of model parameter names, which is used to map the
             log-priors to the model parameters.
         """
+        #TODO: data has to be set first!
         # Check inputs
         for log_prior in log_priors:
             if not isinstance(log_prior, pints.LogPrior):
