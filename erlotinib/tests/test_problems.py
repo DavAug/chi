@@ -429,24 +429,44 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The individual cannot'):
             problem.get_log_posterior(individual)
 
-    # def test_get_n_parameters(self):
-    #     # Test whether exclude pop models work
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     pop_models = [
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel(),
-    #         erlo.HeterogeneousModel(),
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel(),
-    #         erlo.LogNormalModel()]
-    #     self.problem.set_population_model(pop_models)
+    def test_get_n_parameters(self):
+        # Test case I: No population model
+        # Test default flag
+        problem = copy.deepcopy(self.pd_problem)
+        n_parameters = problem.get_n_parameters()
+        self.assertEqual(n_parameters, 7)
 
-    #     self.assertEqual(self.problem.get_n_parameters(), 13)
-    #     self.assertEqual(
-    #         self.problem.get_n_parameters(exclude_pop_model=True),
-    #         7)
+        # Test exclude population model True
+        n_parameters = problem.get_n_parameters(exclude_pop_model=True)
+        self.assertEqual(n_parameters, 7)
+
+        # Test case II: Population model
+        pop_models = [
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.LogNormalModel()]
+        problem.set_population_model(pop_models)
+        n_parameters = problem.get_n_parameters()
+        self.assertEqual(n_parameters, 8)
+
+        # Test exclude population model True
+        n_parameters = problem.get_n_parameters(exclude_pop_model=True)
+        self.assertEqual(n_parameters, 7)
+
+        # Test case III: Set data
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+        n_parameters = problem.get_n_parameters()
+        self.assertEqual(n_parameters, 17)
+
+        # Test exclude population model True
+        n_parameters = problem.get_n_parameters(exclude_pop_model=True)
+        self.assertEqual(n_parameters, 7)
 
     # def test_get_parameter_names(self):
     #     # Test with a mechanistic-error model pair only
