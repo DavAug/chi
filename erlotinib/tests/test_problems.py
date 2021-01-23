@@ -430,7 +430,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             problem.get_log_posterior(individual)
 
     def test_get_n_parameters(self):
-        # Test case I: No population model
+        # Test case I: PD model
+        # Test case I.1: No population model
         # Test default flag
         problem = copy.deepcopy(self.pd_problem)
         n_parameters = problem.get_n_parameters()
@@ -440,7 +441,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 7)
 
-        # Test case II: Population model
+        # Test case I.2: Population model
         pop_models = [
             erlo.PooledModel(),
             erlo.PooledModel(),
@@ -457,7 +458,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 7)
 
-        # Test case III: Set data
+        # Test case I.3: Set data
         problem.set_data(
             self.data,
             output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
@@ -467,6 +468,51 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test exclude population model True
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 7)
+
+        # Test case II: PKPD model
+        # Test case II.1: No population model
+        # Test default flag
+        problem = copy.deepcopy(self.pkpd_problem)
+        n_parameters = problem.get_n_parameters()
+        self.assertEqual(n_parameters, 11)
+
+        # Test exclude population model True
+        n_parameters = problem.get_n_parameters(exclude_pop_model=True)
+        self.assertEqual(n_parameters, 11)
+
+        # Test case II.2: Population model
+        pop_models = [
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+        problem.set_population_model(pop_models)
+        n_parameters = problem.get_n_parameters()
+        self.assertEqual(n_parameters, 12)
+
+        # Test exclude population model True
+        n_parameters = problem.get_n_parameters(exclude_pop_model=True)
+        self.assertEqual(n_parameters, 11)
+
+        # Test case II.3: Set data
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={
+                'myokit.tumour_volume': 'Tumour volume',
+                'central.drug_concentration': 'IL 6'})
+        n_parameters = problem.get_n_parameters()
+        self.assertEqual(n_parameters, 21)
+
+        # Test exclude population model True
+        n_parameters = problem.get_n_parameters(exclude_pop_model=True)
+        self.assertEqual(n_parameters, 11)
 
     # def test_get_parameter_names(self):
     #     # Test with a mechanistic-error model pair only
