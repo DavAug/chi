@@ -651,7 +651,7 @@ class ProblemModellingController(object):
         ----------
         optional exclude_pop_model
             A boolean flag which can be used to obtain the number of
-            parameters if the population model wasn't set.
+            parameters as if the population model wasn't set.
         """
         if exclude_pop_model is True:
             n_parameters, _ = self._get_number_and_parameter_names(
@@ -662,23 +662,18 @@ class ProblemModellingController(object):
 
     def get_parameter_names(self, exclude_pop_model=False):
         """
-        Returns the names of the free structural model parameters, i.e. the
-        free parameters of the mechanistic model, the error model and
-        optionally the population model.
+        Returns the names of the model parameters, i.e. the parameter names
+        of the mechanistic model, the error model and, if set, the
+        population model.
 
         Any parameters that have been fixed to a constant value will not be
         included in the list of model parameters.
 
-        If the mechanistic model or the error model have not been set, ``None``
-        is returned. If the population model has not been set, only the names
-        of parameters for one structural model is returned, as the models are
-        structurally the same across individuals.
-
-        If a population model has been set and not all parameters are pooled,
-        the mechanistic and error model parameters appear multiple times (once
-        for each individual). To get the mechanistic and error model parameters
-        prior to setting a population model the ``exlude_pop_model`` flag can
-        be set to ``True``.
+        Parameters
+        ----------
+        optional exclude_pop_model
+            A boolean flag which can be used to obtain the parameter names
+            as if the population model wasn't set.
         """
         if exclude_pop_model is True:
             _, parameter_names = self._get_number_and_parameter_names(
