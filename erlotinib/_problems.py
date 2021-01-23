@@ -684,8 +684,15 @@ class ProblemModellingController(object):
 
     def get_predictive_model(self, exclude_pop_model=False):
         """
-        #TODO:
-        Returns the predictive model.
+        Returns the :class:`PredictiveModel` defined by the mechanistic model,
+        the error model, and optionally the population model and the
+        fixed model parameters.
+
+        Parameters
+        ----------
+        optional exclude_pop_model
+            A boolean flag which can be used to obtain the predictive model
+            as if the population model wasn't set.
         """
         # Create predictive model
         predictive_model = erlo.PredictiveModel(
@@ -805,7 +812,8 @@ class ProblemModellingController(object):
             A list of model parameter names, which is used to map the
             log-priors to the model parameters.
         """
-        #TODO: data has to be set first!
+        #TODO: data has to be set first! Remove data assert from log-posterior
+
         # Check inputs
         for log_prior in log_priors:
             if not isinstance(log_prior, pints.LogPrior):
@@ -813,10 +821,12 @@ class ProblemModellingController(object):
                     'All marginal log-priors have to be instances of a '
                     'pints.LogPrior.')
 
-        if len(log_priors) != self.get_n_parameters():
+        n_parameters = self.get_n_parameters()
+        if len(log_priors) != n_parameters:
             raise ValueError(
-                'One marginal log-prior has to be provided for each parameter.'
-            )
+                'One marginal log-prior has to be provided for each '
+                'parameter.There are <' + str(n_parameters) + '> model '
+                'parameters.')
 
         n_parameters = 0
         for log_prior in log_priors:
@@ -889,7 +899,8 @@ class ProblemModellingController(object):
         if len(pop_models) != n_parameters:
             raise ValueError(
                 'If no parameter names are specified, exactly one population '
-                'model has to be provided for each free parameter.')
+                'model has to be provided for each free parameter. The are '
+                '<' + n_parameters + '> model parameters.')
 
         # Sort inputs according to `params`
         if params is not None:
