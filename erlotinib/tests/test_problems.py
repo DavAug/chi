@@ -514,85 +514,238 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 11)
 
-    # def test_get_parameter_names(self):
-    #     # Test with a mechanistic-error model pair only
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
+    def test_get_parameter_names(self):
+        # Test case I: PD model
+        problem = copy.deepcopy(self.pd_problem)
 
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 7)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Sigma base')
-    #     self.assertEqual(param_names[6], 'Sigma rel.')
+        # Test case I.1: No population model
+        # Test default flag
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 7)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Sigma base')
+        self.assertEqual(param_names[6], 'Sigma rel.')
 
-    #     # Check that also works with exclude pop params flag
-    #     param_names = self.problem.get_parameter_names(exclude_pop_model=True)
-    #     self.assertEqual(len(param_names), 7)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Sigma base')
-    #     self.assertEqual(param_names[6], 'Sigma rel.')
+        # Check that also works with exclude pop params flag
+        param_names = problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 7)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Sigma base')
+        self.assertEqual(param_names[6], 'Sigma rel.')
 
-    #     # Test with fixed parameters
-    #     name_value_dict = dict({
-    #         'myokit.drug_concentration': 0,
-    #         'myokit.kappa': 1})
-    #     self.problem.fix_parameters(name_value_dict)
+        # Test case I.2: Population model
+        pop_models = [
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.LogNormalModel()]
+        problem.set_population_model(pop_models)
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 8)
+        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'Pooled myokit.lambda_0')
+        self.assertEqual(param_names[3], 'Pooled myokit.lambda_1')
+        self.assertEqual(param_names[4], 'Mean Sigma base')
+        self.assertEqual(param_names[5], 'Std. Sigma base')
+        self.assertEqual(param_names[6], 'Mean Sigma rel.')
+        self.assertEqual(param_names[7], 'Std. Sigma rel.')
 
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 5)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[2], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[3], 'Sigma base')
-    #     self.assertEqual(param_names[4], 'Sigma rel.')
+        # Test exclude population model True
+        param_names = problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 7)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Sigma base')
+        self.assertEqual(param_names[6], 'Sigma rel.')
 
-    #     # Test with setting a population model
-    #     self.problem.set_mechanistic_model(self.model)
-    #     self.problem.set_error_model(self.error_models)
-    #     pop_models = [
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel(),
-    #         erlo.HeterogeneousModel(),
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel(),
-    #         erlo.PooledModel(),
-    #         erlo.LogNormalModel()]
-    #     self.problem.set_population_model(pop_models)
+        # Test case I.3: Set data
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 17)
+        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
+        self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
+        self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
+        self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
+        self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
+        self.assertEqual(param_names[7], 'ID 0: Sigma base')
+        self.assertEqual(param_names[8], 'ID 1: Sigma base')
+        self.assertEqual(param_names[9], 'ID 2: Sigma base')
+        self.assertEqual(param_names[10], 'Mean Sigma base')
+        self.assertEqual(param_names[11], 'Std. Sigma base')
+        self.assertEqual(param_names[12], 'ID 0: Sigma rel.')
+        self.assertEqual(param_names[13], 'ID 1: Sigma rel.')
+        self.assertEqual(param_names[14], 'ID 2: Sigma rel.')
+        self.assertEqual(param_names[15], 'Mean Sigma rel.')
+        self.assertEqual(param_names[16], 'Std. Sigma rel.')
 
-    #     param_names = self.problem.get_parameter_names()
-    #     self.assertEqual(len(param_names), 13)
-    #     self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
-    #     self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
-    #     self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
-    #     self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
-    #     self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
-    #     self.assertEqual(param_names[7], 'Pooled Sigma base')
-    #     self.assertEqual(param_names[8], 'ID 0: Sigma rel.')
-    #     self.assertEqual(param_names[9], 'ID 1: Sigma rel.')
-    #     self.assertEqual(param_names[10], 'ID 2: Sigma rel.')
-    #     self.assertEqual(param_names[11], 'Mean Sigma rel.')
-    #     self.assertEqual(param_names[12], 'Std. Sigma rel.')
+        # Test exclude population model True
+        param_names = problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 7)
+        self.assertEqual(param_names[0], 'myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'myokit.kappa')
+        self.assertEqual(param_names[3], 'myokit.lambda_0')
+        self.assertEqual(param_names[4], 'myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Sigma base')
+        self.assertEqual(param_names[6], 'Sigma rel.')
 
-    #     # Test whether exclude population model works
-    #     param_names = self.problem.get_parameter_names(exclude_pop_model=True)
-    #     self.assertEqual(len(param_names), 7)
-    #     self.assertEqual(param_names[0], 'myokit.tumour_volume')
-    #     self.assertEqual(param_names[1], 'myokit.drug_concentration')
-    #     self.assertEqual(param_names[2], 'myokit.kappa')
-    #     self.assertEqual(param_names[3], 'myokit.lambda_0')
-    #     self.assertEqual(param_names[4], 'myokit.lambda_1')
-    #     self.assertEqual(param_names[5], 'Sigma base')
-    #     self.assertEqual(param_names[6], 'Sigma rel.')
+        # Test case II: PKPD model
+        problem = copy.deepcopy(self.pkpd_problem)
+
+        # Test case II.1: No population model
+        # Test default flag
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 11)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'myokit.critical_volume')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'myokit.kappa')
+        self.assertEqual(param_names[6], 'myokit.lambda')
+        self.assertEqual(
+            param_names[7], 'central.drug_concentration Sigma base')
+        self.assertEqual(
+            param_names[8], 'central.drug_concentration Sigma rel.')
+        self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
+        self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
+
+        # Test exclude population model True
+        param_names = problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 11)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'myokit.critical_volume')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'myokit.kappa')
+        self.assertEqual(param_names[6], 'myokit.lambda')
+        self.assertEqual(
+            param_names[7], 'central.drug_concentration Sigma base')
+        self.assertEqual(
+            param_names[8], 'central.drug_concentration Sigma rel.')
+        self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
+        self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
+
+        # Test case II.2: Population model
+        pop_models = [
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+        problem.set_population_model(pop_models)
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 12)
+        self.assertEqual(param_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'Pooled myokit.critical_volume')
+        self.assertEqual(param_names[3], 'Pooled myokit.elimination_rate')
+        self.assertEqual(param_names[4], 'Mean myokit.kappa')
+        self.assertEqual(param_names[5], 'Std. myokit.kappa')
+        self.assertEqual(param_names[6], 'Mean myokit.lambda')
+        self.assertEqual(param_names[7], 'Std. myokit.lambda')
+        self.assertEqual(
+            param_names[8], 'Pooled central.drug_concentration Sigma base')
+        self.assertEqual(
+            param_names[9], 'Pooled central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[10], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[11], 'Pooled myokit.tumour_volume Sigma rel.')
+
+        # Test exclude population model True
+        param_names = problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 11)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'myokit.critical_volume')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'myokit.kappa')
+        self.assertEqual(param_names[6], 'myokit.lambda')
+        self.assertEqual(
+            param_names[7], 'central.drug_concentration Sigma base')
+        self.assertEqual(
+            param_names[8], 'central.drug_concentration Sigma rel.')
+        self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
+        self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
+
+        # Test case II.3: Set data
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={
+                'myokit.tumour_volume': 'Tumour volume',
+                'central.drug_concentration': 'IL 6'})
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 21)
+        self.assertEqual(param_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'ID 0: central.size')
+        self.assertEqual(param_names[3], 'ID 1: central.size')
+        self.assertEqual(param_names[4], 'ID 2: central.size')
+        self.assertEqual(param_names[5], 'Pooled myokit.critical_volume')
+        self.assertEqual(param_names[6], 'Pooled myokit.elimination_rate')
+        self.assertEqual(param_names[7], 'ID 0: myokit.kappa')
+        self.assertEqual(param_names[8], 'ID 1: myokit.kappa')
+        self.assertEqual(param_names[9], 'ID 2: myokit.kappa')
+        self.assertEqual(param_names[10], 'Mean myokit.kappa')
+        self.assertEqual(param_names[11], 'Std. myokit.kappa')
+        self.assertEqual(param_names[12], 'ID 0: myokit.lambda')
+        self.assertEqual(param_names[13], 'ID 1: myokit.lambda')
+        self.assertEqual(param_names[14], 'ID 2: myokit.lambda')
+        self.assertEqual(param_names[15], 'Mean myokit.lambda')
+        self.assertEqual(param_names[16], 'Std. myokit.lambda')
+        self.assertEqual(
+            param_names[17], 'Pooled central.drug_concentration Sigma base')
+        self.assertEqual(
+            param_names[18], 'Pooled central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[19], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[20], 'Pooled myokit.tumour_volume Sigma rel.')
+
+        # Test exclude population model True
+        param_names = problem.get_parameter_names(exclude_pop_model=True)
+        self.assertEqual(len(param_names), 11)
+        self.assertEqual(param_names[0], 'central.drug_amount')
+        self.assertEqual(param_names[1], 'myokit.tumour_volume')
+        self.assertEqual(param_names[2], 'central.size')
+        self.assertEqual(param_names[3], 'myokit.critical_volume')
+        self.assertEqual(param_names[4], 'myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'myokit.kappa')
+        self.assertEqual(param_names[6], 'myokit.lambda')
+        self.assertEqual(
+            param_names[7], 'central.drug_concentration Sigma base')
+        self.assertEqual(
+            param_names[8], 'central.drug_concentration Sigma rel.')
+        self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
+        self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
 
     # def test_set_error_model(self):
     #     # Map error model to output automatically
