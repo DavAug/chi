@@ -713,8 +713,47 @@ class ProblemModellingController(object):
             time_key='Time', biom_key='Biomarker', meas_key='Measurement',
             dose_key='Dose', dose_duration_key='Duration'):
         """
-        #TODO:
-        If no dose or duration information exists, they can be set to None.
+        Sets the data of the modelling problem.
+
+        The data contains information about the measurement time points, the
+        observed biomarker values, the type of biomarkers, IDs to
+        identify the corresponding individuals, and optionally information
+        on the administered dose amount and duration.
+
+        The data is expected to be in form of a :class:`pandas.DataFrame`
+        with the columns ID | Time | Biomarker | Measurement | Dose |
+        Duration.
+
+        If no dose or duration information exists, the corresponding column
+        keys can be set to ``None``.
+
+        Parameters
+        ----------
+        data
+            A :class:`pandas.DataFrame` with an ID, time, biomarker,
+            measurement and optionally a dose and duration column.
+        optional output_biomarker_dict
+            A dictionary with mechanistic model output names as keys and
+            dataframe biomarker names as values. If ``None`` the model
+            outputs and biomarkers are assumed to have the same names.
+        optional id_key
+            The key of the ID column in the :class:`pandas.DataFrame`.
+            Default is `'ID'`.
+        optional time_key
+            The key of the time column in the :class:`pandas.DataFrame`.
+            Default is `'ID'`.
+        optional biom_key
+            The key of the biomarker column in the
+            :class:`pandas.DataFrame`. Default is `'Biomarker'`.
+        optional meas_key
+            The key of the measurement column in the :class:`pandas.DataFrame`.
+            Default is `'Measurement'`.
+        optional dose_key
+            The key of the dose column in the :class:`pandas.DataFrame`.
+            Default is `'Dose'`.
+        optional dose_duration_key
+            The key of the duration column in the :class:`pandas.DataFrame`.
+            Default is `'Duration'`.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
@@ -738,19 +777,15 @@ class ProblemModellingController(object):
                     'Data does not have the key <' + str(key) + '>.')
 
         # Get default output-biomarker map
-        # (only possible if single output-problem, and only one biomarker in
-        # dataframe)
         outputs = self._mechanistic_model.outputs()
         biomarkers = data[biom_key].dropna().unique()
         if output_biomarker_dict is None:
-            if (len(outputs) > 1) or (len(biomarkers) > 1):
-                raise ValueError(
-                    'If more than one model output is set, or more than one '
-                    'biomarker in the dataframe exists, a output-biomarker '
-                    'map has to be provided.')
-
-            # Create trivial map
-            output_biomarker_dict = {outputs[0]: biomarkers[0]}
+            if (len(outputs) == 1) and (len(biomarkers) == 1):
+                # Create map of single output to single biomarker
+                output_biomarker_dict = {outputs[0]: biomarkers[0]}
+            else:
+                # Assume trivial map
+                {output: output for output in outputs}
 
         # Check that output-biomarker map is valid
         for output in outputs:
