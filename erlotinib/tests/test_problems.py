@@ -276,9 +276,27 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         regimens = self.pkpd_problem.get_dosing_regimens()
         self.assertIsNone(regimens)
 
-    def test_get_log_posteriors(self):
+    def test_get_log_posterior(self):
         # Test case I: Create posterior with no fixed parameters
         problem = copy.deepcopy(self.pd_problem)
+
+        # Set data which does not provide measurements for all IDs
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={'myokit.tumour_volume': 'IL 6'})
+        problem.set_log_prior([
+            pints.HalfCauchyLogPrior(0, 1)]*7)
+
+        # Get all posteriors
+        posteriors = problem.get_log_posterior()
+
+        self.assertEqual(len(posteriors), 2)
+        self.assertEqual(posteriors[0].n_parameters(), 7)
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
+        self.assertEqual(posteriors[1].n_parameters(), 7)
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
+
+        # Set data that has measurements for all IDs
         problem.set_data(
             self.data,
             output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
