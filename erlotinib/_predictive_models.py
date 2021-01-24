@@ -403,8 +403,10 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
         # If indvidual is not None, mask and return samples
         # (This only happens for an individual's PredictiveModel)
         if individual is not None:
-            # Mask samples for individual
-            mask = posterior_samples[id_key] == individual
+            # Mask samples for individual (pooled models are also accepted)
+            mask_id = posterior_samples[id_key] == individual
+            mask_pooled = posterior_samples[id_key] == 'Pooled'
+            mask = mask_id | mask_pooled
             posterior_samples = posterior_samples[mask]
 
             return posterior_samples
@@ -561,16 +563,22 @@ class PredictiveModel(object):
         super(PredictiveModel, self).__init__()
 
         # Check inputs
-        if not isinstance(mechanistic_model, erlo.MechanisticModel):
+        if not isinstance(
+                mechanistic_model,
+                (erlo.MechanisticModel, erlo.ReducedMechanisticModel)):
             raise TypeError(
                 'The mechanistic model has to be an instance of a '
                 'erlotinib.MechanisticModel.')
 
         for error_model in error_models:
-            if not isinstance(error_model, erlo.ErrorModel):
+            if not isinstance(
+                    error_model, (erlo.ErrorModel, erlo.ReducedErrorModel)):
                 raise TypeError(
                     'All error models have to be instances of a '
                     'erlotinib.ErrorModel.')
+
+        # Copy mechanistic model
+        mechanistic_model = copy.deepcopy(mechanistic_model)
 
         # Set outputs
         if outputs is not None:
@@ -584,15 +592,34 @@ class PredictiveModel(object):
                 'Wrong number of error models. One error model has to be '
                 'provided for each mechanistic error model.')
 
-        # Copy error models, such that renaming doesn't affect input models
-        error_models = [copy.copy(error_model) for error_model in error_models]
+        # Copy error models
+        error_models = [
+            copy.deepcopy(error_model) for error_model in error_models]
+
+        # Remember models
+        self._mechanistic_model = mechanistic_model
+        self._error_models = error_models
+
+        # Set parameter names and number of parameters
+        self._set_error_model_parameter_names()
+        self._set_number_and_parameter_names()
+
+    def _set_error_model_parameter_names(self):
+        """
+        Resets the error model parameter names and prepends the output name
+        if more than one output exists.
+        """
+        # Reset error model parameter names to defaults
+        for error_model in self._error_models:
+            error_model.set_parameter_names(None)
 
         # Rename error model parameters, if more than one output
+        n_outputs = self._mechanistic_model.n_outputs()
         if n_outputs > 1:
             # Get output names
-            outputs = mechanistic_model.outputs()
+            outputs = self._mechanistic_model.outputs()
 
-            for output_id, error_model in enumerate(error_models):
+            for output_id, error_model in enumerate(self._error_models):
                 # Get original parameter names
                 names = error_model.get_parameter_names()
 
@@ -602,13 +629,6 @@ class PredictiveModel(object):
 
                 # Set new parameter names
                 error_model.set_parameter_names(names)
-
-        # Remember models
-        self._mechanistic_model = mechanistic_model
-        self._error_models = error_models
-
-        # Set parameter names and number of parameters
-        self._set_number_and_parameter_names()
 
     def _set_number_and_parameter_names(self):
         """
@@ -1085,7 +1105,8 @@ class PredictivePopulationModel(PredictiveModel):
 
         # Construct model parameter names
         for param_id, pop_model in enumerate(self._population_models):
-            # Get population parameter
+            # Get original population parameters
+            pop_model.set_parameter_names(None)
             pop_params = pop_model.get_parameter_names()
 
             if isinstance(pop_model, erlo.HeterogeneousModel):

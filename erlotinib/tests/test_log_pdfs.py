@@ -362,10 +362,11 @@ class TestLogLikelihood(unittest.TestCase):
                 self.times)
 
         # Wrong number of error models
-        error_models = ['There', 'are', 'only two outputs']
-        with self.assertRaisesRegex(ValueError, 'One error model has to'):
+        outputs = ['central.drug_amount']
+        with self.assertRaisesRegex(ValueError, 'One error model has'):
             erlo.LogLikelihood(
-                self.model, error_models, self.observations, self.times)
+                self.model, self.error_models, self.observations, self.times,
+                outputs)
 
         # Wrong number of error models
         error_models = ['Wrong', 'type']
@@ -385,18 +386,25 @@ class TestLogLikelihood(unittest.TestCase):
             erlo.LogLikelihood(
                 self.model, self.error_models, self.observations, times)
 
+        # Negative times
+        observations = [[1, 2], [1, 2]]
+        times = [[-1, 2], [1, 2]]
+        with self.assertRaisesRegex(ValueError, 'Times cannot be negative'):
+            erlo.LogLikelihood(
+                self.model, self.error_models, observations, times)
+
+        # Not strictly increasing times
+        observations = [[1, 2], [1, 2]]
+        times = [[2, 1], [1, 2]]
+        with self.assertRaisesRegex(ValueError, 'Times must be increasing.'):
+            erlo.LogLikelihood(
+                self.model, self.error_models, observations, times)
+
         # Observations and times don't match
         observations = [[1, 2], [1, 2]]  # Times have 4 and 3
         with self.assertRaisesRegex(ValueError, 'The observations and times'):
             erlo.LogLikelihood(
                 self.model, self.error_models, observations, self.times)
-
-        # Observations or times have some weird higher dimensional structure
-        observations = [[[1, 2], [1, 2]], [1, 2, 3, 4]]
-        times = [[[1, 2], [1, 2]], [1, 2, 3, 4]]
-        with self.assertRaisesRegex(ValueError, 'The observations for each'):
-            erlo.LogLikelihood(
-                self.model, self.error_models, observations, times)
 
     def test_call(self):
         # Test case I: Compute reference score manually
@@ -555,11 +563,9 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertIsInstance(error_models[1], erlo.ErrorModel)
 
         # Test case II: some fixed parameters
-        print(self.log_likelihood.get_parameter_names())
         self.log_likelihood.fix_parameters(name_value_dict={
             'central.drug_amount': 1,
             'dose.drug_amount Sigma base': 1})
-        print(self.log_likelihood.get_parameter_names())
         submodels = self.log_likelihood.get_submodels()
 
         keys = list(submodels.keys())

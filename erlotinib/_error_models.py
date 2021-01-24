@@ -80,7 +80,7 @@ class ErrorModel(object):
         """
         raise NotImplementedError
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Sets the names of the error model parameters.
 
@@ -88,7 +88,8 @@ class ErrorModel(object):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
         raise NotImplementedError
 
@@ -251,7 +252,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         return samples
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
         Sets the names of the error model parameters.
 
@@ -259,8 +260,14 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         ----------
         names
             An array-like object with string-convertable entries of length
-            :meth:`n_parameters`.
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = ['Sigma base', 'Sigma rel.']
+            return None
+
         if len(names) != self._n_parameters:
             raise ValueError(
                 'Length of names does not match n_parameters.')
@@ -449,32 +456,41 @@ class ReducedErrorModel(object):
 
         return sample
 
-    def set_parameter_names(self, names):
+    def set_parameter_names(self, names=None):
         """
-        Assigns names to the parameters. By default the the default parameter
-        names of the :class:`ErrorModel` are kept.
+        Sets the names of the error model parameters.
 
         Parameters
         ----------
         names
-            A dictionary that maps the current parameter names to new names.
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
         """
-        # Check type
-        try:
-            names = dict(names)
-        except (TypeError, ValueError):
-            raise ValueError(
-                'The name dictionary has to be convertable to a python '
-                'dictionary.')
+        if names is None:
+            # Reset names to defaults
+            self._error_model.set_parameter_names(None)
+            self._parameter_names = self._error_model.get_parameter_names()
+            return None
 
-        parameter_names = self._parameter_names
-        for index, parameter in enumerate(self._parameter_names):
-            try:
-                parameter_names[index] = str(names[parameter])
-            except KeyError:
-                # KeyError indicates that a current parameter is not being
-                # replaced.
-                pass
+        if len(names) != self.n_parameters():
+            raise ValueError(
+                'Length of names does not match n_parameters.')
+
+        # Limit the length of parameter names
+        for name in names:
+            if len(name) > 50:
+                raise ValueError(
+                    'Parameter names cannot exceed 50 characters.')
+
+        parameter_names = [str(label) for label in names]
+
+        # Reconstruct full list of error model parameters
+        if self._fixed_params_mask is not None:
+            names = np.array(
+                self._error_model.get_parameter_names(), dtype='U50')
+            names[~self._fixed_params_mask] = parameter_names
+            parameter_names = names
 
         # Set parameter names
         self._error_model.set_parameter_names(parameter_names)

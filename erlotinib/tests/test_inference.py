@@ -5,6 +5,7 @@
 # full license details.
 #
 
+import copy
 import unittest
 
 import numpy as np
@@ -135,26 +136,20 @@ class TestOptimisationController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        data = erlo.DataLibrary().lung_cancer_control_group()
-        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
-        data = data[mask]
-        data = data[['ID', 'Time', 'Measurement']].rename(
-            columns={'Measurement': 'Biomarker'})
-        problem = erlo.ProblemModellingController(data)
-
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
-        problem.set_mechanistic_model(model)
-
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        problem.set_error_model(error_models)
+        cls.problem = erlo.ProblemModellingController(model, error_models)
+
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        cls.problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
 
         n_parameters = 7
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
-        problem.set_log_prior(log_priors)
-        log_posteriors = problem.get_log_posteriors()
-        cls.log_posterior_id_40 = log_posteriors[0]
+        cls.problem.set_log_prior(log_priors)
+        cls.log_posterior_id_40 = cls.problem.get_log_posterior(
+            individual='40')
 
         # Model II: Hierarchical model across all individuals
         pop_models = [
@@ -165,13 +160,14 @@ class TestOptimisationController(unittest.TestCase):
             erlo.PooledModel(),
             erlo.PooledModel(),
             erlo.LogNormalModel()]
+        problem = copy.deepcopy(cls.problem)
         problem.set_population_model(pop_models)
 
         n_parameters = 5 + 8 * 2 + 2
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
-        cls.hierarchical_posterior = problem.get_log_posteriors()
+        cls.hierarchical_posterior = problem.get_log_posterior()
 
         # Get IDs for testing
         cls.ids = data['ID'].unique()
@@ -272,19 +268,7 @@ class TestOptimisationController(unittest.TestCase):
         # (CMAES returns NAN for 1-dim problems)
 
         # Get test data and model
-        data = erlo.DataLibrary().lung_cancer_control_group()
-        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
-        data = data[mask]
-        data = data[['ID', 'Time', 'Measurement']].rename(
-            columns={'Measurement': 'Biomarker'})
-        problem = erlo.ProblemModellingController(data)
-
-        # Create inverse problem
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        problem.set_mechanistic_model(model)
-        problem.set_error_model([
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()])
+        problem = copy.deepcopy(self.problem)
         problem.fix_parameters({
             'myokit.drug_concentration': 1,
             'myokit.kappa': 1,
@@ -293,7 +277,7 @@ class TestOptimisationController(unittest.TestCase):
             'Sigma base': 1,
             'Sigma rel.': 1})
         problem.set_log_prior([pints.UniformLogPrior(1E-3, 1E1)])
-        log_posteriors = problem.get_log_posteriors()
+        log_posteriors = problem.get_log_posterior()
 
         # Set up optmisation controller
         optimiser = erlo.OptimisationController(log_posteriors[0])
@@ -341,26 +325,19 @@ class TestSamplingController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        data = erlo.DataLibrary().lung_cancer_control_group()
-        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
-        data = data[mask]
-        data = data[['ID', 'Time', 'Measurement']].rename(
-            columns={'Measurement': 'Biomarker'})
-        problem = erlo.ProblemModellingController(data)
-
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
-        problem.set_mechanistic_model(model)
-
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        problem.set_error_model(error_models)
+        problem = erlo.ProblemModellingController(model, error_models)
+
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
 
         n_parameters = 7
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
-        log_posteriors = problem.get_log_posteriors()
-        cls.log_posterior_id_40 = log_posteriors[0]
+        cls.log_posterior_id_40 = problem.get_log_posterior(individual='40')
 
         # Model II: Hierarchical model across all individuals
         pop_models = [
@@ -377,7 +354,7 @@ class TestSamplingController(unittest.TestCase):
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
-        cls.hierarchical_posterior = problem.get_log_posteriors()
+        cls.hierarchical_posterior = problem.get_log_posterior()
 
         # Get IDs for testing
         cls.ids = data['ID'].unique()

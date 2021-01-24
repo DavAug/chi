@@ -174,6 +174,10 @@ class HierarchicalLogLikelihood(pints.LogPDF):
             # If population model has population model parameters, add them as
             # prefixes.
             if n_pop > 0:
+                # Reset parameter names to original names
+                pop_model.set_parameter_names(None)
+
+                # Add population parameters
                 names = pop_model.get_parameter_names()
                 ids += names
 
@@ -355,18 +359,32 @@ class LogLikelihood(pints.LogPDF):
     times
         A list of one dimensional array-like objects with measured times
         associated to the observations.
+    outputs
+        A list of output names, which sets the mechanistic model outputs. If
+        ``None`` the previously set outputs are assumed.
     """
-    def __init__(self, mechanistic_model, error_models, observations, times):
+    def __init__(
+            self, mechanistic_model, error_models, observations, times,
+            outputs=None):
         super(LogLikelihood, self).__init__()
 
         # Check inputs
-        if not isinstance(mechanistic_model, erlo.MechanisticModel):
+        if not isinstance(
+                mechanistic_model,
+                (erlo.MechanisticModel, erlo.ReducedMechanisticModel)):
             raise TypeError(
                 'The mechanistic model as to be an instance of a '
                 'erlotinib.MechanisticModel.')
 
         if not isinstance(error_models, list):
             error_models = [error_models]
+
+        # Copy mechanistic model
+        mechanistic_model = copy.deepcopy(mechanistic_model)
+
+        # Set outputs
+        if outputs is not None:
+            mechanistic_model.set_outputs(outputs)
 
         n_outputs = mechanistic_model.n_outputs()
         if len(error_models) != n_outputs:
@@ -375,7 +393,8 @@ class LogLikelihood(pints.LogPDF):
                 'model output.')
 
         for error_model in error_models:
-            if not isinstance(error_model, erlo.ErrorModel):
+            if not isinstance(
+                    error_model, (erlo.ErrorModel, erlo.ReducedErrorModel)):
                 raise TypeError(
                     'The error models have to instances of a '
                     'erlotinib.ErrorModel.')
@@ -404,9 +423,16 @@ class LogLikelihood(pints.LogPDF):
                 'with the measurement time points for each of the mechanistic '
                 'model outputs.')
 
-        # Transform observations and times to numpy arrays
-        observations = [np.array(obs) for obs in observations]
-        times = [np.array(t) for t in times]
+        # Transform observations and times to read-only arrays
+        observations = [pints.vector(obs) for obs in observations]
+        times = [pints.vector(ts) for ts in times]
+
+        # Make sure times are strictly increasing
+        for ts in times:
+            if np.any(ts < 0):
+                raise ValueError('Times cannot be negative.')
+            if np.any(ts[:-1] > ts[1:]):
+                raise ValueError('Times must be increasing.')
 
         # Make sure that the observation-time pairs match
         for output_id, output_times in enumerate(times):
@@ -415,45 +441,26 @@ class LogLikelihood(pints.LogPDF):
                     'The observations and times have to be of the same '
                     'dimension.')
 
-            if observations[output_id].ndim != 1:
-                raise ValueError(
-                    'The observations for each output have to be provided '
-                    'as a one dimensional array-like object.')
-
             # Sort times and observations
             order = np.argsort(output_times)
             times[output_id] = output_times[order]
             observations[output_id] = observations[output_id][order]
 
         # Copy error models, such that renaming doesn't affect input models
-        error_models = [copy.copy(error_model) for error_model in error_models]
-
-        # Rename error model parameters, if more than one output
-        if n_outputs > 1:
-            # Get output names
-            outputs = mechanistic_model.outputs()
-
-            for output_id, error_model in enumerate(error_models):
-                # Get original parameter names
-                names = error_model.get_parameter_names()
-
-                # Prepend output name
-                output = outputs[output_id]
-                names = [output + ' ' + name for name in names]
-
-                # Set new parameter names
-                error_model.set_parameter_names(names)
+        error_models = [
+            copy.deepcopy(error_model) for error_model in error_models]
 
         # Remember models and observations
         # (Mechanistic model needs to be copied, such that it's dosing regimen
         # cannot be altered by the input model.)
-        self._mechanistic_model = copy.deepcopy(mechanistic_model)
+        self._mechanistic_model = mechanistic_model
         self._error_models = error_models
         self._observations = observations
 
         self._arange_times_for_mechanistic_model(times)
 
         # Set parameter names and number of parameters
+        self._set_error_model_parameter_names()
         self._set_number_and_parameter_names()
 
         # Set default ID
@@ -506,7 +513,7 @@ class LogLikelihood(pints.LogPDF):
             unique_times += list(output_times)
         unique_times = set(unique_times)
         unique_times = sorted(unique_times)
-        unique_times = np.array(unique_times)
+        unique_times = pints.vector(unique_times)
 
         # Create a container for the observation masks
         n_outputs = len(times)
@@ -528,8 +535,34 @@ class LogLikelihood(pints.LogPDF):
                     mask = unique_times == time
                     obs_masks[output_id, mask] = True
 
-        self._times = unique_times
+        self._times = pints.vector(unique_times)
         self._obs_masks = obs_masks
+
+    def _set_error_model_parameter_names(self):
+        """
+        Resets the error model parameter names and prepends the output name
+        if more than one output exists.
+        """
+        # Reset error model parameter names to defaults
+        for error_model in self._error_models:
+            error_model.set_parameter_names(None)
+
+        # Rename error model parameters, if more than one output
+        n_outputs = self._mechanistic_model.n_outputs()
+        if n_outputs > 1:
+            # Get output names
+            outputs = self._mechanistic_model.outputs()
+
+            for output_id, error_model in enumerate(self._error_models):
+                # Get original parameter names
+                names = error_model.get_parameter_names()
+
+                # Prepend output name
+                output = outputs[output_id]
+                names = [output + ' ' + name for name in names]
+
+                # Set new parameter names
+                error_model.set_parameter_names(names)
 
     def _set_number_and_parameter_names(self):
         """

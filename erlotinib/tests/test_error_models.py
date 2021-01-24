@@ -188,7 +188,7 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
         self.assertEqual(parameters[1], 'names')
 
         # Reset parameter names
-        names = ['Sigma base', 'Sigma rel.']
+        names = None
         self.error_model.set_parameter_names(names)
         parameters = self.error_model.get_parameter_names()
 
@@ -371,26 +371,53 @@ class TestReducedErrorModel(unittest.TestCase):
 
     def test_set_get_parameter_names(self):
         # Set some parameter names
-        self.error_model.set_parameter_names({
-            'Sigma base': 'Test'})
+        self.error_model.set_parameter_names(['Test 1', 'Test 2'])
 
         names = self.error_model.get_parameter_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Test')
-        self.assertEqual(names[1], 'Sigma rel.')
+        self.assertEqual(names[0], 'Test 1')
+        self.assertEqual(names[1], 'Test 2')
 
-        # Revert to defaults
-        self.error_model.set_parameter_names({
-            'Test': 'Sigma base'})
+        # Reset to defaults
+        self.error_model.set_parameter_names(None)
 
         names = self.error_model.get_parameter_names()
         self.assertEqual(len(names), 2)
         self.assertEqual(names[0], 'Sigma base')
         self.assertEqual(names[1], 'Sigma rel.')
 
+        # Fix parameter and set parameter name
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 1})
+        self.error_model.set_parameter_names(
+            ['myokit.tumour_volume Sigma rel.'])
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'myokit.tumour_volume Sigma rel.')
+
+        # Reset to defaults
+        self.error_model.set_parameter_names(None)
+
+        names = self.error_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Sigma rel.')
+
+        # Unfix model parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
     def test_set_parameter_names_bad_input(self):
-        names = 'Bad type'
-        with self.assertRaisesRegex(ValueError, 'The name dictionary'):
+        # Wrong number of names
+        names = ['Wrong length']
+        with self.assertRaisesRegex(ValueError, 'Length of names does not'):
+            self.error_model.set_parameter_names(names)
+
+        # A parameter exceeds 50 characters
+        names = [
+            '0123456789-0123456789-0123456789-0123456789-0123456789-012345678',
+            'Sigma base']
+        with self.assertRaisesRegex(ValueError, 'Parameter names cannot'):
             self.error_model.set_parameter_names(names)
 
 

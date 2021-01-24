@@ -60,6 +60,11 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertEqual(len(names), 1)
         self.assertEqual(names[0], 'some name')
 
+        # Set to default
+        self.pop_model.set_parameter_names(None)
+        name = self.pop_model.get_parameter_names()
+        self.assertIsNone(name)
+
     def test_set_parameter_names_bad_input(self):
         with self.assertRaisesRegex(ValueError, 'Length of names has to be 1'):
             self.pop_model.set_parameter_names('some params')
@@ -316,11 +321,12 @@ class TestLogNormalModel(unittest.TestCase):
             self.pop_model.get_parameter_names(), names)
 
         # Set back to default name
-        names = ['Mean', 'Std.']
-        self.pop_model.set_parameter_names(names)
+        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
 
-        self.assertEqual(
-            self.pop_model.get_parameter_names(), names)
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Mean')
+        self.assertEqual(names[1], 'Std.')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
@@ -439,11 +445,11 @@ class TestPooledModel(unittest.TestCase):
             self.pop_model.get_parameter_names(), names)
 
         # Set back to default name
-        names = ['Pooled']
-        self.pop_model.set_parameter_names(names)
+        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
 
-        self.assertEqual(
-            self.pop_model.get_parameter_names(), names)
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Pooled')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
@@ -637,26 +643,54 @@ class TestReducedPopulationModel(unittest.TestCase):
 
     def test_set_get_parameter_names(self):
         # Set some parameter names
-        self.pop_model.set_parameter_names({
-            'Mean': 'Test'})
+        names = ['Test 1', 'Test 2']
+        self.pop_model.set_parameter_names(names)
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Test')
-        self.assertEqual(names[1], 'Std.')
+        self.assertEqual(names[0], 'Test 1')
+        self.assertEqual(names[1], 'Test 2')
 
-        # Revert to defaults
-        self.pop_model.set_parameter_names({
-            'Test': 'Mean'})
+        # Reset to defaults
+        self.pop_model.set_parameter_names(None)
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 2)
         self.assertEqual(names[0], 'Mean')
         self.assertEqual(names[1], 'Std.')
 
+        # Fix parameter and set parameter name
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 1})
+        self.pop_model.set_parameter_names(
+            ['Std. myokit.tumour_volume'])
+
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Std. myokit.tumour_volume')
+
+        # Reset to defaults
+        self.pop_model.set_parameter_names(None)
+
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Std.')
+
+        # Unfix model parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': None})
+
     def test_set_parameter_names_bad_input(self):
-        names = 'Bad type'
-        with self.assertRaisesRegex(ValueError, 'The name dictionary'):
+        # Wrong number of names
+        names = ['Wrong length']
+        with self.assertRaisesRegex(ValueError, 'Length of names does not'):
+            self.pop_model.set_parameter_names(names)
+
+        # A parameter exceeds 50 characters
+        names = [
+            '0123456789-0123456789-0123456789-0123456789-0123456789-012345678',
+            'Sigma base']
+        with self.assertRaisesRegex(ValueError, 'Parameter names cannot'):
             self.pop_model.set_parameter_names(names)
 
 
