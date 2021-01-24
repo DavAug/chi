@@ -26,9 +26,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         ids_v = [0, 0, 0, 1, 1, 1, 2, 2]
         times_v = [0, 1, 2, 2, np.nan, 4, 1, 3]
         volumes = [np.nan, 0.3, 0.2, 0.5, 0.1, 0.2, 0.234, np.nan]
-        ids_c = [0, 0, 1, 1, 2, 2]
-        times_c = [0, 1, 2, np.nan, 1, 3]
-        cytokines = [3.4, 0.3, 0.5, np.nan, 0.234, 0]
+        ids_c = [0, 0, 1, 1]
+        times_c = [0, 1, 2, np.nan]
+        cytokines = [3.4, 0.3, 0.5, np.nan]
         ids_d = [0, 1, 1, 1, 2, 2]
         times_d = [0, np.nan, 4, 1, 3, 3]
         dose = [3.4, np.nan, 0.5, 0.5, np.nan, np.nan]
@@ -37,10 +37,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             'ID': ids_v + ids_c + ids_d,
             'Time': times_v + times_c + times_d,
             'Biomarker':
-                ['Tumour volume']*8 + ['IL 6']*6 + [np.nan]*6,
+                ['Tumour volume']*8 + ['IL 6']*4 + [np.nan]*6,
             'Measurement': volumes + cytokines + [np.nan]*6,
-            'Dose': [np.nan]*14 + dose,
-            'Duration': [np.nan]*14 + duration})
+            'Dose': [np.nan]*12 + dose,
+            'Duration': [np.nan]*12 + duration})
 
         # Test case I: create PD modelling problem
         lib = erlo.ModelLibrary()
