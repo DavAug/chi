@@ -886,35 +886,28 @@ class ProblemModellingController(object):
 
         self._log_prior = pints.ComposedLogPrior(*log_priors)
 
-    def set_population_model(self, pop_models, params=None):
+    def set_population_model(self, pop_models, parameter_names=None):
         """
-        Sets the population model for each model parameter.
+        Sets the population model of the modelling problem.
 
-        A population model is a :class:`PopulationModel` class. A
-        population model specifies how a model parameter varies across
-        individuals.
+        A population model specifies how model parameters vary across
+        individuals. The population model is defined by a list of
+        :class:`PopulationModel` instances, one for each individual model
+        parameter.
 
-        The population models ``pop_models`` are mapped to the model
-        parameters. By default the first population model is mapped to the
-        first mechanistic-error model parameter, the second
-        population model to the second parameter, and so on. One
-        population model has to be provided for each model parameter. The
-        names of the mechanistic-error model parameters can be retrieved with
-        :meth:`get_parameter_names` with ``exclude_pop_model=True``.
+        .. note::
+            Setting a population model resets the log-prior to ``None``.
 
-        Setting a population model resets the log-prior to ``None``.
-
-        Parameters
-        ----------
-        pop_models
-            A list of :class:`PopulationModel` classes that specifies the
-            variation of model parameters between individuals. By default
-            the list has to be of the same length as the number of mechanistic
-            and error model parameters. If ``params`` is not ``None``, the list
-            of population models has to be of the same length as ``params``.
-        params
-            A list of model parameter names, which map the population models
-            to the parameter names.
+        :param pop_models: A list of :class:`PopulationModel` instances of
+            the same length as the number of individual model parameters, see
+            :meth:`get_n_parameters` with ``exclude_pop_model=True``.
+        :type pop_models: list[:class:`PopulationModel`]
+        :param parameter_names: A list of model parameter names, which can be
+            used to map the population models to model parameters. If ``None``,
+            the population models are assumed to be ordered in the same way as
+            the model parameters, see
+            :meth:`get_parameter_names` with ``exclude_pop_model=True``.
+        :type parameter_names: list[str], optional
         """
         # Check inputs
         for pop_model in pop_models:
@@ -924,29 +917,30 @@ class ProblemModellingController(object):
                     'erlotinib.PopulationModel.')
 
         # Get individual parameter names
-        n_parameters, parameter_names = self._get_number_and_parameter_names(
+        n_parameters, param_names = self._get_number_and_parameter_names(
             exclude_pop_model=True)
 
         # Make sure that each parameter is assigned to a population model
         if len(pop_models) != n_parameters:
             raise ValueError(
                 'If no parameter names are specified, exactly one population '
-                'model has to be provided for each free parameter. The are '
+                'model has to be provided for each free parameter. There are '
                 '<' + n_parameters + '> model parameters.')
 
+        if (parameter_names is not None) and (
+                sorted(parameter_names) != sorted(param_names)):
+            raise ValueError(
+                'The parameter names do not coincide with the model parameter '
+                'names.')
+
         # Sort inputs according to `params`
-        if params is not None:
+        if parameter_names is not None:
             # Create default population model container
             ordered_pop_models = []
 
             # Map population models according to parameter names
-            for name in parameter_names:
-                try:
-                    index = params.index(name)
-                except ValueError:
-                    raise ValueError(
-                        'The parameter <' + str(name) + '> could not be '
-                        'identified in the model')
+            for name in param_names:
+                index = parameter_names.index(name)
                 ordered_pop_models.append(pop_models[index])
 
             pop_models = ordered_pop_models
