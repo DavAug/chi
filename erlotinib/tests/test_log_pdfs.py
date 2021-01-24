@@ -362,10 +362,11 @@ class TestLogLikelihood(unittest.TestCase):
                 self.times)
 
         # Wrong number of error models
-        error_models = ['There', 'are', 'only two outputs']
-        with self.assertRaisesRegex(ValueError, 'One error model has to'):
+        outputs = ['central.drug_amount']
+        with self.assertRaisesRegex(ValueError, 'One error model has'):
             erlo.LogLikelihood(
-                self.model, error_models, self.observations, self.times)
+                self.model, self.error_models, self.observations, self.times,
+                outputs)
 
         # Wrong number of error models
         error_models = ['Wrong', 'type']
