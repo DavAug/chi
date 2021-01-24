@@ -912,7 +912,7 @@ class ProblemModellingController(object):
         # Check inputs
         for pop_model in pop_models:
             if not isinstance(pop_model, erlo.PopulationModel):
-                raise ValueError(
+                raise TypeError(
                     'The population models have to be an instance of a '
                     'erlotinib.PopulationModel.')
 
@@ -923,9 +923,10 @@ class ProblemModellingController(object):
         # Make sure that each parameter is assigned to a population model
         if len(pop_models) != n_parameters:
             raise ValueError(
-                'If no parameter names are specified, exactly one population '
-                'model has to be provided for each free parameter. There are '
-                '<' + n_parameters + '> model parameters.')
+                'The number of population models does not match the number of '
+                'model parameters. Exactly one population model has to be '
+                'provided for each parameter. There are '
+                '<' + str(n_parameters) + '> model parameters.')
 
         if (parameter_names is not None) and (
                 sorted(parameter_names) != sorted(param_names)):
