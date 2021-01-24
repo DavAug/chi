@@ -148,7 +148,8 @@ class TestOptimisationController(unittest.TestCase):
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         cls.problem.set_log_prior(log_priors)
-        cls.log_posterior_id_40 = cls.problem.get_log_posterior(individual='40')
+        cls.log_posterior_id_40 = cls.problem.get_log_posterior(
+            individual='40')
 
         # Model II: Hierarchical model across all individuals
         pop_models = [
