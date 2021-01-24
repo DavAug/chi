@@ -688,7 +688,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # A parameter exceeds 50 characters
         names = [
-            '0123456789-0123456789-0123456789-0123456789-0123456789-0123456789',
+            '0123456789-0123456789-0123456789-0123456789-0123456789-012345678',
             'Sigma base']
         with self.assertRaisesRegex(ValueError, 'Parameter names cannot'):
             self.pop_model.set_parameter_names(names)
