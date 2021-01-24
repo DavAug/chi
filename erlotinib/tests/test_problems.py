@@ -269,12 +269,42 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_get_dosing_regimens(self):
         # Test case I: PD problem
-        regimens = self.pd_problem.get_dosing_regimens()
+        problem = copy.deepcopy(self.pd_problem)
+
+        # No data has been set
+        regimens = problem.get_dosing_regimens()
+        self.assertIsNone(regimens)
+
+        # Set data, but because PD model, no dosing regimen can be set
+        problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
+        regimens = problem.get_dosing_regimens()
         self.assertIsNone(regimens)
 
         # Test case II: PKPD problem
-        regimens = self.pkpd_problem.get_dosing_regimens()
+        problem = copy.deepcopy(self.pkpd_problem)
+
+        # No data has been set
+        regimens = problem.get_dosing_regimens()
         self.assertIsNone(regimens)
+
+        # Data has been set, but duration is ignored
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={
+                'myokit.tumour_volume': 'Tumour volume',
+                'central.drug_concentration': 'IL 6'},
+            dose_duration_key=None)
+        regimens = problem.get_dosing_regimens()
+        self.assertIsInstance(regimens, dict)
+
+        # Data has been set with duration information
+        problem.set_data(
+            self.data,
+            output_biomarker_dict={
+                'myokit.tumour_volume': 'Tumour volume',
+                'central.drug_concentration': 'IL 6'})
+        regimens = problem.get_dosing_regimens()
+        self.assertIsInstance(regimens, dict)
 
     def test_get_log_posterior(self):
         # Test case I: Create posterior with no fixed parameters
