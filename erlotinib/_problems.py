@@ -141,18 +141,16 @@ class ProblemModellingController(object):
     and one instance of an :class:`ErrorModel` for each mechanistic model
     output.
 
-    Parameters
-    ----------
-    mechanistic_model
-        An instance of a :class:`MechanisticModel`.
-    error_models
-        A list of :class:`ErrorModel` instances. One error model has to be
+    :param mechanistic_model: A mechanistic model for the problem.
+    :type mechanistic_model: MechanisticModel
+    :param error_models: A list of error models. One error model has to be
         provided for each mechanistic model output.
-    optional outputs
-        A list of mechanistic model output names, which can be used to map
-        the error models to mechanistic model outputs. If ``None``, the
+    :type error_models: list[ErrorModel]
+    :param outputs: A list of mechanistic model output names, which can be used
+        to map the error models to mechanistic model outputs. If ``None``, the
         error models are assumed to be ordered in the same order as
         :meth:`MechanisticModel.outputs`.
+    :type outputs: list[str], optional
     """
 
     def __init__(self, mechanistic_model, error_models, outputs=None):
@@ -488,9 +486,9 @@ class ProblemModellingController(object):
 
         Parameters
         ----------
-        name_value_dict
-            A dictionary with model parameters as keys, and the value to be
-            fixed at as values.
+        :param name_value_dict: A dictionary with model parameters as keys, and
+            the value to be fixed at as values.
+        :type name_value_dict: dict
         """
         # Check type of dictionanry
         try:
@@ -568,7 +566,8 @@ class ProblemModellingController(object):
 
     def get_dosing_regimens(self):
         """
-        Returns a dictionary of dosing regimens in form of myokit.Protocols.
+        Returns a dictionary of dosing regimens in form of
+        :class:`myokit.Protocol` instances.
 
         The dosing regimens are extracted from the dataset if a dose key is
         provided. If no dose key is provided ``None`` is returned.
@@ -595,11 +594,9 @@ class ProblemModellingController(object):
             When a population model has been set, individual log-posteriors
             can no longer be selected and ``individual`` is ignored.
 
-        Parameters
-        ----------
-        optional individual
-            The ID of an individual. If ``None`` the log-posteriors for all
-            individuals is returned.
+        :param individual: The ID of an individual. If ``None`` the
+            log-posteriors for all individuals is returned.
+        :type individual: str | None, optional
         """
         # Check prerequesites
         if self._log_prior is None:
@@ -643,11 +640,9 @@ class ProblemModellingController(object):
         Any parameters that have been fixed to a constant value will not be
         included in the number of model parameters.
 
-        Parameters
-        ----------
-        optional exclude_pop_model
-            A boolean flag which can be used to obtain the number of
-            parameters as if the population model wasn't set.
+        :param exclude_pop_model: A boolean flag which can be used to obtain
+            the number of parameters as if the population model wasn't set.
+        :type exclude_pop_model: bool, optional
         """
         if exclude_pop_model is True:
             n_parameters, _ = self._get_number_and_parameter_names(
@@ -665,11 +660,9 @@ class ProblemModellingController(object):
         Any parameters that have been fixed to a constant value will not be
         included in the list of model parameters.
 
-        Parameters
-        ----------
-        optional exclude_pop_model
-            A boolean flag which can be used to obtain the parameter names
-            as if the population model wasn't set.
+        :param exclude_pop_model: A boolean flag which can be used to obtain
+            the parameter names as if the population model wasn't set.
+        :type exclude_pop_model: bool, optional
         """
         if exclude_pop_model is True:
             _, parameter_names = self._get_number_and_parameter_names(
@@ -684,11 +677,9 @@ class ProblemModellingController(object):
         the error model, and optionally the population model and the
         fixed model parameters.
 
-        Parameters
-        ----------
-        optional exclude_pop_model
-            A boolean flag which can be used to obtain the predictive model
-            as if the population model wasn't set.
+        :param exclude_pop_model: A boolean flag which can be used to obtain
+            the predictive model as if the population model wasn't set.
+        :type exclude_pop_model: bool, optional
         """
         # Create predictive model
         predictive_model = erlo.PredictiveModel(
@@ -723,33 +714,32 @@ class ProblemModellingController(object):
         If no dose or duration information exists, the corresponding column
         keys can be set to ``None``.
 
-        Parameters
-        ----------
-        data
-            A :class:`pandas.DataFrame` with an ID, time, biomarker,
+        :param data: A dataframe with an ID, time, biomarker,
             measurement and optionally a dose and duration column.
-        optional output_biomarker_dict
-            A dictionary with mechanistic model output names as keys and
-            dataframe biomarker names as values. If ``None`` the model
-            outputs and biomarkers are assumed to have the same names.
-        optional id_key
-            The key of the ID column in the :class:`pandas.DataFrame`.
-            Default is `'ID'`.
-        optional time_key
-            The key of the time column in the :class:`pandas.DataFrame`.
-            Default is `'ID'`.
-        optional biom_key
-            The key of the biomarker column in the
+        :type data: pandas.DataFrame
+        :param output_biomarker_dict: A dictionary with mechanistic model
+            output names as keys and dataframe biomarker names as values. If
+            ``None`` the model outputs and biomarkers are assumed to have the
+            same names.
+        :type output_biomarker_dict: dict, optional
+        :param id_key: The key of the ID column in the
+            :class:`pandas.DataFrame`. Default is `'ID'`.
+        :type id_key: str, optional
+        :param time_key: The key of the time column in the
+            :class:`pandas.DataFrame`. Default is `'ID'`.
+        :type time_key: str, optional
+        :param biom_key: The key of the biomarker column in the
             :class:`pandas.DataFrame`. Default is `'Biomarker'`.
-        optional meas_key
-            The key of the measurement column in the :class:`pandas.DataFrame`.
-            Default is `'Measurement'`.
-        optional dose_key
-            The key of the dose column in the :class:`pandas.DataFrame`.
-            Default is `'Dose'`.
-        optional dose_duration_key
-            The key of the duration column in the :class:`pandas.DataFrame`.
-            Default is `'Duration'`.
+        :type biom_key: str, optional
+        :param meas_key: The key of the measurement column in the
+            :class:`pandas.DataFrame`. Default is `'Measurement'`.
+        :type meas_key: str, optional
+        :param dose_key: The key of the dose column in the
+            :class:`pandas.DataFrame`. Default is `'Dose'`.
+        :type dose_key: str, optional
+        :param dose_duration_key: The key of the duration column in the
+            :class:`pandas.DataFrame`. Default is `'Duration'`.
+        :type dose_duration_key: str, optional
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
@@ -815,7 +805,7 @@ class ProblemModellingController(object):
         self._n_parameters, self._parameter_names = \
             self._get_number_and_parameter_names()
 
-    def set_log_prior(self, log_priors, param_names=None):
+    def set_log_prior(self, log_priors, parameter_names=None):
         """
         Sets the log-prior probability distribution of the model parameters.
 
@@ -832,15 +822,14 @@ class ProblemModellingController(object):
             of parameters of an hierarchical log-posterior vary with the number
             of individuals in the dataset.
 
-        Parameters
-        ----------
-        log_priors
-            A list of :class:`pints.LogPrior` of the length
-            :meth:`n_parameters`.
-        optional param_names
-            A list of model parameter names, which is used to map the
-            log-priors to the model parameters. If ``None`` the log-priors are
-            assumed to be ordered according to :meth:`get_parameter_names`.
+        :param log_priors: A list of :class:`pints.LogPrior` of the length
+            :meth:`get_n_parameters`.
+        :type log_priors: list[pints.LogPrior]
+        :param parameter_names: A list of model parameter names, which is used
+            to map the log-priors to the model parameters. If ``None`` the
+            log-priors are assumed to be ordered according to
+            :meth:`get_parameter_names`.
+        :type parameter_names: list[str], optional
         """
         # Check prerequesites
         if self._data is None:
@@ -870,8 +859,8 @@ class ProblemModellingController(object):
                 'problem. At least one of the marginal log-priors has to be '
                 'multi-dimensional.')
 
-        if param_names is not None:
-            if sorted(list(param_names)) != sorted(self._parameter_names):
+        if parameter_names is not None:
+            if sorted(list(parameter_names)) != sorted(self._parameter_names):
                 raise ValueError(
                     'The specified parameter names do not match the model '
                     'parameter names.')
@@ -879,7 +868,7 @@ class ProblemModellingController(object):
             # Sort log-priors according to parameter names
             ordered = []
             for name in self._parameter_names:
-                index = param_names.index(name)
+                index = parameter_names.index(name)
                 ordered.append(log_priors[index])
 
             log_priors = ordered
@@ -901,7 +890,7 @@ class ProblemModellingController(object):
         :param pop_models: A list of :class:`PopulationModel` instances of
             the same length as the number of individual model parameters, see
             :meth:`get_n_parameters` with ``exclude_pop_model=True``.
-        :type pop_models: list[:class:`PopulationModel`]
+        :type pop_models: list[PopulationModel]
         :param parameter_names: A list of model parameter names, which can be
             used to map the population models to model parameters. If ``None``,
             the population models are assumed to be ordered in the same way as
