@@ -41,6 +41,9 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
 
         One figure contains only the histograms of one parameter.
         """
+        # Get number of colours
+        n_colors = len(colors)
+
         # Add trace for each individual
         ids = data[self._id_key].unique()
         for index, individual in enumerate(ids):
@@ -53,7 +56,7 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
             diagnostics = self._compute_diagnostics(samples)
 
             # Add trace
-            color = colors[index]
+            color = colors[index % n_colors]
             samples = samples[self._sample_key]
             self._add_trace(
                 fig_id, index, individual, samples, diagnostics, color)
@@ -164,12 +167,11 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
                 'The number of warm up iterations has to be smaller than the '
                 'total number of iterations for each run.')
 
-        # Get a unique colour for each individual
-        ids = data[id_key].unique()
-        n_ids = len(ids)
-        colors = plotly.colors.qualitative.Plotly[:n_ids]
+        # Get a colours
+        colors = plotly.colors.qualitative.Plotly
 
         # Create a template figure (assigns it to self._fig)
+        n_ids = len(data[id_key].unique())
         self._create_template_figure(
             rows=1, cols=n_ids, x_title='Normalised counts', spacing=0.01)
 
