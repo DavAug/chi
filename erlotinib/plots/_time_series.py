@@ -215,18 +215,18 @@ class PDPredictivePlot(eplt.SingleFigure):
         mask = data[biom_key] == biomarker
         data = data[mask]
 
-        # Get a unique colour for each individual
-        ids = data[id_key].unique()
-        n_ids = len(ids)
-        colors = plotly.colors.qualitative.Plotly[:n_ids]
+        # Get a colour scheme
+        colors = plotly.colors.qualitative.Plotly
+        n_colors = len(colors)
 
         # Fill figure with scatter plots of individual data
+        ids = data[id_key].unique()
         for index, _id in enumerate(ids):
             # Get individual data
             mask = data[id_key] == _id
             times = data[time_key][mask]
             measurements = data[meas_key][mask]
-            color = colors[index]
+            color = colors[index % n_color]
 
             # Create Scatter plot
             self._add_data_trace(_id, times, measurements, color)
@@ -436,18 +436,18 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
         mask = data[biom_key] == biomarker
         data = data[mask]
 
-        # Get a unique colour for each individual
-        ids = data[id_key].unique()
-        n_ids = len(ids)
-        colors = plotly.colors.qualitative.Plotly[:n_ids]
+        # Get a colour scheme
+        colors = plotly.colors.qualitative.Plotly
+        n_colors = len(colors)
 
         # Fill figure with scatter plots of individual data
+        ids = data[id_key].unique()
         for index, _id in enumerate(ids):
             # Get individual data
             mask = data[id_key] == _id
             times = data[time_key][mask]
             measurements = data[meas_key][mask]
-            color = colors[index]
+            color = colors[index % n_color]
 
             # Create Scatter plot
             self._add_data_trace(_id, times, measurements, color)
@@ -527,8 +527,8 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             go.Scatter(
                 x=times,
                 y=doses,
-                name="ID: %d" % _id,
-                legendgroup="ID: %d" % _id,
+                name="ID: %s" % str(_id),
+                legendgroup="ID: %s" % str(_id),
                 showlegend=False,
                 mode="markers",
                 text=durations,
@@ -549,8 +549,8 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             go.Scatter(
                 x=times,
                 y=measurements,
-                name="ID: %d" % _id,
-                legendgroup="ID: %d" % _id,
+                name="ID: %s" % str(_id),
+                legendgroup="ID: %s" % str(_id),
                 showlegend=True,
                 mode="markers",
                 marker=dict(
@@ -668,12 +668,12 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
         # Set axis labels to dataframe keys
         self.set_axis_labels(time_key, biom_key, dose_key)
 
-        # Get a unique colour for each individual
-        ids = data[id_key].unique()
-        n_ids = len(ids)
-        colors = plotly.colors.qualitative.Plotly[:n_ids]
+        # Get a colour scheme
+        colors = plotly.colors.qualitative.Plotly
+        n_colors = len(colors)
 
         # Fill figure with scatter plots of individual data
+        ids = data[id_key].unique()
         for index, _id in enumerate(ids):
             # Get doses applied to individual
             mask = dose_data[id_key] == _id
@@ -687,7 +687,7 @@ class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
             measurements = data[meas_key][mask]
 
             # Get a color for the individual
-            color = colors[index]
+            color = colors[index % n_colors]
 
             # Create scatter plot of dose events
             self._add_dose_trace(_id, dose_times, doses, durations, color)
