@@ -40,6 +40,9 @@ class ParameterEstimatePlot(eplt.MultiFigure):
 
         One figure only contains the estimates of one parameter.
         """
+        # Get number of colours in scheme
+        n_colors = len(colors)
+
         # Add trace for each individual
         ids = data[self._id_key].unique()
         for index, individual in enumerate(ids):
@@ -48,7 +51,7 @@ class ParameterEstimatePlot(eplt.MultiFigure):
             estimates = data[self._est_key][mask]
             scores = data[self._score_key][mask].to_numpy()
             runs = data[self._run_key][mask].to_numpy()
-            color = colors[index]
+            color = colors[index % n_colors]
 
             self._add_trace(
                 fig_id, individual, estimates, scores, runs, color)
@@ -127,10 +130,8 @@ class ParameterEstimatePlot(eplt.MultiFigure):
                     'Data does not have the key <' + str(key) + '>.')
         self._id_key, self._est_key, self._score_key, self._run_key = keys[1:]
 
-        # Get a unique colour for each individual
-        ids = data[id_key].unique()
-        n_ids = len(ids)
-        colors = plotly.colors.qualitative.Plotly[:n_ids]
+        # Get a colour scheme
+        colors = plotly.colors.qualitative.Plotly
 
         # Create one figure for each parameter
         parameters = data[param_key].unique()

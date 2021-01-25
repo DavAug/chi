@@ -41,6 +41,11 @@ class TestDataLibrary(unittest.TestCase):
 
         self.assertIsInstance(data, pd.DataFrame)
 
+    def test_existence_lung_cancer_single_erlotinib_dose_group(self):
+        data = self.data_library.lung_cancer_single_erlotinib_dose_group()
+
+        self.assertIsInstance(data, pd.DataFrame)
+
 
 class TestLungCancerControlGroup(unittest.TestCase):
     """
@@ -206,6 +211,40 @@ class TestLungCancerMediumErlotinibDoseGroup(unittest.TestCase):
         self.assertEqual(ids[5], 129)
         self.assertEqual(ids[6], 163)
         self.assertEqual(ids[7], 167)
+
+
+class TestLungCancerSingleErlotinibDoseGroup(unittest.TestCase):
+    """
+    Tests the erlotinib.DataLibrary.lung_cancer_single_erlotinib_dose_group
+    method.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        lib = erlo.DataLibrary()
+        cls.data = lib.lung_cancer_single_erlotinib_dose_group()
+
+    def test_column_keys(self):
+        keys = self.data.keys()
+
+        n_keys = len(keys)
+        self.assertEqual(n_keys, 9)
+
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Time unit')
+        self.assertEqual(keys[3], 'Biomarker')
+        self.assertEqual(keys[4], 'Measurement')
+        self.assertEqual(keys[5], 'Biomarker unit')
+        self.assertEqual(keys[6], 'Dose')
+        self.assertEqual(keys[7], 'Dose unit')
+        self.assertEqual(keys[8], 'Duration')
+
+    def test_individuals(self):
+        ids = sorted(self.data['ID'].unique())
+
+        n_ids = len(ids)
+        self.assertEqual(n_ids, 30)
 
 
 if __name__ == '__main__':

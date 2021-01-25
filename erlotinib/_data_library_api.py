@@ -107,3 +107,22 @@ class DataLibrary(object):
         data = pd.read_csv(self._path + file_name)
 
         return data
+
+    def lung_cancer_single_erlotinib_dose_group(self):
+        r"""
+        Returns the single erlotinib dose lung cancer treatment group data
+        published in [1]_ as a :class:`pandas.DataFrame`.
+
+        The dataset contains the time series data of 30 mice with
+        patient-derived lung cancer implants. Each mouse was treated with
+        a single oral dose of erlotinib of :math:`100\, \text{mg}` per
+        :math:`\text{g}` body weight. The dose was administered either on
+        day 0 or day 4.
+
+        The blood plasma concentration of erlotinib was measured only once per
+        mouse, either on day 0 or day 4.
+        """
+        file_name = 'lxf_single_erlotinib_dose.csv'
+        data = pd.read_csv(self._path + file_name)
+
+        return data
