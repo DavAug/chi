@@ -226,7 +226,7 @@ class PDPredictivePlot(eplt.SingleFigure):
             mask = data[id_key] == _id
             times = data[time_key][mask]
             measurements = data[meas_key][mask]
-            color = colors[index % n_color]
+            color = colors[index % n_colors]
 
             # Create Scatter plot
             self._add_data_trace(_id, times, measurements, color)
@@ -447,7 +447,7 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
             mask = data[id_key] == _id
             times = data[time_key][mask]
             measurements = data[meas_key][mask]
-            color = colors[index % n_color]
+            color = colors[index % n_colors]
 
             # Create Scatter plot
             self._add_data_trace(_id, times, measurements, color)
