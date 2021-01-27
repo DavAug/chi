@@ -102,7 +102,8 @@ class InferenceController(object):
         Samples population for initial population model parameters.
         """
         # Create container for samples
-        container = np.empty(shape=(self._n_runs, self._n_parameters))
+        # (with the population parameter samples)
+        container = self._initial_params[index]
 
         # Sample individuals from population model for each run
         start_index = 0
