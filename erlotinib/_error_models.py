@@ -183,8 +183,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         """
         model_output = np.asarray(model_output)
         observations = np.asarray(observations)
-        n_observatinos = len(observations)
-        if len(model_output) != n_observatinos:
+        n_observations = len(observations)
+        if len(model_output) != n_observations:
             raise ValueError(
                 'The number of model outputs must match the number of '
                 'observations, otherwise they cannot be compared pair-wise.')
@@ -362,13 +362,15 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         """
         model_output = np.asarray(model_output)
         observations = np.asarray(observations)
-        n_observatinos = len(observations)
-        if len(model_output) != n_observatinos:
+        n_observations = len(observations)
+        if len(model_output) != n_observations:
             raise ValueError(
                 'The number of model outputs must match the number of '
                 'observations, otherwise they cannot be compared pair-wise.')
 
         # Get parameters
+        if len(parameters) != 1:
+            raise ValueError('Wrong number of params')
         sigma_rel = parameters[0]
 
         if sigma_rel <= 0:
