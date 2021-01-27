@@ -205,7 +205,7 @@ class MechanisticModel(object):
         """
         Returns the model's unit of time.
         """
-        return self._time_unit 
+        return self._time_unit
 
 
 class PharmacodynamicModel(MechanisticModel):
