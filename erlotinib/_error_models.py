@@ -27,7 +27,6 @@ class ErrorModel(object):
         """
         Returns the unnormalised log-likelihood score for the model parameters
         of the mechanistic model-error model pair.
-        
 
         In this method, the model output and the observations are compared
         pair-wise. The time-dependence of the values is thus dealt with
