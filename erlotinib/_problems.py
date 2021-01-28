@@ -747,7 +747,10 @@ class ProblemModellingController(object):
                 'Data has to be a pandas.DataFrame.')
 
         # If model does not support dose administration, set dose keys to None
-        if isinstance(self._mechanistic_model, erlo.PharmacodynamicModel):
+        model = self._mechanistic_model
+        if isinstance(model, erlo.ReducedMechanisticModel):
+            model = model.mechanistic_model()
+        if isinstance(model, erlo.PharmacodynamicModel):
             dose_key = None
             dose_duration_key = None
 
