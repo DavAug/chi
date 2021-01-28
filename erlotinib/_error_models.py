@@ -422,7 +422,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         # Get parameters
         sigma_rel = parameters[0]
 
-        # Sample from Gaussian distributions
+        # Sample from Gaussian distribution
         rng = np.random.default_rng(seed=seed)
         rel_samples = rng.normal(loc=0, scale=sigma_rel, size=sample_shape)
 
