@@ -369,8 +369,6 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
                 'observations, otherwise they cannot be compared pair-wise.')
 
         # Get parameters
-        if len(parameters) != 1:
-            raise ValueError('Wrong number of params')
         sigma_rel = parameters[0]
 
         if sigma_rel <= 0:
