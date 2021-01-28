@@ -370,6 +370,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
 
         # Get parameters
         sigma_rel = parameters[0]
+        
 
         if sigma_rel <= 0:
             # sigma_base and sigma_rel are strictly positive
