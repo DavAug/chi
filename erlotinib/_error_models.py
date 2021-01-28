@@ -285,7 +285,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
     output by
 
     .. math::
-        X(t, \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
+        X(t, \psi , \sigma _{\text{rel}}) =
         x^{\text{m}} + \sigma _{\text{rel}} x^{\text{m}} \, \epsilon ,
 
     where :math:`x^{\text{m}} := x^{\text{m}}(t, \psi )` is the mechanistic
