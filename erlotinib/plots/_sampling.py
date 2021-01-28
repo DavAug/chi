@@ -90,6 +90,9 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
             row=1,
             col=index+1)
 
+        # Set x axis title
+        fig.update_xaxes(title='%s' % str(individual), col=index+1)
+
     def _compute_diagnostics(self, data):
         """
         Computes and returns convergence metrics.
