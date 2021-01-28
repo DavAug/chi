@@ -183,8 +183,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         """
         model_output = np.asarray(model_output)
         observations = np.asarray(observations)
-        n_observatinos = len(observations)
-        if len(model_output) != n_observatinos:
+        n_observations = len(observations)
+        if len(model_output) != n_observations:
             raise ValueError(
                 'The number of model outputs must match the number of '
                 'observations, otherwise they cannot be compared pair-wise.')
@@ -266,6 +266,184 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         if names is None:
             # Reset names to defaults
             self._parameter_names = ['Sigma base', 'Sigma rel.']
+            return None
+
+        if len(names) != self._n_parameters:
+            raise ValueError(
+                'Length of names does not match n_parameters.')
+
+        self._parameter_names = [str(label) for label in names]
+
+
+class MultiplicativeGaussianErrorModel(ErrorModel):
+    r"""
+    An error model that assumes that the model error is a Gaussian
+    heteroscedastic noise.
+
+    A MultiplicativeGaussianErrorModel assumes that the observable
+    biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
+    output by
+
+    .. math::
+        X(t, \psi , \sigma _{\text{rel}}) =
+        x^{\text{m}} + \sigma _{\text{rel}} x^{\text{m}} \, \epsilon ,
+
+    where :math:`x^{\text{m}} := x^{\text{m}}(t, \psi )` is the mechanistic
+    model output with parameters :math:`\psi`, and :math:`\epsilon` is a
+    i.i.d. standard Gaussian random variable
+
+    .. math::
+        \epsilon \sim \mathcal{N}(0, 1).
+
+    As a result, this model assumes that the observed biomarker values
+    :math:`x^{\text{obs}}` are realisations of the random variable
+    :math:`X`.
+
+    At each time point :math:`t` the distribution of the observable biomarkers
+    can be expressed in terms of a Gaussian distribution
+
+    .. math::
+        p(x | \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) =
+        \frac{1}{\sqrt{2\pi} \sigma _{\text{tot}}}
+        \exp{\left(-\frac{\left(x-x^{\text{m}}\right) ^2}
+        {2\sigma^2 _{\text{tot}}} \right)},
+
+    where :math:`\sigma _{\text{tot}} = \sigma _{\text{rel}}x^{\text{m}}`.
+
+    Extends :class:`ErrorModel`.
+    """
+
+    def __init__(self):
+        super(MultiplicativeGaussianErrorModel, self).__init__()
+
+        # Set defaults
+        self._parameter_names = ['Sigma rel.']
+        self._n_parameters = 1
+
+    def compute_log_likelihood(self, parameters, model_output, observations):
+        r"""
+        Returns the unnormalised log-likelihood score for the model parameters
+        of the mechanistic model-error model pair.
+
+        In this method, the model output :math:`x^{\text{m}}` and the
+        observations :math:`x^{\text{obs}}` are compared pair-wise, and the
+        log-likelihood score is computed according to
+
+        .. math::
+            L(\psi , \sigma _{\text{rel}} |
+            x^{\text{obs}}) =
+            \sum _{i=1}^N
+            \log p(x^{\text{obs}} _i |
+            \psi , \sigma _{\text{rel}}) ,
+
+        where :math:`N` is the number of observations.
+
+        The time-dependence of the values is dealt with implicitly, by
+        assuming that ``model_output`` and ``observations`` are already
+        ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        .. note::
+            All constant terms that do not depend on the model parameters are
+            dropped when computing the log-likelihood score.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`, :math:`x^{\text{m}}`. Each entry is a
+            prediction of the mechanistic model for an observed time point in
+            ``observations``, :math:`x^{\text{obs}}`.
+        observations
+            An array-like object with the observations of a biomarker
+            :math:`x^{\text{obs}}`.
+        """
+        model_output = np.asarray(model_output)
+        observations = np.asarray(observations)
+        n_observations = len(observations)
+        if len(model_output) != n_observations:
+            raise ValueError(
+                'The number of model outputs must match the number of '
+                'observations, otherwise they cannot be compared pair-wise.')
+
+        # Get parameters
+        sigma_rel = parameters[0]
+
+        if sigma_rel <= 0:
+            # sigma_base and sigma_rel are strictly positive
+            return -np.inf
+
+        # Compute total standard deviation
+        sigma_tot = sigma_rel * model_output
+
+        # Compute log-likelihood
+        log_likelihood = - np.sum(np.log(sigma_tot)) \
+            - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
+
+        return log_likelihood
+
+    def sample(self, parameters, model_output, n_samples=None, seed=None):
+        """
+        Returns samples from the mechanistic model-error model pair in form
+        of a NumPy array of shape ``(len(model_output), n_samples)``.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`.
+        n_samples
+            Number of samples from the error model for each entry in
+            ``model_output``. If ``None``, one sample is assumed.
+        seed
+            Seed for the pseudo-random number generator. If ``None``, the
+            pseudo-random number generator is not seeded.
+        """
+        if len(parameters) != self._n_parameters:
+            raise ValueError(
+                'The number of provided parameters does not match the expected'
+                ' number of model parameters.')
+
+        # Get number of predicted time points
+        model_output = np.asarray(model_output)
+        n_times = len(model_output)
+
+        # Define shape of samples
+        if n_samples is None:
+            n_samples = 1
+        sample_shape = (n_times, int(n_samples))
+
+        # Get parameters
+        sigma_rel = parameters[0]
+
+        # Sample from Gaussian distribution
+        rng = np.random.default_rng(seed=seed)
+        rel_samples = rng.normal(loc=0, scale=sigma_rel, size=sample_shape)
+
+        # Construct final samples
+        model_output = np.expand_dims(model_output, axis=1)
+        samples = model_output + model_output * rel_samples
+
+        return samples
+
+    def set_parameter_names(self, names=None):
+        """
+        Sets the names of the error model parameters.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
+        """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = ['Sigma rel.']
             return None
 
         if len(names) != self._n_parameters:
