@@ -25,6 +25,33 @@ class SingleFigure(object):
 
         self._fig = go.Figure()
         self._set_layout(updatemenu)
+        self._configure_modebar()
+
+    def _configure_modebar(self):
+        #TODO: CHecl whether this works!
+        # Change this for all base figures and make sure that it works for all figures
+        # Check whether in inkscape updatemenu is easily removed
+        """
+        Configures the modebar of the figures as follows:
+
+        - Makes images downlodable as .svg
+        - By default upscales image axes labels by 1.5.
+        - Hides plotly logo
+        - Allows to draw into figures.
+        - Removes Pan, Box select, Zoom in, Zoom out, Reset axis
+        """
+        self._config = dict({
+            'toImageButtonOptions': {
+                'format': 'svg',
+                'filename': 'erlotinib_image',
+                'height': 600,
+                'width': 800},
+            'displaylogo': False,
+            'modeBarButtonsToAdd': [
+                'drawopenpath', 'eraseshape'],
+            'modeBarButtonsToRemove': [
+                 'pan2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d']
+        })
 
     def _set_layout(self, updatemenu):
         """
@@ -84,7 +111,7 @@ class SingleFigure(object):
         """
         Displays the figure.
         """
-        self._fig.show()
+        self._fig.show(config=self._config)
 
 
 class SingleSubplotFigure(object):
