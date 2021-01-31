@@ -12,7 +12,7 @@ from ._base import (  # noqa
     SingleSubplotFigure
 )
 
-from ._sampling import (  # noqa
+from ._histograms import (  # noqa
     MarginalPosteriorPlot
 )
 
@@ -24,4 +24,8 @@ from ._time_series import (  # noqa
     PDPredictivePlot,
     PDTimeSeriesPlot,
     PKTimeSeriesPlot
+)
+
+from ._traces import (  # noqa
+    TracePlot
 )
