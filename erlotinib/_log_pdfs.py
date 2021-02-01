@@ -14,24 +14,28 @@ import erlotinib as erlo
 
 
 class HierarchicalLogLikelihood(object):
-    """
-    A hierarchical log-likelihood class which can be used for population-level
+    r"""
+    An hierarchical log-likelihood which can be used for population-level
     inference.
 
-    A hierarchical log-likelihood takes a list of :class:`LogLikelihood`
+    An hierarchical log-likelihood takes a list of :class:`LogLikelihood`
     instances, and a list of :class:`PopulationModel` instances. Each
-    :class:`LogLikelihood` in the list is expected to model an independent
-    dataset, and must be defined on the same parameter space. For example,
-    one likelihood is defined for each patient in a clinical trial.
+    :class:`LogLikelihood` in the list has to have the same number of
+    parameters.
 
     For each parameter of the :class:`LogLikelihood`, a
     :class:`PopulationModel` has to be provided which models the
     distribution of the respective parameter across individuals in the
     population.
 
+    .. note::
+        The number of parameters of an hierarchical log-likelihood is
+        larger than the number of parameters of the forward model,
+        because the integral over the individual parameters can in
+        general not be solved analytically.
+
     Parameters
     ----------
-
     log_likelihoods
         A list of :class:`LogLikelihood` instances defined on the same
         parameter space.
@@ -87,6 +91,9 @@ class HierarchicalLogLikelihood(object):
         # Set parameter names and number of parameters
         self._set_number_and_parameter_names()
 
+        # Construct mask for top-level parameters
+        self._create_top_level_mask()
+
     def __call__(self, parameters):
         """
         Returns the log-likelihood score of the model.
@@ -96,22 +103,22 @@ class HierarchicalLogLikelihood(object):
 
         # Compute population model scores
         score = 0
-        start_index = 0
+        start = 0
         for pop_model in self._population_models:
             # Get number of individual and population level parameters
             n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
 
             # Get parameter ranges
-            end_indiv = start_index + n_indiv
+            end_indiv = start + n_indiv
             end_pop = end_indiv + n_pop
 
             # Add score
             score += pop_model.compute_log_likelihood(
                 parameters=parameters[end_indiv:end_pop],
-                observations=parameters[start_index:end_indiv])
+                observations=parameters[start:end_indiv])
 
             # Shift start index
-            start_index = end_pop
+            start = end_pop
 
         # Return if values already lead to a rejection
         if score == -np.inf:
@@ -123,24 +130,55 @@ class HierarchicalLogLikelihood(object):
 
         # Fill conrainer with parameter values
         for param_id, indices in enumerate(self._indiv_params):
-            start_index = indices[0]
-            end_index = indices[1]
-
-            if start_index == end_index:
+            start, end = indices
+            if start == end:
                 # This parameter is pooled, set all parameters to the same
                 # value
-                individual_params[:, param_id] = parameters[start_index]
+                individual_params[:, param_id] = parameters[start]
                 continue
 
             # Set the parameter values to the input values
             individual_params[:, param_id] = parameters[
-                start_index:end_index]
+                start:end]
 
         # Evaluate individual likelihoods
         for index, log_likelihood in enumerate(self._log_likelihoods):
             score += log_likelihood(individual_params[index, :])
 
         return score
+
+    def _create_top_level_mask(self):
+        """
+        Creates a mask that can be used to mask for the top level
+        parameters.
+        """
+        # Create conatainer with all False
+        # (False for not top-level)
+        top_level_mask = np.zeros(shape=self._n_parameters, dtype=bool)
+
+        # Flip entries to true if top-level parameter
+        start = 0
+        for pop_model in self._population_models:
+            # Get number of hierarchical parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+
+            if isinstance(pop_model, erlo.HeterogeneousModel):
+                # For heterogeneous models the individual parameters are the
+                # top-level parameters
+                end = start + n_indiv
+                top_level_mask[start, end] = ~top_level_mask[start, end]
+
+            # Add the population parameters as top-level parameters
+            # (Heterogeneous model has 0 population parameters)
+            start += n_indiv
+            end = start + n_pop
+            top_level_mask[start, end] = ~top_level_mask[start, end]
+
+            # Shift start to end
+            start = end
+
+        # Store mask
+        self._top_level_mask = top_level_mask
 
     def _set_ids(self):
         """
@@ -240,16 +278,25 @@ class HierarchicalLogLikelihood(object):
         """
         return self._ids
 
-    def get_parameter_names(self, include_ids=False):
+    def get_parameter_names(
+            self, exclude_bottom_level=False, include_ids=False):
         """
         Returns the parameter names of the predictive model.
 
-        Parameters
-        ----------
-        include_ids
-            A boolean flag which determines whether the IDs (prefixes) of the
-            model parameters are included.
+        :param exclude_bottom_level: A boolean flag which determines whether
+            the bottom-level parameter names are returned in addition to the
+            top-level parameters.
+        :type exclude_bottom_level: bool, optional
+        :param include_ids: A boolean flag which determines whether the IDs
+            (prefixes) of the model parameters are included.
+        :type include_ids: bool, optional
         """
+        if exclude_bottom_level:
+            # Return only the population parameters
+            names = np.asarray[self._parameter_names]
+            names = names[self._top_level_mask]
+            return list(names)
+
         if not include_ids:
             # Return names without ids
             return self._parameter_names
@@ -267,7 +314,7 @@ class HierarchicalLogLikelihood(object):
         """
         Returns the population models.
         """
-        return copy.copy(self._population_models)
+        return self._population_models
 
     def n_log_likelihoods(self):
         """
@@ -275,9 +322,115 @@ class HierarchicalLogLikelihood(object):
         """
         return len(self._log_likelihoods)
 
+    def n_parameters(self, exclude_bottom_level=False):
+        """
+        Returns the number of parameters of the log-likelihood.
+
+        :param exclude_bottom_level: A boolean flag which determines whether
+            the bottom-level parameter are counted in addition to the
+            top-level parameters.
+        :type exclude_bottom_level: bool, optional
+        """
+        if exclude_bottom_level:
+            return int(np.sum(self._top_level_mask))
+
+        return self._n_parameters
+
+
+class HierarchicalLogPosterior(pints.LogPDF):
+    """
+    # TODO:
+    A log-posterior class which can be used with the
+    :class:`OptimisationController` or the :class:`SamplingController`
+    to find either the maximum a posteriori (MAP)
+    estimates of the model parameters, or to sample from the posterior
+    probability distribution of the model parameters directly.
+
+    Extends :class:`pints.LogPDF`.
+
+    Parameters
+    ----------
+    log_likelihood
+        An instance of a :class:`erlotinib.HierarchicalLogLikelihood`.
+    log_prior
+        An instance of a :class:`pints.LogPrior` which represents the prior
+        probability distributions for the population parameters of the
+        log-likelihood.
+    """
+    def __init__(self, log_likelihood, log_prior):
+        # Check inputs
+        super(HierarchicalLogPosterior, self).__init__()
+
+        # Check inputs
+        if not isinstance(log_likelihood, HierarchicalLogLikelihood):
+            raise ValueError(
+                'Log-likelihood has to extend pints.LogPDF.')
+        if not isinstance(log_prior, pints.LogPrior):
+            raise ValueError(
+                'Log-prior has to extend pints.LogPrior.')
+
+        # Check dimensions # TODO: Change hierarchical loglikelihood to
+        # 1. return n_population_parameters
+        # 2. return population_indices
+        n_top_parameters = log_likelihood.n_parameters(
+            exclude_bottom_level=True)
+        if log_prior.n_parameters() != n_top_parameters:
+            raise ValueError(
+                'The log-prior has to have as many parameters as population '
+                'parameters in the log-likelihood.')
+
+        # Store prior and log_likelihood, as well as number of parameters
+        self._log_prior = log_prior
+        self._log_likelihood = log_likelihood
+        self._n_parameters = log_likelihood.n_parameters()
+
+    def __call__(self, parameters):
+        # Evaluate log-prior first, assuming this is very cheap
+        score = self._log_prior(parameters)
+        if np.isinf(score):
+            return score
+
+        return score + self._log_likelihood(parameters)
+
+    def get_log_likelihood(self):
+        """
+        Returns the log-likelihood.
+        """
+        return self._log_likelihood
+
+    def get_log_prior(self):
+        """
+        Returns the log-prior.
+        """
+        return self._log_prior
+
+    def get_id(self):
+        """
+        Returns the id of the log-posterior. If no id is set, ``None`` is
+        returned.
+        """
+        # Get ID of likelihood
+        try:
+            _id = self._log_likelihood.get_id()
+        except AttributeError:
+            # If a pints likelihood is used, it won't have an ID
+            _id = None
+
+        return _id
+
+    def get_parameter_names(self):
+        """
+        Returns the names of the model parameters. By default the parameters
+        are enumerated and assigned with the names 'Param #'.
+        """
+        # Get parameter names
+        names = self._log_likelihood.get_parameter_names()
+
+        return names
+
     def n_parameters(self):
         """
-        Returns the number of parameters of the hierarchical log-likelihood.
+        Returns the number of parameters of the posterior.
         """
         return self._n_parameters
 
@@ -708,7 +861,7 @@ class LogPosterior(pints.LogPDF):
     Parameters
     ----------
     log_likelihood
-        An instance of a :class:`pints.LogPDF`.
+        An instance of a :class:`LogLikelihood`.
     log_prior
         An instance of a :class:`pints.LogPrior` which represents the prior
         probability distributions for the parameters of the log-likelihood.
@@ -720,31 +873,29 @@ class LogPosterior(pints.LogPDF):
         # Check inputs
         if not isinstance(log_likelihood, LogLikelihood):
             raise ValueError(
-                'Log-likelihood has to extend pints.LogPDF.')
+                'Log-likelihood has to extend erlotinib.LogLikelihood.')
         if not isinstance(log_prior, pints.LogPrior):
             raise ValueError(
                 'Log-prior has to extend pints.LogPrior.')
 
         # Check dimensions
-        self._n_parameters = log_prior.n_parameters()
-        if log_likelihood.n_parameters() != self._n_parameters:
+        n_parameters = log_prior.n_parameters()
+        if log_likelihood.n_parameters() != n_parameters:
             raise ValueError(
                 'Given log_prior and log_likelihood must have same dimension.')
 
-        # Store prior and log_likelihood
+        # Store prior and log_likelihood, as well as number of parameters
         self._log_prior = log_prior
         self._log_likelihood = log_likelihood
+        self._n_parameters = n_parameters
 
-        # Store -inf, for later use
-        self._minf = -float('inf')
-
-    def __call__(self, x):
+    def __call__(self, parameters):
         # Evaluate log-prior first, assuming this is very cheap
-        score = self._log_prior(x)
-        if score == self._minf:
-            return self._minf
+        score = self._log_prior(parameters)
+        if np.isinf(score):
+            return score
 
-        return score + self._log_likelihood(x)
+        return score + self._log_likelihood(parameters)
 
     def get_log_likelihood(self):
         """
