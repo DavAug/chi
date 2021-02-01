@@ -237,44 +237,65 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         ids = self.hierarchical_model.get_id()
 
         self.assertEqual(len(ids), 13)
-        self.assertEqual(ids[0], 'Pooled')
-        self.assertEqual(ids[1], 'Pooled')
+        self.assertIsNone(ids[0])
+        self.assertIsNone(ids[1])
         self.assertEqual(ids[2], 'automatic-id-1')
         self.assertEqual(ids[3], 'automatic-id-2')
-        self.assertEqual(ids[4], 'Mean')
-        self.assertEqual(ids[5], 'Std.')
-        self.assertEqual(ids[6], 'Pooled')
+        self.assertIsNone(ids[4])
+        self.assertIsNone(ids[5])
+        self.assertIsNone(ids[6])
         self.assertEqual(ids[7], 'automatic-id-1')
         self.assertEqual(ids[8], 'automatic-id-2')
-        self.assertEqual(ids[9], 'Pooled')
-        self.assertEqual(ids[10], 'Pooled')
-        self.assertEqual(ids[11], 'Pooled')
-        self.assertEqual(ids[12], 'Pooled')
+        self.assertIsNone(ids[9])
+        self.assertIsNone(ids[10])
+        self.assertIsNone(ids[11])
+        self.assertIsNone(ids[12])
 
     def test_get_parameter_names(self):
         # Test case I: without ids
         parameter_names = self.hierarchical_model.get_parameter_names()
 
         self.assertEqual(len(parameter_names), 13)
-        self.assertEqual(parameter_names[0], 'central.drug_amount')
-        self.assertEqual(parameter_names[1], 'dose.drug_amount')
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
         self.assertEqual(parameter_names[2], 'central.size')
         self.assertEqual(parameter_names[3], 'central.size')
-        self.assertEqual(parameter_names[4], 'central.size')
-        self.assertEqual(parameter_names[5], 'central.size')
-        self.assertEqual(parameter_names[6], 'dose.absorption_rate')
+        self.assertEqual(parameter_names[4], 'Mean central.size')
+        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
         self.assertEqual(parameter_names[7], 'myokit.elimination_rate')
         self.assertEqual(parameter_names[8], 'myokit.elimination_rate')
         self.assertEqual(
-            parameter_names[9], 'central.drug_amount Sigma base')
+            parameter_names[9], 'Pooled central.drug_amount Sigma base')
         self.assertEqual(
-            parameter_names[10], 'central.drug_amount Sigma rel.')
+            parameter_names[10], 'Pooled central.drug_amount Sigma rel.')
         self.assertEqual(
-            parameter_names[11], 'dose.drug_amount Sigma base')
+            parameter_names[11], 'Pooled dose.drug_amount Sigma base')
         self.assertEqual(
-            parameter_names[12], 'dose.drug_amount Sigma rel.')
+            parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
 
-        # Test case II: with ids
+        # Test case II: Exclude bottom-level
+        parameter_names = self.hierarchical_model.get_parameter_names(
+            exclude_bottom_level=True)
+
+        self.assertEqual(len(parameter_names), 11)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'Mean central.size')
+        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
+        self.assertEqual(parameter_names[5], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[6], 'myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[7], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[8], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[9], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled dose.drug_amount Sigma rel.')
+
+        # Test case III: with ids
         parameter_names = self.hierarchical_model.get_parameter_names(
             include_ids=True)
 
@@ -299,6 +320,29 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(
             parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
 
+        # Test case IV: Exclude bottom-level with IDs
+        parameter_names = self.hierarchical_model.get_parameter_names(
+            exclude_bottom_level=True, include_ids=True)
+
+        self.assertEqual(len(parameter_names), 11)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'Mean central.size')
+        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
+        self.assertEqual(
+            parameter_names[5], 'automatic-id-1 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[6], 'automatic-id-2 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[7], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[8], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[9], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled dose.drug_amount Sigma rel.')
+
     def test_get_population_models(self):
         pop_models = self.hierarchical_model.get_population_models()
         self.assertEqual(len(pop_models), 9)
@@ -317,12 +361,18 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(n_ids, 2)
 
     def test_n_parameters(self):
+        # Test case I: All parameters
         # 9 individual parameters, from which 1 is modelled heterogeneously,
         # 1 log-normally and the rest is pooled
         # And there are 2 individuals
         n_parameters = 2 + 4 + 1 + 1 + 1 + 1 + 1 + 1 + 1
         self.assertEqual(
             self.hierarchical_model.n_parameters(), n_parameters)
+
+        # Test case II: Exclude bottom parameters
+        n_parameters = self.hierarchical_model.n_parameters(
+            exclude_bottom_level=True)
+        self.assertEqual(n_parameters, 11)
 
 
 class TestLogLikelihood(unittest.TestCase):
