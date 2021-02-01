@@ -13,7 +13,7 @@ import pints
 import erlotinib as erlo
 
 
-class HierarchicalLogLikelihood(pints.LogPDF):
+class HierarchicalLogLikelihood(object):
     """
     A hierarchical log-likelihood class which can be used for population-level
     inference.
@@ -28,8 +28,6 @@ class HierarchicalLogLikelihood(pints.LogPDF):
     :class:`PopulationModel` has to be provided which models the
     distribution of the respective parameter across individuals in the
     population.
-
-    Extends :class:`pints.LogPDF`.
 
     Parameters
     ----------
@@ -697,7 +695,7 @@ class LogLikelihood(pints.LogPDF):
         self._id = 'ID ' + str(label)
 
 
-class LogPosterior(pints.LogPosterior):
+class LogPosterior(pints.LogPDF):
     """
     A log-posterior class which can be used with the
     :class:`OptimisationController` or the :class:`SamplingController`
@@ -705,24 +703,60 @@ class LogPosterior(pints.LogPosterior):
     estimates of the model parameters, or to sample from the posterior
     probability distribution of the model parameters directly.
 
-    Extends :class:`pints.LogPosterior`.
+    Extends :class:`pints.LogPDF`.
 
     Parameters
     ----------
-
     log_likelihood
         An instance of a :class:`pints.LogPDF`.
     log_prior
         An instance of a :class:`pints.LogPrior` which represents the prior
         probability distributions for the parameters of the log-likelihood.
     """
-
     def __init__(self, log_likelihood, log_prior):
-        super(LogPosterior, self).__init__(log_likelihood, log_prior)
+        # Check inputs
+        super(LogPosterior, self).__init__()
 
-        # Set defaults
-        n_params = self._n_parameters
-        self._default_names = ['Parameter %d' % (n+1) for n in range(n_params)]
+        # Check inputs
+        if not isinstance(log_likelihood, LogLikelihood):
+            raise ValueError(
+                'Log-likelihood has to extend pints.LogPDF.')
+        if not isinstance(log_prior, pints.LogPrior):
+            raise ValueError(
+                'Log-prior has to extend pints.LogPrior.')
+
+        # Check dimensions
+        self._n_parameters = log_prior.n_parameters()
+        if log_likelihood.n_parameters() != self._n_parameters:
+            raise ValueError(
+                'Given log_prior and log_likelihood must have same dimension.')
+
+        # Store prior and log_likelihood
+        self._log_prior = log_prior
+        self._log_likelihood = log_likelihood
+
+        # Store -inf, for later use
+        self._minf = -float('inf')
+
+    def __call__(self, x):
+        # Evaluate log-prior first, assuming this is very cheap
+        score = self._log_prior(x)
+        if score == self._minf:
+            return self._minf
+
+        return score + self._log_likelihood(x)
+
+    def get_log_likelihood(self):
+        """
+        Returns the log-likelihood.
+        """
+        return self._log_likelihood
+
+    def get_log_prior(self):
+        """
+        Returns the log-prior.
+        """
+        return self._log_prior
 
     def get_id(self):
         """
@@ -744,13 +778,15 @@ class LogPosterior(pints.LogPosterior):
         are enumerated and assigned with the names 'Param #'.
         """
         # Get parameter names
-        try:
-            names = self._log_likelihood.get_parameter_names()
-        except AttributeError:
-            # If a pints likelihood is used, it won't have an parameter names
-            names = self._default_names
+        names = self._log_likelihood.get_parameter_names()
 
         return names
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the posterior.
+        """
+        return self._n_parameters
 
 
 class ReducedLogPDF(pints.LogPDF):
