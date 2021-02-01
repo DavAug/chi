@@ -15,8 +15,9 @@ import erlotinib as erlo
 
 class HierarchicalLogLikelihood(object):
     r"""
-    An hierarchical log-likelihood which can be used for population-level
-    inference.
+    An hierarchical log-likelihood consisting of a number of
+    structurally identical log-likelihoods which are whose parameters
+    are couples by population models.
 
     An hierarchical log-likelihood takes a list of :class:`LogLikelihood`
     instances, and a list of :class:`PopulationModel` instances. Each
@@ -30,20 +31,18 @@ class HierarchicalLogLikelihood(object):
 
     .. note::
         The number of parameters of an hierarchical log-likelihood is
-        larger than the number of parameters of the forward model,
-        because the integral over the individual parameters can in
+        larger than the number of parameters of the corresponding
+        :class:`PopulationPredictiveModel,
+        as the integral over the individual parameters can in
         general not be solved analytically.
 
-    Parameters
-    ----------
-    log_likelihoods
-        A list of :class:`LogLikelihood` instances defined on the same
+    :param log_likelihoods: A list of log-likelihoods defined on the same
         parameter space.
-    population_models
-        A list of :class:`PopulationModel` instances with one
+    :type log_likelihoods: list[LogLikelihood]
+    :param population_models: A list of population models with one
         population model for each parameter of the log-likelihoods.
+    :type population_models: list[PopulationModel]
     """
-
     def __init__(self, log_likelihoods, population_models):
         super(HierarchicalLogLikelihood, self).__init__()
 
@@ -121,7 +120,7 @@ class HierarchicalLogLikelihood(object):
             start = end_pop
 
         # Return if values already lead to a rejection
-        if score == -np.inf:
+        if np.isinf(score):
             return score
 
         # Create container for individual parameters
@@ -166,13 +165,13 @@ class HierarchicalLogLikelihood(object):
                 # For heterogeneous models the individual parameters are the
                 # top-level parameters
                 end = start + n_indiv
-                top_level_mask[start, end] = ~top_level_mask[start, end]
+                top_level_mask[start: end] = ~top_level_mask[start: end]
 
             # Add the population parameters as top-level parameters
             # (Heterogeneous model has 0 population parameters)
             start += n_indiv
             end = start + n_pop
-            top_level_mask[start, end] = ~top_level_mask[start, end]
+            top_level_mask[start: end] = ~top_level_mask[start: end]
 
             # Shift start to end
             start = end
@@ -184,8 +183,7 @@ class HierarchicalLogLikelihood(object):
         """
         Sets the IDs of the hierarchical model.
 
-        The IDs can also be interpreted as prefix of the model parameters,
-        which allow to distingish parameters of the same name.
+        IDs for population model parameters are ``None``.
         """
         # Get IDs of individual log-likelihoods
         indiv_ids = []
@@ -209,13 +207,7 @@ class HierarchicalLogLikelihood(object):
 
             # If population model has population model parameters, add them as
             # prefixes.
-            if n_pop > 0:
-                # Reset parameter names to original names
-                pop_model.set_parameter_names(None)
-
-                # Add population parameters
-                names = pop_model.get_parameter_names()
-                ids += names
+            ids += [None] * n_pop
 
         # Remember IDs
         self._ids = ids
@@ -252,17 +244,26 @@ class HierarchicalLogLikelihood(object):
         for param_id, pop_model in enumerate(self._population_models):
             # Get number of hierarchical parameters
             n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
-            n_parameters = n_indiv + n_pop
 
-            # Add a copy of the parameter name for each hierarchical parameter
-            parameter_names += [indiv_names[param_id]] * n_parameters
+            # Add a copy of the parameter name for each individual parameter
+            name = indiv_names[param_id]
+            parameter_names += [name] * n_indiv
+
+            # Add the population parameter name, composed of the population
+            # name and the parameter name
+            if n_pop > 0:
+                # (Reset population parameter names first)
+                pop_model.set_parameter_names(None)
+                pop_names = pop_model.get_parameter_names()
+                parameter_names += [
+                    pop_name + ' ' + name for pop_name in pop_names]
 
             # Remember positions of individual parameters
             end = start + n_indiv
             indiv_params.append([start, end])
 
             # Shift start index
-            start += n_parameters
+            start += n_indiv + n_pop
 
         # Remember parameter names and number of parameters
         self._parameter_names = parameter_names
@@ -291,22 +292,32 @@ class HierarchicalLogLikelihood(object):
             (prefixes) of the model parameters are included.
         :type include_ids: bool, optional
         """
-        if exclude_bottom_level:
-            # Return only the population parameters
-            names = np.asarray[self._parameter_names]
+        if include_ids is False:
+            # Return names without ids
+            if exclude_bottom_level is False:
+                return self._parameter_names
+
+            # Exclude bottom level parameters
+            names = np.asarray(self._parameter_names)
             names = names[self._top_level_mask]
             return list(names)
-
-        if not include_ids:
-            # Return names without ids
-            return self._parameter_names
 
         # Construct parameters names as <ID> <Name>
         names = []
         for index in range(self._n_parameters):
             _id = self._ids[index]
             name = self._parameter_names[index]
-            names.append(_id + ' ' + name)
+
+            # Prepend ID for non-population parameters
+            if _id is None:
+                names.append(name)
+            else:
+                names.append(_id + ' ' + name)
+
+        if exclude_bottom_level is True:
+            names = np.asarray(names)
+            names = names[self._top_level_mask]
+            return list(names)
 
         return names
 
@@ -417,13 +428,13 @@ class HierarchicalLogPosterior(pints.LogPDF):
                 # For heterogeneous models the individual parameters are the
                 # top-level parameters
                 end = start + n_indiv
-                top_level_mask[start, end] = ~top_level_mask[start, end]
+                top_level_mask[start: end] = ~top_level_mask[start: end]
 
             # Add the population parameters as top-level parameters
             # (Heterogeneous model has 0 population parameters)
             start += n_indiv
             end = start + n_pop
-            top_level_mask[start, end] = ~top_level_mask[start, end]
+            top_level_mask[start: end] = ~top_level_mask[start: end]
 
             # Shift start to end
             start = end
