@@ -320,7 +320,7 @@ class HierarchicalLogLikelihood(object):
         """
         Returns the number of individual likelihoods.
         """
-        return len(self._log_likelihoods)
+        return self._n_ids
 
     def n_parameters(self, exclude_bottom_level=False):
         """
@@ -369,9 +369,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
             raise ValueError(
                 'Log-prior has to extend pints.LogPrior.')
 
-        # Check dimensions # TODO: Change hierarchical loglikelihood to
-        # 1. return n_population_parameters
-        # 2. return population_indices
+        # Check dimensions
         n_top_parameters = log_likelihood.n_parameters(
             exclude_bottom_level=True)
         if log_prior.n_parameters() != n_top_parameters:
@@ -384,13 +382,54 @@ class HierarchicalLogPosterior(pints.LogPDF):
         self._log_likelihood = log_likelihood
         self._n_parameters = log_likelihood.n_parameters()
 
+        # Create mask for top-level parameters
+        self._create_top_level_mask()
+
     def __call__(self, parameters):
+        # Convert parameters
+        parameters = np.asarray(parameters)
+
         # Evaluate log-prior first, assuming this is very cheap
-        score = self._log_prior(parameters)
+        score = self._log_prior(parameters[self._top_level_mask])
         if np.isinf(score):
             return score
 
         return score + self._log_likelihood(parameters)
+
+    def _create_top_level_mask(self):
+        """
+        Creates a mask that can be used to mask for the top level
+        parameters.
+        """
+        # Create conatainer with all False
+        # (False for not top-level)
+        top_level_mask = np.zeros(shape=self._n_parameters, dtype=bool)
+
+        # Flip entries to true if top-level parameter
+        start = 0
+        n_ids = self._log_likelihood.n_log_likelihoods()
+        population_models = self._log_likelihood.get_population_models()
+        for pop_model in population_models:
+            # Get number of hierarchical parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
+
+            if isinstance(pop_model, erlo.HeterogeneousModel):
+                # For heterogeneous models the individual parameters are the
+                # top-level parameters
+                end = start + n_indiv
+                top_level_mask[start, end] = ~top_level_mask[start, end]
+
+            # Add the population parameters as top-level parameters
+            # (Heterogeneous model has 0 population parameters)
+            start += n_indiv
+            end = start + n_pop
+            top_level_mask[start, end] = ~top_level_mask[start, end]
+
+            # Shift start to end
+            start = end
+
+        # Store mask
+        self._top_level_mask = top_level_mask
 
     def get_log_likelihood(self):
         """
@@ -406,33 +445,40 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
     def get_id(self):
         """
-        Returns the id of the log-posterior. If no id is set, ``None`` is
+        Returns the id of the log-posterior. If no ID is set, ``None`` is
         returned.
         """
-        # Get ID of likelihood
-        try:
-            _id = self._log_likelihood.get_id()
-        except AttributeError:
-            # If a pints likelihood is used, it won't have an ID
-            _id = None
+        return self._log_likelihood.get_id()
 
-        return _id
-
-    def get_parameter_names(self):
+    def get_parameter_names(
+            self, exclude_bottom_level=False, include_ids=False):
         """
-        Returns the names of the model parameters. By default the parameters
-        are enumerated and assigned with the names 'Param #'.
+        Returns the parameter names of the predictive model.
+
+        :param exclude_bottom_level: A boolean flag which determines whether
+            the bottom-level parameter names are returned in addition to the
+            top-level parameters.
+        :type exclude_bottom_level: bool, optional
+        :param include_ids: A boolean flag which determines whether the IDs
+            (prefixes) of the model parameters are included.
+        :type include_ids: bool, optional
         """
         # Get parameter names
-        names = self._log_likelihood.get_parameter_names()
+        names = self._log_likelihood.get_parameter_names(
+            exclude_bottom_level, include_ids)
 
         return names
 
-    def n_parameters(self):
+    def n_parameters(self, exclude_bottom_level=False):
         """
-        Returns the number of parameters of the posterior.
+        Returns the number of parameters of the log-likelihood.
+
+        :param exclude_bottom_level: A boolean flag which determines whether
+            the bottom-level parameter are counted in addition to the
+            top-level parameters.
+        :type exclude_bottom_level: bool, optional
         """
-        return self._n_parameters
+        return self._log_likelihood.n_parameters(exclude_bottom_level)
 
 
 class LogLikelihood(pints.LogPDF):
