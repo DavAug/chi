@@ -23,6 +23,7 @@ from ._error_models import (  # noqa
 
 from ._log_pdfs import (  # noqa
     HierarchicalLogLikelihood,
+    HierarchicalLogPosterior,
     LogLikelihood,
     LogPosterior,
     ReducedLogPDF
