@@ -370,7 +370,8 @@ class ProblemModellingController(object):
 
         return regimens
 
-    def _get_number_and_parameter_names(self, exclude_pop_model=False):
+    def _get_number_and_parameter_names(
+            self, exclude_pop_model=False, exclude_bottom_level=False):
         """
         Returns the number and names of the log-likelihood.
 
@@ -416,6 +417,34 @@ class ProblemModellingController(object):
             # Add population-level parameters
             if pop_model.n_parameters() > 0:
                 pop_parameter_names += pop_model.get_parameter_names()
+
+        # Return only top-level parameters, if bottom is excluded
+        if exclude_bottom_level is True:
+            # Filter bottom-level
+            start = 0
+            parameter_names = []
+            for param_id, pop_model in enumerate(self._population_models):
+                # If heterogenous population model individuals count as
+                # top-level
+                if isinstance(pop_model, erlo.HeterogeneousModel):
+                    # Append names, shift start index and continue
+                    parameter_names += pop_parameter_names[start:start+n_ids]
+                    start += n_ids
+                    continue
+
+                # Add population parameters
+                n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
+                start += n_indiv
+                end = start + n_pop
+                parameter_names += pop_parameter_names[start:end]
+
+                # Shift start index
+                start = end
+
+            # Get number of parameters
+            n_parameters = len(parameter_names)
+
+            return (n_parameters, parameter_names)
 
         # Get number of parameters
         n_parameters = len(pop_parameter_names)
@@ -484,8 +513,6 @@ class ProblemModellingController(object):
             2. Once a population model is set, only population model
                parameters can be fixed.
 
-        Parameters
-        ----------
         :param name_value_dict: A dictionary with model parameters as keys, and
             the value to be fixed at as values.
         :type name_value_dict: dict
@@ -622,16 +649,27 @@ class ProblemModellingController(object):
         # Compose the log-posteriors
         log_posteriors = []
         for log_likelihood in log_likelihoods:
-            log_posterior = erlo.LogPosterior(log_likelihood, self._log_prior)
+            # Create individual posterior
+            if isinstance(log_likelihood, erlo.LogLikelihood):
+                log_posterior = erlo.LogPosterior(
+                    log_likelihood, self._log_prior)
+
+            # Create hierarchical posterior
+            elif isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
+                log_posterior = erlo.HierarchicalLogPosterior(
+                    log_likelihood, self._log_prior)
+
+            # Append to list
             log_posteriors.append(log_posterior)
 
         # If only one log-posterior in list, unwrap the list
         if len(log_posteriors) == 1:
-            return log_posteriors[0]
+            return log_posteriors.pop()
 
         return log_posteriors
 
-    def get_n_parameters(self, exclude_pop_model=False):
+    def get_n_parameters(
+            self, exclude_pop_model=False, exclude_bottom_level=False):
         """
         Returns the number of model parameters, i.e. the combined number of
         parameters from the mechanistic model, the error model and, if set,
@@ -643,15 +681,25 @@ class ProblemModellingController(object):
         :param exclude_pop_model: A boolean flag which can be used to obtain
             the number of parameters as if the population model wasn't set.
         :type exclude_pop_model: bool, optional
+        :param exclude_bottom_level: A boolean flag which can be used to
+            exclude the bottom-level parameters. This only has an effect when
+            a population model is set.
+        :type exclude_bottom_level: bool, optional
         """
         if exclude_pop_model is True:
             n_parameters, _ = self._get_number_and_parameter_names(
                 exclude_pop_model=True)
             return n_parameters
 
+        if exclude_bottom_level is True:
+            n_parameters, _ = self._get_number_and_parameter_names(
+                exclude_bottom_level=True)
+            return n_parameters
+
         return self._n_parameters
 
-    def get_parameter_names(self, exclude_pop_model=False):
+    def get_parameter_names(
+            self, exclude_pop_model=False, exclude_bottom_level=False):
         """
         Returns the names of the model parameters, i.e. the parameter names
         of the mechanistic model, the error model and, if set, the
@@ -663,11 +711,20 @@ class ProblemModellingController(object):
         :param exclude_pop_model: A boolean flag which can be used to obtain
             the parameter names as if the population model wasn't set.
         :type exclude_pop_model: bool, optional
+        :param exclude_bottom_level: A boolean flag which can be used to
+            exclude the bottom-level parameters. This only has an effect when
+            a population model is set.
+        :type exclude_bottom_level: bool, optional
         """
         if exclude_pop_model is True:
             _, parameter_names = self._get_number_and_parameter_names(
                 exclude_pop_model=True)
             return copy.copy(parameter_names)
+
+        if exclude_bottom_level is True:
+            _, parameter_names = self._get_number_and_parameter_names(
+                exclude_bottom_level=True)
+            return parameter_names
 
         return copy.copy(self._parameter_names)
 
@@ -842,7 +899,7 @@ class ProblemModellingController(object):
                     'All marginal log-priors have to be instances of a '
                     'pints.LogPrior.')
 
-        n_parameters = self.get_n_parameters()
+        n_parameters = self.get_n_parameters(exclude_bottom_level=True)
         if len(log_priors) != n_parameters:
             raise ValueError(
                 'One marginal log-prior has to be provided for each '
@@ -853,21 +910,22 @@ class ProblemModellingController(object):
         for log_prior in log_priors:
             n_parameters += log_prior.n_parameters()
 
-        if n_parameters != self.get_n_parameters():
+        if n_parameters != self.get_n_parameters(exclude_bottom_level=True):
             raise ValueError(
                 'The joint log-prior does not match the dimensionality of the '
-                'problem. At least one of the marginal log-priors has to be '
-                'multi-dimensional.')
+                'problem. At least one of the marginal log-priors appears to '
+                'be multivariate.')
 
         if parameter_names is not None:
-            if sorted(list(parameter_names)) != sorted(self._parameter_names):
+            model_names = self.get_parameter_names(exclude_bottom_level=True)
+            if sorted(list(parameter_names)) != sorted(model_names):
                 raise ValueError(
                     'The specified parameter names do not match the model '
                     'parameter names.')
 
             # Sort log-priors according to parameter names
             ordered = []
-            for name in self._parameter_names:
+            for name in model_names:
                 index = parameter_names.index(name)
                 ordered.append(log_priors[index])
 
