@@ -15,26 +15,39 @@ import erlotinib as erlo
 
 class HierarchicalLogLikelihood(object):
     r"""
-    An hierarchical log-likelihood consisting of a number of
-    structurally identical log-likelihoods which are whose parameters
-    are couples by population models.
+    A hierarchical log-likelihood consists of structurally identical
+    log-likelihoods whose parameters are coupled by population models.
 
-    An hierarchical log-likelihood takes a list of :class:`LogLikelihood`
+    A hierarchical log-likelihood takes a list of :class:`LogLikelihood`
     instances, and a list of :class:`PopulationModel` instances. Each
     :class:`LogLikelihood` in the list has to have the same number of
-    parameters.
-
-    For each parameter of the :class:`LogLikelihood`, a
+    parameters. For each parameter of the :class:`LogLikelihood`, a
     :class:`PopulationModel` has to be provided which models the
     distribution of the respective parameter across individuals in the
     population.
 
+    Formally the hierarchical log-likelihood is constructed by the product
+    of the individual likelihoods :math:`p(x_i | \psi _i)`
+    and the population distribution :math:`p(\Psi | \theta )`
+
+    .. math::
+        L(\Psi , \theta | X^{\text{obs}}) =
+        \sum _{i=1}^n \log p(x^{\text{obs}}_i | \psi _i )
+        + \log p(\Psi | \theta ).
+
+    Here, :math:`\Psi = (\psi _1, \ldots , \psi _n )` are the
+    bottom-level parameters of the individual likelihoods,
+    :math:`\theta` are the top-level parameters of the population models,
+    and
+    :math:`X^{\text{obs}} = (x^{\text{obs}}_1, \ldots , x^{\text{obs}}_n)`
+    are the observations for each individual.
+
     .. note::
         The number of parameters of an hierarchical log-likelihood is
         larger than the number of parameters of the corresponding
-        :class:`PopulationPredictiveModel,
-        as the integral over the individual parameters can in
-        general not be solved analytically.
+        :class:`PredictivePopulationModel`,
+        as the integral over the individual parameters
+        :math:`\Psi` can in general not be solved analytically.
 
     :param log_likelihoods: A list of log-likelihoods defined on the same
         parameter space.
@@ -42,6 +55,37 @@ class HierarchicalLogLikelihood(object):
     :param population_models: A list of population models with one
         population model for each parameter of the log-likelihoods.
     :type population_models: list[PopulationModel]
+
+    Example
+    -------
+
+    ::
+
+        import erlotinib as erlo
+
+        # Define log-likelihoods
+        log_likelihood_1 = erlo.LogLikelihood(
+            mechanistic_model,
+            error_models,
+            observations_1,
+            times_1)
+        log_likelihood_2 = erlo.LogLikelihood(
+            mechanistic_model,
+            error_models,
+            observations_2,
+            times_2)
+
+        # Define population models
+        # (Assumes likelihoods have 3 parameters each)
+        population_models = [
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel()]
+
+        # Create hierarchical log-likelihood
+        hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=[log_likelihood_1, log_likelihood_2]
+            population_models=population_models)
     """
     def __init__(self, log_likelihoods, population_models):
         super(HierarchicalLogLikelihood, self).__init__()
@@ -349,13 +393,25 @@ class HierarchicalLogLikelihood(object):
 
 
 class HierarchicalLogPosterior(pints.LogPDF):
-    """
-    # TODO:
-    A log-posterior class which can be used with the
-    :class:`OptimisationController` or the :class:`SamplingController`
-    to find either the maximum a posteriori (MAP)
-    estimates of the model parameters, or to sample from the posterior
-    probability distribution of the model parameters directly.
+    r"""
+    A log-posterior constructed from a :class:`HierarchicalLoglikelihood`
+    and a :class:`LogPrior`.
+
+    A hierarchical log-posterior takes a hierarchical log-likelihood and
+    a log-prior of the same dimensionality as top-level parameters in
+    the log-likelihood.
+
+    Formally the posterior is constructed for a hierarchical
+    log-likelihood of the form :math:`p(x | \Psi , \theta )`
+    and a prior :math:`p(\theta )` as
+
+    .. math::
+        p(\Psi , \theta | x) =
+        p(x | \Psi , \theta )\, p(\theta )
+
+    where :math:`\Psi = (\psi _1, \ldots , \psi _n)` are the bottom-level
+    parameters, :math:`\theta` are the top-level parameters and
+    :math:`x` are the observations.
 
     Extends :class:`pints.LogPDF`.
 
@@ -494,40 +550,40 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
 class LogLikelihood(pints.LogPDF):
     r"""
-    A class which defines the log-likelihood of the model parameters.
+    A log-likelihood quantifies how likely a set of mechanistic and error model
+    parameters are to have produced some observations.
 
     A log-likelihood takes an instance of a :class:`MechanisticModel` and one
-    instance of a :class:`ErrorModel` for each mechanistic model output. These
-    submodels define a time-dependent distribution of observable biomarkers
+    instance of an :class:`ErrorModel` for each mechanistic model output. This
+    defines a time-dependent distribution of observable biomarkers
     equivalent to a :class:`PredictiveModel`
 
     .. math::
-        p(x | t; \psi _{\text{m}}, \psi _{\text{e}}),
+        p(x | t; \psi ),
 
-    where :math:`p` is the probability density of the observable biomarker
-    :math:`x` at time :math:`t`. :math:`\psi _{\text{m}}` and
-    :math:`\psi _{\text{e}}` are the model parameters of the mechanistic model
-    and the error model respectively. For multiple outputs of the mechanistic
-    model, this distribution will be multi-dimensional.
+    which is centered at the mechanistic model output and has a variance
+    according to the error model. Here, :math:`x` are the observable biomarker
+    values at time :math:`t`, and :math:`\psi` are the model parameters of the
+    mechanistic model and the error model. For multiple outputs of the
+    mechanistic model, :math:`p` will be a multivariate distribution.
 
-    The log-likelihood for given observations and times is the given by
-    the sum of :math:`\log p` evaluated at the observations
+    The log-likelihood for observations
+    :math:`(x^{\text{obs}}, t^{\text{obs}})` is given by
 
     .. math::
-        L(\psi _{\text{m}}, \psi _{\text{e}}) = \sum _{i=1}^N
-        \log p(x^{\text{obs}}_i | t^{\text{obs}}_i;
-        \psi _{\text{m}}, \psi _{\text{e}}),
+        L(\psi | x^{\text{obs}}) = \sum _{i=1}^N
+        \log p(x^{\text{obs}}_i | t^{\text{obs}}_i; \psi),
 
-    where :math:`N` is the total number of observations, and
-    :math:`x^{\text{obs}}` and :math:`t^{\text{obs}}` the observed biomarker
-    values and times.
+    where :math:`N` is the total number of observations. Note that for
+    notational ease we omitted the conditioning on the observation times
+    :math:`t^{\text{obs}}` on the left hand side, and will also often drop
+    it elsewhere in the documentation
 
-    The error models are expected to be in the same order as the mechanistic
-    model outputs :meth:`MechanisticModel.outputs`. The observations and times
-    are equally expected to order in the same way as the model outputs.
-
-    Calling the log-likelihood for some parameters returns the unnormalised
-    log-likelihood score for those paramters.
+    .. note::
+        For notational ease we omitted that the log-likelihood also is
+        conditional on the dosing regimen associated with the observations.
+        The appropriate regimen can be set with
+        :meth:`PharmacokineticModel.set_dosing_regimen`
 
     Example
     -------
@@ -544,35 +600,30 @@ class LogLikelihood(pints.LogPDF):
         # Compute log-likelihood score
         score = log_likelihood(parameters)
 
-    .. note::
-        The parameters are expected to be ordered according to the mechanistic
-        model and error models, where the mechanistic model parameters are
-        first, then the parameters of the first error model, then the
-        parameters of the second error model, etc.
-
     Extends :class:`pints.LogPDF`.
 
-    Parameters
-    ----------
-    mechanistic_model
-        An instance of a :class:`MechanisticModel`.
-    error_models
-        A list of instances of a :class:`ErrorModel`. The error models are
-        expected to be ordered in the same way as the mechanistic model
+    :param mechanistic_model: A mechanistic model that models the
+        simplified behaviour of the biomarkers.
+    :type mechanistic_model: MechanisticModel
+    :param error_model:
+        One error model for each output of the mechanistic model. For multiple
+        ouputs the error models are expected to be ordered according to the
         outputs.
-    observations
-        A list of one dimensional array-like objects with measured values of
-        the biomarkers. The list is expected to ordered in the same way as the
-        mechanistic model outputs.
-    times
-        A list of one dimensional array-like objects with measured times
-        associated to the observations.
-    outputs
-        A list of output names, which sets the mechanistic model outputs. If
-        ``None`` the previously set outputs are assumed.
+    :type error_model: ErrorModel, list[ErrorModel]
+    :param observations: A list of one dimensional array-like objects with
+        measured values of the biomarkers. The list is expected to ordered in
+        the same way as the mechanistic model outputs.
+    :type observations: list[float], list[list[float]]
+    :param times: A list of one dimensional array-like objects with measured
+        times associated to the observations.
+    :type times: list[float], list[list[float]]
+    :param outputs: A list of output names, which sets the mechanistic model
+        outputs. If ``None`` the currently set outputs of the mechanistic model
+        are assumed.
+    :type outputs: list[str], optional
     """
     def __init__(
-            self, mechanistic_model, error_models, observations, times,
+            self, mechanistic_model, error_model, observations, times,
             outputs=None):
         super(LogLikelihood, self).__init__()
 
@@ -584,8 +635,8 @@ class LogLikelihood(pints.LogPDF):
                 'The mechanistic model as to be an instance of a '
                 'erlotinib.MechanisticModel.')
 
-        if not isinstance(error_models, list):
-            error_models = [error_models]
+        if not isinstance(error_model, list):
+            error_model = [error_model]
 
         # Copy mechanistic model
         mechanistic_model = copy.deepcopy(mechanistic_model)
@@ -595,14 +646,14 @@ class LogLikelihood(pints.LogPDF):
             mechanistic_model.set_outputs(outputs)
 
         n_outputs = mechanistic_model.n_outputs()
-        if len(error_models) != n_outputs:
+        if len(error_model) != n_outputs:
             raise ValueError(
                 'One error model has to be provided for each mechanistic '
                 'model output.')
 
-        for error_model in error_models:
+        for em in error_model:
             if not isinstance(
-                    error_model, (erlo.ErrorModel, erlo.ReducedErrorModel)):
+                    em, (erlo.ErrorModel, erlo.ReducedErrorModel)):
                 raise TypeError(
                     'The error models have to instances of a '
                     'erlotinib.ErrorModel.')
@@ -655,14 +706,12 @@ class LogLikelihood(pints.LogPDF):
             observations[output_id] = observations[output_id][order]
 
         # Copy error models, such that renaming doesn't affect input models
-        error_models = [
-            copy.deepcopy(error_model) for error_model in error_models]
+        error_model = [
+            copy.deepcopy(em) for em in error_model]
 
         # Remember models and observations
-        # (Mechanistic model needs to be copied, such that it's dosing regimen
-        # cannot be altered by the input model.)
         self._mechanistic_model = mechanistic_model
-        self._error_models = error_models
+        self._error_models = error_model
         self._observations = observations
 
         self._arange_times_for_mechanistic_model(times)
@@ -708,7 +757,7 @@ class LogLikelihood(pints.LogPDF):
 
     def _arange_times_for_mechanistic_model(self, times):
         """
-        Sets the evaluation time points for the mechanistic time points.
+        Sets the evaluation time points for the mechanistic model.
 
         The challenge is to avoid solving the mechanistic model multiple
         times for each observed output separately. So here we define a
@@ -796,14 +845,12 @@ class LogLikelihood(pints.LogPDF):
     def fix_parameters(self, name_value_dict):
         """
         Fixes the value of model parameters, and effectively removes them as a
-        parameter from the model. Fixing the value of a parameter at ``None``,
+        parameter from the model. Fixing the value of a parameter at ``None``
         sets the parameter free again.
 
-        Parameters
-        ----------
-        name_value_dict
-            A dictionary with model parameter names as keys, and parameter
-            value as values.
+        :param name_value_dict: A dictionary with model parameter names as keys,
+            and parameter value as values.
+        :type name_value_dict: dict[str, float]
         """
         # Check type of dictionanry
         try:
@@ -894,10 +941,9 @@ class LogLikelihood(pints.LogPDF):
 
         The ID is used as meta data to identify the origin of the data.
 
-        Parameters
-        ----------
-        label
-            Integer value which is used as ID for the log-likelihood.
+        :param label: Integer value which is used as ID for the
+            log-likelihood.
+        :type label: str
         """
         label = int(label)
 
@@ -906,12 +952,23 @@ class LogLikelihood(pints.LogPDF):
 
 
 class LogPosterior(pints.LogPDF):
-    """
+    r"""
     A log-posterior class which can be used with the
     :class:`OptimisationController` or the :class:`SamplingController`
     to find either the maximum a posteriori (MAP)
     estimates of the model parameters, or to sample from the posterior
     probability distribution of the model parameters directly.
+
+    The log-posterior is constructed by the sum of the input log-likelihood
+    :math:`\log p(x ^{\text{obs}} | \psi )` and the input log-prior
+    :math:`\log p(\psi )` up to a additive constant
+
+    .. math::
+        \log p(\psi | x ^{\text{obs}}) =
+        \log p(x ^{\text{obs}} | \psi ) + \log p(\psi ) + \text{constant},
+
+    where :math:`\psi` are the parameters of the log-likelihood and
+    :math:`x ^{\text{obs}}` are the observed data.
 
     Extends :class:`pints.LogPDF`.
 
