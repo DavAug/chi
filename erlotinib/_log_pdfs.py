@@ -438,12 +438,12 @@ class HierarchicalLogPosterior(pints.LogPDF):
     as population (or top-level) parameters in the log-likelihood.
 
     Formally the log-posterior is given by the sum of the input log-likelihood
-    :math:`\log p(X ^{\text{obs}} | \Psi , \theta )` and the input log-prior
+    :math:`L(\Psi , \theta | X ^{\text{obs}})` and the input log-prior
     :math:`\log p(\theta )` up to an additive constant
 
     .. math::
         \log p(\Psi , \theta | X ^{\text{obs}}) \sim
-        \log p(X ^{\text{obs}} | \Psi , \theta) + \log p(\theta ),
+        L(\Psi , \theta | X ^{\text{obs}}) + \log p(\theta ),
 
     where :math:`\Psi` are the bottom-level parameters, :math:`\theta` are the
     top-level parameters and :math:`X ^{\text{obs}}` are the observations, see
@@ -529,11 +529,12 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
         # Check inputs
         if not isinstance(log_likelihood, HierarchicalLogLikelihood):
-            raise ValueError(
-                'Log-likelihood has to extend pints.LogPDF.')
+            raise TypeError(
+                'The log-likelihood has to be an instance of a '
+                'erlotinib.HierarchicalLogLikelihood.')
         if not isinstance(log_prior, pints.LogPrior):
-            raise ValueError(
-                'Log-prior has to extend pints.LogPrior.')
+            raise TypeError(
+                'The log-prior has to be an instance of a pints.LogPrior.')
 
         # Check dimensions
         n_top_parameters = log_likelihood.n_parameters(
@@ -541,7 +542,8 @@ class HierarchicalLogPosterior(pints.LogPDF):
         if log_prior.n_parameters() != n_top_parameters:
             raise ValueError(
                 'The log-prior has to have as many parameters as population '
-                'parameters in the log-likelihood.')
+                'parameters in the log-likelihood. There are '
+                '<' + str(n_top_parameters) + '> population parameters.')
 
         # Store prior and log_likelihood, as well as number of parameters
         self._log_prior = log_prior
@@ -611,8 +613,8 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
     def get_id(self):
         """
-        Returns the id of the log-posterior. If no ID is set, ``None`` is
-        returned.
+        Returns the ids of the log-posterior's parameters. If the ID is ``None``
+        corresponding parameter is defined on the population level.
         """
         return self._log_likelihood.get_id()
 
