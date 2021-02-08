@@ -908,7 +908,13 @@ class LogLikelihood(pints.LogPDF):
 
     def get_submodels(self):
         """
-        Returns the submodels of the predictive model in form of a dictionary.
+        Returns the submodels of the log-likelihood in form of a dictionary.
+
+        .. warning::
+            The returned submodels are only references to the models used by
+            the log-likelihood. Changing e.g. the dosing regimen of the
+            :class:`MechanisticModel` will therefore also change the dosing
+            regimen of the log-likelihood!
         """
         # Get original submodels
         mechanistic_model = self._mechanistic_model
@@ -961,24 +967,23 @@ class LogPosterior(pints.LogPDF):
 
     The log-posterior is constructed by the sum of the input log-likelihood
     :math:`\log p(x ^{\text{obs}} | \psi )` and the input log-prior
-    :math:`\log p(\psi )` up to a additive constant
+    :math:`\log p(\psi )` up to an additive constant
 
     .. math::
         \log p(\psi | x ^{\text{obs}}) =
         \log p(x ^{\text{obs}} | \psi ) + \log p(\psi ) + \text{constant},
 
     where :math:`\psi` are the parameters of the log-likelihood and
-    :math:`x ^{\text{obs}}` are the observed data.
+    :math:`x ^{\text{obs}}` are the observed data. The additive constant
+    is the normalisation of the log-posterior and is generally not known.
 
     Extends :class:`pints.LogPDF`.
 
-    Parameters
-    ----------
-    log_likelihood
-        An instance of a :class:`LogLikelihood`.
-    log_prior
-        An instance of a :class:`pints.LogPrior` which represents the prior
-        probability distributions for the parameters of the log-likelihood.
+    :param log_likelihood: A log-likelihood for the model parameters.
+    :type log_likelihood: LogLikelihood
+    :param log_prior: A log-prior for the model parameters. The log-prior
+        has to have the same dimensionality as the log-likelihood.
+    :type log_prior: pints.LogPrior
     """
     def __init__(self, log_likelihood, log_prior):
         # Check inputs
