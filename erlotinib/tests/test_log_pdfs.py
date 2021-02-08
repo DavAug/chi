@@ -375,9 +375,240 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(n_parameters, 11)
 
 
+class TestHierarchicalLogPosterior(unittest.TestCase):
+    """
+    Tests the erlotinib.HierarchicalLogPosterior class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Create data
+        obs_1 = [1, 1.1, 1.2, 1.3]
+        times_1 = [1, 2, 3, 4]
+        obs_2 = [2, 2.1, 2.2]
+        times_2 = [2, 5, 6]
+        observations = [obs_1, obs_2]
+        times = [times_1, times_2]
+
+        # Set up mechanistic and error models
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        model.set_administration('central', direct=False)
+        model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+        error_models = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
+
+        # Create log-likelihoods
+        log_likelihoods = [
+            erlo.LogLikelihood(
+                model, error_models, observations, times),
+            erlo.LogLikelihood(
+                model, error_models, observations, times)]
+
+        # Create population models
+        population_models = [
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+
+        # Create hierarchical log-likelihood
+        cls.hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods, population_models)
+
+        # Define log-prior
+        cls.log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1))
+
+        # Create log-posterior
+        cls.log_posterior = erlo.HierarchicalLogPosterior(
+            cls.hierarch_log_likelihood,
+            cls.log_prior)
+
+    def test_bad_instantiation(self):
+        # Log-likelihood has bad type
+        log_likelihood = 'bad type'
+        with self.assertRaisesRegex(TypeError, 'The log-likelihood has'):
+            erlo.HierarchicalLogPosterior(
+                log_likelihood, self.log_prior)
+
+        # Log-prior has bad type
+        log_prior = 'bad type'
+        with self.assertRaisesRegex(TypeError, 'The log-prior has to be'):
+            erlo.HierarchicalLogPosterior(
+                self.hierarch_log_likelihood, log_prior)
+
+        # The dimension of the log-prior does not match number of top-level
+        # parameters
+        log_prior = pints.LogNormalLogPrior(0, 1)
+        with self.assertRaisesRegex(ValueError, 'The log-prior has to have'):
+            erlo.HierarchicalLogPosterior(
+                self.hierarch_log_likelihood, log_prior)
+
+    def test_call(self):
+        # Test case I: Check score contributions add appropriately
+        all_params = np.arange(start=0, stop=13, step=1)
+        top_params = [0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        score = self.hierarch_log_likelihood(all_params) + \
+            self.log_prior(top_params)
+
+        self.assertEqual(self.log_posterior(all_params), score)
+
+        # Test case II: Check exception for inf prior score
+        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, -1]
+        self.assertEqual(self.log_posterior(parameters), -np.inf)
+
+    def test_get_log_likelihood(self):
+        log_likelihood = self.log_posterior.get_log_likelihood()
+        self.assertIsInstance(log_likelihood, erlo.HierarchicalLogLikelihood)
+
+    def test_get_log_prior(self):
+        log_prior = self.log_posterior.get_log_prior()
+        self.assertIsInstance(log_prior, pints.LogPrior)
+
+    def test_get_id(self):
+        ids = self.log_posterior.get_id()
+
+        self.assertEqual(len(ids), 13)
+        self.assertIsNone(ids[0])
+        self.assertIsNone(ids[1])
+        self.assertEqual(ids[2], 'automatic-id-1')
+        self.assertEqual(ids[3], 'automatic-id-2')
+        self.assertIsNone(ids[4])
+        self.assertIsNone(ids[5])
+        self.assertIsNone(ids[6])
+        self.assertEqual(ids[7], 'automatic-id-1')
+        self.assertEqual(ids[8], 'automatic-id-2')
+        self.assertIsNone(ids[9])
+        self.assertIsNone(ids[10])
+        self.assertIsNone(ids[11])
+        self.assertIsNone(ids[12])
+
+    def test_get_parameter_names(self):
+        # Test case I: without ids
+        parameter_names = self.log_posterior.get_parameter_names()
+
+        self.assertEqual(len(parameter_names), 13)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'central.size')
+        self.assertEqual(parameter_names[4], 'Mean central.size')
+        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
+        self.assertEqual(parameter_names[7], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[8], 'myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[9], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[11], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
+
+        # Test case II: Exclude bottom-level
+        parameter_names = self.log_posterior.get_parameter_names(
+            exclude_bottom_level=True)
+
+        self.assertEqual(len(parameter_names), 11)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'Mean central.size')
+        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
+        self.assertEqual(parameter_names[5], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[6], 'myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[7], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[8], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[9], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled dose.drug_amount Sigma rel.')
+
+        # Test case III: with ids
+        parameter_names = self.log_posterior.get_parameter_names(
+            include_ids=True)
+
+        self.assertEqual(len(parameter_names), 13)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'automatic-id-1 central.size')
+        self.assertEqual(parameter_names[3], 'automatic-id-2 central.size')
+        self.assertEqual(parameter_names[4], 'Mean central.size')
+        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
+        self.assertEqual(
+            parameter_names[7], 'automatic-id-1 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[8], 'automatic-id-2 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[9], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[11], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
+
+        # Test case IV: Exclude bottom-level with IDs
+        parameter_names = self.log_posterior.get_parameter_names(
+            exclude_bottom_level=True, include_ids=True)
+
+        self.assertEqual(len(parameter_names), 11)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[2], 'Mean central.size')
+        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
+        self.assertEqual(
+            parameter_names[5], 'automatic-id-1 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[6], 'automatic-id-2 myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[7], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[8], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[9], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[10], 'Pooled dose.drug_amount Sigma rel.')
+
+    def test_n_parameters(self):
+        # Test case I: All parameters
+        # 9 individual parameters, from which 1 is modelled heterogeneously,
+        # 1 log-normally and the rest is pooled
+        # And there are 2 individuals
+        n_parameters = 2 + 4 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+        self.assertEqual(
+            self.log_posterior.n_parameters(), n_parameters)
+
+        # Test case II: Exclude bottom parameters
+        n_parameters = self.log_posterior.n_parameters(
+            exclude_bottom_level=True)
+        self.assertEqual(n_parameters, 11)
+
+
 class TestLogLikelihood(unittest.TestCase):
     """
-    Test the erlotinib.LogLikelihood class.
+    Tests the erlotinib.LogLikelihood class.
     """
 
     @classmethod
@@ -683,28 +914,11 @@ class TestLogPosterior(unittest.TestCase):
             pints.UniformLogPrior(0, 1))
         cls.log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
 
-        # Create a pints test model
-        problem = erlo.InverseProblem(model, values, times)
-        log_likelihood = pints.GaussianLogLikelihood(problem)
-        log_prior = pints.ComposedLogPrior(
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1))
-        cls.pints_log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
-
     def test_get_id(self):
         # Test case I: Non-trivial IDs
         _id = self.log_posterior.get_id()
 
         self.assertEqual(_id, 'ID 42')
-
-        # Test case II: Trivial ID (because pints likelihood)
-        _id = self.pints_log_posterior.get_id()
-
-        self.assertIsNone(_id)
 
     def test_get_parameter_names(self):
         # Test case I: Non-trivial parameters
@@ -718,17 +932,6 @@ class TestLogPosterior(unittest.TestCase):
         self.assertEqual(parameter_names[4], 'myokit.lambda_1')
         self.assertEqual(parameter_names[5], 'Sigma base')
         self.assertEqual(parameter_names[6], 'Sigma rel.')
-
-        # Test case II: Trivial ID (because pints likelihood)
-        parameter_names = self.pints_log_posterior.get_parameter_names()
-
-        self.assertEqual(len(parameter_names), 6)
-        self.assertEqual(parameter_names[0], 'Parameter 1')
-        self.assertEqual(parameter_names[1], 'Parameter 2')
-        self.assertEqual(parameter_names[2], 'Parameter 3')
-        self.assertEqual(parameter_names[3], 'Parameter 4')
-        self.assertEqual(parameter_names[4], 'Parameter 5')
-        self.assertEqual(parameter_names[5], 'Parameter 6')
 
 
 class TestReducedLogPDF(unittest.TestCase):
