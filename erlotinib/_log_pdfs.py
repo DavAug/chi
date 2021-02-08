@@ -36,7 +36,7 @@ class HierarchicalLogLikelihood(object):
     mechanistic model, :math:`p` will be a multivariate distribution.
 
     The integral over the :math:`\psi` can in general not be solved
-    analytically. To nevertheless be able to walways construct the
+    analytically. To nevertheless be able to always construct the
     hierarchical log-likelihood we postpone solving the integral for now
     and sum the individual log-likelihoods
 
@@ -52,9 +52,13 @@ class HierarchicalLogLikelihood(object):
     are the observations for each individual, where :math:`i` runs over
     the observation points and :math:`j` over the individuals.
 
-    Note that we've omitted that the likelihood is conditional on the
-    measuremnt time points and the dosing regimens for notational
-    ease.
+    This log-likelihood can now be optimised or sampled from. While
+    sampling will converge to the true solution of the integral,
+    optimisation should rather be interpreted as a saddle-point
+    approximation.
+
+    Note that for notational ease we've omitted that the likelihood is
+    conditional on the measurement time points and the dosing regimens.
 
     .. note::
         The number of parameters of an hierarchical log-likelihood is
@@ -428,23 +432,22 @@ class HierarchicalLogPosterior(pints.LogPDF):
     A log-posterior constructed from a hierarchical log-likelihood
     and a log-prior for the population (or top-level) parameters.
 
-    A hierarchical log-posterior takes a hierarchical log-likelihood and
-    a log-prior of the same dimensionality as top-level parameters in
-    the log-likelihood.
+    The log-posterior takes an instance of a
+    :class:`HierarchicalLogLikelihood` and an instance of a
+    :class:`pints.LogPrior` of the same dimensionality
+    as population (or top-level) parameters in the log-likelihood.
 
-    Formally the posterior is given by the sum the hierarchical
-    log-likelihood :math:`\log p(X^{\text{obs}} | \Psi , \theta )`,
-    the log-prior :math:`\log p(\theta )` and a normalisation
-    constant
+    Formally the log-posterior is given by the sum of the input log-likelihood
+    :math:`\log p(X ^{\text{obs}} | \Psi , \theta )` and the input log-prior
+    :math:`\log p(\theta )` up to an additive constant
 
     .. math::
-        \log p(\Psi , \theta | X^{\text{obs}}) =
-        \log p(X^{\text{obs}} | \Psi , \theta )
-        + \log p(\theta ) + \text{constant},
+        \log p(\Psi , \theta | X ^{\text{obs}}) \sim
+        \log p(X ^{\text{obs}} | \Psi , \theta) + \log p(\theta ),
 
-    where :math:`\Psi = (\psi _1, \ldots , \psi _n)` are the bottom-level
-    parameters, :math:`\theta` are the top-level parameters and
-    :math:`x` are the observations.
+    where :math:`\Psi` are the bottom-level parameters, :math:`\theta` are the
+    top-level parameters and :math:`X ^{\text{obs}}` are the observations, see
+    :class:`HierarchicalLogLikelihood`.
 
     Extends :class:`pints.LogPDF`.
 
@@ -456,6 +459,72 @@ class HierarchicalLogPosterior(pints.LogPDF):
         An instance of a :class:`pints.LogPrior` which represents the prior
         probability distributions for the population parameters of the
         log-likelihood.
+
+    Example
+    -------
+
+    ::
+
+        import erlotinib as erlo
+        import pints
+
+        # Define mechanistic and error model
+        sbml_file = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = erlo.PharmacodynamicModel(sbml_file)
+        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+
+        # Define observations
+        observations_1 = [1, 2, 3, 4]
+        observations_2 = [1.5, 3.2, 2.8, 3]
+        times = [0, 0.5, 1, 2]
+
+        # Define log-likelihoods
+        log_likelihood_1 = erlo.LogLikelihood(
+            mechanistic_model,
+            error_model,
+            observations_1,
+            times)
+        log_likelihood_2 = erlo.LogLikelihood(
+            mechanistic_model,
+            error_model,
+            observations_2,
+            times)
+
+        # Define population models
+        population_models = [
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+
+        # Create hierarchical log-likelihood
+        hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=[log_likelihood_1, log_likelihood_2],
+            population_models=population_models)
+
+        # Define log-prior
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.HalfCauchyLogPrior(0, 1),
+            pints.HalfCauchyLogPrior(0, 1))
+
+        # Create hierarchical log-posterior
+        log_posterior = erlo.HierarchicalLogPosterior(
+            log_likelihood=hierarch_log_likelihood,
+            log_prior=log_prior)
+
+        # Compute log-posterior score
+        parameters = [1] * 11
+        score = log_posterior(parameters)  # -22.354236950040455
     """
     def __init__(self, log_likelihood, log_prior):
         # Check inputs
