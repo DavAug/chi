@@ -601,6 +601,13 @@ class ProblemModellingController(object):
         """
         return self._dosing_regimens
 
+    def get_log_prior(self):
+        """
+        Returns the :class:`LogPrior` for the model parameters. If no
+        log-prior is set, ``None`` is returned.
+        """
+        return self._log_prior
+
     def get_log_posterior(self, individual=None):
         r"""
         Returns the :class:`LogPosterior` defined by the observed biomarkers,
