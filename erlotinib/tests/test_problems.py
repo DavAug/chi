@@ -306,6 +306,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         regimens = problem.get_dosing_regimens()
         self.assertIsInstance(regimens, dict)
 
+    def test_get_log_prior(self):
+        # Log-prior is extensively tested with get_log_posterior
+        # method
+        self.assertIsNone(self.pd_problem.get_log_prior())
+
     def test_get_log_posterior(self):
         # Test case I: Create posterior with no fixed parameters
         problem = copy.deepcopy(self.pd_problem)
