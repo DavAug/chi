@@ -361,7 +361,7 @@ class HierarchicalLogLikelihood(object):
     def get_parameter_names(
             self, exclude_bottom_level=False, include_ids=False):
         """
-        Returns the parameter names of the predictive model.
+        Returns the names of the model.
 
         :param exclude_bottom_level: A boolean flag which determines whether
             the bottom-level parameter names are returned in addition to the
@@ -414,7 +414,7 @@ class HierarchicalLogLikelihood(object):
 
     def n_parameters(self, exclude_bottom_level=False):
         """
-        Returns the number of parameters of the log-likelihood.
+        Returns the number of parameters.
 
         :param exclude_bottom_level: A boolean flag which determines whether
             the bottom-level parameter are counted in addition to the
@@ -451,14 +451,11 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
     Extends :class:`pints.LogPDF`.
 
-    Parameters
-    ----------
-    log_likelihood
-        An instance of a :class:`erlotinib.HierarchicalLogLikelihood`.
-    log_prior
-        An instance of a :class:`pints.LogPrior` which represents the prior
-        probability distributions for the population parameters of the
-        log-likelihood.
+    :param log_likelihood: A log-likelihood for the individual and population
+        parameters.
+    :type log_likelihood: HierarchicalLogLikelihood
+    :param log_prior: A log-prior for the population (or top-level) parameters.
+    :type log_prior: pints.LogPrior
 
     Example
     -------
@@ -622,7 +619,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
     def get_parameter_names(
             self, exclude_bottom_level=False, include_ids=False):
         """
-        Returns the parameter names of the predictive model.
+        Returns the names of the parameters.
 
         :param exclude_bottom_level: A boolean flag which determines whether
             the bottom-level parameter names are returned in addition to the
@@ -640,7 +637,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
     def n_parameters(self, exclude_bottom_level=False):
         """
-        Returns the number of parameters of the log-likelihood.
+        Returns the number of parameters.
 
         :param exclude_bottom_level: A boolean flag which determines whether
             the bottom-level parameter are counted in addition to the
