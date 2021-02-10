@@ -1145,17 +1145,17 @@ class LogPosterior(pints.LogPDF):
 
         # Check inputs
         if not isinstance(log_likelihood, LogLikelihood):
-            raise ValueError(
-                'Log-likelihood has to extend erlotinib.LogLikelihood.')
+            raise TypeError(
+                'The log-likelihood has to extend erlotinib.LogLikelihood.')
         if not isinstance(log_prior, pints.LogPrior):
-            raise ValueError(
-                'Log-prior has to extend pints.LogPrior.')
+            raise TypeError(
+                'The log-prior has to extend pints.LogPrior.')
 
         # Check dimensions
         n_parameters = log_prior.n_parameters()
         if log_likelihood.n_parameters() != n_parameters:
             raise ValueError(
-                'Given log_prior and log_likelihood must have same dimension.')
+                'The log_prior and the log_likelihood must have same dimension.')
 
         # Store prior and log_likelihood, as well as number of parameters
         self._log_prior = log_prior
@@ -1187,14 +1187,7 @@ class LogPosterior(pints.LogPDF):
         Returns the id of the log-posterior. If no id is set, ``None`` is
         returned.
         """
-        # Get ID of likelihood
-        try:
-            _id = self._log_likelihood.get_id()
-        except AttributeError:
-            # If a pints likelihood is used, it won't have an ID
-            _id = None
-
-        return _id
+        return self._log_likelihood.get_id()
 
     def get_parameter_names(self):
         """
