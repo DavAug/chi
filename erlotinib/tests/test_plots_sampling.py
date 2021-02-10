@@ -21,7 +21,7 @@ class TestParameterEstimatePlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Summary of dataset
-        ids = [0, 1, 2]
+        ids = [0, 1, None]
         n_ids = len(ids)
         params = ['Param 1', 'Param 2']
         n_params = len(params)
