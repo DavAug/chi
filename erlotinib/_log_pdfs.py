@@ -613,8 +613,8 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
     def get_id(self):
         """
-        Returns the ids of the log-posterior's parameters. If the ID is ``None``
-        corresponding parameter is defined on the population level.
+        Returns the ids of the log-posterior's parameters. If the ID is
+        ``None`` corresponding parameter is defined on the population level.
         """
         return self._log_likelihood.get_id()
 
@@ -961,8 +961,8 @@ class LogLikelihood(pints.LogPDF):
         parameter from the model. Fixing the value of a parameter at ``None``
         sets the parameter free again.
 
-        :param name_value_dict: A dictionary with model parameter names as keys,
-            and parameter value as values.
+        :param name_value_dict: A dictionary with model parameter names as
+            keys, and parameter value as values.
         :type name_value_dict: dict[str, float]
         """
         # Check type of dictionanry
