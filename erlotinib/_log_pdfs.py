@@ -1155,7 +1155,7 @@ class LogPosterior(pints.LogPDF):
         n_parameters = log_prior.n_parameters()
         if log_likelihood.n_parameters() != n_parameters:
             raise ValueError(
-                'The log_prior and the log_likelihood must have same dimension.')
+                'The log-prior and the log_likelihood must have same dimension.')
 
         # Store prior and log_likelihood, as well as number of parameters
         self._log_prior = log_prior
