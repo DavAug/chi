@@ -21,7 +21,7 @@ class TestParameterEstimatePlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Summary of dataset
-        ids = [0, 1, None]
+        ids = [0, 1, 2]
         n_ids = len(ids)
         params = ['Param 1', 'Param 2']
         n_params = len(params)
@@ -36,12 +36,21 @@ class TestParameterEstimatePlot(unittest.TestCase):
         scores = [10] * (n_ids * n_params * n_runs)
         runs = [1] * (n_ids * n_params) + [2] * (n_ids * n_params)
 
-        cls.data = pd.DataFrame({
+        data = pd.DataFrame({
             'ID': ids,
             'Parameter': params,
             'Estimate': estimates,
             'Score': scores,
             'Run': runs})
+
+        # Add a 'population' parameter to the dataset
+        cls.data = data.append(pd.DataFrame({
+            'ID': [None] * 8,
+            'Parameter': 'Param 3',
+            'Sample': np.arange(8),
+            'Iteration': [1, 2, 3, 4] * 2,
+            'Run': [1] * 4 + [2] * 4
+        }))
 
         # Create test figure
         cls.fig = erlo.plots.ParameterEstimatePlot()
