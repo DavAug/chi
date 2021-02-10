@@ -902,9 +902,10 @@ class TestLogPosterior(unittest.TestCase):
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
-        log_likelihood = erlo.LogLikelihood(model, error_model, values, times)
-        log_likelihood.set_id('42')
-        log_prior = pints.ComposedLogPrior(
+        cls.log_likelihood = erlo.LogLikelihood(
+            model, error_model, values, times)
+        cls.log_likelihood.set_id('42')
+        cls.log_prior = pints.ComposedLogPrior(
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
@@ -912,13 +913,34 @@ class TestLogPosterior(unittest.TestCase):
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1))
-        cls.log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
+        cls.log_posterior = erlo.LogPosterior(
+            cls.log_likelihood, cls.log_prior)
+
+    def test_bad_instantiation(self):
+        # Log-likelihood has bad type
+        log_likelihood = 'bad type'
+        with self.assertRaisesRegex(TypeError, 'The log-likelihood has to'):
+            erlo.LogPosterior(log_likelihood, self.log_prior)
+
+        # Log-prior has bad type
+        log_prior = 'bad type'
+        with self.assertRaisesRegex(TypeError, 'The log-prior has to'):
+            erlo.LogPosterior(self.log_likelihood, log_prior)
+
+        # The dimensionality of likelihood and prior don't match
+        log_prior = pints.UniformLogPrior(0, 1)
+        with self.assertRaisesRegex(ValueError, 'The log-prior and the'):
+            erlo.LogPosterior(self.log_likelihood, log_prior)
 
     def test_get_id(self):
         # Test case I: Non-trivial IDs
         _id = self.log_posterior.get_id()
 
         self.assertEqual(_id, 'ID 42')
+
+    def test_get_log_likelihood(self):
+        log_likelihood = self.log_posterior.get_log_likelihood()
+        self.assertIsInstance(log_likelihood, erlo.LogLikelihood)
 
     def test_get_parameter_names(self):
         # Test case I: Non-trivial parameters
