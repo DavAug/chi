@@ -40,10 +40,13 @@ class InferenceController(object):
             log_posteriors = [log_posterior]
 
         for log_posterior in log_posteriors:
-            if not isinstance(log_posterior, erlo.LogPosterior):
+            if not isinstance(
+                    log_posterior,
+                    (erlo.LogPosterior, erlo.HierarchicalLogPosterior)):
                 raise ValueError(
-                    'Log-posterior has to be an instance of a '
-                    '`erlotinib.LogPosterior`.')
+                    'The log-posterior has to be an instance of a '
+                    'erlotinib.LogPosterior or a '
+                    'erlotinib.HierarchicalLogPosterior')
 
         # Check that the log-posteriors have the same number of parameters
         n_parameters = log_posteriors[0].n_parameters()
@@ -54,23 +57,22 @@ class InferenceController(object):
                     'parameter space.')
 
         self._log_posteriors = log_posteriors
-        self._log_prior = self._log_posteriors[0].log_prior()
+        self._log_prior = self._log_posteriors[0].get_log_prior()
 
         # Set defaults
         self._n_runs = 10
         self._parallel_evaluation = True
         self._transform = None
 
-        # Get parameter names
+        # Get parameter names and number of parameters
         self._parameters = list(
             self._log_posteriors[0].get_parameter_names())
-
-        # Get number of parameters
-        self._n_parameters = self._log_prior.n_parameters()
+        self._n_parameters = self._log_posteriors[0].n_parameters()
 
         # Sample initial parameters from log-prior
+        n_posteriors = len(self._log_posteriors)
         self._initial_params = np.empty(shape=(
-            len(self._log_posteriors),
+            n_posteriors,
             self._n_runs,
             self._n_parameters))
         self._sample_initial_parameters()
@@ -86,21 +88,45 @@ class InferenceController(object):
         parameters.
         """
         for index, log_posterior in enumerate(self._log_posteriors):
-            # Sample initial parameters from prior
-            self._initial_params[index] = self._log_prior.sample(self._n_runs)
+            # Construct a mask for the top-level parameters
+            mask = np.ones(shape=self._n_parameters, dtype=bool)
+            all_parameters = log_posterior.get_parameter_names()
+            try:
+                top_parameters = log_posterior.get_parameter_names(
+                    exclude_bottom_level=True)
+            except TypeError:
+                # Flag does not exist for non-hierarchical log-posteriors
+                top_parameters = all_parameters
+
+            for param_id, parameter in enumerate(all_parameters):
+                if parameter not in top_parameters:
+                    # Flip mask entry to False
+                    mask[param_id] = False
+
+            # Sample initial top-level parameters from prior
+            initial_params = self._initial_params[index]
+            initial_params[:, mask] = self._log_prior.sample(
+                self._n_runs)
 
             # Sample initial population, if model is hierarchical
-            log_likelihood = log_posterior.log_likelihood()
-            if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
-                n_ids = log_likelihood.n_log_likelihoods()
-                population_models = log_likelihood.get_population_models()
+            if isinstance(log_posterior, erlo.HierarchicalLogPosterior):
                 self._initial_params[index] = self._sample_population(
-                        index, n_ids, population_models)
+                        index, log_posterior, mask)
 
-    def _sample_population(self, index, n_ids, population_models):
+    def _sample_population(self, index, log_posterior, mask):
         """
         Samples population for initial population model parameters.
+
+        index: The index of the log-posterior
+        log-posterior: The HierarchcalLogPosterior
+        mask: A boolean mask which carries True for top-level parameters
+            and False for bottom-level parameters.
         """
+        # Get number of likelihoods and population models
+        log_likelihood = log_posterior.get_log_likelihood()
+        n_ids = log_likelihood.n_log_likelihoods()
+        population_models = log_likelihood.get_population_models()
+
         # Create container for samples
         # (with the population parameter samples)
         container = self._initial_params[index]
@@ -112,7 +138,8 @@ class InferenceController(object):
             n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
 
             # If number of bottom-level parameters is 0, skip to next iteration
-            if n_indiv == 0:
+            end_index = start_index + n_indiv
+            if (n_indiv == 0) or np.alltrue(mask[start_index:end_index]):
                 # Shift start index by total number of hierarchical parameters
                 start_index += n_indiv + n_pop
                 continue
@@ -127,13 +154,7 @@ class InferenceController(object):
             start = start_index
             end = start + n_indiv
             for run_id, pop_params in enumerate(pop_parameters):
-                try:
-                    sample = pop_model.sample(pop_params, n_indiv)
-                except NotImplementedError:
-                    # If sample is not implemented, continue to the next
-                    # iteration
-                    continue
-
+                sample = pop_model.sample(pop_params, n_indiv)
                 container[run_id, start:end] = sample
 
             # Shift start_index by total number of hierarchical parameters
@@ -154,8 +175,7 @@ class InferenceController(object):
             len(self._log_posteriors),
             self._n_runs,
             self._n_parameters))
-        for index in range(len(self._log_posteriors)):
-            self._initial_params[index] = self._log_prior.sample(self._n_runs)
+        self._sample_initial_parameters()
 
     def set_parallel_evaluation(self, run_in_parallel):
         """
