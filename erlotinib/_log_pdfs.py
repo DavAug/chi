@@ -678,7 +678,7 @@ class LogLikelihood(pints.LogPDF):
     where :math:`n` is the total number of observations. Note that for
     notational ease we omitted the conditioning on the observation times
     :math:`t^{\text{obs}}` on the left hand side, and will also often drop
-    it elsewhere in the documentation
+    it elsewhere in the documentation.
 
     .. note::
         For notational ease we omitted that the log-likelihood also is
@@ -1079,12 +1079,12 @@ class LogPosterior(pints.LogPDF):
     as parameters in the log-likelihood.
 
     Formally the log-posterior is given by the sum of the input log-likelihood
-    :math:`\log p(x ^{\text{obs}} | \psi )` and the input log-prior
+    :math:`L(\psi | x^{\text{obs}})` and the input log-prior
     :math:`\log p(\psi )` up to an additive constant
 
     .. math::
         \log p(\psi | x ^{\text{obs}}) \sim
-        \log p(x ^{\text{obs}} | \psi ) + \log p(\psi ),
+        L(\psi | x^{\text{obs}}) + \log p(\psi ),
 
     where :math:`\psi` are the parameters of the log-likelihood and
     :math:`x ^{\text{obs}}` are the observed data. The additive constant
