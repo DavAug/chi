@@ -66,7 +66,7 @@ class TestInferenceController(unittest.TestCase):
         # Wrong type of log-posterior
         log_posterior = 'bad log-posterior'
 
-        with self.assertRaisesRegex(ValueError, 'Log-posterior has to be'):
+        with self.assertRaisesRegex(ValueError, 'The log-posterior has to be'):
             erlo.InferenceController(log_posterior)
 
         # Log-posteriors don't have the same number of parameters
@@ -163,7 +163,7 @@ class TestOptimisationController(unittest.TestCase):
         problem = copy.deepcopy(cls.problem)
         problem.set_population_model(pop_models)
 
-        n_parameters = 5 + 8 * 2 + 2
+        n_parameters = 1 + 1 + 8 + 1 + 1 + 1 + 2
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
@@ -232,10 +232,10 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(keys[3], 'Score')
         self.assertEqual(keys[4], 'Run')
 
-        # One ID for each prefix
+        # One ID for each individual and None for population parameters
         ids = result['ID'].unique()
-        self.assertEqual(len(ids), 11)  # nids + 'Pooled'
-        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(len(ids), 9)  # nids + None
+        self.assertIsNone(ids[0])
         self.assertEqual(ids[1], 'ID ' + str(self.ids[0]))
         self.assertEqual(ids[2], 'ID ' + str(self.ids[1]))
         self.assertEqual(ids[3], 'ID ' + str(self.ids[2]))
@@ -244,18 +244,18 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
         self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
         self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
-        self.assertEqual(ids[9], 'Mean')
-        self.assertEqual(ids[10], 'Std.')
 
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 7)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(len(parameters), 9)
+        self.assertEqual(parameters[0], 'Pooled myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'Pooled myokit.drug_concentration')
         self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Sigma base')
+        self.assertEqual(parameters[3], 'Pooled myokit.lambda_0')
+        self.assertEqual(parameters[4], 'Pooled myokit.lambda_1')
+        self.assertEqual(parameters[5], 'Pooled Sigma base')
         self.assertEqual(parameters[6], 'Sigma rel.')
+        self.assertEqual(parameters[7], 'Mean Sigma rel.')
+        self.assertEqual(parameters[8], 'Std. Sigma rel.')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -350,7 +350,7 @@ class TestSamplingController(unittest.TestCase):
             erlo.LogNormalModel()]
         problem.set_population_model(pop_models)
 
-        n_parameters = 5 + 8 * 2 + 2
+        n_parameters = 1 + 1 + 8 + 1 + 1 + 1 + 2
         log_priors = [
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
@@ -418,10 +418,10 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(keys[3], 'Iteration')
         self.assertEqual(keys[4], 'Run')
 
-        # One ID for each prefix
+        # One ID for individual and None for population parameters
         ids = result['ID'].unique()
-        self.assertEqual(len(ids), 11)  # nids + 'Pooled' + 'Mean' + 'Std'
-        self.assertEqual(ids[0], 'Pooled')
+        self.assertEqual(len(ids), 9)  # nids + 'Pooled' + 'Mean' + 'Std'
+        self.assertIsNone(ids[0])
         self.assertEqual(ids[1], 'ID ' + str(self.ids[0]))
         self.assertEqual(ids[2], 'ID ' + str(self.ids[1]))
         self.assertEqual(ids[3], 'ID ' + str(self.ids[2]))
@@ -430,18 +430,18 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
         self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
         self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
-        self.assertEqual(ids[9], 'Mean')
-        self.assertEqual(ids[10], 'Std.')
 
         parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 7)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(len(parameters), 9)
+        self.assertEqual(parameters[0], 'Pooled myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'Pooled myokit.drug_concentration')
         self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Sigma base')
+        self.assertEqual(parameters[3], 'Pooled myokit.lambda_0')
+        self.assertEqual(parameters[4], 'Pooled myokit.lambda_1')
+        self.assertEqual(parameters[5], 'Pooled Sigma base')
         self.assertEqual(parameters[6], 'Sigma rel.')
+        self.assertEqual(parameters[7], 'Mean Sigma rel.')
+        self.assertEqual(parameters[8], 'Std. Sigma rel.')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)

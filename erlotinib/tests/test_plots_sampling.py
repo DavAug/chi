@@ -52,7 +52,7 @@ class TestParameterEstimatePlot(unittest.TestCase):
 
         # Add a 'population' parameter to the dataset
         cls.data = data.append(pd.DataFrame({
-            'ID': ['Pooled'] * 8,
+            'ID': [None] * 8,
             'Parameter': 'Param 3',
             'Sample': np.arange(8),
             'Iteration': [1, 2, 3, 4] * 2,

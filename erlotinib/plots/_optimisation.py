@@ -46,8 +46,12 @@ class ParameterEstimatePlot(eplt.MultiFigure):
         # Add trace for each individual
         ids = data[self._id_key].unique()
         for index, individual in enumerate(ids):
-            # Get individual data
+            # Mask for individuals/populations parameter
             mask = data[self._id_key] == individual
+            if individual is None:
+                mask = data[self._id_key].isna()
+
+            # Get data for indvidual or population parameter
             estimates = data[self._est_key][mask]
             scores = data[self._score_key][mask].to_numpy()
             runs = data[self._run_key][mask].to_numpy()
@@ -65,12 +69,15 @@ class ParameterEstimatePlot(eplt.MultiFigure):
         # Get number of runs
         n_runs = len(runs)
 
+        # Population parameters have an ID of None
+        _id = 'Population' if individual is None else individual
+
         # Add trace
         fig = self._figs[fig_id]
         fig.add_trace(
             go.Box(
                 y=estimates,
-                name='%s' % str(individual),
+                name='%s' % str(_id),
                 hovertemplate=(
                     'Estimate: %{y:.2f}<br>'
                     '%{text}'),

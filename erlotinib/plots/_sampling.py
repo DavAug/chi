@@ -47,8 +47,12 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         # Add trace for each individual
         ids = data[self._id_key].unique()
         for index, individual in enumerate(ids):
-            # Get individual data
+            # Mask for individuals/populations parameter
             mask = data[self._id_key] == individual
+            if individual is None:
+                mask = data[self._id_key].isna()
+
+            # Get data for indvidual or population parameter
             samples = data[
                 [self._sample_key, self._iter_key, self._run_key]][mask]
 
@@ -69,12 +73,15 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         # Get figure
         fig = self._figs[fig_id]
 
+        # Population parameters have an ID of None
+        _id = 'Population' if individual is None else individual
+
         # Add trace
         rhat, = diagnostics
         fig.add_trace(
             go.Histogram(
                 y=samples,
-                name='%s' % str(individual),
+                name='%s' % str(_id),
                 hovertemplate=(
                     'Sample: %{y:.2f}<br>' +
                     'Rhat: %.02f<br>' % rhat),
