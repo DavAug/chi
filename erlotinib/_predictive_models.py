@@ -267,31 +267,23 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 
         # Check that the parameters of the posterior can be identified in the
         # dataframe
-        parameter_names = self._check_parameters(
-            posterior_samples, id_key, param_key, param_map)
-
-        # Filter dataframe for relevant data
-        posterior_samples = self._get_relevant_data(
-            posterior_samples, parameter_names, individual, keys)
+        parameter_names, posterior_samples = self._check_parameters_and_filter(
+            posterior_samples, individual, id_key, param_key, param_map)
 
         # Transform dataframe into more convenient format for sampling
         keys = keys[1:]
         self._format_posterior_samples(
             posterior_samples, parameter_names, keys)
 
-    def _check_parameters(
-            self, posterior_samples, id_key, param_key, param_map):
+    def _check_parameters_and_filter(
+            self, posterior_samples, individual, id_key, param_key, param_map):
         """
         Checks whether the parameters of the posterior exist in the dataframe,
-        and returns them.
+        and returns them, as well as the filtered dataset.
 
         Note that for a erlotinib.PredictivePopulationModel the parameter
-        names are a composition of the entries in the ID column and the
-        parameter column.
-
-        Exception are heterogeneously modelled parameters. Here the name of the
-        PredictivePopulationModel is 'Heterogenous <name>', and any ID should
-        be accepted.
+        names of bottom-level paraemetrs are a composition of the entries in
+        the ID column and the parameter column.
         """
         # Create map from posterior parameter names to model parameter names
         model_names = self._predictive_model.get_parameter_names()
@@ -302,37 +294,31 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
                 # The name is not mapped
                 pass
 
-        # Get unique parameter names in dataframe
-        df_names = posterior_samples[param_key].unique()
-        if isinstance(self._predictive_model, erlo.PredictivePopulationModel):
-            # Construct all ID-name pairs
-            all_id_name_pairs = \
-                posterior_samples[id_key].apply(str) + ' ' + \
-                posterior_samples[param_key].apply(str)
-            df_names = all_id_name_pairs.unique()
+        # If indvidual is not None, mask samples
+        # (This only happens for an individual's PredictiveModel)
+        if individual is not None:
+            # Mask samples for individual
+            mask_id = posterior_samples[id_key] == individual
 
-        # If the model parameter is heterogenously modelled, replace the
-        # prefix 'Heterogeneous' by any ID in the dataframe
-        temp_model_names = copy.copy(model_names)
-        if isinstance(self._predictive_model, erlo.PredictivePopulationModel):
-            for param_id, parameter_name in enumerate(temp_model_names):
-                prefix, name = parameter_name.split(maxsplit=1)
-                if prefix == 'Heterogeneous':
-                    # Get any ID
-                    mask = posterior_samples[param_key] == name
-                    prefix = posterior_samples[mask][id_key].iloc[0]
+            # Mask for parameters that are pooled
+            identified_parameters = posterior_samples[
+                mask_id][param_key].unique()
+            mask_pooled = ~posterior_samples[param_key].isin(
+                identified_parameters)
 
-                    # Replace parameter name
-                    temp_model_names[param_id] = str(prefix) + ' ' + name
+            # Get relevant samples
+            mask = mask_id | mask_pooled
+            posterior_samples = posterior_samples[mask]
 
         # Make sure that all parameter names can be found in the dataframe
-        for name in temp_model_names:
+        df_names = posterior_samples[param_key].unique()
+        for name in model_names:
             if name not in df_names:
                 raise ValueError(
                     'The parameter <' + str(name) + '> could not be found in '
                     'the parameter column of the posterior dataframe.')
 
-        return model_names
+        return model_names, posterior_samples
 
     def _format_posterior_samples(self, posterior, parameter_names, keys):
         """
@@ -385,69 +371,6 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
 
         # Remember reformated samples
         self._posterior = container
-
-    def _get_relevant_data(
-            self, posterior_samples, parameter_names, individual, keys):
-        """
-        Filters the dataframe for the relevant samples.
-
-        For a PredictiveModel (can be identified by non-None individual), the
-        samples are filter for the individual's ID.
-
-        For a PredictivePopulationModel, each parameter is filtered for the
-        corresponding population IDs (prefixes).
-        """
-        # Unpack keys
-        id_key, sample_key, param_key, iter_key, run_key = keys
-
-        # If indvidual is not None, mask and return samples
-        # (This only happens for an individual's PredictiveModel)
-        if individual is not None:
-            # Mask samples for individual (pooled models are also accepted)
-            mask_id = posterior_samples[id_key] == individual
-            mask_pooled = posterior_samples[id_key] == 'Pooled'
-            mask = mask_id | mask_pooled
-            posterior_samples = posterior_samples[mask]
-
-            return posterior_samples
-
-        # Get for each parameter name the relevant prefixes
-        name_id_dict = {}
-        for parameter_name in parameter_names:
-            # Split the ID (prefix) from the name
-            _id, name = parameter_name.split(maxsplit=1)
-
-            # Add name to dictionary
-            if name not in name_id_dict:
-                name_id_dict[name] = []
-
-            # Add prefix to dictionary
-            name_id_dict[name].append(_id)
-
-        # Create container for relevant data
-        container = pd.DataFrame(columns=keys[1:])
-
-        # Get samples for each parameter
-        for name, ids in name_id_dict.items():
-            # Mask samples for name
-            mask = posterior_samples[param_key] == name
-            temp = posterior_samples[mask]
-
-            for _id in ids:
-                # Mask for ID (except heterogenous, here all IDs are OK)
-                temp2 = temp
-                if _id != 'Heterogeneous':
-                    mask = temp[id_key] == _id
-                    temp2 = temp[mask]
-
-                # Add samples to container
-                container = container.append(pd.DataFrame({
-                    param_key: _id + ' ' + name,
-                    sample_key: temp2[sample_key],
-                    iter_key: temp2[iter_key],
-                    run_key: temp2[run_key]}))
-
-        return container
 
     def sample(
             self, times, n_samples=None, seed=None, include_regimen=False):
@@ -1109,14 +1032,14 @@ class PredictivePopulationModel(PredictiveModel):
             pop_model.set_parameter_names(None)
             pop_params = pop_model.get_parameter_names()
 
-            if isinstance(pop_model, erlo.HeterogeneousModel):
-                # Insert a prefix, to have the heterogenous parameter appear
-                # among the model parameters.
-                pop_params = ['Heterogeneous']
-
             # Construct parameter names
             bottom_name = bottom_parameter_names[param_id]
-            names = [name + ' ' + bottom_name for name in pop_params]
+            if pop_params is not None:
+                names = [name + ' ' + bottom_name for name in pop_params]
+            else:
+                # If the population model has no parameter names,
+                # we keep the bottom name
+                names = [bottom_name]
 
             # Update population model parameter names
             pop_model.set_parameter_names(names)
