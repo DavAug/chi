@@ -10,8 +10,6 @@ import copy
 import myokit
 import myokit.formats.sbml as sbml
 import numpy as np
-import os
-import xml.etree.ElementTree as ET
 
 
 class MechanisticModel(object):
