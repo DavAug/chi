@@ -19,6 +19,7 @@ setup(
 
     # List of dependencies
     install_requires=[
+        'arviz',
         'dash>=1.17.0',
         'dash-bootstrap-components>=0.10',
         'jupyter==1.0.0',
@@ -27,7 +28,8 @@ setup(
         'pandas>=0.24',
         'pints @ git+git://github.com/pints-team/pints.git#egg=pints',
         'plotly==4.8.1',
-        'tqdm==4.46.1'
+        'tqdm==4.46.1',
+        'xarray'
     ],
     dependency_links=[
      "git+git://github.com/pints-team/pints.git#egg=pints-latest",
