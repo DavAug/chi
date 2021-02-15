@@ -360,6 +360,9 @@ class TestSamplingController(unittest.TestCase):
         cls.ids = data['ID'].unique()
 
     def test_run(self):
+        # TODO:
+        # 1. Test xarray output for individual and hierarchical models
+
         # Case I: Individual with ID 40
         sampler = erlo.SamplingController(self.log_posterior_id_40)
 
@@ -371,33 +374,31 @@ class TestSamplingController(unittest.TestCase):
         sampler.set_n_runs(3)
         result = sampler.run(n_iterations=20)
 
-        keys = result.keys()
-        self.assertEqual(len(keys), 5)
-        self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Parameter')
-        self.assertEqual(keys[2], 'Sample')
-        self.assertEqual(keys[3], 'Iteration')
-        self.assertEqual(keys[4], 'Run')
+        dimensions = list(result.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
 
-        ids = result['ID'].unique()
+        ids = result.individual
         self.assertEqual(len(ids), 1)
         self.assertEqual(ids[0], 'ID 40')
 
-        parameters = result['Parameter'].unique()
+        parameters = sorted(list(result.data_vars.keys()))
         self.assertEqual(len(parameters), 7)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Sigma base')
-        self.assertEqual(parameters[6], 'Sigma rel.')
+        self.assertEqual(parameters[0], 'Sigma base')
+        self.assertEqual(parameters[1], 'Sigma rel.')
+        self.assertEqual(parameters[2], 'myokit.drug_concentration')
+        self.assertEqual(parameters[3], 'myokit.kappa')
+        self.assertEqual(parameters[4], 'myokit.lambda_0')
+        self.assertEqual(parameters[5], 'myokit.lambda_1')
+        self.assertEqual(parameters[6], 'myokit.tumour_volume')
 
-        runs = result['Run'].unique()
-        self.assertEqual(len(runs), 3)
-        self.assertEqual(runs[0], 1)
-        self.assertEqual(runs[1], 2)
-        self.assertEqual(runs[2], 3)
+        chains = result.chain
+        self.assertEqual(len(chains), 3)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+        self.assertEqual(chains.loc[2], 2)
 
         # Case II: Hierarchical model
         sampler = erlo.SamplingController(self.hierarchical_posterior)
@@ -410,44 +411,40 @@ class TestSamplingController(unittest.TestCase):
         sampler.set_n_runs(3)
         result = sampler.run(n_iterations=20)
 
-        keys = result.keys()
-        self.assertEqual(len(keys), 5)
-        self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Parameter')
-        self.assertEqual(keys[2], 'Sample')
-        self.assertEqual(keys[3], 'Iteration')
-        self.assertEqual(keys[4], 'Run')
+        dimensions = list(result.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
 
-        # One ID for individual and None for population parameters
-        ids = result['ID'].unique()
-        self.assertEqual(len(ids), 9)  # nids + 'Pooled' + 'Mean' + 'Std'
-        self.assertIsNone(ids[0])
-        self.assertEqual(ids[1], 'ID ' + str(self.ids[0]))
-        self.assertEqual(ids[2], 'ID ' + str(self.ids[1]))
-        self.assertEqual(ids[3], 'ID ' + str(self.ids[2]))
-        self.assertEqual(ids[4], 'ID ' + str(self.ids[3]))
-        self.assertEqual(ids[5], 'ID ' + str(self.ids[4]))
-        self.assertEqual(ids[6], 'ID ' + str(self.ids[5]))
-        self.assertEqual(ids[7], 'ID ' + str(self.ids[6]))
-        self.assertEqual(ids[8], 'ID ' + str(self.ids[7]))
+        ids = result.individual
+        self.assertEqual(len(ids), 8)
+        self.assertEqual(ids[0], 'ID 40')
+        self.assertEqual(ids[1], 'ID 94')
+        self.assertEqual(ids[2], 'ID 95')
+        self.assertEqual(ids[3], 'ID 136')
+        self.assertEqual(ids[4], 'ID 140')
+        self.assertEqual(ids[5], 'ID 155')
+        self.assertEqual(ids[6], 'ID 169')
+        self.assertEqual(ids[7], 'ID 170')
 
-        parameters = result['Parameter'].unique()
+        parameters = sorted(list(result.data_vars.keys()))
         self.assertEqual(len(parameters), 9)
-        self.assertEqual(parameters[0], 'Pooled myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[0], 'Mean Sigma rel.')
+        self.assertEqual(parameters[1], 'Pooled Sigma base')
+        self.assertEqual(parameters[2], 'Pooled myokit.drug_concentration')
         self.assertEqual(parameters[3], 'Pooled myokit.lambda_0')
         self.assertEqual(parameters[4], 'Pooled myokit.lambda_1')
-        self.assertEqual(parameters[5], 'Pooled Sigma base')
+        self.assertEqual(parameters[5], 'Pooled myokit.tumour_volume')
         self.assertEqual(parameters[6], 'Sigma rel.')
-        self.assertEqual(parameters[7], 'Mean Sigma rel.')
-        self.assertEqual(parameters[8], 'Std. Sigma rel.')
+        self.assertEqual(parameters[7], 'Std. Sigma rel.')
+        self.assertEqual(parameters[8], 'myokit.kappa')
 
-        runs = result['Run'].unique()
-        self.assertEqual(len(runs), 3)
-        self.assertEqual(runs[0], 1)
-        self.assertEqual(runs[1], 2)
-        self.assertEqual(runs[2], 3)
+        chains = result.chain
+        self.assertEqual(len(chains), 3)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+        self.assertEqual(chains.loc[2], 2)
 
     def test_set_initial_parameters(self):
         # Test case I: Individual data
