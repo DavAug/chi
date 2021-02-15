@@ -14,14 +14,14 @@ import pints
 import erlotinib as erlo
 
 
-class DataDrivenPredictiveModel(object):
+class GenerativeModel(object):
     """
-    A base class for predictive models whose parameters are either drawn from
-    distribution, or are set by a :class:`pandas.DataFrame`.
+    A base class for predictive models whose parameters are drawn from
+    a generative distribution.
     """
 
     def __init__(self, predictive_model):
-        super(DataDrivenPredictiveModel, self).__init__()
+        super(GenerativeModel, self).__init__()
 
         # Check inputs
         if not isinstance(predictive_model, erlo.PredictiveModel):
@@ -126,7 +126,7 @@ class DataDrivenPredictiveModel(object):
             dose, start, duration, period, num)
 
 
-class PosteriorPredictiveModel(DataDrivenPredictiveModel):
+class PosteriorPredictiveModel(GenerativeModel):
     """
     Implements a model that predicts the change of observable biomarkers over
     time based on the inferred posterior distribution of the model parameters.
@@ -146,7 +146,7 @@ class PosteriorPredictiveModel(DataDrivenPredictiveModel):
     generating "virtual" measurements from the predictive model with those
     parameters.
 
-    Extends :class:`DataDrivenPredictiveModel`.
+    Extends :class:`GenerativeModel`.
 
     Parameters
     ----------
@@ -1349,7 +1349,7 @@ class PredictivePopulationModel(PredictiveModel):
             dose, start, duration, period, num)
 
 
-class PriorPredictiveModel(DataDrivenPredictiveModel):
+class PriorPredictiveModel(GenerativeModel):
     """
     Implements a model that predicts the change of observable biomarkers over
     time based on the provided distribution of model parameters prior to the

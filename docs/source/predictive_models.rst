@@ -41,10 +41,10 @@ Detailed API
 Base classes
 ------------
 
-- :class:`DataDrivenPredictiveModel`
+- :class:`GenerativeModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
-.. autoclass:: DataDrivenPredictiveModel
+.. autoclass:: GenerativeModel
     :members:

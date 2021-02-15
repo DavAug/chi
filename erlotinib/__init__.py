@@ -55,7 +55,7 @@ from ._population_models import (  # noqa
 )
 
 from ._predictive_models import (  # noqa
-    DataDrivenPredictiveModel,
+    GenerativeModel,
     PosteriorPredictiveModel,
     PredictiveModel,
     PredictivePopulationModel,
