@@ -14,9 +14,9 @@ import pints
 import erlotinib as erlo
 
 
-class TestDataDrivenPredictiveModel(unittest.TestCase):
+class TestGenerativeModel(unittest.TestCase):
     """
-    Tests the erlo.DataDrivenPredictiveModel class.
+    Tests the erlo.GenerativeModel class.
 
     Since most methods only call methods from the
     erlo.PredictiveModel the methods are tested rather superficially.
@@ -35,7 +35,7 @@ class TestDataDrivenPredictiveModel(unittest.TestCase):
             mechanistic_model, error_models)
 
         # Create data driven predictive model
-        cls.model = erlo.DataDrivenPredictiveModel(
+        cls.model = erlo.GenerativeModel(
             predictive_model)
 
     def test_get_dosing_regimen(self):
