@@ -328,7 +328,7 @@ class PosteriorPredictiveModel(GenerativeModel):
             ids = self._posterior.individual
             # Get default individual
             if individual is None:
-                individual = str(ids[0])
+                individual = str(ids.data[0])
 
             # Make sure individual exists
             if individual not in ids:
@@ -340,18 +340,19 @@ class PosteriorPredictiveModel(GenerativeModel):
         times = np.sort(times)
 
         # Sort parameters into numpy array for simplified sampling
-        n_chains = self._posterior.chain.count()
-        n_draws = self._posterior.draw.count()
-        n_parameters = len(self._parameter_names)
-        posterior = np.empty(shape=(n_chains, n_draws, n_parameters))
+        n_chains = len(self._posterior.chain)
+        n_draws = len(self._posterior.draw)
+        n_parameters = self._predictive_model.n_parameters()
+        posterior = np.empty(shape=(n_chains * n_draws, n_parameters))
         for param_id, parameter in enumerate(self._parameter_names):
             try:
-                posterior[:, :, param_id] = self._posterior[parameter].sel(
-                    individual=individual)
+                posterior[:, param_id] = self._posterior[parameter].sel(
+                    individual=individual).data.flatten()
             except ValueError:
                 # If individual dimension does not exist, the parameter must
                 # be a population parameter.
-                posterior[:, :, param_id] = self._posterior[parameter]
+                posterior[:, param_id] = self._posterior[
+                    parameter].data.flatten()
 
         # Create container for samples
         container = pd.DataFrame(
@@ -367,7 +368,7 @@ class PosteriorPredictiveModel(GenerativeModel):
         sample_ids = np.arange(start=1, stop=n_samples+1)
         for sample_id in sample_ids:
             # Sample parameter from posterior
-            parameters = rng.choice(self._posterior)
+            parameters = rng.choice(posterior)
 
             # Sample from predictive model
             sample = self._predictive_model.sample(
