@@ -61,7 +61,7 @@ class InferenceController(object):
         self._log_prior = self._log_posteriors[0].get_log_prior()
 
         # Set defaults
-        self._n_runs = 10
+        self._n_runs = 5
         self._parallel_evaluation = True
         self._transform = None
 
@@ -227,7 +227,7 @@ class OptimisationController(InferenceController):
     provided, the posteriors are assumed to be structurally identical and only
     differ due to different data sources.
 
-    By default the optimisation is run 10 times from different initial
+    By default the optimisation is run 5 times from different initial
     starting points. Starting points are randomly sampled from the
     specified :class:`pints.LogPrior`. The optimisation is run by default in
     parallel using :class:`pints.ParallelEvaluator`.
@@ -348,7 +348,7 @@ class SamplingController(InferenceController):
     multiple log-posteriors are provided, the posteriors are assumed to be
     structurally identical and only differ due to different data sources.
 
-    By default the sampling is run 10 times from different initial
+    By default the sampling is run 5 times from different initial
     starting points. Starting points are randomly sampled from the
     specified :class:`pints.LogPrior`. The optimisation is run by default in
     parallel using :class:`pints.ParallelEvaluator`.
@@ -381,9 +381,13 @@ class SamplingController(InferenceController):
         names
             List of length n_parameters. Names may not be unique
         ids
-            List of length n_parameters. IDs are ``None`` for population
-            parameters.
+            Str or list of str of length n_parameters. IDs are ``None`` for
+            population parameters.
         """
+        # Broadcast IDs to length of names, if posterior has only one ID
+        if isinstance(ids, str):
+            ids = np.broadcast_to(ids, shape=len(names))
+
         # Convert names and ids to numpy arrays
         ids = np.asarray(ids)
         names = np.asarray(names)
@@ -501,7 +505,7 @@ class SamplingController(InferenceController):
             # Format chains
             names = self._parameters
             ids = log_posterior.get_id()
-            chains = self._format_chains(chains, ids, names)
+            chains = self._format_chains(chains, names, ids)
 
             # Append chains to container
             posterior_samples.append(chains)
