@@ -10,6 +10,7 @@ import copy
 import numpy as np
 import pandas as pd
 import pints
+import xarray as xr
 
 import erlotinib as erlo
 
@@ -137,7 +138,7 @@ class PosteriorPredictiveModel(GenerativeModel):
     biomarkers.
 
     A PosteriorPredictiveModel is instantiated with an instance of a
-    :class:`PredictiveModel` and a :class:`pandas.DataFrame` of parameter
+    :class:`PredictiveModel` and a :class:`xarray.Dataset` of parameter
     posterior samples generated e.g. with the :class:`SamplingController`. The
     samples approximate the posterior distribution of the model parameters. The
     posterior distribution has to be of the same parametric dimension as the
@@ -153,65 +154,40 @@ class PosteriorPredictiveModel(GenerativeModel):
     predictive_model
         An instance of a :class:`PredictiveModel`.
     posterior_samples
-        A :class:`pandas.DataFrame` with samples from the posterior
-        distribution of the model parameters. The posterior distribution has
-        to be of the same dimension as the number of predictive model
-        parameters.
-    warm_up_iter
-        Number of warm-up iterations which are excluded from the approximate
-        posterior distribution.
+        A :class:`xarray.Dataset` with samples from the posterior
+        distribution of the model parameters.
+    #TODO: Move individual to sample?
     individual
         The ID of the modelled individual. This argument is used to
-        determine the relevant samples in the dataframe. If ``None``, either
-        the first ID in the ID column is selected, or if a
+        determine the relevant samples in the :class:`xarray.Dataset`. If
+        ``None``, either the first ID is selected, or if a
         :class:`PredictivePopulationModel` is provided, the population is
         modelled.
     param_map
         A dictionary which can be used to map predictive model parameter
-        names to the parameter names in the parameter column of the
-        posterior dataframe. If ``None``, it is assumed that the naming is
-        identical.
-    id_key
-        Key label of the :class:`DataFrame` which specifies the ID column.
-        The ID refers to the identity of an individual. Defaults to
-        ``'ID'``.
-    param_key
-        Key label of the :class:`DataFrame` which specifies the parameter
-        name column. Defaults to ``'Parameter'``.
-    sample_key
-        Key label of the :class:`DataFrame` which specifies the parameter
-        sample column. Defaults to ``'Sample'``.
-    iter_key
-        Key label of the :class:`DataFrame` which specifies the iteration
-        column. The iteration refers to the iteration of the sampling
-        routine at which the parameter value was sampled. Defaults to
-        ``'Iteration'``.
-    run_key
-        Key label of the :class:`DataFrame` which specifies the run ID
-        column. The run ID refers to the run of the sampling
-        routine at which the parameter value was sampled. Defaults to
-        ``'Run'``.
+        names to the parameter names in the :class:`xarray.Dataset`.
+        If ``None``, it is assumed that the names are identical.
     """
-
     def __init__(
-            self, predictive_model, posterior_samples, warm_up_iter=None,
-            individual=None, param_map=None, id_key='ID',
-            param_key='Parameter', sample_key='Sample',
-            iter_key='Iteration', run_key='Run'):
+            self, predictive_model, posterior_samples, individual=None,
+            param_map=None):
         super(PosteriorPredictiveModel, self).__init__(predictive_model)
 
         # Check input
-        if not isinstance(posterior_samples, pd.DataFrame):
+        if not isinstance(posterior_samples, xr.Dataset):
             raise TypeError(
-                'The posterior samples have to be in a pandas.DataFrame '
-                'format.')
+                'The posterior samples have to be a xarray.Dataset.')
 
-        keys = [id_key, sample_key, param_key, iter_key, run_key]
-        for key in keys:
-            if key not in posterior_samples.keys():
-                raise ValueError(
-                    'The posterior samples dataframe does not have the key '
-                    '<' + str(key) + '>.')
+        dims = sorted(list(posterior_samples.dims))
+        if (len(dims) == 2) and (dims != ['chain', 'draw']):
+            raise ValueError(
+                'The posterior samples must have the dimensions (chain, draw).'
+            )
+        elif (len(dims) == 3) and (dims != ['chain', 'draw', 'individual']):
+            raise ValueError(
+                'The posterior samples must have the dimensions '
+                '(chain, draw, individual).'
+            )
 
         # Set default parameter map (no mapping)
         if param_map is None:
@@ -224,66 +200,18 @@ class PosteriorPredictiveModel(GenerativeModel):
                 'The parameter map has to be convertable to a python '
                 'dictionary.')
 
-        # Check individual for population model
-        if isinstance(predictive_model, erlo.PredictivePopulationModel):
-            if individual is not None:
-                raise ValueError(
-                    "Individual ID's cannot be selected for a "
-                    "erlotinib.PredictivePopulationModel. To model an "
-                    "individual create a erlotinib.PosteriorPredictiveModel "
-                    "with a erlotinib.PredictiveModel.")
-
-        # Check individual for individual predictive model
-        else:
-            ids = list(posterior_samples[id_key].dropna().unique())
-            # Get default individual
-            if individual is None:
-                individual = ids[0]
-
-            # Make sure individual exists
-            if individual not in ids:
-                raise ValueError(
-                    'The individual <' + str(individual) + '> could not be '
-                    'found in the ID column.')
-
-        # Get warm-up iterations
-        if warm_up_iter is None:
-            warm_up_iter = 0
-        warm_up_iter = int(warm_up_iter)
-
-        if warm_up_iter < 0:
-            raise ValueError(
-                'The number of warm-up iterations has to be greater or equal '
-                'to zero.')
-
-        if warm_up_iter >= posterior_samples[iter_key].max():
-            raise ValueError(
-                'The number of warm-up iterations has to be smaller than '
-                'the total number of iterations for each run.')
-
-        # Exclude warm up iterations
-        mask = posterior_samples[iter_key] > warm_up_iter
-        posterior_samples = posterior_samples[mask]
-
         # Check that the parameters of the posterior can be identified in the
-        # dataframe
-        parameter_names, posterior_samples = self._check_parameters_and_filter(
-            posterior_samples, individual, id_key, param_key, param_map)
+        # dataset
+        self._parameter_names = self._check_parameters(
+            posterior_samples, param_map)
 
-        # Transform dataframe into more convenient format for sampling
-        keys = keys[1:]
-        self._format_posterior_samples(
-            posterior_samples, parameter_names, keys)
+        # Store posterior
+        self._posterior = posterior_samples
 
-    def _check_parameters_and_filter(
-            self, posterior_samples, individual, id_key, param_key, param_map):
+    def _check_parameters(self, posterior_samples, param_map):
         """
-        Checks whether the parameters of the posterior exist in the dataframe,
-        and returns them, as well as the filtered dataset.
-
-        Note that for a erlotinib.PredictivePopulationModel the parameter
-        names of bottom-level paraemetrs are a composition of the entries in
-        the ID column and the parameter column.
+        Checks whether the parameters of the posterior exist in the dataset
+        and returns them.
         """
         # Create map from posterior parameter names to model parameter names
         model_names = self._predictive_model.get_parameter_names()
@@ -294,31 +222,14 @@ class PosteriorPredictiveModel(GenerativeModel):
                 # The name is not mapped
                 pass
 
-        # If indvidual is not None, mask samples
-        # (This only happens for an individual's PredictiveModel)
-        if individual is not None:
-            # Mask samples for individual
-            mask_id = posterior_samples[id_key] == individual
-
-            # Mask for parameters that are pooled
-            identified_parameters = posterior_samples[
-                mask_id][param_key].unique()
-            mask_pooled = ~posterior_samples[param_key].isin(
-                identified_parameters)
-
-            # Get relevant samples
-            mask = mask_id | mask_pooled
-            posterior_samples = posterior_samples[mask]
-
-        # Make sure that all parameter names can be found in the dataframe
-        df_names = posterior_samples[param_key].unique()
-        for name in model_names:
-            if name not in df_names:
+        # Check that model names are in the dataset
+        for parameter in model_names:
+            if parameter not in posterior_samples.data_vars:
                 raise ValueError(
-                    'The parameter <' + str(name) + '> could not be found in '
-                    'the parameter column of the posterior dataframe.')
+                    'The parameter <' + str(parameter) + '> cannot be found '
+                    'in the posterior.')
 
-        return model_names, posterior_samples
+        return model_names
 
     def _format_posterior_samples(self, posterior, parameter_names, keys):
         """
@@ -373,7 +284,8 @@ class PosteriorPredictiveModel(GenerativeModel):
         self._posterior = container
 
     def sample(
-            self, times, n_samples=None, seed=None, include_regimen=False):
+            self, times, n_samples=None, individual=None, seed=None,
+            include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the posterior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -402,8 +314,44 @@ class PosteriorPredictiveModel(GenerativeModel):
             n_samples = 1
         n_samples = int(n_samples)
 
+        # Check individual for population model
+        if isinstance(self._predictive_model, erlo.PredictivePopulationModel):
+            if individual is not None:
+                raise ValueError(
+                    "Individual ID's cannot be selected for a "
+                    "erlotinib.PredictivePopulationModel. To model an "
+                    "individual create a erlotinib.PosteriorPredictiveModel "
+                    "with a erlotinib.PredictiveModel.")
+
+        # Check individual for individual predictive model
+        else:
+            ids = self._posterior.individual
+            # Get default individual
+            if individual is None:
+                individual = str(ids[0])
+
+            # Make sure individual exists
+            if individual not in ids:
+                raise ValueError(
+                    'The individual <' + str(individual) + '> could not be '
+                    'found in the ID column.')
+
         # Sort times
         times = np.sort(times)
+
+        # Sort parameters into numpy array for simplified sampling
+        n_chains = self._posterior.chain.count()
+        n_draws = self._posterior.draw.count()
+        n_parameters = len(self._parameter_names)
+        posterior = np.empty(shape=(n_chains, n_draws, n_parameters))
+        for param_id, parameter in enumerate(self._parameter_names):
+            try:
+                posterior[:, :, param_id] = self._posterior[parameter].sel(
+                    individual=individual)
+            except ValueError:
+                # If individual dimension does not exist, the parameter must
+                # be a population parameter.
+                posterior[:, :, param_id] = self._posterior[parameter]
 
         # Create container for samples
         container = pd.DataFrame(
@@ -421,13 +369,9 @@ class PosteriorPredictiveModel(GenerativeModel):
             # Sample parameter from posterior
             parameters = rng.choice(self._posterior)
 
-            # Increment seed for each iteration, to avoid repeated patterns
-            if seed is not None:
-                seed += 1
-
             # Sample from predictive model
             sample = self._predictive_model.sample(
-                parameters, times, n_samples, seed, return_df=False)
+                parameters, times, n_samples, rng, return_df=False)
 
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):
@@ -795,7 +739,8 @@ class PredictiveModel(object):
             time point. If ``None`` the biomarkers are measured only once
             at each time point.
         seed
-            A seed for the pseudo-random number generator.
+            A seed for the pseudo-random number generator or a
+            :class:`numpy.random.Generator`.
         return_df
             A boolean flag which determines whether the output is returned as a
             :class:`pandas.DataFrame` or a :class:`numpy.ndarray`. If ``False``
@@ -1213,7 +1158,8 @@ class PredictivePopulationModel(PredictiveModel):
             time point. If ``None`` the biomarkers are measured only for one
             patient.
         seed
-            A seed for the pseudo-random number generator.
+            A seed for the pseudo-random number generator or a
+            :class:`numpy.random.Generator`.
         return_df
             A boolean flag which determines whether the output is returned as a
             :class:`pandas.DataFrame` or a :class:`numpy.ndarray`. If ``False``
