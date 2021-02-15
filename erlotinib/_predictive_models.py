@@ -128,14 +128,9 @@ class GenerativeModel(object):
 
 
 class PosteriorPredictiveModel(GenerativeModel):
-    """
+    r"""
     Implements a model that predicts the change of observable biomarkers over
-    time based on the inferred posterior distribution of the model parameters.
-
-    A posterior predictive model may be used to check whether the inference
-    results agree with observed measurements. A posterior predictive model may
-    also be used to predict future measurements of preclinical or clinical
-    biomarkers.
+    time based on the inferred parameter posterior distribution.
 
     A PosteriorPredictiveModel is instantiated with an instance of a
     :class:`PredictiveModel` and a :class:`xarray.Dataset` of parameter
@@ -147,6 +142,18 @@ class PosteriorPredictiveModel(GenerativeModel):
     generating "virtual" measurements from the predictive model with those
     parameters.
 
+    Formally the posterior predictive model may be defined as
+
+    .. math::
+        p(x | t; X^{\text{obs}}) = \int \text{d}\theta \,
+        p(x | t; \theta)p(\theta | X^{\text{obs}}),
+
+    where :math:`x` are the measureable biomarker values, :math:`t` is the
+    measurement time, :math:`p(x | t; \theta)` is the predictive model
+    and :math:`p(\theta | X^{\text{obs}})` is the posterior distribution of
+    the model parmeters :math:`\theta` for observations
+    :math:`X^{\text{obs}}`.
+
     Extends :class:`GenerativeModel`.
 
     Parameters
@@ -156,21 +163,13 @@ class PosteriorPredictiveModel(GenerativeModel):
     posterior_samples
         A :class:`xarray.Dataset` with samples from the posterior
         distribution of the model parameters.
-    #TODO: Move individual to sample?
-    individual
-        The ID of the modelled individual. This argument is used to
-        determine the relevant samples in the :class:`xarray.Dataset`. If
-        ``None``, either the first ID is selected, or if a
-        :class:`PredictivePopulationModel` is provided, the population is
-        modelled.
     param_map
         A dictionary which can be used to map predictive model parameter
         names to the parameter names in the :class:`xarray.Dataset`.
         If ``None``, it is assumed that the names are identical.
     """
     def __init__(
-            self, predictive_model, posterior_samples, individual=None,
-            param_map=None):
+            self, predictive_model, posterior_samples, param_map=None):
         super(PosteriorPredictiveModel, self).__init__(predictive_model)
 
         # Check input
@@ -231,58 +230,6 @@ class PosteriorPredictiveModel(GenerativeModel):
 
         return model_names
 
-    def _format_posterior_samples(self, posterior, parameter_names, keys):
-        """
-        Transforms the dataframe of samples into a numpy array of shape
-        (n_samples, n_parameters).
-
-        This will increase the efficiency of sampling from the posterior.
-        """
-        # Unpack keys
-        sample_key, param_key, iter_key, run_key = keys
-
-        # Get number of samples and number of parameters
-        n_iters = len(posterior[iter_key].unique())
-        n_runs = len(posterior[run_key].unique())
-        n_samples = n_runs * n_iters
-        n_parameters = self._predictive_model.n_parameters()
-
-        # Create numpy container for samples
-        container = np.empty(shape=(n_samples, n_parameters))
-
-        # Fill container with samples
-        for run_id, run in enumerate(posterior[run_key].unique()):
-            # Mask samples for run
-            mask = posterior[run_key] == run
-            temp_df = posterior[mask][[sample_key, param_key, iter_key]]
-
-            # Get container sample range for this run's samples
-            start = n_iters * run_id
-            end = start + n_iters
-
-            # Fill container with parameter samples
-            for param_id, name in enumerate(parameter_names):
-                # Get parameter samples
-                mask = temp_df[param_key] == name
-                samples_df = temp_df[mask]
-
-                # Make sure samples are sorted according to iterations
-                samples = samples_df.sort_values(iter_key)[sample_key]
-
-                # Check that samples does not exceed n_iters, otherwise
-                # draw n_iters samples
-                # (This is especially relevant for Heterogenous population
-                # models)
-                samples = samples.to_numpy()
-                if len(samples) > n_iters:
-                    samples = np.random.choice(samples, size=n_iters)
-
-                # Add samples to container
-                container[start:end, param_id] = samples
-
-        # Remember reformated samples
-        self._posterior = container
-
     def sample(
             self, times, n_samples=None, individual=None, seed=None,
             include_regimen=False):
@@ -294,20 +241,20 @@ class PosteriorPredictiveModel(GenerativeModel):
         approximate posterior distribution. These paramaters are then used to
         sample from the predictive model.
 
-        Parameters
-        ----------
-        times
-            An array-like object with times at which the virtual "measurements"
-            are performed.
-        n_samples
-            The number of virtual "measurements" that are performed at each
-            time point. If ``None`` the biomarkers are measured only once
-            at each time point.
-        seed
-            A seed for the pseudo-random number generator.
-        include_regimen
-            A boolean flag which determines whether the information about the
-            dosing regimen is included.
+        :param times: Times for the virtual "measurements".
+        :type times: list, numpy.ndarray of shape (n,)
+        :param n_samples: The number of virtual "measurements" that are
+            performed at each time point. If ``None`` the biomarkers are
+            measured only once at each time point.
+        :type n_samples: int, optional
+        :param individual: The ID of the modelled individual. If
+            ``None``, either the first ID or the population is simulated.
+        :type individual: str, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int
+        :param include_regimen: A boolean flag which determines whether the
+            information about the dosing regimen is included.
+        :type include_regimen: bool, optional
         """
         # Make sure n_samples is an integer
         if n_samples is None:
