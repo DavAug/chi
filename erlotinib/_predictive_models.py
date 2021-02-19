@@ -289,18 +289,22 @@ class PosteriorPredictiveModel(GenerativeModel):
 
         # Sort parameters into numpy array for simplified sampling
         n_chains = len(self._posterior.chain)
-        n_draws = len(self._posterior.draw)
         n_parameters = self._predictive_model.n_parameters()
+        try:
+            n_draws = len(self._posterior.sel(
+                    individual=individual).dropna(dim='draw').draw)
+        except ValueError:
+            n_draws = len(self._posterior.dropna(dim='draw').draw)
         posterior = np.empty(shape=(n_chains * n_draws, n_parameters))
         for param_id, parameter in enumerate(self._parameter_names):
             try:
                 posterior[:, param_id] = self._posterior[parameter].sel(
-                    individual=individual).data.flatten()
+                    individual=individual).dropna(dim='draw').values.flatten()
             except ValueError:
                 # If individual dimension does not exist, the parameter must
                 # be a population parameter.
                 posterior[:, param_id] = self._posterior[
-                    parameter].data.flatten()
+                    parameter].dropna(dim='draw').values.flatten()
 
         # Create container for samples
         container = pd.DataFrame(
