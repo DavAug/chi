@@ -10,6 +10,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import pints
+import xarray as xr
 
 import erlotinib as erlo
 
@@ -88,6 +89,13 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # TODO:
+        # 1. test thsi with xarray posterior
+        # 2. update notebook with pooled parameters
+        # 3. Make histograms compatible with xarray
+        # 4. Change output samples to xarray
+        # 5. Make predictive plot compatible with xarray
+
         # Test model I: Individual predictive model
         # Create predictive model
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
@@ -96,21 +104,21 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         cls.pred_model = erlo.PredictiveModel(
             mechanistic_model, error_models)
 
-        # Create a posterior samples dataframe
-        parameter_names = cls.pred_model.get_parameter_names()
-        n_parameters = cls.pred_model.n_parameters()
-        iterations = \
-            [1] * 2 * n_parameters + \
-            [2] * 2 * n_parameters + \
-            [3] * 2 * n_parameters
-        runs = [1] * n_parameters + [2] * n_parameters
-        runs = runs * 3
-        cls.posterior_samples = pd.DataFrame({
-            'ID': 1,
-            'Parameter': parameter_names * 6,
-            'Sample': 42,
-            'Iteration': iterations,
-            'Run': runs})
+        # Create a posterior samples
+        n_chains = 2
+        n_draws = 3
+        n_ids = 1
+        samples = np.ones(shape=(n_chains, n_draws, n_ids))
+        samples = xr.DataArray(
+            data=samples,
+            dims=['chain', 'draw', 'individual'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['ID 1']})
+        cls.posterior_samples = xr.Dataset({
+            param: samples for param
+            in cls.pred_model.get_parameter_names()})
 
         # Create posterior predictive model
         cls.model = erlo.PosteriorPredictiveModel(
@@ -128,41 +136,34 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         cls.pred_pop_model = erlo.PredictivePopulationModel(
             cls.pred_model, pop_models)
 
-        ids = [
-            None,
-            1,
-            2,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None] * 6
-        parameter_names = [
-            'Pooled myokit.tumour_volume',
-            'myokit.drug_concentration',
-            'myokit.drug_concentration',
-            'Pooled myokit.kappa',
-            'Pooled myokit.lambda_0',
-            'Pooled myokit.lambda_1',
-            'Pooled Sigma base',
-            'Sigma rel.',
-            'Mean Sigma rel.',
-            'Std. Sigma rel.']
-        n_parameters = len(parameter_names)
-        iterations = \
-            [1] * 2 * n_parameters + \
-            [2] * 2 * n_parameters + \
-            [3] * 2 * n_parameters
-        runs = [1] * n_parameters + [2] * n_parameters
-        runs = runs * 3
-        cls.pop_post_samples = pd.DataFrame({
-            'ID': ids,
-            'Parameter': parameter_names * 6,
-            'Sample': 42,
-            'Iteration': iterations,
-            'Run': runs})
+        # Create a posterior samples
+        n_chains = 2
+        n_draws = 3
+        n_ids = 2
+        samples = np.ones(shape=(n_chains, n_draws, n_ids))
+        samples = xr.DataArray(
+            data=samples,
+            dims=['chain', 'draw', 'individual'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['ID 1', 'ID 2']})
+        pop_samples = xr.DataArray(
+            data=samples[:, :, 0],
+            dims=['chain', 'draw'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws))})
+        cls.pop_post_samples = xr.Dataset({
+            'Pooled myokit.tumour_volume': pop_samples,
+            'myokit.drug_concentration': samples,
+            'Pooled myokit.kappa': pop_samples,
+            'Pooled myokit.lambda_0': pop_samples,
+            'Pooled myokit.lambda_1': pop_samples,
+            'Pooled Sigma base': pop_samples,
+            'Sigma rel.': samples,
+            'Mean Sigma rel.': pop_samples,
+            'Std. Sigma rel.': pop_samples})
 
         cls.pop_model = erlo.PosteriorPredictiveModel(
             cls.pred_pop_model, cls.pop_post_samples)
@@ -174,35 +175,19 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             erlo.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
-        # Bad ID key
-        id_key = 'Bad key'
+        # The dimensions have the wrong names (3 dimensions)
+        posterior_samples = self.pop_post_samples.copy()
+        posterior_samples = posterior_samples.rename(
+            {'chain': 'wrong name'})
         with self.assertRaisesRegex(ValueError, 'The posterior samples'):
             erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, id_key=id_key)
+                self.pred_model, posterior_samples)
 
-        # Bad sample key
-        sample_key = 'Bad key'
+        # The dimensions have the wrong names (2 dimensions)
+        posterior_samples = posterior_samples.drop_dims('individual')
         with self.assertRaisesRegex(ValueError, 'The posterior samples'):
             erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, sample_key=sample_key)
-
-        # Bad param key
-        param_key = 'Bad key'
-        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
-            erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, param_key=param_key)
-
-        # Bad iter key
-        iter_key = 'Bad key'
-        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
-            erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, iter_key=iter_key)
-
-        # Bad run key
-        run_key = 'Bad key'
-        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
-            erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, run_key=run_key)
+                self.pred_model, posterior_samples)
 
         # Bad parameter map type
         param_map = 'Bad type'
@@ -210,48 +195,18 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             erlo.PosteriorPredictiveModel(
                 self.pred_model, self.posterior_samples, param_map=param_map)
 
-        # Non existent ID
-        _id = 'Does not exist'
-        with self.assertRaisesRegex(ValueError, 'The individual <Does not'):
-            erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, individual=_id)
-
-        # Set ID despite using PredictivePopulationModel
-        _id = 'Some ID'
-        with self.assertRaisesRegex(ValueError, "Individual ID's cannot be"):
-            erlo.PosteriorPredictiveModel(
-                self.pred_pop_model, self.posterior_samples, individual=_id)
-
-        # Negative warm-up iterations
-        warmup = -10
-        with self.assertRaisesRegex(ValueError, 'The number of warm-up'):
-            erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, warm_up_iter=warmup)
-
-        # Too large warm-up iterations
-        warmup = 10
-        with self.assertRaisesRegex(ValueError, 'The number of warm-up'):
-            erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, warm_up_iter=warmup)
-
         # The posterior does not have samples for all parameters
-        mask = self.posterior_samples['Parameter'] != 'myokit.tumour_volume'
-        posterior_samples = self.posterior_samples[mask]
+        # (Drop dims removes all parameters with the dimension 'individual')
+        posterior_samples = posterior_samples.rename(
+            {'wrong name': 'chain'})
         with self.assertRaisesRegex(ValueError, 'The parameter <myokit.'):
             erlo.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
-        # The parameter map does not identify all parameters correctly
-        param_map = {'myokit.tumour_volume': 'Does not exist'}
-        with self.assertRaisesRegex(ValueError, 'The parameter <Does not'):
-            erlo.PosteriorPredictiveModel(
-                self.pred_model, self.posterior_samples, param_map=param_map)
-
     def test_sample(self):
         # Test case I: Just one sample
         times = [1, 2, 3, 4, 5]
-        seed = 42
-        samples = self.model.sample(times, seed=seed)
+        samples = self.model.sample(times)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -280,16 +235,10 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 10.25763928014699)
-        self.assertAlmostEqual(values[1], 28.48348944331076)
-        self.assertAlmostEqual(values[2], -24.592234016787202)
-        self.assertAlmostEqual(values[3], -38.164271171263756)
-        self.assertAlmostEqual(values[4], -83.65720486709867)
 
         # Test case II: More than one sample
         n_samples = 4
-        samples = self.model.sample(
-            times, n_samples=n_samples, seed=seed)
+        samples = self.model.sample(times, n_samples=n_samples)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -321,16 +270,11 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 20)
-        self.assertAlmostEqual(values[0], 10.257639280108956)
-        self.assertAlmostEqual(values[1], -83.6572048670368)
-        self.assertAlmostEqual(values[2], -32.91098481323581)
-        self.assertAlmostEqual(values[18], -39.007231487083104)
-        self.assertAlmostEqual(values[19], -0.2477241745349836)
 
         # Test case III: include dosing regimen
 
         # Test case III.1: PD model
-        samples = self.model.sample(times, seed=seed, include_regimen=True)
+        samples = self.model.sample(times, include_regimen=True)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -359,11 +303,6 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 10.25763928014699)
-        self.assertAlmostEqual(values[1], 28.48348944331076)
-        self.assertAlmostEqual(values[2], -24.592234016787202)
-        self.assertAlmostEqual(values[3], -38.164271171263756)
-        self.assertAlmostEqual(values[4], -83.65720486709867)
 
         # Test case III.2: PK model, regimen not set
         path = erlo.ModelLibrary().one_compartment_pk_model()
@@ -384,7 +323,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             predictive_model, self.posterior_samples, param_map=param_map)
 
         # Sample
-        samples = model.sample(times, seed=seed, include_regimen=True)
+        samples = model.sample(times, include_regimen=True)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -413,17 +352,12 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 10.257639409972427)
-        self.assertAlmostEqual(values[1], 28.483489440306272)
-        self.assertAlmostEqual(values[2], -24.592234019552883)
-        self.assertAlmostEqual(values[3], -38.16427115639449)
-        self.assertAlmostEqual(values[4], -83.65720493975232)
 
         # Test case III.3: PK model, regimen set
         model.set_dosing_regimen(1, 1, duration=2, period=2, num=2)
 
         # Sample
-        samples = model.sample(times, seed=seed, include_regimen=True)
+        samples = model.sample(times, include_regimen=True)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -455,11 +389,6 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 10.257639409972427)
-        self.assertAlmostEqual(values[1], 28.48397119211002)
-        self.assertAlmostEqual(values[2], -24.589501386669337)
-        self.assertAlmostEqual(values[3], -38.17331623508392)
-        self.assertAlmostEqual(values[4], -83.64232025329919)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
@@ -1506,11 +1435,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.706890541588044)
-        self.assertAlmostEqual(values[1], 0.92377400455709)
-        self.assertAlmostEqual(values[2], 0.6494614629969823)
-        self.assertAlmostEqual(values[3], 0.8096804910998759)
-        self.assertAlmostEqual(values[4], 0.7137169898523077)
 
         # Test case I.2: Return as numpy.ndarray
         samples = self.model.sample(
@@ -1520,11 +1444,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
         n_times = 5
         n_samples = 1
         self.assertEqual(samples.shape, (n_outputs, n_times, n_samples))
-        self.assertAlmostEqual(samples[0, 0, 0], 0.706890541588044)
-        self.assertAlmostEqual(samples[0, 1, 0], 0.92377400455709)
-        self.assertAlmostEqual(samples[0, 2, 0], 0.6494614629969823)
-        self.assertAlmostEqual(samples[0, 3, 0], 0.8096804910998759)
-        self.assertAlmostEqual(samples[0, 4, 0], 0.7137169898523077)
 
         # Test case II: More than one sample
         n_samples = 4
@@ -1563,10 +1482,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 20)
-        self.assertAlmostEqual(values[0], 0.706890541588044)
-        self.assertAlmostEqual(values[1], 1.1819335813039527)
-        self.assertAlmostEqual(values[18], 0.34250343758412044)
-        self.assertAlmostEqual(values[19], 0.22479868804541864)
 
         # Test case II.2: Return as numpy.ndarray
         samples = self.model.sample(
@@ -1575,11 +1490,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
         n_outputs = 1
         n_times = 5
         self.assertEqual(samples.shape, (n_outputs, n_times, n_samples))
-        self.assertAlmostEqual(samples[0, 0, 0], 0.706890541588044)
-        self.assertAlmostEqual(samples[0, 1, 2], 0.6028704149153622)
-        self.assertAlmostEqual(samples[0, 2, 1], 1.801028233914049)
-        self.assertAlmostEqual(samples[0, 3, 2], 0.46832698042688226)
-        self.assertAlmostEqual(samples[0, 4, 3], 0.22479868804541864)
 
         # Test case III: Return dosing regimen
 
@@ -1615,11 +1525,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.706890541588044)
-        self.assertAlmostEqual(values[1], 0.92377400455709)
-        self.assertAlmostEqual(values[2], 0.6494614629969823)
-        self.assertAlmostEqual(values[3], 0.8096804910998759)
-        self.assertAlmostEqual(values[4], 0.7137169898523077)
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
         path = erlo.ModelLibrary().one_compartment_pk_model()
@@ -1663,11 +1568,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.6010875382040474)
-        self.assertAlmostEqual(values[1], 0.5498109476992113)
-        self.assertAlmostEqual(values[2], 0.19328049998332394)
-        self.assertAlmostEqual(values[3], 0.22922447690250458)
-        self.assertAlmostEqual(values[4], 0.058015876021734025)
 
         # Test case III.3: PKmodel, dosing regimen is set
         model.set_dosing_regimen(1, 1, period=1, num=2)
@@ -1705,11 +1605,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.6010875382040474)
-        self.assertAlmostEqual(values[1], 0.9494472511510463)
-        self.assertAlmostEqual(values[2], 0.7916608762100437)
-        self.assertAlmostEqual(values[3], 0.6678547210989847)
-        self.assertAlmostEqual(values[4], 0.30760362908683914)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
@@ -1754,10 +1649,6 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 10)
-        self.assertAlmostEqual(values[0], 0.6010875382040474)
-        self.assertAlmostEqual(values[1], 0.3979077263135499)
-        self.assertAlmostEqual(values[8], 0.30760362908683914)
-        self.assertAlmostEqual(values[9], 0.28454670539055454)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)

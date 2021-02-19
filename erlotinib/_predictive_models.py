@@ -180,13 +180,14 @@ class PosteriorPredictiveModel(GenerativeModel):
         dims = sorted(list(posterior_samples.dims))
         if (len(dims) == 2) and (dims != ['chain', 'draw']):
             raise ValueError(
-                'The posterior samples must have the dimensions (chain, draw).'
-            )
+                'The posterior samples must have the dimensions '
+                '(chain, draw). The current dimensions are <'
+                + str(dims) + '>.')
         elif (len(dims) == 3) and (dims != ['chain', 'draw', 'individual']):
             raise ValueError(
                 'The posterior samples must have the dimensions '
-                '(chain, draw, individual).'
-            )
+                '(chain, draw, individual). The current dimensions are <'
+                + str(dims) + '>.')
 
         # Set default parameter map (no mapping)
         if param_map is None:
@@ -1155,10 +1156,6 @@ class PredictivePopulationModel(PredictiveModel):
             patients[:, param_id] = pop_model.sample(
                 parameters=parameters[start:end], n_samples=n_samples,
                 seed=seed)
-
-            # Increment seed for each iteration, to avoid repeated patterns
-            if seed is not None:
-                seed += 1
 
             # Increment population parameter counter
             start = end
