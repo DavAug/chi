@@ -391,6 +391,13 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(len(durations), 1)
         self.assertAlmostEqual(durations[0], 2)
 
+    def test_sample_bad_individual(self):
+        # Individual does not exist
+        _id = 'some ID'
+        times = [1, 2, 3, 4, 5]
+        with self.assertRaisesRegex(ValueError, 'The individual <some ID>'):
+            self.model.sample(times, individual=_id)
+
 
 class TestPredictiveModel(unittest.TestCase):
     """
