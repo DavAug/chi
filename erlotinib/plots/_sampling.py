@@ -7,11 +7,10 @@
 
 import copy
 
-import numpy as np
-import pandas as pd
 import pints
 import plotly.colors
 import plotly.graph_objects as go
+import xarray as xr
 
 import erlotinib.plots as eplt
 
@@ -30,6 +29,11 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
 
     Extends :class:`MultiFigure`.
     """
+    # TODO:
+    # 2. update notebook with pooled parameters
+    # 3. Make histograms compatible with xarray
+    # 4. Change output samples to xarray
+    # 5. Make predictive plot compatible with xarray
 
     def __init__(self):
         super(MarginalPosteriorPlot, self).__init__()
@@ -44,24 +48,42 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         # Get number of colours
         n_colors = len(colors)
 
-        # Add trace for each individual
-        ids = data[self._id_key].unique()
-        for index, individual in enumerate(ids):
-            # Mask for individuals/populations parameter
-            mask = data[self._id_key] == individual
-            if individual is None:
-                mask = data[self._id_key].isna()
+        # Check whether data are samples of a population parameter or
+        # contains samples for many individuals
+        is_population = False
+        try:
+            # Get ids of individuals
+            ids = data.individual.values
+        except AttributeError:
+            is_population = True
 
-            # Get data for indvidual or population parameter
-            samples = data[
-                [self._sample_key, self._iter_key, self._run_key]][mask]
-
+        if is_population is True:
             # Compute diagnostics
+            samples = data.values
             diagnostics = self._compute_diagnostics(samples)
 
             # Add trace
+            color = colors[0]
+            index = 0
+            individual = 'Population'
+            samples = samples.flatten()
+            self._add_trace(
+                fig_id, index, individual, samples, diagnostics, color)
+
+            return None
+
+        # Add trace for each individual
+        for index, individual in enumerate(ids):
+            # Get data for individual
+            samples = data.sel(individual=individual).dropna(dim='draw')
+
+            # Compute diagnostics
+            samples = samples.values
+            diagnostics = self._compute_diagnostics(samples)
+
+            # Add trace
+            samples = samples.flatten()
             color = colors[index % n_colors]
-            samples = samples[self._sample_key]
             self._add_trace(
                 fig_id, index, individual, samples, diagnostics, color)
 
@@ -73,15 +95,12 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         # Get figure
         fig = self._figs[fig_id]
 
-        # Population parameters have an ID of None
-        _id = 'Population' if individual is None else individual
-
         # Add trace
         rhat, = diagnostics
         fig.add_trace(
             go.Histogram(
                 y=samples,
-                name='%s' % str(_id),
+                name='%s' % str(individual),
                 hovertemplate=(
                     'Sample: %{y:.2f}<br>' +
                     'Rhat: %.02f<br>' % rhat),
@@ -97,99 +116,79 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
             row=1,
             col=index+1)
 
+        # Set x axis title to individual
+        fig.update_xaxes(
+            title_text=str(individual), row=1, col=index+1)
+
     def _compute_diagnostics(self, data):
         """
         Computes and returns convergence metrics.
 
         - Rhat
         """
-        # Compute Rhat
-        # Reshape data into shape needed for pints.rhat
-        n_iterations = len(data[self._iter_key].unique())
-        runs = data[self._run_key].unique()
-        n_runs = len(runs)
-
-        container = np.empty(shape=(n_runs, n_iterations))
-        for index, run in enumerate(runs):
-            mask = data[self._run_key] == run
-            container[index, :] = data[self._sample_key][mask].to_numpy()
-
         # Compute rhat
-        rhat = pints.rhat(chains=container)
+        rhat = pints.rhat(chains=data)
 
         # Collect diagnostics
         diagnostics = [rhat]
 
         return diagnostics
 
-    def add_data(
-            self, data, warm_up_iter=0, id_key='ID', param_key='Parameter',
-            sample_key='Sample', iter_key='Iteration', run_key='Run'):
+    def add_data(self, data):
         """
-        Adds marginal histograms of the samples across runs to the figure. The
-        estimates are grouped by the individual ID.
+        Adds marginal histograms of the samples across runs to the figure.
+
+        The histograms of population parameters are visualised in separate
+        figures,  while the individual parameters for one parameter type
+        are grouped together.
 
         Parameters
         ----------
-        data
-            A :class:`pandas.DataFrame` with the parameter samples in form of
-            an ID, parameter, sample, iteration, and run column.
-        warm_up_iter
-            Number of warm up iterations which are excluded for the histogram
-            construction.
-        id_key
-            Key label of the :class:`DataFrame` which specifies the ID column.
-            The ID refers to the identity of an individual. Defaults to
-            ``'ID'``.
-        param_key
-            Key label of the :class:`DataFrame` which specifies the parameter
-            name column. Defaults to ``'Parameter'``.
-        sample_key
-            Key label of the :class:`DataFrame` which specifies the parameter
-            sample column. Defaults to ``'Sample'``.
-        iter_key
-            Key label of the :class:`DataFrame` which specifies the iteration
-            column. The iteration refers to the iteration of the sampling
-            routine at which the parameter value was sampled. Defaults to
-            ``'Iteration'``.
-        run_key
-            Key label of the :class:`DataFrame` which specifies the
-            sample run (or chain) column. Defaults to ``'Run'``.
+        :param data: A :class:`xarray.Dataset` with the posterior samples.
         """
         # Check input format
-        if not isinstance(data, pd.DataFrame):
+        if not isinstance(data, xr.Dataset):
             raise TypeError(
-                'Data has to be pandas.DataFrame.')
+                'The data has to be a xarray.Dataset.')
 
-        keys = [param_key, id_key, sample_key, iter_key, run_key]
-        for key in keys:
-            if key not in data.keys():
-                raise ValueError(
-                    'Data does not have the key <' + str(key) + '>.')
-        self._id_key, self._sample_key, self._iter_key, self._run_key = keys[
-            1:]
-
-        if warm_up_iter >= data[self._iter_key].max():
+        dims = sorted(list(data.dims))
+        if (len(dims) == 2) and (dims != ['chain', 'draw']):
             raise ValueError(
-                'The number of warm up iterations has to be smaller than the '
-                'total number of iterations for each run.')
+                'The posterior samples must have the dimensions '
+                '(chain, draw). The current dimensions are <'
+                + str(dims) + '>.')
+        elif (len(dims) == 3) and (dims != ['chain', 'draw', 'individual']):
+            raise ValueError(
+                'The posterior samples must have the dimensions '
+                '(chain, draw, individual). The current dimensions are <'
+                + str(dims) + '>.')
 
         # Get a colours
         colors = plotly.colors.qualitative.Plotly
 
         # Create a template figure (assigns it to self._fig)
-        n_ids = len(data[id_key].unique())
+        try:
+            n_ids = len(data.individual)
+        except AttributeError:
+            # If data does not have individual attribute, all parameters
+            # are population parameters
+            n_ids = 1
         self._create_template_figure(
             rows=1, cols=n_ids, x_title='Normalised counts', spacing=0.01)
 
         # Create one figure for each parameter
         figs = []
-        parameters = data[param_key].unique()
+        parameters = list(data.data_vars.keys())
         for parameter in parameters:
             # Check that parameter has as many ids as columns in template
             # figure
-            mask = data[param_key] == parameter
-            number_ids = len(data[mask][id_key].unique())
+            try:
+                number_ids = len(data[parameter].individual)
+            except AttributeError:
+                # If parameter does not have individual attribute, it's a
+                # population parameter
+                number_ids = 1
+
             if number_ids != n_ids:
                 # Create a new template
                 self._create_template_figure(
@@ -201,19 +200,14 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
 
         self._figs = figs
 
-        # Exclude warm up iterations
-        mask = data[self._iter_key] > warm_up_iter
-        data = data[mask]
-
-        # Add estimates to parameter figures
+        # Add samples to parameter figures
         for index, parameter in enumerate(parameters):
             # Set y label of plot to parameter name
             self._figs[index].update_yaxes(
                 title_text=parameter, row=1, col=1)
 
             # Get estimates for this parameter
-            mask = data[param_key] == parameter
-            samples = data[mask][[id_key, sample_key, iter_key, run_key]]
+            samples = data[parameter]
 
             # Add marginal histograms for all individuals
             self._add_histogram_plots(index, samples, colors)
