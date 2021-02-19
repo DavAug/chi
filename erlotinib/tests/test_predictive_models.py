@@ -89,13 +89,6 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # TODO:
-        # 1. test thsi with xarray posterior
-        # 2. update notebook with pooled parameters
-        # 3. Make histograms compatible with xarray
-        # 4. Change output samples to xarray
-        # 5. Make predictive plot compatible with xarray
-
         # Test model I: Individual predictive model
         # Create predictive model
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
