@@ -136,9 +136,8 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
         figures,  while the individual parameters for one parameter type
         are grouped together.
 
-        Parameters
-        ----------
         :param data: A :class:`xarray.Dataset` with the posterior samples.
+        :type data: xarray.Dataset
         """
         # Check input format
         if not isinstance(data, xr.Dataset):

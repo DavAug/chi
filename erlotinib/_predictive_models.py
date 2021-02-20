@@ -156,17 +156,16 @@ class PosteriorPredictiveModel(GenerativeModel):
 
     Extends :class:`GenerativeModel`.
 
-    Parameters
-    ----------
-    predictive_model
-        An instance of a :class:`PredictiveModel`.
-    posterior_samples
-        A :class:`xarray.Dataset` with samples from the posterior
-        distribution of the model parameters.
-    param_map
-        A dictionary which can be used to map predictive model parameter
-        names to the parameter names in the :class:`xarray.Dataset`.
+    :param predictive_model: A predictive model which defines the distribution
+        of observable biomarkers over time conditioned on parameter values.
+    :type predictive_model: PredictiveModel
+    :param posterior_samples: Samples from the posterior distribution of the
+        model parameters.
+    :type posterior_samples: xarray.Dataset
+    :param param_map: A dictionary which can be used to map predictive model
+        parameter names to the parameter names in the :class:`xarray.Dataset`.
         If ``None``, it is assumed that the names are identical.
+    :type param_map: dict, optional
     """
     def __init__(
             self, predictive_model, posterior_samples, param_map=None):
