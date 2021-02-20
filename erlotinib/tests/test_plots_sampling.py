@@ -20,7 +20,7 @@ class TestParameterEstimatePlot(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # Test model I: Samples for no population model
+        # Test case I: Samples for no population model
         # Create a posterior samples
         n_chains = 4
         n_draws = 10
@@ -37,7 +37,7 @@ class TestParameterEstimatePlot(unittest.TestCase):
             param: samples for param
             in ['Parameter 1', 'Parameter 2']})
 
-        # Test model II: Samples for population model
+        # Test case II: Samples for population model
         # Create a posterior samples
         n_chains = 4
         n_draws = 10
@@ -67,6 +67,11 @@ class TestParameterEstimatePlot(unittest.TestCase):
             'Mean Sigma rel.': pop_samples,
             'Std. Sigma rel.': pop_samples})
 
+        # Test case III: Pooled model (no individuals in posterior)
+        cls.pooled_samples = xr.Dataset({
+            'Param 1': pop_samples,
+            'Param 2': pop_samples})
+
         # Create figure
         cls.fig = erlo.plots.MarginalPosteriorPlot()
 
@@ -74,8 +79,11 @@ class TestParameterEstimatePlot(unittest.TestCase):
         # Test case I: Add data for individual posteriors
         self.fig.add_data(self.posterior_samples)
 
-        # Test case I: Add data for individual posteriors
+        # Test case II: Add data for population posteriors
         self.fig.add_data(self.pop_post_samples)
+
+        # Test case III: Add data for pooled posteriors
+        self.fig.add_data(self.pooled_samples)
 
     def test_add_data_bad_input(self):
         # Bad type
