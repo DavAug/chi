@@ -182,6 +182,12 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             erlo.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
+        # The dimensions are just generally wrong
+        samples = posterior_samples.drop_dims('draw')
+        with self.assertRaisesRegex(ValueError, 'The posterior samples'):
+            erlo.PosteriorPredictiveModel(
+                self.pred_model, samples)
+
         # Bad parameter map type
         param_map = 'Bad type'
         with self.assertRaisesRegex(ValueError, 'The parameter map'):

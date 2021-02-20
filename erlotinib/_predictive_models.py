@@ -178,16 +178,15 @@ class PosteriorPredictiveModel(GenerativeModel):
                 'The posterior samples have to be a xarray.Dataset.')
 
         dims = sorted(list(posterior_samples.dims))
-        if (len(dims) == 2) and (dims != ['chain', 'draw']):
-            raise ValueError(
-                'The posterior samples must have the dimensions '
-                '(chain, draw). The current dimensions are <'
-                + str(dims) + '>.')
-        elif (len(dims) == 3) and (dims != ['chain', 'draw', 'individual']):
-            raise ValueError(
-                'The posterior samples must have the dimensions '
-                '(chain, draw, individual). The current dimensions are <'
-                + str(dims) + '>.')
+        expected_dims = ['chain', 'draw', 'individual']
+        if (len(dims) == 2):
+            expected_dims = ['chain', 'draw']
+        for dim in expected_dims:
+            if dim not in dims:
+                raise ValueError(
+                    'The posterior samples must have the dimensions '
+                    '(chain, draw, individual). The current dimensions are <'
+                    + str(dims) + '>.')
 
         # Set default parameter map (no mapping)
         if param_map is None:
