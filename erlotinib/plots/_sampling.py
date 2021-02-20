@@ -29,12 +29,6 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
 
     Extends :class:`MultiFigure`.
     """
-    # TODO:
-    # 2. update notebook with pooled parameters
-    # 3. Make histograms compatible with xarray
-    # 4. Change output samples to xarray
-    # 5. Make predictive plot compatible with xarray
-
     def __init__(self):
         super(MarginalPosteriorPlot, self).__init__()
 
@@ -152,16 +146,15 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
                 'The data has to be a xarray.Dataset.')
 
         dims = sorted(list(data.dims))
-        if (len(dims) == 2) and (dims != ['chain', 'draw']):
-            raise ValueError(
-                'The posterior samples must have the dimensions '
-                '(chain, draw). The current dimensions are <'
-                + str(dims) + '>.')
-        elif (len(dims) == 3) and (dims != ['chain', 'draw', 'individual']):
-            raise ValueError(
-                'The posterior samples must have the dimensions '
-                '(chain, draw, individual). The current dimensions are <'
-                + str(dims) + '>.')
+        expected_dims = ['chain', 'draw', 'individual']
+        if (len(dims) == 2):
+            expected_dims = ['chain', 'draw']
+        for dim in expected_dims:
+            if dim not in dims:
+                raise ValueError(
+                    'The data must have the dimensions '
+                    '(chain, draw, individual). The current dimensions are <'
+                    + str(dims) + '>.')
 
         # Get a colours
         colors = plotly.colors.qualitative.Plotly
@@ -190,9 +183,12 @@ class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
                 number_ids = 1
 
             if number_ids != n_ids:
+                # Overwrite old n_ids
+                n_ids = number_ids
+
                 # Create a new template
                 self._create_template_figure(
-                    rows=1, cols=number_ids, x_title='Normalised counts',
+                    rows=1, cols=n_ids, x_title='Normalised counts',
                     spacing=0.01)
 
             # Append a copy of the template figure to all figures
