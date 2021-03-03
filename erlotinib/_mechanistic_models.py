@@ -988,6 +988,18 @@ class ReducedMechanisticModel(object):
         """
         self._mechanistic_model.set_outputs(outputs)
 
+    def set_output_names(self, names):
+        """
+        Assigns names to the outputs. By default the :class:`myokit.Model`
+        names are assigned to the outputs.
+
+        Parameters
+        ----------
+        names
+            A dictionary that maps the current output names to new names.
+        """
+        self._mechanistic_model.set_output_names(names)
+
     def set_parameter_names(self, names):
         """
         Assigns names to the parameters. By default the :class:`myokit.Model`
