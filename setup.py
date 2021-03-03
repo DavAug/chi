@@ -23,7 +23,7 @@ setup(
         'dash>=1.17.0',
         'dash-bootstrap-components>=0.10',
         'jupyter==1.0.0',
-        'myokit>=1.31',
+        'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
         'numpy>=1.8',
         'pandas>=0.24',
         'pints @ git+git://github.com/pints-team/pints.git#egg=pints',
@@ -32,7 +32,8 @@ setup(
         'xarray'
     ],
     dependency_links=[
-     "git+git://github.com/pints-team/pints.git#egg=pints-latest",
+        "git+git://github.com/MichaelClerx/myokit.git#egg=myokit-latest",
+        "git+git://github.com/pints-team/pints.git#egg=pints-latest",
     ],
     extras_require={
         'docs': [
