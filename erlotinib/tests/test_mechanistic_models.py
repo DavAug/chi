@@ -92,7 +92,7 @@ class TestModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Outputs have to be state or'):
             self.model.set_outputs(['myokit.kappa'])
 
-    def set_output_names(self):
+    def test_set_output_names(self):
         # Set output name
         names = {'myokit.tumour_volume': 'Some name'}
         self.model.set_output_names(names)
@@ -108,11 +108,27 @@ class TestModel(unittest.TestCase):
         self.assertEqual(outputs[0], 'Some other name')
 
         # Set name back to default
-        names = {'Some name': 'myokit.tumour_volume'}
+        names = {'Some other name': 'myokit.tumour_volume'}
         self.model.set_output_names(names)
         outputs = self.model.outputs()
         self.assertEqual(len(outputs), 1)
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+    def test_set_output_names_bad_input(self):
+        # List input is not ok!
+        names = ['TV', 'some name']
+        with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
+            self.model.set_output_names(names)
+
+        # New names are not unique
+        names = {'param 1': 'Some name', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The new output names'):
+            self.model.set_output_names(names)
+
+        # New names exist already
+        names = {'param 1': 'myokit.tumour_volume', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The output names cannot'):
+            self.model.set_output_names(names)
 
     def test_set_parameter_names(self):
         # Set some parameter names
@@ -144,8 +160,17 @@ class TestModel(unittest.TestCase):
     def test_set_parameter_names_bad_input(self):
         # List input is not ok!
         names = ['TV', 'some name']
-
         with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
+            self.model.set_parameter_names(names)
+
+        # New names are not unique
+        names = {'param 1': 'Some name', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The new parameter names'):
+            self.model.set_parameter_names(names)
+
+        # New names exist already
+        names = {'param 1': 'myokit.tumour_volume', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The parameter names cannot'):
             self.model.set_parameter_names(names)
 
     def test_simulate(self):
@@ -603,6 +628,15 @@ class TestReducedMechanisticModel(unittest.TestCase):
         model = 'Bad type'
         with self.assertRaisesRegex(ValueError, 'The mechanistic model'):
             erlo.ReducedMechanisticModel(model)
+
+    def test_enable_sensitivities(self):
+        # Enable sensitivities
+        self.pd_model.enable_sensitivities(True)
+        self.assertTrue(self.pd_model.has_sensitivities())
+
+        # Disable sensitvities
+        self.pd_model.enable_sensitivities(False)
+        self.assertFalse(self.pd_model.has_sensitivities())
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
