@@ -280,16 +280,6 @@ class TestPharmacodynamicModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The name does not'):
             self.model.set_pk_input(pk_input)
 
-    def test_simulate(self):
-
-        times = [0, 1, 2, 3]
-
-        # Test model with bare parameters
-        parameters = [0.1, 1, 1, 1, 1]
-        output = self.model.simulate(parameters, times)
-        self.assertIsInstance(output, np.ndarray)
-        self.assertEqual(output.shape, (1, 4))
-
 
 class TestPharmacokineticModel(unittest.TestCase):
     """
@@ -499,6 +489,36 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(self.model.n_outputs(), 1)
         output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
         self.assertEqual(output.shape, (1, 2))
+
+    def set_output_names(self):
+        # Rename only one output
+        outputs = ['central.drug_amount', 'central.drug_concentration']
+        self.model.set_outputs(outputs)
+        self.model.set_output_names({'central.drug_amount': 'Some name'})
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'Some name')
+        self.assertEqual(outputs[1], 'central.drug_concentration')
+
+        # Rename the other output
+        self.model.set_output_names({
+            'central.drug_concentration': 'Some other name'})
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'Some name')
+        self.assertEqual(outputs[1], 'Some other name')
+
+        # Set output back to default
+        outputs = ['Some name']
+        self.model.set_outputs(outputs)
+        self.assertEqual(self.model.outputs(), outputs)
+        self.assertEqual(self.model.n_outputs(), 1)
+
+        # Set output name to default
+        self.model.set_output_names({'Some name': 'central.drug_amount'})
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'central.drug_amount')
 
     def test_set_parameter_names(self):
         # Set some parameter names
@@ -716,7 +736,16 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
         self.assertEqual(outputs[1], 'myokit.tumour_volume')
 
+        self.pd_model.set_output_names(
+            {'myokit.tumour_volume': 'Some name'})
+        outputs = self.pd_model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'Some name')
+        self.assertEqual(outputs[1], 'Some name')
+
         # Test case II: Set outputs back to default
+        self.pd_model.set_output_names(
+            {'Some name': 'myokit.tumour_volume'})
         self.pd_model.set_outputs(['myokit.tumour_volume'])
 
         outputs = self.pd_model.outputs()
@@ -757,18 +786,51 @@ class TestReducedMechanisticModel(unittest.TestCase):
         # Simulate
         times = [1, 2, 3]
         parameters = [0, 0.5, 0.3]
-        sim = self.pd_model.simulate(parameters, times).flatten()
+        output = self.pd_model.simulate(parameters, times).flatten()
 
         # Simulate unfixed model with the same parameters
         model = self.pd_model.mechanistic_model()
         parameters = [1, 0, 1, 0.5, 0.3]
-        ref_sim = model.simulate(parameters, times).flatten()
+        ref_output = model.simulate(parameters, times).flatten()
 
-        self.assertEqual(len(sim), 3)
-        self.assertEqual(len(ref_sim), 3)
-        self.assertEqual(sim[0], ref_sim[0])
-        self.assertEqual(sim[1], ref_sim[1])
-        self.assertEqual(sim[2], ref_sim[2])
+        self.assertEqual(len(output), 3)
+        self.assertEqual(len(ref_output), 3)
+        self.assertEqual(output[0], ref_output[0])
+        self.assertEqual(output[1], ref_output[1])
+        self.assertEqual(output[2], ref_output[2])
+
+        # Enable sensitivities
+        self.pd_model.enable_sensitivities(True)
+
+        # Simulate
+        times = [1, 2, 3]
+        parameters = [0, 0.5, 0.3]
+        output, sens = self.pd_model.simulate(parameters, times)
+        output = output.squeeze()
+
+        # Simulate unfixed model with the same parameters
+        model = self.pd_model.mechanistic_model()
+        parameters = [1, 0, 1, 0.5, 0.3]
+        ref_output, ref_sens = model.simulate(parameters, times)
+        ref_output = ref_output.squeeze()
+
+        self.assertEqual(len(output), 3)
+        self.assertEqual(len(ref_output), 3)
+        self.assertEqual(output[0], ref_output[0])
+        self.assertEqual(output[1], ref_output[1])
+        self.assertEqual(output[2], ref_output[2])
+
+        self.assertEqual(sens.shape, (3, 1, 3))
+        self.assertEqual(ref_sens.shape, (3, 1, 3))
+        self.assertEqual(sens[0, 0, 0], ref_sens[0, 0, 0])
+        self.assertEqual(sens[1, 0, 0], ref_sens[1, 0, 0])
+        self.assertEqual(sens[2, 0, 0], ref_sens[2, 0, 0])
+        self.assertEqual(sens[0, 0, 1], ref_sens[0, 0, 1])
+        self.assertEqual(sens[1, 0, 1], ref_sens[1, 0, 1])
+        self.assertEqual(sens[2, 0, 1], ref_sens[2, 0, 1])
+        self.assertEqual(sens[0, 0, 2], ref_sens[0, 0, 2])
+        self.assertEqual(sens[1, 0, 2], ref_sens[1, 0, 2])
+        self.assertEqual(sens[2, 0, 2], ref_sens[2, 0, 2])
 
     def test_simulator(self):
         self.assertIsInstance(self.pd_model.simulator, myokit.Simulation)
