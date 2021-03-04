@@ -22,6 +22,30 @@ class TestModel(unittest.TestCase):
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.MechanisticModel(path)
 
+    def test_enable_sensitivities(self):
+        # Enable sensitivities
+        self.model.enable_sensitivities(True)
+        self.assertTrue(self.model.has_sensitivities())
+
+        # Enable sensitivties for a subset of parameters
+        parameters = ['myokit.tumour_volume', 'myokit.kappa']
+        self.model.enable_sensitivities(True, parameters)
+        self.assertTrue(self.model.has_sensitivities())
+
+        # Disable sensitivities
+        self.model.enable_sensitivities(False)
+        self.assertFalse(self.model.has_sensitivities())
+
+        # Disable sensitvities a second time
+        self.model.enable_sensitivities(False)
+        self.assertFalse(self.model.has_sensitivities())
+
+    def test_enable_sensitivities_bad_input(self):
+        # Specify parameter names that cannot be identified
+        parameters = ['do', 'not', 'exist']
+        with self.assertRaisesRegex(ValueError, 'None of the'):
+            self.model.enable_sensitivities(True, parameters)
+
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
 
@@ -43,7 +67,6 @@ class TestModel(unittest.TestCase):
         self.assertEqual(parameters[4], 'myokit.lambda_1')
 
     def test_set_outputs(self):
-
         # Set bad output
         self.assertRaisesRegex(
             KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
@@ -63,6 +86,9 @@ class TestModel(unittest.TestCase):
         self.assertEqual(self.model.n_outputs(), 1)
         output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
         self.assertEqual(output.shape, (1, 2))
+
+    def set_output_names(self):
+        pass
 
     def test_set_parameter_names(self):
         # Set some parameter names
