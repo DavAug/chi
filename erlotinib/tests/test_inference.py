@@ -360,9 +360,6 @@ class TestSamplingController(unittest.TestCase):
         cls.ids = data['ID'].unique()
 
     def test_run(self):
-        # TODO:
-        # 1. Test xarray output for individual and hierarchical models
-
         # Case I: Individual with ID 40
         sampler = erlo.SamplingController(self.log_posterior_id_40)
 
@@ -441,6 +438,81 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(parameters[8], 'myokit.kappa')
 
         chains = result.chain
+        self.assertEqual(len(chains), 3)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+        self.assertEqual(chains.loc[2], 2)
+
+        # Case III: Infer multiple independent models
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        model = erlo.PharmacodynamicModel(path)
+        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        problem = erlo.ProblemModellingController(model, error_models)
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        mask_id_40 = data['ID'] == 40
+        mask_id_140 = data['ID'] == 140
+        data = data[mask_id_40 | mask_id_140]
+        problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
+        n_parameters = 7
+        log_priors = [
+            pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
+        problem.set_log_prior(log_priors)
+        log_posterior = problem.get_log_posterior()
+        sampler = erlo.SamplingController(log_posterior)
+
+        # Set evaluator to sequential, because otherwise codecov
+        # complains that posterior was never evaluated.
+        # (Potentially codecov cannot keep track of multiple CPUs)
+        sampler.set_parallel_evaluation(False)
+
+        sampler.set_n_runs(3)
+        result = sampler.run(n_iterations=20)
+
+        self.assertEqual(len(result), 2)
+
+        dimensions = list(result[0].dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
+        dimensions = list(result[1].dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
+
+        ids = result[0].individual
+        self.assertEqual(len(ids), 1)
+        self.assertEqual(ids[0], 'ID 40')
+        ids = result[1].individual
+        self.assertEqual(len(ids), 1)
+        self.assertEqual(ids[0], 'ID 140')
+
+        parameters = sorted(list(result[0].data_vars.keys()))
+        self.assertEqual(len(parameters), 7)
+        self.assertEqual(parameters[0], 'Sigma base')
+        self.assertEqual(parameters[1], 'Sigma rel.')
+        self.assertEqual(parameters[2], 'myokit.drug_concentration')
+        self.assertEqual(parameters[3], 'myokit.kappa')
+        self.assertEqual(parameters[4], 'myokit.lambda_0')
+        self.assertEqual(parameters[5], 'myokit.lambda_1')
+        self.assertEqual(parameters[6], 'myokit.tumour_volume')
+        parameters = sorted(list(result[1].data_vars.keys()))
+        self.assertEqual(len(parameters), 7)
+        self.assertEqual(parameters[0], 'Sigma base')
+        self.assertEqual(parameters[1], 'Sigma rel.')
+        self.assertEqual(parameters[2], 'myokit.drug_concentration')
+        self.assertEqual(parameters[3], 'myokit.kappa')
+        self.assertEqual(parameters[4], 'myokit.lambda_0')
+        self.assertEqual(parameters[5], 'myokit.lambda_1')
+        self.assertEqual(parameters[6], 'myokit.tumour_volume')
+
+        chains = result[0].chain
+        self.assertEqual(len(chains), 3)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+        self.assertEqual(chains.loc[2], 2)
+        chains = result[1].chain
         self.assertEqual(len(chains), 3)
         self.assertEqual(chains.loc[0], 0)
         self.assertEqual(chains.loc[1], 1)
