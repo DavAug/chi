@@ -128,26 +128,47 @@ class MechanisticModel(object):
         :type parameter_names: list[str], optional
         """
         enabled = bool(enabled)
-        if (not enabled) and (not self._has_sensitivities):
+
+        # Get dosing regimen from existing simulator
+        protocol = self.simulator._protocol
+
+        if not enabled:
+            if self._has_sensitivities:
+                # Disable sensitivities
+                sim = myokit.Simulation(self._model, protocol)
+                self.simulator = sim
+                self._has_sensitivities = False
+
+                return None
+
             # Sensitivities are already disabled
             return None
 
         # Get parameters whose output sensitivities are computed
-        parameters = self._parameter_names
+        parameters = []
+        for param_id, param in enumerate(self._parameter_names):
+            if param_id < self._n_states:
+                # Convert initial value parameters to the correct syntax
+                parameters.append('init(' + param + ')')
+                continue
+
+            # Other parameters can be appended without modification
+            parameters.append(param)
+
         if parameter_names is not None:
             # Get myokit names for input parameter names
-            parameters = []
-            for myokit_name, public_name in self._parameter_name_map:
+            container = []
+            for index, public_name in enumerate(
+                    self._parameter_name_map.values()):
                 if public_name in parameter_names:
-                    parameters.append(myokit_name)
+                    container.append(parameters[index])
+
+            parameters = container
 
         if not parameters:
             raise ValueError(
-                'Not all parameter names could be identified. The valid '
+                'None of the parameters could be identified. The valid '
                 'parameter names are <' + str(self._parameter_names) + '>.')
-
-        # Get dosing regimen from existing simulator
-        protocol = self.simulator._protocol
 
         # Create simulator
         sensitivities = (self._output_names, parameters)
@@ -155,7 +176,7 @@ class MechanisticModel(object):
 
         # Update simulator and sensitivity state
         self.simulator = sim
-        self._has_sensitivities = False if sim._sensitivities is None else True
+        self._has_sensitivities = True
 
     def has_sensitivities(self):
         """
