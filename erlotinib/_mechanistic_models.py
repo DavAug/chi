@@ -238,15 +238,11 @@ class MechanisticModel(object):
         outputs = list(outputs)
 
         # Translate public names to myokit names, if set previously
-        o = []
         for myokit_name, public_name in self._output_name_map.items():
             if public_name in outputs:
-                # Remember myokit name and remove public name
-                o.append(myokit_name)
-                outputs.remove(public_name)
-
-        # Combine myokit names with output names that could not be translated
-        outputs = o + outputs
+                # Replace public name by myokit name
+                index = outputs.index(public_name)
+                outputs[index] = myokit_name
 
         # Check that outputs are valid
         for output in outputs:
@@ -261,7 +257,7 @@ class MechanisticModel(object):
                     'model.')
 
         # Remember outputs
-        self._output_names = sorted(outputs)
+        self._output_names = outputs
         self._n_outputs = len(outputs)
 
         # Create an updated output name map
@@ -274,6 +270,9 @@ class MechanisticModel(object):
                 # The output did not exist before, so create an identity map
                 output_name_map[myokit_name] = myokit_name
         self._output_name_map = output_name_map
+
+        # Disable sensitivities
+        self.enable_sensitivities(False)
 
     def set_output_names(self, names):
         """
@@ -423,8 +422,7 @@ class PharmacodynamicModel(MechanisticModel):
         # Set default pharmacokinetic input variable
         # (Typically drug concentration)
         self._pk_input = None
-        model = self.simulator._model
-        if model.has_variable('myokit.drug_concentration'):
+        if self._model.has_variable('myokit.drug_concentration'):
             self._pk_input = 'myokit.drug_concentration'
 
     def pk_input(self):
@@ -816,8 +814,9 @@ class ReducedMechanisticModel(object):
             return None
 
         # Get free parameters
-        free_parameters = np.array(self._parameter_names)[
-            self._fixed_params_mask]
+        free_parameters = np.array(self._parameter_names)
+        if self._fixed_params_mask is not None:
+            free_parameters = free_parameters[~self._fixed_params_mask]
 
         # Set sensitivities
         self._mechanistic_model.enable_sensitivities(
