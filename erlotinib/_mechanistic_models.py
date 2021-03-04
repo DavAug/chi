@@ -235,22 +235,38 @@ class MechanisticModel(object):
             A list of output names.
         :type outputs: list[str]
         """
+        outputs = list(outputs)
+
+        # Translate public names to myokit names, if set previously
+        o = []
+        for myokit_name, public_name in self._output_name_map.items():
+            if public_name in outputs:
+                # Remember myokit name and remove public name
+                o.append(myokit_name)
+                outputs.remove(public_name)
+
+        # Combine myokit names with output names that could not be translated
+        outputs = o + outputs
+
         # Check that outputs are valid
         for output in outputs:
             try:
-                self.simulator._model.get(output)
+                var = self.simulator._model.get(output)
+                if not (var.is_state() or var.is_intermediary()):
+                    raise ValueError(
+                        'Outputs have to be state or intermediary variables.')
             except KeyError:
                 raise KeyError(
                     'The variable <' + str(output) + '> does not exist in the '
                     'model.')
 
         # Remember outputs
-        self._output_names = list(outputs)
+        self._output_names = sorted(outputs)
         self._n_outputs = len(outputs)
 
         # Create an updated output name map
         output_name_map = {}
-        for myokit_name in outputs:
+        for myokit_name in self._output_names:
             try:
                 output_name_map[myokit_name] = self._output_name_map[
                     myokit_name]
