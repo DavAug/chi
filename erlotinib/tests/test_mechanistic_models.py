@@ -67,10 +67,6 @@ class TestModel(unittest.TestCase):
         self.assertEqual(parameters[4], 'myokit.lambda_1')
 
     def test_set_outputs(self):
-        # Set bad output
-        self.assertRaisesRegex(
-            KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
-
         # Set twice the same output
         outputs = ['myokit.tumour_volume', 'myokit.tumour_volume']
         self.model.set_outputs(outputs)
@@ -87,8 +83,36 @@ class TestModel(unittest.TestCase):
         output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
         self.assertEqual(output.shape, (1, 2))
 
+    def test_set_ouputs_bad_input(self):
+        # Set not existing output output
+        self.assertRaisesRegex(
+            KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
+
+        # Set output to constant
+        with self.assertRaisesRegex(ValueError, 'Outputs have to be state or'):
+            self.model.set_outputs(['myokit.kappa'])
+
     def set_output_names(self):
-        pass
+        # Set output name
+        names = {'myokit.tumour_volume': 'Some name'}
+        self.model.set_output_names(names)
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'Some name')
+
+        # Provide a dictionary of unnecessary names
+        names = {'Some name': 'Some other name', 'does not exist': 'bla'}
+        self.model.set_output_names(names)
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'Some other name')
+
+        # Set name back to default
+        names = {'Some name': 'myokit.tumour_volume'}
+        self.model.set_output_names(names)
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
 
     def test_set_parameter_names(self):
         # Set some parameter names
@@ -125,14 +149,22 @@ class TestModel(unittest.TestCase):
             self.model.set_parameter_names(names)
 
     def test_simulate(self):
-
         times = [0, 1, 2, 3]
 
-        # Test model with bare parameters
+        # Test simulation of output
         parameters = [0.1, 1, 1, 1, 1]
         output = self.model.simulate(parameters, times)
         self.assertIsInstance(output, np.ndarray)
         self.assertEqual(output.shape, (1, 4))
+
+        # Test simulation with sensitivities
+        parameters = [0.1, 1, 1, 1, 1]
+        self.model.enable_sensitivities(True)
+        output, sens = self.model.simulate(parameters, times)
+        self.assertIsInstance(output, np.ndarray)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertIsInstance(sens, np.ndarray)
+        self.assertEqual(sens.shape, (4, 1, 5))
 
     def test_simulator(self):
         self.assertIsInstance(self.model.simulator, myokit.Simulation)
