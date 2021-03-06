@@ -37,12 +37,13 @@ class ErrorModel(object):
         Formally the log-likelihood is given by
 
         .. math::
-            L(\psi, \sigma ) = \sum _i \log p(x_i | \psi , \sigma ) ,
+            L(\psi, \sigma | x^{\text{obs}}) =
+            \sum _i \log p(x^{\text{obs}}_i | \psi , \sigma ) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x_i` are the observed biomarkers.
-        :math:`\psi` and :math`\sigma` are the parameters of the mechanistic
-        model and the error model, respectively.
+        error model pair and :math:`x^{\text{obs}}` are the observed
+        biomarkers. :math:`\psi` and :math`\sigma` are the parameters of the
+        mechanistic model and the error model, respectively.
 
         Parameters
         ----------
@@ -72,12 +73,13 @@ class ErrorModel(object):
         Formally the log-likelihood is given by
 
         .. math::
-            L(\psi, \sigma ) = \sum _i \log p(x_i | \psi , \sigma ) ,
+            L(\psi, \sigma | x^{\text{obs}}) =
+            \sum _i \log p(x^{\text{obs}}_i | \psi , \sigma ) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x_i` are the observed biomarkers.
-        :math:`\psi` and :math`\sigma` are the parameters of the mechanistic
-        model and the error model, respectively.
+        error model pair and :math:`x^{\text{obs}}` are the observed
+        biomarkers. :math:`\psi` and :math`\sigma` are the parameters of the
+        mechanistic model and the error model, respectively.
 
         The sensitivities of the log-likelihood is defined as the partial
         derivative of the :math:`L` with respect to the model parameters
@@ -217,15 +219,69 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         sigma_tot = sigma_base + sigma_rel * model_output
 
         # Compute log-likelihood
-        log_likelihood = - np.sum(np.log(sigma_tot)) \
+        n_obs = len(model_output)
+        log_likelihood = \
+            - n_obs * np.log(2 * np.pi) / 2 \
+            - np.sum(np.log(sigma_tot)) \
             - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
 
         return log_likelihood
 
+    @staticmethod
+    @njit
+    def _compute_sensitivities(
+            parameters, model_output, model_sensitivities, observations):
+        """
+        Calculates the log-lieklihood and its sensitivities using numba
+        speed up.
+
+        Expects:
+        Shape model output =  (n_obs, 1)
+        Shape sensitivities = (n_obs, n_parameters)
+        Shape observations =  (n_obs, 1)
+        """
+        # Get parameters
+        sigma_base, sigma_rel = parameters
+
+        if sigma_base <= 0 or sigma_rel <= 0:
+            # sigma_base and sigma_rel are strictly positive
+            n_parameters = model_sensitivities.shape[1] + 2
+            return -np.inf, np.full(n_parameters, np.inf)
+
+        # Compute total standard deviation
+        sigma_tot = sigma_base + sigma_rel * model_output
+
+        # Compute error and squared error
+        error = observations - model_output
+        squared_error = error**2
+
+        # Compute log-likelihood
+        n_obs = len(model_output)
+        log_likelihood = \
+            - n_obs * np.log(2 * np.pi) / 2 \
+            - np.sum(np.log(sigma_tot)) \
+            - np.sum(squared_error / sigma_tot**2) / 2
+
+        # Compute sensitivities
+        dpsi = \
+            0.5 * np.sum(
+                squared_error / sigma_tot**2 * model_sensitivities, axis=0) \
+            - sigma_rel * np.sum(model_sensitivities / sigma_tot, axis=0) \
+            + sigma_rel * np.sum(
+                squared_error / sigma_tot**3 * model_sensitivities, axis=0)
+        dsigma_base = \
+            np.sum(squared_error / sigma_tot**3, axis=0) - \
+            np.sum(1 / sigma_tot, axis=0)
+        dsigma_rel = \
+            np.sum(squared_error / sigma_tot**3 * model_output, axis=0) \
+            - np.sum(model_output / sigma_tot, axis=0)
+        sensitivities = np.concatenate((dpsi, dsigma_base, dsigma_rel))
+
+        return log_likelihood, sensitivities
+
     def compute_log_likelihood(self, parameters, model_output, observations):
         r"""
-        Returns the unnormalised log-likelihood score for the model parameters
-        of the mechanistic model-error model pair.
+        Returns the log-likelihood of the model parameters.
 
         In this method, the model output :math:`x^{\text{m}}` and the
         observations :math:`x^{\text{obs}}` are compared pair-wise, and the
@@ -244,10 +300,6 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         assuming that ``model_output`` and ``observations`` are already
         ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
-
-        .. note::
-            All constant terms that do not depend on the model parameters are
-            dropped when computing the log-likelihood score.
 
         Parameters
         ----------
@@ -275,7 +327,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
     def compute_sensitivities(
             self, parameters, model_output, model_sensitivities, observations):
-        """
+        r"""
         Returns the log-likelihood of the model parameters and its
         sensitivities w.r.t. the parameters.
 
@@ -284,6 +336,14 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
+
+        The sensitivities of the log-likelihood is defined as the partial
+        derivative of the :math:`L` with respect to the model parameters
+
+        .. math::
+            \frac{\partial L}{\partial \psi}, \quad
+            \frac{\partial L}{\partial \sigma _{\text{base}} \quad
+            \frac{\partial L}{\partial \sigma _{\text{base}}.
 
         :param parameters: An array-like object with the error model
             parameters.
@@ -301,15 +361,16 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         :type observations: list, numpy.ndarray of lenght t
         """
         parameters = np.asarray(parameters)
-        model = np.asarray(model_output)
+        n_obs = len(observations)
+        model = np.asarray(model_output).reshape((n_obs, 1))
         sens = np.asarray(model_sensitivities)
-        obs = np.asarray(observations)
-        n_observations = len(observations)
-        if len(model) != n_observations:
+        obs = np.asarray(observations).reshape((n_obs, 1))
+        if len(model) != n_obs:
             raise ValueError(
                 'The number of model outputs must match the number of '
                 'observations, otherwise they cannot be compared pair-wise.')
-        # TODO:
+
+        return self._compute_sensitivities(parameters, model, sens, obs)
 
     def sample(self, parameters, model_output, n_samples=None, seed=None):
         """
