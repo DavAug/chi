@@ -7,6 +7,7 @@
 
 import copy
 
+from numba import njit
 import numpy as np
 
 
@@ -141,6 +142,28 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         self._parameter_names = ['Sigma base', 'Sigma rel.']
         self._n_parameters = 2
 
+    @staticmethod
+    @njit
+    def _compute_log_likelihood(parameters, model_output, observations):
+        """
+        Calculates the log-lieklihood using numba speed up.
+        """
+        # Get parameters
+        sigma_base, sigma_rel = parameters
+
+        if sigma_base <= 0 or sigma_rel <= 0:
+            # sigma_base and sigma_rel are strictly positive
+            return -np.inf
+
+        # Compute total standard deviation
+        sigma_tot = sigma_base + sigma_rel * model_output
+
+        # Compute log-likelihood
+        log_likelihood = - np.sum(np.log(sigma_tot)) \
+            - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
+
+        return log_likelihood
+
     def compute_log_likelihood(self, parameters, model_output, observations):
         r"""
         Returns the unnormalised log-likelihood score for the model parameters
@@ -181,29 +204,16 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             An array-like object with the observations of a biomarker
             :math:`x^{\text{obs}}`.
         """
-        model_output = np.asarray(model_output)
-        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+        model = np.asarray(model_output)
+        obs = np.asarray(observations)
         n_observations = len(observations)
-        if len(model_output) != n_observations:
+        if len(model) != n_observations:
             raise ValueError(
                 'The number of model outputs must match the number of '
                 'observations, otherwise they cannot be compared pair-wise.')
 
-        # Get parameters
-        sigma_base, sigma_rel = parameters
-
-        if sigma_base <= 0 or sigma_rel <= 0:
-            # sigma_base and sigma_rel are strictly positive
-            return -np.inf
-
-        # Compute total standard deviation
-        sigma_tot = sigma_base + sigma_rel * model_output
-
-        # Compute log-likelihood
-        log_likelihood = - np.sum(np.log(sigma_tot)) \
-            - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
-
-        return log_likelihood
+        return self._compute_log_likelihood(parameters, model, obs)
 
     def sample(self, parameters, model_output, n_samples=None, seed=None):
         """
