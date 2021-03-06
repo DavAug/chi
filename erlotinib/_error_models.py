@@ -42,7 +42,7 @@ class ErrorModel(object):
 
         where :math:`p` is the distribution defined by the mechanistic model-
         error model pair and :math:`x^{\text{obs}}` are the observed
-        biomarkers. :math:`\psi` and :math`\sigma` are the parameters of the
+        biomarkers. :math:`\psi` and :math:`\sigma` are the parameters of the
         mechanistic model and the error model, respectively.
 
         Parameters
@@ -78,7 +78,7 @@ class ErrorModel(object):
 
         where :math:`p` is the distribution defined by the mechanistic model-
         error model pair and :math:`x^{\text{obs}}` are the observed
-        biomarkers. :math:`\psi` and :math`\sigma` are the parameters of the
+        biomarkers. :math:`\psi` and :math:`\sigma` are the parameters of the
         mechanistic model and the error model, respectively.
 
         The sensitivities of the log-likelihood are defined as the partial
@@ -97,13 +97,13 @@ class ErrorModel(object):
             output of a :class:`MechanisticModel`. Each entry is a prediction
             of the mechanistic model for an observed time point in
             ``observations``.
-        :type model_output: list, numpy.ndarray of lenght t
+        :type model_output: list, numpy.ndarray of length t
         :param model_sensitivities: An array-like object with the partial
             derivatives of the model output w.r.t. the model parameters.
         :type model_sensitivities: numpy.ndarray of shape (t, p)
         :param observations: An array-like object with the observations of a
             biomarker.
-        :type observations: list, numpy.ndarray of lenght t
+        :type observations: list, numpy.ndarray of length t
         """
         raise NotImplementedError
 
@@ -347,21 +347,20 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         :param parameters: An array-like object with the error model
             parameters.
-        :type parameters: list, numpy.ndarray of lenght 2
+        :type parameters: list, numpy.ndarray of length 2
         :param model_output: An array-like object with the one-dimensional
             output of a :class:`MechanisticModel`. Each entry is a prediction
             of the mechanistic model for an observed time point in
             ``observations``.
-        :type model_output: list, numpy.ndarray of lenght t
+        :type model_output: list, numpy.ndarray of length t
         :param model_sensitivities: An array-like object with the partial
             derivatives of the model output w.r.t. the model parameters.
         :type model_sensitivities: numpy.ndarray of shape (t, p)
         :param observations: An array-like object with the observations of a
             biomarker.
-        :type observations: list, numpy.ndarray of lenght t
+        :type observations: list, numpy.ndarray of length t
         """
         #TODO:
-        # 3. Handle sensitivities for Reduced error model
         # 4. Write tests
         parameters = np.asarray(parameters)
         n_obs = len(observations)
@@ -631,18 +630,18 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
 
         :param parameters: An array-like object with the error model
             parameters.
-        :type parameters: list, numpy.ndarray of lenght 1
+        :type parameters: list, numpy.ndarray of length 1
         :param model_output: An array-like object with the one-dimensional
             output of a :class:`MechanisticModel`. Each entry is a prediction
             of the mechanistic model for an observed time point in
             ``observations``.
-        :type model_output: list, numpy.ndarray of lenght t
+        :type model_output: list, numpy.ndarray of length t
         :param model_sensitivities: An array-like object with the partial
             derivatives of the model output w.r.t. the model parameters.
         :type model_sensitivities: numpy.ndarray of shape (t, p)
         :param observations: An array-like object with the observations of a
             biomarker.
-        :type observations: list, numpy.ndarray of lenght t
+        :type observations: list, numpy.ndarray of length t
         """
         parameters = np.asarray(parameters)
         n_obs = len(observations)
@@ -773,7 +772,7 @@ class ReducedErrorModel(object):
 
         where :math:`p` is the distribution defined by the mechanistic model-
         error model pair and :math:`x^{\text{obs}}` are the observed
-        biomarkers. :math:`\psi` and :math`\sigma` are the parameters of the
+        biomarkers. :math:`\psi` and :math:`\sigma` are the parameters of the
         mechanistic model and the error model, respectively.
 
         Parameters
@@ -816,7 +815,7 @@ class ReducedErrorModel(object):
 
         where :math:`p` is the distribution defined by the mechanistic model-
         error model pair and :math:`x^{\text{obs}}` are the observed
-        biomarkers. :math:`\psi` and :math`\sigma` are the parameters of the
+        biomarkers. :math:`\psi` and :math:`\sigma` are the parameters of the
         mechanistic model and the error model, respectively.
 
         The sensitivities of the log-likelihood is defined as the partial
@@ -831,18 +830,18 @@ class ReducedErrorModel(object):
 
         :param parameters: An array-like object with the error model
             parameters.
-        :type parameters: list, numpy.ndarray of lenght p
+        :type parameters: list, numpy.ndarray of length p
         :param model_output: An array-like object with the one-dimensional
             output of a :class:`MechanisticModel`. Each entry is a prediction
             of the mechanistic model for an observed time point in
             ``observations``.
-        :type model_output: list, numpy.ndarray of lenght t
+        :type model_output: list, numpy.ndarray of length t
         :param model_sensitivities: An array-like object with the partial
             derivatives of the model output w.r.t. the model parameters.
         :type model_sensitivities: numpy.ndarray of shape (t, p)
         :param observations: An array-like object with the observations of a
             biomarker.
-        :type observations: list, numpy.ndarray of lenght t
+        :type observations: list, numpy.ndarray of length t
         """
         # Get fixed parameter values
         if self._fixed_params_mask is not None:
