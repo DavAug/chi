@@ -348,7 +348,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         :param parameters: An array-like object with the error model
             parameters.
-        :type parameters: list, numpy.ndarray of lenght p
+        :type parameters: list, numpy.ndarray of lenght 2
         :param model_output: An array-like object with the one-dimensional
             output of a :class:`MechanisticModel`. Each entry is a prediction
             of the mechanistic model for an observed time point in
@@ -517,6 +517,55 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
 
         return log_likelihood
 
+    @staticmethod
+    @njit
+    def _compute_sensitivities(
+            parameters, model_output, model_sensitivities, observations):
+        """
+        Calculates the log-lieklihood and its sensitivities using numba
+        speed up.
+
+        Expects:
+        Shape model output =  (n_obs, 1)
+        Shape sensitivities = (n_obs, n_parameters)
+        Shape observations =  (n_obs, 1)
+        """
+        # Get parameters
+        sigma_rel = parameters[0]
+
+        if sigma_rel <= 0:
+            # sigma_rel are strictly positive
+            n_parameters = model_sensitivities.shape[1] + 1
+            return -np.inf, np.full(n_parameters, np.inf)
+
+        # Compute total standard deviation
+        sigma_tot = sigma_rel * model_output
+
+        # Compute error and squared error
+        error = observations - model_output
+        squared_error = error**2
+
+        # Compute log-likelihood
+        n_obs = len(model_output)
+        log_likelihood = \
+            - n_obs * np.log(2 * np.pi) / 2 \
+            - np.sum(np.log(sigma_tot)) \
+            - np.sum(squared_error / sigma_tot**2) / 2
+
+        # Compute sensitivities
+        dpsi = \
+            0.5 * np.sum(
+                squared_error / sigma_tot**2 * model_sensitivities, axis=0) \
+            - sigma_rel * np.sum(model_sensitivities / sigma_tot, axis=0) \
+            + sigma_rel * np.sum(
+                squared_error / sigma_tot**3 * model_sensitivities, axis=0)
+        dsigma_rel = \
+            np.sum(squared_error / sigma_tot**3 * model_output, axis=0) \
+            - np.sum(model_output / sigma_tot, axis=0)
+        sensitivities = np.concatenate((dpsi, dsigma_rel))
+
+        return log_likelihood, sensitivities
+
     def compute_log_likelihood(self, parameters, model_output, observations):
         r"""
         Returns the log-likelihood score for the model parameters.
@@ -562,6 +611,53 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
                 'observations, otherwise they cannot be compared pair-wise.')
 
         return self._compute_log_likelihood(parameters, model, obs)
+
+    def compute_sensitivities(
+            self, parameters, model_output, model_sensitivities, observations):
+        r"""
+        Returns the log-likelihood of the model parameters and its
+        sensitivities w.r.t. the parameters.
+
+        In this method, the model output and the observations are compared
+        pair-wise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        The sensitivities of the log-likelihood is defined as the partial
+        derivative of the :math:`L` with respect to the model parameters
+
+        .. math::
+            \frac{\partial L}{\partial \psi}, \quad
+            \frac{\partial L}{\partial \sigma _{\text{base}} \quad
+            \frac{\partial L}{\partial \sigma _{\text{base}}.
+
+        :param parameters: An array-like object with the error model
+            parameters.
+        :type parameters: list, numpy.ndarray of lenght 1
+        :param model_output: An array-like object with the one-dimensional
+            output of a :class:`MechanisticModel`. Each entry is a prediction
+            of the mechanistic model for an observed time point in
+            ``observations``.
+        :type model_output: list, numpy.ndarray of lenght t
+        :param model_sensitivities: An array-like object with the partial
+            derivatives of the model output w.r.t. the model parameters.
+        :type model_sensitivities: numpy.ndarray of shape (t, p)
+        :param observations: An array-like object with the observations of a
+            biomarker.
+        :type observations: list, numpy.ndarray of lenght t
+        """
+        parameters = np.asarray(parameters)
+        n_obs = len(observations)
+        model = np.asarray(model_output).reshape((n_obs, 1))
+        sens = np.asarray(model_sensitivities)
+        obs = np.asarray(observations).reshape((n_obs, 1))
+        if len(model) != n_obs:
+            raise ValueError(
+                'The number of model outputs must match the number of '
+                'observations, otherwise they cannot be compared pair-wise.')
+
+        return self._compute_sensitivities(parameters, model, sens, obs)
 
     def sample(self, parameters, model_output, n_samples=None, seed=None):
         """
