@@ -201,6 +201,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         # Set defaults
         self._parameter_names = ['Sigma base', 'Sigma rel.']
         self._n_parameters = 2
+        self._selected_sensitivities = None
 
     @staticmethod
     @njit
@@ -360,6 +361,10 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             biomarker.
         :type observations: list, numpy.ndarray of lenght t
         """
+        #TODO:
+        # 2. Implement the same for MultiplicativeError (also properly normalise loglikelihood)
+        # 3. Handle sensitivities for Reduced error model
+        # 4. Write tests
         parameters = np.asarray(parameters)
         n_obs = len(observations)
         model = np.asarray(model_output).reshape((n_obs, 1))
@@ -444,10 +449,10 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
 class MultiplicativeGaussianErrorModel(ErrorModel):
     r"""
-    An error model that assumes that the model error is a Gaussian
+    An error model which assumes that the model error is a Gaussian
     heteroscedastic noise.
 
-    A MultiplicativeGaussianErrorModel assumes that the observable
+    A Gaussian heteroscedastic noise model assumes that the observable
     biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
     output by
 
@@ -487,10 +492,34 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         self._parameter_names = ['Sigma rel.']
         self._n_parameters = 1
 
+    @staticmethod
+    @njit
+    def _compute_log_likelihood(parameters, model_output, observations):
+        """
+        Calculates the log-lieklihood using numba speed up.
+        """
+        # Get parameters
+        sigma_rel = parameters[0]
+
+        if sigma_rel <= 0:
+            # sigma_base and sigma_rel are strictly positive
+            return -np.inf
+
+        # Compute total standard deviation
+        sigma_tot = sigma_rel * model_output
+
+        # Compute log-likelihood
+        n_obs = len(model_output)
+        log_likelihood = \
+            - n_obs * np.log(2 * np.pi) / 2 \
+            - np.sum(np.log(sigma_tot)) \
+            - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
+
+        return log_likelihood
+
     def compute_log_likelihood(self, parameters, model_output, observations):
         r"""
-        Returns the unnormalised log-likelihood score for the model parameters
-        of the mechanistic model-error model pair.
+        Returns the log-likelihood score for the model parameters.
 
         In this method, the model output :math:`x^{\text{m}}` and the
         observations :math:`x^{\text{obs}}` are compared pair-wise, and the
@@ -510,10 +539,6 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
 
-        .. note::
-            All constant terms that do not depend on the model parameters are
-            dropped when computing the log-likelihood score.
-
         Parameters
         ----------
         parameters
@@ -527,29 +552,16 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
             An array-like object with the observations of a biomarker
             :math:`x^{\text{obs}}`.
         """
-        model_output = np.asarray(model_output)
-        observations = np.asarray(observations)
-        n_observations = len(observations)
-        if len(model_output) != n_observations:
+        parameters = np.asarray(parameters)
+        model = np.asarray(model_output)
+        obs = np.asarray(observations)
+        n_obs = len(observations)
+        if len(model) != n_obs:
             raise ValueError(
                 'The number of model outputs must match the number of '
                 'observations, otherwise they cannot be compared pair-wise.')
 
-        # Get parameters
-        sigma_rel = parameters[0]
-
-        if sigma_rel <= 0:
-            # sigma_base and sigma_rel are strictly positive
-            return -np.inf
-
-        # Compute total standard deviation
-        sigma_tot = sigma_rel * model_output
-
-        # Compute log-likelihood
-        log_likelihood = - np.sum(np.log(sigma_tot)) \
-            - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
-
-        return log_likelihood
+        return self._compute_log_likelihood(parameters, model, obs)
 
     def sample(self, parameters, model_output, n_samples=None, seed=None):
         """
