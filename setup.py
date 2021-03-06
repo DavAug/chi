@@ -24,6 +24,7 @@ setup(
         'dash-bootstrap-components>=0.10',
         'jupyter==1.0.0',
         'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
+        'numba>=0.52',
         'numpy>=1.8',
         'pandas>=0.24',
         'pints @ git+git://github.com/pints-team/pints.git#egg=pints',
