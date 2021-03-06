@@ -25,15 +25,24 @@ class ErrorModel(object):
         self._n_parameters = None
 
     def compute_log_likelihood(self, parameters, model_output, observations):
-        """
-        Returns the unnormalised log-likelihood score for the model parameters
-        of the mechanistic model-error model pair.
+        r"""
+        Returns the log-likelihood of the model parameters.
 
         In this method, the model output and the observations are compared
         pair-wise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
+
+        Formally the log-likelihood is given by
+
+        .. math::
+            L(\psi, \sigma ) = \sum _i \log p(x_i | \psi , \sigma ) ,
+
+        where :math:`p` is the distribution defined by the mechanistic model-
+        error model pair and :math:`x_i` are the observed biomarkers.
+        :math:`\psi` and :math`\sigma` are the parameters of the mechanistic
+        model and the error model, respectively.
 
         Parameters
         ----------
@@ -45,6 +54,55 @@ class ErrorModel(object):
             mechanistic model for an observed time point in ``observations``.
         observations
             An array-like object with the observations of a biomarker.
+        """
+        raise NotImplementedError
+
+    def compute_sensitivities(
+            self, parameters, model_output, model_sensitivities, observations):
+        r"""
+        Returns the log-likelihood of the model parameters and its
+        sensitivities w.r.t. the parameters.
+
+        In this method, the model output and the observations are compared
+        pair-wise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        Formally the log-likelihood is given by
+
+        .. math::
+            L(\psi, \sigma ) = \sum _i \log p(x_i | \psi , \sigma ) ,
+
+        where :math:`p` is the distribution defined by the mechanistic model-
+        error model pair and :math:`x_i` are the observed biomarkers.
+        :math:`\psi` and :math`\sigma` are the parameters of the mechanistic
+        model and the error model, respectively.
+
+        The sensitivities of the log-likelihood is defined as the partial
+        derivative of the :math:`L` with respect to the model parameters
+
+        .. math::
+            \frac{\partial L}{\partial \psi} \quad \text{and} \quad
+            \frac{\partial L}{\partial \sigma},
+
+        where both :math:`\psi` and :math:`\sigma` should be interpreted
+        as a collection of multiple parameters.
+
+        :param parameters: An array-like object with the error model
+            parameters.
+        :type parameters: list, numpy.ndarray of lenght p
+        :param model_output: An array-like object with the one-dimensional
+            output of a :class:`MechanisticModel`. Each entry is a prediction
+            of the mechanistic model for an observed time point in
+            ``observations``.
+        :type model_output: list, numpy.ndarray of lenght t
+        :param model_sensitivities: An array-like object with the partial
+            derivatives of the model output w.r.t. the model parameters.
+        :type model_sensitivities: numpy.ndarray of shape (t, p)
+        :param observations: An array-like object with the observations of a
+            biomarker.
+        :type observations: list, numpy.ndarray of lenght t
         """
         raise NotImplementedError
 
@@ -214,6 +272,44 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
                 'observations, otherwise they cannot be compared pair-wise.')
 
         return self._compute_log_likelihood(parameters, model, obs)
+
+    def compute_sensitivities(
+            self, parameters, model_output, model_sensitivities, observations):
+        """
+        Returns the log-likelihood of the model parameters and its
+        sensitivities w.r.t. the parameters.
+
+        In this method, the model output and the observations are compared
+        pair-wise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        :param parameters: An array-like object with the error model
+            parameters.
+        :type parameters: list, numpy.ndarray of lenght p
+        :param model_output: An array-like object with the one-dimensional
+            output of a :class:`MechanisticModel`. Each entry is a prediction
+            of the mechanistic model for an observed time point in
+            ``observations``.
+        :type model_output: list, numpy.ndarray of lenght t
+        :param model_sensitivities: An array-like object with the partial
+            derivatives of the model output w.r.t. the model parameters.
+        :type model_sensitivities: numpy.ndarray of shape (t, p)
+        :param observations: An array-like object with the observations of a
+            biomarker.
+        :type observations: list, numpy.ndarray of lenght t
+        """
+        parameters = np.asarray(parameters)
+        model = np.asarray(model_output)
+        sens = np.asarray(model_sensitivities)
+        obs = np.asarray(observations)
+        n_observations = len(observations)
+        if len(model) != n_observations:
+            raise ValueError(
+                'The number of model outputs must match the number of '
+                'observations, otherwise they cannot be compared pair-wise.')
+        # TODO:
 
     def sample(self, parameters, model_output, n_samples=None, seed=None):
         """
