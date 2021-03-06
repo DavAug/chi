@@ -81,19 +81,18 @@ class ErrorModel(object):
         biomarkers. :math:`\psi` and :math`\sigma` are the parameters of the
         mechanistic model and the error model, respectively.
 
-        The sensitivities of the log-likelihood is defined as the partial
-        derivative of the :math:`L` with respect to the model parameters
+        The sensitivities of the log-likelihood are defined as the partial
+        derivatives of :math:`L` with respect to the model parameters
 
         .. math::
             \frac{\partial L}{\partial \psi} \quad \text{and} \quad
             \frac{\partial L}{\partial \sigma},
 
-        where both :math:`\psi` and :math:`\sigma` should be interpreted
-        as a collection of multiple parameters.
+        where both :math:`\psi` and :math:`\sigma` can be multi-dimensional.
 
         :param parameters: An array-like object with the error model
             parameters.
-        :type parameters: list, numpy.ndarray of lenght p
+        :type parameters: list, numpy.ndarray
         :param model_output: An array-like object with the one-dimensional
             output of a :class:`MechanisticModel`. Each entry is a prediction
             of the mechanistic model for an observed time point in
@@ -343,8 +342,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         .. math::
             \frac{\partial L}{\partial \psi}, \quad
-            \frac{\partial L}{\partial \sigma _{\text{base}} \quad
-            \frac{\partial L}{\partial \sigma _{\text{base}}.
+            \frac{\partial L}{\partial \sigma _{\text{base}}}, \quad
+            \frac{\partial L}{\partial \sigma _{\text{rel}}}.
 
         :param parameters: An array-like object with the error model
             parameters.
@@ -628,8 +627,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
 
         .. math::
             \frac{\partial L}{\partial \psi}, \quad
-            \frac{\partial L}{\partial \sigma _{\text{base}} \quad
-            \frac{\partial L}{\partial \sigma _{\text{base}}.
+            \frac{\partial L}{\partial \sigma _{\text{rel}}}.
 
         :param parameters: An array-like object with the error model
             parameters.
