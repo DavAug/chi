@@ -659,6 +659,49 @@ class TestReducedErrorModel(unittest.TestCase):
         self.error_model.fix_parameters(name_value_dict={
             'Sigma base': None})
 
+    def test_compute_sensitivities(self):
+        # Test case I: fix some parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': 0.1})
+
+        # Compute log-likelihood and sensitivities
+        parameters = [0.2]
+        model_output = [1, 2, 3, 4]
+        observations = [2, 3, 4, 5]
+        m_sens = np.array([[1, 2, 3, 4], [1, 1, 1, 1]]).T
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, m_sens, observations)
+
+        # Compute ref score with original error model
+        parameters = [0.1, 0.2]
+        error_model = self.error_model.get_error_model()
+        ref_score, ref_sens = error_model.compute_sensitivities(
+            parameters, model_output, m_sens, observations)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertEqual(len(ref_sens), 4)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[3])
+
+        # Unfix model parameters
+        self.error_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+        # Compute log-likelihood and sensitivities
+        parameters = [0.1, 0.2]
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, m_sens, observations)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 4)
+        self.assertEqual(len(ref_sens), 4)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+
     def test_fix_parameters(self):
         # Test case I: fix some parameters
         self.error_model.fix_parameters(name_value_dict={
