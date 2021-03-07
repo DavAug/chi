@@ -292,7 +292,7 @@ class ProblemModellingController(object):
             [self._time_key, self._biom_key, self._meas_key]]
         outputs = self._mechanistic_model.outputs()
         measured_outputs = []
-        for output in outputs:
+        for output_id, output in enumerate(outputs):
             # Mask data for biomarker
             biomarker = self._output_biomarker_dict[output]
             mask = data[self._biom_key] == biomarker
@@ -310,7 +310,7 @@ class ProblemModellingController(object):
             if (len(t) > 0) and (len(o) > 0):
                 times.append(t)
                 observations.append(o)
-                measured_outputs.append(output)
+                measured_outputs.append(output_id)
 
         # If no outputs were measured, do not construct a likelihood
         if len(measured_outputs) == 0:
@@ -318,17 +318,19 @@ class ProblemModellingController(object):
 
         # If not all outputs were measured, adjust outputs of mechanistic
         # model
+        mechanistic_model = self._mechanistic_model
+        error_models = self._error_models
         if len(measured_outputs) != len(outputs):
-            self._mechanistic_model.set_outputs(measured_outputs)
+            o = [outputs[index] for index in measured_outputs]
+            mechanistic_model = copy.deepcopy(self._mechanistic_model)
+            mechanistic_model.set_outputs(o)
+            error_models = [
+                self._error_models[index] for index in measured_outputs]
 
         # Create log-likelihood and set ID to individual
         log_likelihood = erlo.LogLikelihood(
-            self._mechanistic_model, self._error_models, observations, times)
+            mechanistic_model, error_models, observations, times)
         log_likelihood.set_id(individual)
-
-        # If outputs were adjusted, reset to original outputs
-        if len(measured_outputs) != len(outputs):
-            self._mechanistic_model.set_outputs(outputs)
 
         return log_likelihood
 
