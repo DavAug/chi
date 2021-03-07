@@ -307,6 +307,8 @@ class ProblemModellingController(object):
             observations.append(temp_df[self._meas_key].to_numpy())
 
         # Count outputs that were measured
+        # TODO: copy mechanistic model and update model outputs.
+        # (Useful for e.g. control group and dose group training)
         n_measured_outputs = 0
         for output_measurements in observations:
             if len(output_measurements) > 0:

@@ -19,15 +19,16 @@ jobs:
     steps:
       - uses: actions/checkout@v1
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.8
         uses: actions/setup-python@v1
         with:
-          python-version: 3.9
+          python-version: 3.8
           architecture: x64
 
       - name: install sundials (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
+          sudo apt-get update
           sudo apt-get install libsundials-dev
       
       - name: install sundials (macos)

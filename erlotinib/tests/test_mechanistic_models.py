@@ -866,6 +866,28 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(sens[1, 0, 2], ref_sens[1, 0, 2])
         self.assertEqual(sens[2, 0, 2], ref_sens[2, 0, 2])
 
+        # Fix parameters after enabling sensitivities
+        self.pd_model.fix_parameters({'myokit.lambda_0': 0.5})
+        times = [1, 2, 3]
+        parameters = [0, 0.3]
+        output, sens = self.pd_model.simulate(parameters, times)
+        output = output.squeeze()
+
+        self.assertEqual(len(output), 3)
+        self.assertEqual(len(ref_output), 3)
+        self.assertEqual(output[0], ref_output[0])
+        self.assertEqual(output[1], ref_output[1])
+        self.assertEqual(output[2], ref_output[2])
+
+        self.assertEqual(sens.shape, (3, 1, 2))
+        self.assertEqual(ref_sens.shape, (3, 1, 3))
+        self.assertEqual(sens[0, 0, 0], ref_sens[0, 0, 0])
+        self.assertEqual(sens[1, 0, 0], ref_sens[1, 0, 0])
+        self.assertEqual(sens[2, 0, 0], ref_sens[2, 0, 0])
+        self.assertEqual(sens[0, 0, 1], ref_sens[0, 0, 2])
+        self.assertEqual(sens[1, 0, 1], ref_sens[1, 0, 2])
+        self.assertEqual(sens[2, 0, 1], ref_sens[2, 0, 2])
+
     def test_simulator(self):
         self.assertIsInstance(self.pd_model.simulator, myokit.Simulation)
         self.assertIsInstance(self.pk_model.simulator, myokit.Simulation)
