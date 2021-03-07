@@ -854,7 +854,7 @@ class ReducedErrorModel(object):
 
         # Filter sensitivities for fixed parameters
         n_mechanistic = model_sensitivities.shape[1]
-        mask = np.ones(n_mechanistic + self._n_parameters)
+        mask = np.ones(n_mechanistic + self._n_parameters, dtype=bool)
         mask[-self._n_parameters:] = ~self._fixed_params_mask
 
         return score, sensitivities[mask]
