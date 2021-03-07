@@ -327,6 +327,15 @@ class TestErrorModel(unittest.TestCase):
             self.error_model.compute_log_likelihood(
                 parameters, model_output, observations)
 
+    def test_compute_sensitivities(self):
+        parameters = 'some parameters'
+        model_output = 'some output'
+        sens = 'some sensitivities'
+        observations = 'some observations'
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.error_model.compute_sensitivities(
+                parameters, model_output, sens, observations)
+
     def test_get_parameter_names(self):
         self.assertIsNone(self.error_model.get_parameter_names())
 
@@ -437,6 +446,105 @@ class TestMultiplicativeGaussianErrorModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
             self.error_model.compute_log_likelihood(
                 parameters, model_output, observations)
+
+    def test_compute_sensitivities(self):
+        # Test case I: If X = X^m, the scores reduce to
+        # L = -np.log(2pi)/2 - np.log(sigma_tot)
+        # dL/dpsi = -sigma_rel/sigma_tot * dx/dpsi
+        # dL/dsigma_base = -1/sigma_tot
+        # dL/dsigma_rel = -x/sigma_tot
+
+        # Test case I.1:
+        parameters = [0.1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.1 * 1)
+        ref_dpsi_0 = -10 * 0.1 / (0.1) * 1
+        ref_dpsi_1 = -10 * 0.1 / (0.1) * 2
+        ref_dsigma_rel = -10 / (0.1) * 1
+
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_rel)
+
+        # Test case I.2:
+        parameters = [0.1]
+        model_output = [10] * 10
+        observations = [10] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.1 * 10)
+        ref_dpsi_0 = -10 * 0.1 / (1) * 1
+        ref_dpsi_1 = -10 * 0.1 / (1) * 2
+        ref_dsigma_rel = -10 / (1) * 10
+
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_rel)
+
+        # Test case II: If sigma_tot = 1, the scores reduce to
+        # L = -np.log(2pi)/2 - (X-X^m) / 2
+        # dL/dpsi = (-sigma_rel + error + error^2*sigma_rel) * dx/dpsi
+        # dL/dsigma_base = - 1 + error^2
+        # dL/dsigma_rel = - x + x*error^2
+
+        # Test case II.1:
+        parameters = [1]
+        model_output = [1] * 10
+        observations = [2] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 2)**2 / 2
+        ref_dpsi_0 = 10 * (-1 + 1 + 1 * 1) * 1
+        ref_dpsi_1 = 10 * (-1 + 1 + 1 * 1) * 2
+        ref_dsigma_rel = -10 + 10 * 1 * 1
+
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_rel)
+
+        # Test case II.2:
+        parameters = [1]
+        model_output = [1] * 10
+        observations = [10] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 10)**2 / 2
+        ref_dpsi_0 = 10 * (-1 + 9 + 9**2 * 1) * 1
+        ref_dpsi_1 = 10 * (-1 + 9 + 9**2 * 1) * 2
+        ref_dsigma_rel = -10 + 10 * 9**2 * 1
+
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_rel)
+
+    def test_compute_sensitivities_bad_input(self):
+        # Model output and sensitivities don't match
+        parameters = [0.1]
+        model_output = ['some', 'length']
+        observations = ['some', 'length']
+        sens = ['some', 'other', 'length']
+        with self.assertRaisesRegex(ValueError, 'The first dimension of'):
+            self.error_model.compute_sensitivities(
+                parameters, model_output, sens, observations)
 
     def test_get_parameter_names(self):
         parameters = self.error_model.get_parameter_names()
