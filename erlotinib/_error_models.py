@@ -204,7 +204,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
     @staticmethod
     @njit
-    def _compute_log_likelihood(parameters, model_output, observations):
+    def _compute_log_likelihood(
+            parameters, model_output, observations):  # pragma: no cover
         """
         Calculates the log-lieklihood using numba speed up.
         """
@@ -230,7 +231,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     @staticmethod
     @njit
     def _compute_sensitivities(
-            parameters, model_output, model_sensitivities, observations):
+            parameters, model_output, model_sensitivities,
+            observations):  # pragma: no cover
         """
         Calculates the log-lieklihood and its sensitivities using numba
         speed up.
@@ -489,7 +491,8 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
 
     @staticmethod
     @njit
-    def _compute_log_likelihood(parameters, model_output, observations):
+    def _compute_log_likelihood(
+            parameters, model_output, observations):  # pragma: no cover
         """
         Calculates the log-lieklihood using numba speed up.
         """
@@ -515,7 +518,8 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
     @staticmethod
     @njit
     def _compute_sensitivities(
-            parameters, model_output, model_sensitivities, observations):
+            parameters, model_output, model_sensitivities,
+            observations):  # pragma: no cover
         """
         Calculates the log-lieklihood and its sensitivities using numba
         speed up.
