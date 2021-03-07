@@ -264,8 +264,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
         # Compute sensitivities
         dpsi = \
-            0.5 * np.sum(
-                squared_error / sigma_tot**2 * model_sensitivities, axis=0) \
+            np.sum(
+                error / sigma_tot**2 * model_sensitivities, axis=0) \
             - sigma_rel * np.sum(model_sensitivities / sigma_tot, axis=0) \
             + sigma_rel * np.sum(
                 squared_error / sigma_tot**3 * model_sensitivities, axis=0)
@@ -360,17 +360,15 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             biomarker.
         :type observations: list, numpy.ndarray of length t
         """
-        #TODO:
-        # 4. Write tests
         parameters = np.asarray(parameters)
         n_obs = len(observations)
         model = np.asarray(model_output).reshape((n_obs, 1))
         sens = np.asarray(model_sensitivities)
         obs = np.asarray(observations).reshape((n_obs, 1))
-        if len(model) != n_obs:
+        if len(sens) != n_obs:
             raise ValueError(
-                'The number of model outputs must match the number of '
-                'observations, otherwise they cannot be compared pair-wise.')
+                'The first dimension of the sensitivities must match the '
+                'number of observations.')
 
         return self._compute_sensitivities(parameters, model, sens, obs)
 
