@@ -156,11 +156,11 @@ class ErrorModel(object):
 
 class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
     r"""
-    An error model that assumes that the model error is a mixture between a
+    An error model which assumes that the model error is a mixture between a
     Gaussian base-level noise and a Gaussian heteroscedastic noise.
 
     A ConstantAndMultiplicativeGaussianErrorModel assumes that the observable
-    biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
+    biomarker :math:`X` is related to the :class:`MechanisticModel`
     output by
 
     .. math::
@@ -339,8 +339,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
 
-        The sensitivities of the log-likelihood is defined as the partial
-        derivative of the :math:`L` with respect to the model parameters
+        The sensitivities of the log-likelihood are defined as the partial
+        derivatives of :math:`L` with respect to the model parameters
 
         .. math::
             \frac{\partial L}{\partial \psi}, \quad
@@ -450,7 +450,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
     heteroscedastic noise.
 
     A Gaussian heteroscedastic noise model assumes that the observable
-    biomarker :math:`X` is related to the :class:`MechanisticModel` biomarker
+    biomarker :math:`X` is related to the :class:`MechanisticModel`
     output by
 
     .. math::
@@ -623,8 +623,8 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
 
-        The sensitivities of the log-likelihood is defined as the partial
-        derivative of the :math:`L` with respect to the model parameters
+        The sensitivities of the log-likelihood are defined as the partial
+        derivatives of :math:`L` with respect to the model parameters
 
         .. math::
             \frac{\partial L}{\partial \psi}, \quad
