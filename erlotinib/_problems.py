@@ -290,7 +290,9 @@ class ProblemModellingController(object):
         mask = self._data[self._id_key] == individual
         data = self._data[mask][
             [self._time_key, self._biom_key, self._meas_key]]
-        for output in self._mechanistic_model.outputs():
+        outputs = self._mechanistic_model.outputs()
+        measured_outputs = []
+        for output in outputs:
             # Mask data for biomarker
             biomarker = self._output_biomarker_dict[output]
             mask = data[self._biom_key] == biomarker
@@ -303,25 +305,30 @@ class ProblemModellingController(object):
             temp_df = temp_df[mask]
 
             # Collect data for output
-            times.append(temp_df[self._time_key].to_numpy())
-            observations.append(temp_df[self._meas_key].to_numpy())
-
-        # Count outputs that were measured
-        # TODO: copy mechanistic model and update model outputs.
-        # (Useful for e.g. control group and dose group training)
-        n_measured_outputs = 0
-        for output_measurements in observations:
-            if len(output_measurements) > 0:
-                n_measured_outputs += 1
+            t = temp_df[self._time_key].to_numpy()
+            o = temp_df[self._meas_key].to_numpy()
+            if (len(t) > 0) and (len(o) > 0):
+                times.append(t)
+                observations.append(o)
+                measured_outputs.append(output)
 
         # If no outputs were measured, do not construct a likelihood
-        if n_measured_outputs == 0:
+        if len(measured_outputs) == 0:
             return None
+
+        # If not all outputs were measured, adjust outputs of mechanistic
+        # model
+        if len(measured_outputs) != len(outputs):
+            self._mechanistic_model.set_outputs(measured_outputs)
 
         # Create log-likelihood and set ID to individual
         log_likelihood = erlo.LogLikelihood(
             self._mechanistic_model, self._error_models, observations, times)
         log_likelihood.set_id(individual)
+
+        # If outputs were adjusted, reset to original outputs
+        if len(measured_outputs) != len(outputs):
+            self._mechanistic_model.set_outputs(outputs)
 
         return log_likelihood
 
