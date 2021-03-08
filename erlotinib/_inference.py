@@ -361,6 +361,7 @@ class SamplingController(InferenceController):
 
         # Set default sampler
         self._sampler = pints.HaarioACMC
+        self._divergent_iterations = None
 
     def _format_chains(self, chains, names, ids):
         """
@@ -455,9 +456,23 @@ class SamplingController(InferenceController):
 
         return zip(ids, parameters)
 
+    def get_divergencent_iterations(self):
+        """
+        Returns the number of divergent trajectories for Hamiltonian Monte
+        Carlo (HMC) samplers, or ``None``.
+
+        HMC samplers leverage geometric properties of the log-posterior
+        surface to efficiently generate less correlated samples. This
+        exploitation of the geometry has the draw back that it can go wrong
+        in areas of parameter space with very large curvature. When that
+        happens, the posterior samples will no longer converge to the true
+        posterior distribution. The number of divergent trajectories
+        """
+        return self._divergent_iterations
+
     def run(
-            self, n_iterations=10000, show_progress_bar=False,
-            log_to_screen=False):
+            self, n_iterations=10000, hyperparameters=None,
+            show_progress_bar=False, log_to_screen=False):
         """
         Runs the sampling routine and returns the sampled parameter values in
         form of a :class:`xarray.Dataset` with :class:`xarray.DataArray`
@@ -473,6 +488,9 @@ class SamplingController(InferenceController):
         :param n_iterations: A non-negative integer number which sets the
             number of iterations of the MCMC runs.
         :type n_iterations: int, optional
+        :param hyperparameters: A list of hyperparameters for the sampling
+            method. If ``None`` the default hyperparameters are set.
+        :type hyperparameters: list[float], optional
         :param show_progress_bar: A boolean flag which indicates for how
             many posteriors the inference has been completed.
         :type show_progress_bar: bool, optional
@@ -483,6 +501,7 @@ class SamplingController(InferenceController):
         """
         # Sample from the individual log_posteriors
         posterior_samples = []
+        divergent_iters = []
         for posterior_id, log_posterior in enumerate(tqdm(
                 self._log_posteriors, disable=not show_progress_bar)):
             # Set up sampler
@@ -495,9 +514,13 @@ class SamplingController(InferenceController):
 
             # Configure sampling routine
             sampler.set_log_to_screen(log_to_screen)
-            sampler.set_log_interval(iters=500, warm_up=3)
+            sampler.set_log_interval(iters=20, warm_up=3)
             sampler.set_max_iterations(iterations=n_iterations)
             sampler.set_parallel(self._parallel_evaluation)
+
+            if hyperparameters is not None:
+                for s in sampler.samplers():
+                    s.set_hyper_parameters(hyperparameters)
 
             # Run sampling routine
             chains = sampler.run()
@@ -509,6 +532,18 @@ class SamplingController(InferenceController):
 
             # Append chains to container
             posterior_samples.append(chains)
+
+            # If Hamiltonian Monte Carlo, get number of divergent
+            # iterations
+            if issubclass(
+                    self._sampler, (pints.HamiltonianMCMC, pints.NoUTurnMCMC)):
+                divergent_iters.append(
+                    [s.divergent_iterations() for s in sampler.samplers()])
+
+        # Remember divergences
+        self._divergent_iterations = None
+        if divergent_iters:
+            self._divergent_iterations = divergent_iters
 
         # If only one posterior is run, remove padding list
         if len(posterior_samples) == 1:
