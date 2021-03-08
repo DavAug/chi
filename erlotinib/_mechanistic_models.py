@@ -68,24 +68,21 @@ class MechanisticModel(object):
         parameters = parameters[self._original_order]
         self.simulator.set_state(parameters)
 
-    def _set_number_and_names(self, model=None):
+    def _set_number_and_names(self):
         """
         Sets the number of states, parameters and outputs, as well as their
         names. If the model is ``None`` the self._model is taken.
         """
-        if model is None:
-            model = self._model
-
         # Get the number of states and parameters
-        self._n_states = model.count_states()
-        n_const = model.count_variables(const=True)
+        self._n_states = self._model.count_states()
+        n_const = self._model.count_variables(const=True)
         self._n_parameters = self._n_states + n_const
 
         # Get constant variable names and state names
-        names = [var.qname() for var in model.states()]
+        names = [var.qname() for var in self._model.states()]
         self._state_names = sorted(names)
         self._const_names = sorted(
-            [var.qname() for var in model.variables(const=True)])
+            [var.qname() for var in self._model.variables(const=True)])
 
         # Remember original order of state names for simulation
         order_after_sort = np.argsort(names)
@@ -469,6 +466,9 @@ class PharmacokineticModel(MechanisticModel):
         # Set default dose administration
         self._administration = None
 
+        # Safe vanilla model
+        self._vanilla_model = self._model.clone()
+
         # Set default output variable that interacts with the pharmacodynamic
         # model
         # (Typically drug concentration in central compartment)
@@ -519,8 +519,11 @@ class PharmacokineticModel(MechanisticModel):
             )
         )
 
+        # Remember updated model
+        self._model = model
+
         # Update number of parameters and states, as well as their names
-        self._set_number_and_names(model)
+        self._set_number_and_names()
 
         # Set default output to pd_output if it is not None
         if self._pd_output is not None:
@@ -627,7 +630,7 @@ class PharmacokineticModel(MechanisticModel):
         :type direct: bool, optional
         """
         # Check inputs
-        model = self._model.clone()
+        model = self._vanilla_model.clone()
         if not model.has_component(compartment):
             raise ValueError(
                 'The model does not have a compartment named <'
@@ -656,6 +659,7 @@ class PharmacokineticModel(MechanisticModel):
         # Update simulator
         # (otherwise simulator won't know about pace bound variable)
         self.simulator = myokit.Simulation(model)
+        self._has_sensitivities = False
 
         # Remember type of administration
         self._administration = dict(

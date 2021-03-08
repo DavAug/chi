@@ -340,6 +340,42 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(admin['compartment'], 'central')
         self.assertFalse(admin['direct'])
 
+    def test_enable_sensitivities(self):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+
+        # Disable sensitivities before setting administration
+        model.enable_sensitivities(False)
+        self.assertFalse(model.has_sensitivities())
+
+        # Set administration and check that sensitivities are still
+        # disabled
+        model.set_administration(compartment='central', direct=False)
+        self.assertFalse(model.has_sensitivities())
+
+        # Enable sensitivities
+        model.enable_sensitivities(True)
+        self.assertTrue(model.has_sensitivities())
+        times = [0, 1, 2, 3]
+        parameters = [1, 1, 1, 1, 1]
+        output, sens = model.simulate(parameters, times)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertEqual(sens.shape, (4, 1, 5))
+
+        # Enable sensitivities before setting an administration
+        model = erlo.PharmacokineticModel(path)
+        model.enable_sensitivities(True)
+        self.assertTrue(model.has_sensitivities())
+        times = [0, 1, 2, 3]
+        parameters = [1, 1, 1]
+        output, sens = model.simulate(parameters, times)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertEqual(sens.shape, (4, 1, 3))
+
+        # Set administration
+        model.set_administration(compartment='central', direct=False)
+        self.assertFalse(model.has_sensitivities())
+
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
 
