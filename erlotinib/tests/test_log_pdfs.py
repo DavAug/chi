@@ -634,6 +634,25 @@ class TestLogLikelihood(unittest.TestCase):
         cls.log_likelihood = erlo.LogLikelihood(
             cls.model, cls.error_models, cls.observations, cls.times)
 
+    def test_instantiation(self):
+        # Check whether changing the model changes the log-likelihood
+        obs = [1, 1.1, 1.2, 1.3]
+        times = [1, 2, 3, 4]
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+        error_model = [
+            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        log_likelihood = erlo.LogLikelihood(
+            model, error_model, obs, times)
+        m = log_likelihood.get_submodels()['Mechanistic model']
+        self.assertEqual(model.n_parameters(), 3)
+        self.assertEqual(m.n_parameters(), 3)
+
+        model.set_administration('central', direct=False)
+        m = log_likelihood.get_submodels()['Mechanistic model']
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(m.n_parameters(), 3)
+
     def test_bad_instantiation(self):
         # Mechantic model has wrong type
         mechanistic_model = 'wrong type'
@@ -738,6 +757,62 @@ class TestLogLikelihood(unittest.TestCase):
 
         # Reset number of outputs
         self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
+
+        # Make sure that call works even when sensitivities were initially
+        # switched on
+        m = self.log_likelihood.get_submodels()['Mechanistic model']
+        m.enable_sensitivities(True)
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.log_likelihood(parameters)
+
+        # Leave observations for one outputs empty
+        obs = [[], self.observations[1]]
+        times = [[], self.times[1]]
+        ll = erlo.LogLikelihood(
+            self.model, self.error_models, obs, times)
+
+        parameters = [9, 8, 7, 6, 5, 4, 3, 2, 1]
+        score = ll(parameters)
+        self.assertEqual(score, ref_score_2)
+
+    def test_evaluateS1(self):
+        # Test case I: Compute reference score manually
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        times = self.times[0]
+        observations = self.observations[0]
+        self.model.enable_sensitivities(True)
+        model_output, model_sens = self.model.simulate(
+            parameters[:5], times)
+        model_output = model_output[0]
+        model_sens = model_sens[:, 0, :]
+        error_model = self.error_models[0]
+        ref_score_1, ref_sens_1 = error_model.compute_sensitivities(
+            parameters[5:7], model_output, model_sens, observations)
+        times = self.times[1]
+        observations = self.observations[1]
+        model_output, model_sens = self.model.simulate(
+            parameters[:5], times)
+        model_output = model_output[1]
+        model_sens = model_sens[:, 1, :]
+        error_model = self.error_models[1]
+        ref_score_2, ref_sens_2 = error_model.compute_sensitivities(
+            parameters[7:9], model_output, model_sens, observations)
+
+        ref_score = ref_score_1 + ref_score_2
+        score, sens = self.log_likelihood.evaluateS1(parameters)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 9)
+        ref_dpsi = ref_sens_1[:5] + ref_sens_2[:5]
+        self.assertAlmostEqual(sens[0], ref_dpsi[0])
+        self.assertAlmostEqual(sens[1], ref_dpsi[1])
+        self.assertAlmostEqual(sens[2], ref_dpsi[2])
+        self.assertAlmostEqual(sens[3], ref_dpsi[3])
+        self.assertAlmostEqual(sens[4], ref_dpsi[4])
+        self.assertAlmostEqual(sens[5], ref_sens_1[5])
+        self.assertAlmostEqual(sens[6], ref_sens_1[6])
+        self.assertAlmostEqual(sens[7], ref_sens_2[5])
+        self.assertAlmostEqual(sens[8], ref_sens_2[6])
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
