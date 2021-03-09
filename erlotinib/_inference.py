@@ -456,7 +456,7 @@ class SamplingController(InferenceController):
 
         return zip(ids, parameters)
 
-    def get_divergencent_iterations(self):
+    def get_divergent_iterations(self):
         """
         Returns the number of divergent trajectories for Hamiltonian Monte
         Carlo (HMC) samplers, or ``None``.
