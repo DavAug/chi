@@ -7,6 +7,7 @@
 
 import copy
 
+import myokit
 import numpy as np
 import pints
 
@@ -752,7 +753,12 @@ class LogLikelihood(pints.LogPDF):
             error_model = [error_model]
 
         # Copy mechanistic model
-        mechanistic_model = copy.deepcopy(mechanistic_model)
+        # (Need to copy model manually, because deepcopy does not seem to work
+        # for sensitivities)
+        model = mechanistic_model.myokit_clone()
+        protocol = mechanistic_model.simulator._protocol
+        mechanistic_model = copy.copy(mechanistic_model)
+        mechanistic_model.simulator = myokit.Simulation(model, protocol)
 
         # Set outputs
         if outputs is not None:
@@ -860,11 +866,10 @@ class LogLikelihood(pints.LogPDF):
             # Get relevant mechanistic model outputs and parameters
             output = outputs[output_id, self._obs_masks[output_id]]
             end = start + self._n_error_params[output_id]
-            params = parameters[start:end]
 
             # Compute log-likelihood score for this output
             score += error_model.compute_log_likelihood(
-                parameters=params,
+                parameters=parameters[start:end],
                 model_output=output,
                 observations=self._observations[output_id])
 
@@ -970,7 +975,7 @@ class LogLikelihood(pints.LogPDF):
             self._mechanistic_model.enable_sensitivities(True)
 
         # Solve the mechanistic model
-        outputs, sens = self._mechanistic_model.simulate(
+        outputs, senss = self._mechanistic_model.simulate(
             parameters=parameters[:self._n_mechanistic_params],
             times=self._times)
 
@@ -980,24 +985,25 @@ class LogLikelihood(pints.LogPDF):
         # Compute log-likelihood score
         start = 0
         score = 0
+        n_mech = self._n_mechanistic_params
         sensitivities = np.zeros(shape=self._n_parameters)
         for output_id, error_model in enumerate(self._error_models):
-            # Get relevant mechanistic model outputs and parameters
+            # Get relevant mechanistic model outputs and sensitivities
             output = outputs[output_id, self._obs_masks[output_id]]
+            sens = senss[self._obs_masks[output_id], output_id, :]
             end = start + self._n_error_params[output_id]
 
             # Compute log-likelihood score for this output
             l, s = error_model.compute_sensitivities(
                 parameters=parameters[start:end],
                 model_output=output,
-                model_sensitivities=sens[:, output_id, :],
+                model_sensitivities=sens,
                 observations=self._observations[output_id])
 
             # Aggregate Log-likelihoods and sensitivities
             score += l
-            sensitivities[:self._n_mechanistic_params] += s[
-                :self._n_mechanistic_params]
-            sensitivities[start:end] += s[start:end]
+            sensitivities[:n_mech] += s[:n_mech]
+            sensitivities[n_mech+start:n_mech+end] += s[n_mech:]
 
             # Shift start index
             start = end
