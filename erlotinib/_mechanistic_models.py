@@ -198,6 +198,12 @@ class MechanisticModel(object):
         """
         return self._n_parameters
 
+    def myokit_clone(self):
+        """
+        Returns a deep copy of the myokit representation of the model.
+        """
+        return self._model.clone()
+
     def outputs(self):
         """
         Returns the output names of the model.
