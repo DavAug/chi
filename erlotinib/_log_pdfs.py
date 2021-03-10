@@ -7,7 +7,6 @@
 
 import copy
 
-import myokit
 import numpy as np
 import pints
 
