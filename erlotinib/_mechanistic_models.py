@@ -103,6 +103,26 @@ class MechanisticModel(object):
         self._output_name_map = dict(
             zip(self._output_names, self._output_names))
 
+    def copy(self):
+        """
+        Returns a deep copy of the mechanistic model.
+
+        .. note::
+            Copying the model resets the sensitivity settings.
+        """
+        # Copy model manually and get protocol
+        myokit_model = self._model.clone()
+        protocol = self.simulator._protocol
+
+        # Copy the mechanistic model
+        model = copy.deepcopy(self)
+
+        # Replace myokit model by safe copy and create simulator
+        model._model = myokit_model
+        model.simulator = myokit.Simulation(myokit_model, protocol)
+
+        return model
+
     def enable_sensitivities(self, enabled, parameter_names=None):
         """
         Enables the computation of the model output sensitivities to the model
@@ -197,12 +217,6 @@ class MechanisticModel(object):
         parameter values.
         """
         return self._n_parameters
-
-    def myokit_clone(self):
-        """
-        Returns a deep copy of the myokit representation of the model.
-        """
-        return self._model.clone()
 
     def outputs(self):
         """
