@@ -814,6 +814,27 @@ class ReducedMechanisticModel(object):
         self._n_parameters = mechanistic_model.n_parameters()
         self._parameter_names = mechanistic_model.parameters()
 
+    def copy(self):
+        """
+        Returns a deep copy of the reduced model.
+
+        .. note::
+            Copying the model resets the sensitivity settings.
+        """
+        # Get a safe copy of the mechanistic model
+        mechanistic_model = self._mechanistic_model.copy()
+
+        # Copy the reduced model
+        # (this possibly corrupts the mechanistic model and the
+        # simulator)
+        model = copy.deepcopy(self)
+
+        # Replace mechanistic model and simulator
+        model._mechanistic_model = mechanistic_model
+        model.simulator = mechanistic_model.simulator
+
+        return model
+
     def dosing_regimen(self):
         """
         Returns the dosing regimen of the compound in form of a
