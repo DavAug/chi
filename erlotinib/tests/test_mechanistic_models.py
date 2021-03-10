@@ -13,7 +13,7 @@ import numpy as np
 import erlotinib as erlo
 
 
-class TestModel(unittest.TestCase):
+class TestMechanisticModel(unittest.TestCase):
     """
     Tests `erlotinib.MechanisticModel`.
     """
@@ -21,6 +21,73 @@ class TestModel(unittest.TestCase):
     def setUpClass(cls):
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.MechanisticModel(path)
+
+    def test_copy(self):
+        # Case I: Copy model and check that all public properties coincide
+        model = self.model.copy()
+
+        self.assertFalse(model.has_sensitivities())
+        self.assertFalse(self.model.has_sensitivities())
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(self.model.n_parameters(), 5)
+        params_c = model.parameters()
+        params = self.model.parameters()
+        self.assertEqual(params_c[0], 'myokit.tumour_volume')
+        self.assertEqual(params_c[1], 'myokit.drug_concentration')
+        self.assertEqual(params_c[2], 'myokit.kappa')
+        self.assertEqual(params_c[3], 'myokit.lambda_0')
+        self.assertEqual(params_c[4], 'myokit.lambda_1')
+        self.assertEqual(params[0], 'myokit.tumour_volume')
+        self.assertEqual(params[1], 'myokit.drug_concentration')
+        self.assertEqual(params[2], 'myokit.kappa')
+        self.assertEqual(params[3], 'myokit.lambda_0')
+        self.assertEqual(params[4], 'myokit.lambda_1')
+
+        # Change output name
+        model.set_output_names({'myokit.tumour_volume': 'test'})
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+        # Set new outputs
+        model.set_outputs(
+            ['myokit.tumour_volume', 'myokit.tumour_volume'])
+        self.assertEqual(model.n_outputs(), 2)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs_c[1], 'test')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        model.set_outputs(['myokit.tumour_volume'])
+
+        # Rename some parameters
+        model.set_parameter_names({
+            'myokit.kappa': 'new 1',
+            'myokit.lambda_0': 'new 2'})
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(self.model.n_parameters(), 5)
+        params_c = model.parameters()
+        params = self.model.parameters()
+        self.assertEqual(params_c[0], 'myokit.tumour_volume')
+        self.assertEqual(params_c[1], 'myokit.drug_concentration')
+        self.assertEqual(params_c[2], 'new 1')
+        self.assertEqual(params_c[3], 'new 2')
+        self.assertEqual(params_c[4], 'myokit.lambda_1')
+        self.assertEqual(params[0], 'myokit.tumour_volume')
+        self.assertEqual(params[1], 'myokit.drug_concentration')
+        self.assertEqual(params[2], 'myokit.kappa')
+        self.assertEqual(params[3], 'myokit.lambda_0')
+        self.assertEqual(params[4], 'myokit.lambda_1')
 
     def test_enable_sensitivities(self):
         # Enable sensitivities
