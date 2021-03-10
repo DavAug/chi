@@ -475,7 +475,9 @@ class TestSamplingController(unittest.TestCase):
         sampler.set_parallel_evaluation(False)
 
         sampler.set_n_runs(3)
-        result = sampler.run(n_iterations=20)
+        hyperparameters = [1, 1]
+        result = sampler.run(
+            n_iterations=20, hyperparameters=hyperparameters)
 
         self.assertEqual(len(result), 2)
 
