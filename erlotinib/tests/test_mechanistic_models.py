@@ -732,6 +732,63 @@ class TestReducedMechanisticModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The mechanistic model'):
             erlo.ReducedMechanisticModel(model)
 
+    def test_copy(self):
+        # Fix some parameters
+        self.pk_model.fix_parameters({
+            'central.size': 1})
+
+        # Copy model and make sure the are identical
+        model = self.pk_model.copy()
+
+        self.assertFalse(model.has_sensitivities())
+        self.assertFalse(self.pk_model.has_sensitivities())
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'central.drug_concentration')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+        self.assertEqual(model.n_parameters(), 2)
+        self.assertEqual(self.pk_model.n_parameters(), 2)
+        params_c = model.parameters()
+        params = self.pk_model.parameters()
+        self.assertEqual(params_c[0], 'central.drug_amount')
+        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params[0], 'central.drug_amount')
+        self.assertEqual(params[1], 'myokit.elimination_rate')
+
+        # Rename the output
+        model.set_output_names({'central.drug_concentration': 'test'})
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+
+        # Set new ouputs
+        model.set_outputs(['test', 'central.drug_amount'])
+        self.assertEqual(model.n_outputs(), 2)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs_c[1], 'central.drug_amount')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+
+        # Fix different parameters
+        model.fix_parameters({
+            'central.size': None,
+            'central.drug_amount': 1})
+        self.assertEqual(model.n_parameters(), 2)
+        self.assertEqual(self.pk_model.n_parameters(), 2)
+        params_c = model.parameters()
+        params = self.pk_model.parameters()
+        self.assertEqual(params_c[0], 'central.size')
+        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params[0], 'central.drug_amount')
+        self.assertEqual(params[1], 'myokit.elimination_rate')
+
     def test_enable_sensitivities(self):
         # Enable sensitivities
         self.pd_model.enable_sensitivities(True)
