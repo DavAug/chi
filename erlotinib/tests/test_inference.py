@@ -397,6 +397,10 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(chains.loc[1], 1)
         self.assertEqual(chains.loc[2], 2)
 
+        attrs = result.attrs
+        divergent_iters = attrs['divergent iterations']
+        self.assertIsNone(divergent_iters)
+
         # Case II: Hierarchical model
         sampler = erlo.SamplingController(self.hierarchical_posterior)
 
@@ -443,6 +447,10 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(chains.loc[1], 1)
         self.assertEqual(chains.loc[2], 2)
 
+        attrs = result.attrs
+        divergent_iters = attrs['divergent iterations']
+        self.assertIsNone(divergent_iters)
+
         # Case III: Infer multiple independent models
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
@@ -459,6 +467,7 @@ class TestSamplingController(unittest.TestCase):
         problem.set_log_prior(log_priors)
         log_posterior = problem.get_log_posterior()
         sampler = erlo.SamplingController(log_posterior)
+        sampler.set_sampler(pints.HamiltonianMCMC)
 
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
@@ -517,6 +526,13 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(chains.loc[0], 0)
         self.assertEqual(chains.loc[1], 1)
         self.assertEqual(chains.loc[2], 2)
+
+        attrs = result[0].attrs
+        divergent_iters = attrs['divergent iterations']
+        self.assertEqual(len(divergent_iters), 3)
+        attrs = result[1].attrs
+        divergent_iters = attrs['divergent iterations']
+        self.assertEqual(len(divergent_iters), 3)
 
     def test_set_initial_parameters(self):
         # Test case I: Individual data
