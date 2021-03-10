@@ -753,12 +753,7 @@ class LogLikelihood(pints.LogPDF):
             error_model = [error_model]
 
         # Copy mechanistic model
-        # (Need to copy model manually, because deepcopy does not seem to work
-        # for sensitivities)
-        model = mechanistic_model.myokit_clone()
-        protocol = mechanistic_model.simulator._protocol
-        mechanistic_model = copy.copy(mechanistic_model)
-        mechanistic_model.simulator = myokit.Simulation(model, protocol)
+        mechanistic_model = mechanistic_model.copy()
 
         # Set outputs
         if outputs is not None:
