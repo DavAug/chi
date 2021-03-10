@@ -752,7 +752,7 @@ class LogLikelihood(pints.LogPDF):
             error_model = [error_model]
 
         # Copy mechanistic model
-        mechanistic_model = copy.deepcopy(mechanistic_model)
+        mechanistic_model = mechanistic_model.copy()
 
         # Set outputs
         if outputs is not None:
@@ -840,6 +840,11 @@ class LogLikelihood(pints.LogPDF):
         """
         Computes the log-likelihood score of the parameters.
         """
+        # Check that mechanistic model has sensitivities disabled
+        # (Simply for performance)
+        if self._mechanistic_model.has_sensitivities():
+            self._mechanistic_model.enable_sensitivities(False)
+
         # Solve the mechanistic model
         outputs = self._mechanistic_model.simulate(
             parameters=parameters[:self._n_mechanistic_params],
@@ -855,11 +860,10 @@ class LogLikelihood(pints.LogPDF):
             # Get relevant mechanistic model outputs and parameters
             output = outputs[output_id, self._obs_masks[output_id]]
             end = start + self._n_error_params[output_id]
-            params = parameters[start:end]
 
             # Compute log-likelihood score for this output
             score += error_model.compute_log_likelihood(
-                parameters=params,
+                parameters=parameters[start:end],
                 model_output=output,
                 observations=self._observations[output_id])
 
@@ -954,6 +958,51 @@ class LogLikelihood(pints.LogPDF):
         # Get number of mechanistic and error model parameters
         self._n_mechanistic_params = self._mechanistic_model.n_parameters()
         self._n_error_params = n_error_params
+
+    def evaluateS1(self, parameters):
+        """
+        Computes the log-likelihood of the parameters and its
+        sensitivities.
+        """
+        # Check that mechanistic model has sensitivities enabled
+        if not self._mechanistic_model.has_sensitivities():
+            self._mechanistic_model.enable_sensitivities(True)
+
+        # Solve the mechanistic model
+        outputs, senss = self._mechanistic_model.simulate(
+            parameters=parameters[:self._n_mechanistic_params],
+            times=self._times)
+
+        # Remember only error parameters
+        parameters = parameters[self._n_mechanistic_params:]
+
+        # Compute log-likelihood score
+        start = 0
+        score = 0
+        n_mech = self._n_mechanistic_params
+        sensitivities = np.zeros(shape=self._n_parameters)
+        for output_id, error_model in enumerate(self._error_models):
+            # Get relevant mechanistic model outputs and sensitivities
+            output = outputs[output_id, self._obs_masks[output_id]]
+            sens = senss[self._obs_masks[output_id], output_id, :]
+            end = start + self._n_error_params[output_id]
+
+            # Compute log-likelihood score for this output
+            l, s = error_model.compute_sensitivities(
+                parameters=parameters[start:end],
+                model_output=output,
+                model_sensitivities=sens,
+                observations=self._observations[output_id])
+
+            # Aggregate Log-likelihoods and sensitivities
+            score += l
+            sensitivities[:n_mech] += s[:n_mech]
+            sensitivities[n_mech+start:n_mech+end] += s[n_mech:]
+
+            # Shift start index
+            start = end
+
+        return score, sensitivities
 
     def fix_parameters(self, name_value_dict):
         """
@@ -1170,6 +1219,21 @@ class LogPosterior(pints.LogPDF):
             return score
 
         return score + self._log_likelihood(parameters)
+
+    def evaluateS1(self, parameters):
+        # Evaluate log-prior first, assuming this is very cheap
+        score, sensitivities = self._log_prior.evaluateS1(parameters)
+        if np.isinf(score):
+            return score, sensitivities
+
+        # Compute log-likelihood and sensitivities
+        l, s = self._log_likelihood.evaluateS1(parameters)
+
+        # Aggregate scores
+        score += l
+        sensitivities += s
+
+        return score, sensitivities
 
     def get_log_likelihood(self):
         """

@@ -13,7 +13,7 @@ import numpy as np
 import erlotinib as erlo
 
 
-class TestModel(unittest.TestCase):
+class TestMechanisticModel(unittest.TestCase):
     """
     Tests `erlotinib.MechanisticModel`.
     """
@@ -21,6 +21,73 @@ class TestModel(unittest.TestCase):
     def setUpClass(cls):
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.MechanisticModel(path)
+
+    def test_copy(self):
+        # Case I: Copy model and check that all public properties coincide
+        model = self.model.copy()
+
+        self.assertFalse(model.has_sensitivities())
+        self.assertFalse(self.model.has_sensitivities())
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(self.model.n_parameters(), 5)
+        params_c = model.parameters()
+        params = self.model.parameters()
+        self.assertEqual(params_c[0], 'myokit.tumour_volume')
+        self.assertEqual(params_c[1], 'myokit.drug_concentration')
+        self.assertEqual(params_c[2], 'myokit.kappa')
+        self.assertEqual(params_c[3], 'myokit.lambda_0')
+        self.assertEqual(params_c[4], 'myokit.lambda_1')
+        self.assertEqual(params[0], 'myokit.tumour_volume')
+        self.assertEqual(params[1], 'myokit.drug_concentration')
+        self.assertEqual(params[2], 'myokit.kappa')
+        self.assertEqual(params[3], 'myokit.lambda_0')
+        self.assertEqual(params[4], 'myokit.lambda_1')
+
+        # Change output name
+        model.set_output_names({'myokit.tumour_volume': 'test'})
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+        # Set new outputs
+        model.set_outputs(
+            ['myokit.tumour_volume', 'myokit.tumour_volume'])
+        self.assertEqual(model.n_outputs(), 2)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs_c[1], 'test')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        model.set_outputs(['myokit.tumour_volume'])
+
+        # Rename some parameters
+        model.set_parameter_names({
+            'myokit.kappa': 'new 1',
+            'myokit.lambda_0': 'new 2'})
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(self.model.n_parameters(), 5)
+        params_c = model.parameters()
+        params = self.model.parameters()
+        self.assertEqual(params_c[0], 'myokit.tumour_volume')
+        self.assertEqual(params_c[1], 'myokit.drug_concentration')
+        self.assertEqual(params_c[2], 'new 1')
+        self.assertEqual(params_c[3], 'new 2')
+        self.assertEqual(params_c[4], 'myokit.lambda_1')
+        self.assertEqual(params[0], 'myokit.tumour_volume')
+        self.assertEqual(params[1], 'myokit.drug_concentration')
+        self.assertEqual(params[2], 'myokit.kappa')
+        self.assertEqual(params[3], 'myokit.lambda_0')
+        self.assertEqual(params[4], 'myokit.lambda_1')
 
     def test_enable_sensitivities(self):
         # Enable sensitivities
@@ -340,6 +407,42 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(admin['compartment'], 'central')
         self.assertFalse(admin['direct'])
 
+    def test_enable_sensitivities(self):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+
+        # Disable sensitivities before setting administration
+        model.enable_sensitivities(False)
+        self.assertFalse(model.has_sensitivities())
+
+        # Set administration and check that sensitivities are still
+        # disabled
+        model.set_administration(compartment='central', direct=False)
+        self.assertFalse(model.has_sensitivities())
+
+        # Enable sensitivities
+        model.enable_sensitivities(True)
+        self.assertTrue(model.has_sensitivities())
+        times = [0, 1, 2, 3]
+        parameters = [1, 1, 1, 1, 1]
+        output, sens = model.simulate(parameters, times)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertEqual(sens.shape, (4, 1, 5))
+
+        # Enable sensitivities before setting an administration
+        model = erlo.PharmacokineticModel(path)
+        model.enable_sensitivities(True)
+        self.assertTrue(model.has_sensitivities())
+        times = [0, 1, 2, 3]
+        parameters = [1, 1, 1]
+        output, sens = model.simulate(parameters, times)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertEqual(sens.shape, (4, 1, 3))
+
+        # Set administration
+        model.set_administration(compartment='central', direct=False)
+        self.assertFalse(model.has_sensitivities())
+
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
 
@@ -628,6 +731,63 @@ class TestReducedMechanisticModel(unittest.TestCase):
         model = 'Bad type'
         with self.assertRaisesRegex(ValueError, 'The mechanistic model'):
             erlo.ReducedMechanisticModel(model)
+
+    def test_copy(self):
+        # Fix some parameters
+        self.pk_model.fix_parameters({
+            'central.size': 1})
+
+        # Copy model and make sure the are identical
+        model = self.pk_model.copy()
+
+        self.assertFalse(model.has_sensitivities())
+        self.assertFalse(self.pk_model.has_sensitivities())
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'central.drug_concentration')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+        self.assertEqual(model.n_parameters(), 2)
+        self.assertEqual(self.pk_model.n_parameters(), 2)
+        params_c = model.parameters()
+        params = self.pk_model.parameters()
+        self.assertEqual(params_c[0], 'central.drug_amount')
+        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params[0], 'central.drug_amount')
+        self.assertEqual(params[1], 'myokit.elimination_rate')
+
+        # Rename the output
+        model.set_output_names({'central.drug_concentration': 'test'})
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+
+        # Set new ouputs
+        model.set_outputs(['test', 'central.drug_amount'])
+        self.assertEqual(model.n_outputs(), 2)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs_c[1], 'central.drug_amount')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+
+        # Fix different parameters
+        model.fix_parameters({
+            'central.size': None,
+            'central.drug_amount': 1})
+        self.assertEqual(model.n_parameters(), 2)
+        self.assertEqual(self.pk_model.n_parameters(), 2)
+        params_c = model.parameters()
+        params = self.pk_model.parameters()
+        self.assertEqual(params_c[0], 'central.size')
+        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params[0], 'central.drug_amount')
+        self.assertEqual(params[1], 'myokit.elimination_rate')
 
     def test_enable_sensitivities(self):
         # Enable sensitivities

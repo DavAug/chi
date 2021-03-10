@@ -68,24 +68,21 @@ class MechanisticModel(object):
         parameters = parameters[self._original_order]
         self.simulator.set_state(parameters)
 
-    def _set_number_and_names(self, model=None):
+    def _set_number_and_names(self):
         """
         Sets the number of states, parameters and outputs, as well as their
         names. If the model is ``None`` the self._model is taken.
         """
-        if model is None:
-            model = self._model
-
         # Get the number of states and parameters
-        self._n_states = model.count_states()
-        n_const = model.count_variables(const=True)
+        self._n_states = self._model.count_states()
+        n_const = self._model.count_variables(const=True)
         self._n_parameters = self._n_states + n_const
 
         # Get constant variable names and state names
-        names = [var.qname() for var in model.states()]
+        names = [var.qname() for var in self._model.states()]
         self._state_names = sorted(names)
         self._const_names = sorted(
-            [var.qname() for var in model.variables(const=True)])
+            [var.qname() for var in self._model.variables(const=True)])
 
         # Remember original order of state names for simulation
         order_after_sort = np.argsort(names)
@@ -105,6 +102,26 @@ class MechanisticModel(object):
             zip(self._parameter_names, self._parameter_names))
         self._output_name_map = dict(
             zip(self._output_names, self._output_names))
+
+    def copy(self):
+        """
+        Returns a deep copy of the mechanistic model.
+
+        .. note::
+            Copying the model resets the sensitivity settings.
+        """
+        # Copy model manually and get protocol
+        myokit_model = self._model.clone()
+        protocol = self.simulator._protocol
+
+        # Copy the mechanistic model
+        model = copy.deepcopy(self)
+
+        # Replace myokit model by safe copy and create simulator
+        model._model = myokit_model
+        model.simulator = myokit.Simulation(myokit_model, protocol)
+
+        return model
 
     def enable_sensitivities(self, enabled, parameter_names=None):
         """
@@ -469,6 +486,9 @@ class PharmacokineticModel(MechanisticModel):
         # Set default dose administration
         self._administration = None
 
+        # Safe vanilla model
+        self._vanilla_model = self._model.clone()
+
         # Set default output variable that interacts with the pharmacodynamic
         # model
         # (Typically drug concentration in central compartment)
@@ -519,8 +539,11 @@ class PharmacokineticModel(MechanisticModel):
             )
         )
 
+        # Remember updated model
+        self._model = model
+
         # Update number of parameters and states, as well as their names
-        self._set_number_and_names(model)
+        self._set_number_and_names()
 
         # Set default output to pd_output if it is not None
         if self._pd_output is not None:
@@ -627,7 +650,7 @@ class PharmacokineticModel(MechanisticModel):
         :type direct: bool, optional
         """
         # Check inputs
-        model = self._model.clone()
+        model = self._vanilla_model.clone()
         if not model.has_component(compartment):
             raise ValueError(
                 'The model does not have a compartment named <'
@@ -656,6 +679,7 @@ class PharmacokineticModel(MechanisticModel):
         # Update simulator
         # (otherwise simulator won't know about pace bound variable)
         self.simulator = myokit.Simulation(model)
+        self._has_sensitivities = False
 
         # Remember type of administration
         self._administration = dict(
@@ -789,6 +813,27 @@ class ReducedMechanisticModel(object):
         self._fixed_params_values = None
         self._n_parameters = mechanistic_model.n_parameters()
         self._parameter_names = mechanistic_model.parameters()
+
+    def copy(self):
+        """
+        Returns a deep copy of the reduced model.
+
+        .. note::
+            Copying the model resets the sensitivity settings.
+        """
+        # Get a safe copy of the mechanistic model
+        mechanistic_model = self._mechanistic_model.copy()
+
+        # Copy the reduced model
+        # (this possibly corrupts the mechanistic model and the
+        # simulator)
+        model = copy.deepcopy(self)
+
+        # Replace mechanistic model and simulator
+        model._mechanistic_model = mechanistic_model
+        model.simulator = mechanistic_model.simulator
+
+        return model
 
     def dosing_regimen(self):
         """
