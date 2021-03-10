@@ -1007,10 +1007,34 @@ class TestLogPosterior(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The log-prior and the'):
             erlo.LogPosterior(self.log_likelihood, log_prior)
 
+    def test_call(self):
+        parameters = [1, 2, 3, 4, 5, 6, 7]
+        ref_score = \
+            self.log_likelihood(parameters) + self.log_prior(parameters)
+        score = self.log_posterior(parameters)
+        self.assertEqual(score, ref_score)
+
+    def test_evaluateS1(self):
+        parameters = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+        ref_score_1, ref_sens_1 = self.log_likelihood.evaluateS1(parameters)
+        ref_score_2, ref_sens_2 = self.log_prior.evaluateS1(parameters)
+        ref_score = ref_score_1 + ref_score_2
+        ref_sens = ref_sens_1 + ref_sens_2
+        score, sens = self.log_posterior.evaluateS1(parameters)
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 7)
+        self.assertEqual(len(ref_sens), 7)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
+        self.assertEqual(sens[6], ref_sens[6])
+
     def test_get_id(self):
         # Test case I: Non-trivial IDs
         _id = self.log_posterior.get_id()
-
         self.assertEqual(_id, 'ID 42')
 
     def test_get_log_likelihood(self):
