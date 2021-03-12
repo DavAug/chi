@@ -29,7 +29,7 @@ class ErrorModel(object):
         Returns the log-likelihood of the model parameters.
 
         In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
+        pairwise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
@@ -58,6 +58,41 @@ class ErrorModel(object):
         """
         raise NotImplementedError
 
+    def compute_pointwise_ll(self, parameters, model_output, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        In this method, the model output and the observations are compared
+        pairwise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        Formally the pointwise log-likelihood is given by
+
+        .. math::
+            L(\psi, \sigma | x^{\text{obs}}_i) =
+            \log p(x^{\text{obs}}_i | \psi , \sigma ) ,
+
+        where :math:`p` is the distribution defined by the mechanistic model-
+        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
+        observed biomarker value. :math:`\psi` and :math:`\sigma` are the
+        parameters of the mechanistic model and the error model, respectively.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        observations
+            An array-like object with the observations of a biomarker.
+        """
+        raise NotImplementedError
+
     def compute_sensitivities(
             self, parameters, model_output, model_sensitivities, observations):
         r"""
@@ -65,7 +100,7 @@ class ErrorModel(object):
         sensitivities w.r.t. the parameters.
 
         In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
+        pairwise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
@@ -229,6 +264,34 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
 
     @staticmethod
     @njit
+    def _compute_pointwise_ll(
+            parameters, model_output, observations):  # pragma: no cover
+        """
+        Calculates the pointwise log-lieklihood using numba speed up.
+
+        Returns a numpy array of shape (n_times,)
+        """
+        # Get parameters
+        sigma_base, sigma_rel = parameters
+
+        if sigma_base <= 0 or sigma_rel <= 0:
+            # sigma_base and sigma_rel are strictly positive
+            n_obs = len(model_output)
+            return np.full(n_obs, -np.inf)
+
+        # Compute total standard deviation
+        sigma_tot = sigma_base + sigma_rel * model_output
+
+        # Compute log-likelihood
+        pointwise_ll = \
+            - np.log(2 * np.pi) / 2 \
+            - np.log(sigma_tot) \
+            - (model_output - observations)**2 / sigma_tot**2 / 2
+
+        return pointwise_ll
+
+    @staticmethod
+    @njit
     def _compute_sensitivities(
             parameters, model_output, model_sensitivities,
             observations):  # pragma: no cover
@@ -285,7 +348,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         Returns the log-likelihood of the model parameters.
 
         In this method, the model output :math:`x^{\text{m}}` and the
-        observations :math:`x^{\text{obs}}` are compared pair-wise, and the
+        observations :math:`x^{\text{obs}}` are compared pairwise, and the
         log-likelihood score is computed according to
 
         .. math::
@@ -308,12 +371,10 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             An array-like object with the error model parameters.
         model_output
             An array-like object with the one-dimensional output of a
-            :class:`MechanisticModel`, :math:`x^{\text{m}}`. Each entry is a
-            prediction of the mechanistic model for an observed time point in
-            ``observations``, :math:`x^{\text{obs}}`.
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
         observations
-            An array-like object with the observations of a biomarker
-            :math:`x^{\text{obs}}`.
+            An array-like object with the observations of a biomarker.
         """
         parameters = np.asarray(parameters)
         model = np.asarray(model_output)
@@ -322,9 +383,55 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         if len(model) != n_observations:
             raise ValueError(
                 'The number of model outputs must match the number of '
-                'observations, otherwise they cannot be compared pair-wise.')
+                'observations, otherwise they cannot be compared pairwise.')
 
         return self._compute_log_likelihood(parameters, model, obs)
+
+    def compute_pointwise_ll(self, parameters, model_output, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        In this method, the model output and the observations are compared
+        pairwise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        Formally the pointwise log-likelihood is given by
+
+        .. math::
+            L(\psi , \sigma _{\text{base}}, \sigma _{\text{rel}} |
+            x^{\text{obs}}_i) =
+            \log p(x^{\text{obs}} _i |
+            \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) ,
+
+        where :math:`p` is the distribution defined by the mechanistic model-
+        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
+        observed biomarker value. :math:`\psi` and :math:`\sigma` are the
+        parameters of the mechanistic model and the error model, respectively.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        observations
+            An array-like object with the observations of a biomarker.
+        """
+        parameters = np.asarray(parameters)
+        model = np.asarray(model_output)
+        obs = np.asarray(observations)
+        n_observations = len(observations)
+        if len(model) != n_observations:
+            raise ValueError(
+                'The number of model outputs must match the number of '
+                'observations, otherwise they cannot be compared pairwise.')
+
+        return self._compute_pointwise_ll(parameters, model, obs)
 
     def compute_sensitivities(
             self, parameters, model_output, model_sensitivities, observations):
@@ -333,7 +440,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         sensitivities w.r.t. the parameters.
 
         In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
+        pairwise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
@@ -555,7 +662,7 @@ class GaussianErrorModel(ErrorModel):
         Returns the log-likelihood of the model parameters.
 
         In this method, the model output :math:`x^{\text{m}}` and the
-        observations :math:`x^{\text{obs}}` are compared pair-wise, and the
+        observations :math:`x^{\text{obs}}` are compared pairwise, and the
         log-likelihood score is computed according to
 
         .. math::
@@ -591,7 +698,7 @@ class GaussianErrorModel(ErrorModel):
         if len(model) != n_observations:
             raise ValueError(
                 'The number of model outputs must match the number of '
-                'observations, otherwise they cannot be compared pair-wise.')
+                'observations, otherwise they cannot be compared pairwise.')
 
         return self._compute_log_likelihood(parameters, model, obs)
 
@@ -602,7 +709,7 @@ class GaussianErrorModel(ErrorModel):
         sensitivities w.r.t. the parameters.
 
         In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
+        pairwise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
@@ -836,7 +943,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         Returns the log-likelihood of the model parameters.
 
         In this method, the model output :math:`x^{\text{m}}` and the
-        observations :math:`x^{\text{obs}}` are compared pair-wise, and the
+        observations :math:`x^{\text{obs}}` are compared pairwise, and the
         log-likelihood score is computed according to
 
         .. math::
@@ -873,7 +980,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         if len(model) != n_obs:
             raise ValueError(
                 'The number of model outputs must match the number of '
-                'observations, otherwise they cannot be compared pair-wise.')
+                'observations, otherwise they cannot be compared pairwise.')
 
         return self._compute_log_likelihood(parameters, model, obs)
 
@@ -884,7 +991,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         sensitivities w.r.t. the parameters.
 
         In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
+        pairwise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
@@ -1027,7 +1134,7 @@ class ReducedErrorModel(object):
         Returns the log-likelihood of the model parameters.
 
         In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
+        pairwise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
@@ -1070,7 +1177,7 @@ class ReducedErrorModel(object):
         sensitivities w.r.t. the parameters.
 
         In this method, the model output and the observations are compared
-        pair-wise. The time-dependence of the values is thus dealt with
+        pairwise. The time-dependence of the values is thus dealt with
         implicitly, by assuming that ``model_output`` and ``observations`` are
         already ordered, such that the first entries correspond to the same
         time, the second entries correspond to the same time, and so on.
