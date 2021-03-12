@@ -724,6 +724,50 @@ class GaussianErrorModel(ErrorModel):
 
         return self._compute_log_likelihood(parameters, model, obs)
 
+    def compute_pointwise_ll(self, parameters, model_output, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        In this method, the model output and the observations are compared
+        pairwise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        Formally the pointwise log-likelihood is given by
+
+        .. math::
+            L(\psi , \sigma | x^{\text{obs}}_i) =
+            \log p(x^{\text{obs}} _i |
+            \psi , \sigma ) ,
+
+        where :math:`p` is the distribution defined by the mechanistic model-
+        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
+        observed biomarker value.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        observations
+            An array-like object with the observations of a biomarker.
+        """
+        parameters = np.asarray(parameters)
+        model = np.asarray(model_output)
+        obs = np.asarray(observations)
+        n_observations = len(observations)
+        if len(model) != n_observations:
+            raise ValueError(
+                'The number of model outputs must match the number of '
+                'observations, otherwise they cannot be compared pairwise.')
+
+        return self._compute_pointwise_ll(parameters, model, obs)
+
     def compute_sensitivities(
             self, parameters, model_output, model_sensitivities, observations):
         r"""
@@ -769,50 +813,6 @@ class GaussianErrorModel(ErrorModel):
                 'number of observations.')
 
         return self._compute_sensitivities(parameters, model, sens, obs)
-
-    def compute_pointwise_ll(self, parameters, model_output, observations):
-        r"""
-        Returns the pointwise log-likelihood of the model parameters for
-        each observation.
-
-        In this method, the model output and the observations are compared
-        pairwise. The time-dependence of the values is thus dealt with
-        implicitly, by assuming that ``model_output`` and ``observations`` are
-        already ordered, such that the first entries correspond to the same
-        time, the second entries correspond to the same time, and so on.
-
-        Formally the pointwise log-likelihood is given by
-
-        .. math::
-            L(\psi , \sigma | x^{\text{obs}}_i) =
-            \log p(x^{\text{obs}} _i |
-            \psi , \sigma ) ,
-
-        where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
-        observed biomarker value.
-
-        Parameters
-        ----------
-        parameters
-            An array-like object with the error model parameters.
-        model_output
-            An array-like object with the one-dimensional output of a
-            :class:`MechanisticModel`. Each entry is a prediction of the
-            mechanistic model for an observed time point in ``observations``.
-        observations
-            An array-like object with the observations of a biomarker.
-        """
-        parameters = np.asarray(parameters)
-        model = np.asarray(model_output)
-        obs = np.asarray(observations)
-        n_observations = len(observations)
-        if len(model) != n_observations:
-            raise ValueError(
-                'The number of model outputs must match the number of '
-                'observations, otherwise they cannot be compared pairwise.')
-
-        return self._compute_pointwise_ll(parameters, model, obs)
 
     def sample(self, parameters, model_output, n_samples=None, seed=None):
         """
@@ -939,7 +939,7 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         sigma_rel = parameters[0]
 
         if sigma_rel <= 0:
-            # sigma_base and sigma_rel are strictly positive
+            # sigma_rel are strictly positive
             return -np.inf
 
         # Compute total standard deviation
@@ -953,6 +953,34 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
             - np.sum((model_output - observations)**2 / sigma_tot**2) / 2
 
         return log_likelihood
+
+    @staticmethod
+    @njit
+    def _compute_pointwise_ll(
+            parameters, model_output, observations):  # pragma: no cover
+        """
+        Calculates the pointwise log-lieklihood using numba speed up.
+
+        Returns a numpy array of shape (n_times,)
+        """
+        # Get parameters
+        sigma_rel = parameters[0]
+
+        if sigma_rel <= 0:
+            # sigma_rel are strictly positive
+            n_obs = len(model_output)
+            return np.full(n_obs, -np.inf)
+
+        # Compute total standard deviation
+        sigma_tot = sigma_rel * model_output
+
+        # Compute log-likelihood
+        pointwise_ll = \
+            - np.log(2 * np.pi) / 2 \
+            - np.log(sigma_tot) \
+            - (model_output - observations)**2 / sigma_tot**2 / 2
+
+        return pointwise_ll
 
     @staticmethod
     @njit
@@ -1049,6 +1077,51 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
                 'observations, otherwise they cannot be compared pairwise.')
 
         return self._compute_log_likelihood(parameters, model, obs)
+
+    def compute_pointwise_ll(self, parameters, model_output, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        In this method, the model output and the observations are compared
+        pairwise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        Formally the pointwise log-likelihood is given by
+
+        .. math::
+            L(\psi , \sigma _{\text{base}}, \sigma _{\text{rel}} |
+            x^{\text{obs}}_i) =
+            \log p(x^{\text{obs}} _i |
+            \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) ,
+
+        where :math:`p` is the distribution defined by the mechanistic model-
+        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
+        observed biomarker value.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        observations
+            An array-like object with the observations of a biomarker.
+        """
+        parameters = np.asarray(parameters)
+        model = np.asarray(model_output)
+        obs = np.asarray(observations)
+        n_observations = len(observations)
+        if len(model) != n_observations:
+            raise ValueError(
+                'The number of model outputs must match the number of '
+                'observations, otherwise they cannot be compared pairwise.')
+
+        return self._compute_pointwise_ll(parameters, model, obs)
 
     def compute_sensitivities(
             self, parameters, model_output, model_sensitivities, observations):
