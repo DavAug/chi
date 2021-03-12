@@ -706,7 +706,7 @@ class TestLogLikelihood(unittest.TestCase):
             erlo.LogLikelihood(
                 self.model, self.error_models, observations, self.times)
 
-    def test_call(self):
+    def test_call_and_compute_pointwise_ll(self):
         # Test case I: Compute reference score manually
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
 
@@ -728,8 +728,13 @@ class TestLogLikelihood(unittest.TestCase):
 
         ref_score = ref_score_1 + ref_score_2
         score = self.log_likelihood(parameters)
+        pw_score = self.log_likelihood.compute_pointwise_ll(
+            parameters)
 
         self.assertAlmostEqual(score, ref_score)
+        n_obs = 7
+        self.assertEqual(pw_score.shape, (n_obs,))
+        self.assertEqual(np.sum(pw_score), score)
 
         # Test case II: Compute reference score with two likelihoods
         parameters = [9, 8, 7, 6, 5, 4, 3, 2, 1]
@@ -752,8 +757,13 @@ class TestLogLikelihood(unittest.TestCase):
 
         ref_score = ref_score_1 + ref_score_2
         score = self.log_likelihood(parameters)
+        pw_score = self.log_likelihood.compute_pointwise_ll(
+            parameters)
 
         self.assertAlmostEqual(score, ref_score)
+        n_obs = 7
+        self.assertEqual(pw_score.shape, (n_obs,))
+        self.assertEqual(np.sum(pw_score), score)
 
         # Reset number of outputs
         self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
@@ -764,6 +774,8 @@ class TestLogLikelihood(unittest.TestCase):
         m.enable_sensitivities(True)
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         self.log_likelihood(parameters)
+        m.enable_sensitivities(True)
+        self.log_likelihood.compute_pointwise_ll(parameters)
 
         # Leave observations for one outputs empty
         obs = [[], self.observations[1]]
@@ -773,7 +785,11 @@ class TestLogLikelihood(unittest.TestCase):
 
         parameters = [9, 8, 7, 6, 5, 4, 3, 2, 1]
         score = ll(parameters)
+        pw_score = ll.compute_pointwise_ll(parameters)
         self.assertEqual(score, ref_score_2)
+        n_obs = 3
+        self.assertEqual(pw_score.shape, (n_obs,))
+        self.assertEqual(np.sum(pw_score), score)
 
     def test_evaluateS1(self):
         # Test case I: Compute reference score manually
