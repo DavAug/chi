@@ -21,7 +21,8 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
         cls.error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
 
     def test_compute_log_likelihood(self):
-        # Tests :meth:`compute_log_likelihood` and :meth:`compute_pointwise_ll`
+        # Tests :meth:`compute_log_likelihood` and
+        # :meth:`compute_pointwise_ll`
 
         # Test case I: If X = X^m, the score reduces to
         # -np.log(2pi)/2 - np.log(sigma_tot)
@@ -405,6 +406,9 @@ class TestGaussianErrorModel(unittest.TestCase):
         cls.error_model = erlo.GaussianErrorModel()
 
     def test_compute_log_likelihood(self):
+        # Tests :meth:`compute_log_likelihood` and
+        # :meth:`compute_pointwise_ll`
+
         # Test case I: If X = X^m, the score reduces to
         # -np.log(2pi)/2 - np.log(sigma)
 
@@ -414,21 +418,29 @@ class TestGaussianErrorModel(unittest.TestCase):
         observations = [1] * 10
         ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.5)
 
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
         score = self.error_model.compute_log_likelihood(
             parameters, model_output, observations)
 
         self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
         # Test case I.2:
         parameters = [0.5]
-        model_output = [10] * 10
-        observations = [10] * 10
-        ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.5)
+        model_output = [10] * 6
+        observations = [10] * 6
+        ref_score = -3 * np.log(2 * np.pi) - 6 * np.log(0.5)
 
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
         score = self.error_model.compute_log_likelihood(
             parameters, model_output, observations)
 
         self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (6,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
         # Test case II: If sigma = 1, the score reduces to
         # -np.log(2pi)/2 - (X-X^m) / 2
@@ -439,10 +451,14 @@ class TestGaussianErrorModel(unittest.TestCase):
         observations = [2] * 10
         ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 2)**2 / 2
 
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
         score = self.error_model.compute_log_likelihood(
             parameters, model_output, observations)
 
         self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
         # Test case II.2:
         parameters = [1]
@@ -450,10 +466,14 @@ class TestGaussianErrorModel(unittest.TestCase):
         observations = [10] * 10
         ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 10)**2 / 2
 
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
         score = self.error_model.compute_log_likelihood(
             parameters, model_output, observations)
 
         self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
         # Test case III: -Infinity for not allowed regimes
 
@@ -463,10 +483,14 @@ class TestGaussianErrorModel(unittest.TestCase):
         observations = [1] * 10
         ref_score = -np.inf
 
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
         score = self.error_model.compute_log_likelihood(
             parameters, model_output, observations)
 
         self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
         # Test case III.2: Negative sigma
         parameters = [-1]
@@ -474,10 +498,14 @@ class TestGaussianErrorModel(unittest.TestCase):
         observations = [1] * 10
         ref_score = -np.inf
 
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
         score = self.error_model.compute_log_likelihood(
             parameters, model_output, observations)
 
         self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
     def test_compute_log_likelihood_bad_input(self):
         # Model output and observations don't match
