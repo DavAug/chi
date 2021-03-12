@@ -1309,6 +1309,48 @@ class ReducedErrorModel(object):
             parameters, model_output, observations)
         return score
 
+    def compute_pointwise_ll(self, parameters, model_output, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        In this method, the model output and the observations are compared
+        pairwise. The time-dependence of the values is thus dealt with
+        implicitly, by assuming that ``model_output`` and ``observations`` are
+        already ordered, such that the first entries correspond to the same
+        time, the second entries correspond to the same time, and so on.
+
+        Formally the pointwise log-likelihood is given by
+
+        .. math::
+            L(\psi, \sigma | x^{\text{obs}}_i) =
+            \log p(x^{\text{obs}}_i | \psi , \sigma ) ,
+
+        where :math:`p` is the distribution defined by the mechanistic model-
+        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
+        observed biomarker value. :math:`\psi` and :math:`\sigma` are the
+        parameters of the mechanistic model and the error model, respectively.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the error model parameters.
+        model_output
+            An array-like object with the one-dimensional output of a
+            :class:`MechanisticModel`. Each entry is a prediction of the
+            mechanistic model for an observed time point in ``observations``.
+        observations
+            An array-like object with the observations of a biomarker.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        pointwise_ll = self._error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        return pointwise_ll
+
     def compute_sensitivities(
             self, parameters, model_output, model_sensitivities, observations):
         r"""
