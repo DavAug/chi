@@ -990,6 +990,9 @@ class TestReducedErrorModel(unittest.TestCase):
             erlo.ReducedErrorModel(model)
 
     def test_compute_log_likelihood(self):
+        # Tests :meth:`compute_log_likelihood` and
+        # :meth:`compute_pointwise_ll`
+
         # Test case I: fix some parameters
         self.error_model.fix_parameters(name_value_dict={
             'Sigma base': 0.1})
@@ -998,6 +1001,8 @@ class TestReducedErrorModel(unittest.TestCase):
         parameters = [0.2]
         model_output = [1, 2, 3, 4]
         observations = [2, 3, 4, 5]
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
         score = self.error_model.compute_log_likelihood(
             parameters, model_output, observations)
 
@@ -1008,6 +1013,8 @@ class TestReducedErrorModel(unittest.TestCase):
             parameters, model_output, observations)
 
         self.assertEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (4,))
+        self.assertEqual(np.sum(pw_score), ref_score)
 
         # Unfix model parameters
         self.error_model.fix_parameters(name_value_dict={
