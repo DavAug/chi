@@ -252,8 +252,8 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
                 param_map=param_map)
 
         # The individual is not in the posterior samples
-        individual = 'Dose not exist'
-        with self.assertRaisesRegex(ValueError, 'The parameter <Something'):
+        individual = 'Does not exist'
+        with self.assertRaisesRegex(ValueError, 'The individual <Does not'):
             erlo.compute_pointwise_loglikelihood(
                 self.log_likelihood, self.posterior_samples,
                 individual=individual)
