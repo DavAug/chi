@@ -19,7 +19,7 @@ import erlotinib as erlo
 
 def compute_pointwise_loglikelihood(
         log_likelihood, posterior_samples, individual=None, param_map=None,
-        return_inferencedata=False):
+        return_inferencedata=False, show_chain_progress_bar=False):
     """
     Computes the pointwise log-likelihood for each observation and each
     parameter sample from the posterior distribution.
@@ -40,6 +40,9 @@ def compute_pointwise_loglikelihood(
         log-likelihoods and the posterior are returned as
         :class:`arviz.InferenceData`.
     :type return_inferencedata: bool, optional
+    :param show_chain_progress_bar: A boolean flag which determines whether the
+        progress for each chain is visualised as a progress bar.
+    :type return_inferencedata: bool, optional
     """
     # Check inputs
     if not isinstance(log_likelihood, erlo.LogLikelihood):
@@ -48,13 +51,11 @@ def compute_pointwise_loglikelihood(
             'erlotinib.LogLikelihood.')
     if not isinstance(posterior_samples, xr.Dataset):
         raise TypeError(
-            'The posterior must be an instance of a '
+            'The posterior samples must be an instance of a '
             'xarray.Dataset.')
 
     dims = sorted(list(posterior_samples.dims))
     expected_dims = ['chain', 'draw', 'individual']
-    if (len(dims) == 2):
-        expected_dims = ['chain', 'draw']
     for dim in expected_dims:
         if dim not in dims:
             raise ValueError(
@@ -69,7 +70,7 @@ def compute_pointwise_loglikelihood(
     try:
         param_map = dict(param_map)
     except (TypeError, ValueError):
-        raise ValueError(
+        raise TypeError(
             'The parameter map has to be convertable to a python '
             'dictionary.')
 
@@ -97,11 +98,10 @@ def compute_pointwise_loglikelihood(
     if individual not in ids:
         raise ValueError(
             'The individual <' + str(individual) + '> could not be '
-            'found in the ID column.')
+            'found in the "individual" dimension.')
     samples = posterior_samples.sel(individual=individual)
 
     # Sort parameters into numpy array for simplified iteration
-    # TODO: Definitely not the best way to do this!
     n_chains = len(samples.chain)
     n_draws = len(samples.draw)
     n_parameters = log_likelihood.n_parameters()
@@ -119,7 +119,8 @@ def compute_pointwise_loglikelihood(
     # Compute pointwise log-likelihoods
     n_obs = np.sum(log_likelihood.n_observations())
     pointwise_ll = np.empty(shape=(n_chains, n_draws, n_obs))
-    for chain_id, chain in enumerate(tqdm(posterior)):
+    for chain_id, chain in enumerate(tqdm(
+            posterior, disable=not show_chain_progress_bar)):
         for draw_id, draw in enumerate(chain):
             # Compute pointwise log-likelihood for the
             # given iteration and chain
@@ -131,7 +132,7 @@ def compute_pointwise_loglikelihood(
     for out_id, n_obs in enumerate(log_likelihood.n_observations()):
         output_id = out_id + 1
         obs_coords += [
-            'Output %d Observation %d' % (obs, output_id)
+            'Output %d Observation %d' % (output_id, obs)
             for obs in range(1, n_obs+1)]
     pointwise_ll = xr.DataArray(
         data=pointwise_ll,
