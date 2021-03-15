@@ -161,7 +161,7 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
             self.error_model.compute_log_likelihood(
                 parameters, model_output, observations)
         with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
-            self.error_model.compute_log_likelihood(
+            self.error_model.compute_pointwise_ll(
                 parameters, model_output, observations)
 
     def test_compute_sensitivities(self):
@@ -519,7 +519,7 @@ class TestGaussianErrorModel(unittest.TestCase):
             self.error_model.compute_log_likelihood(
                 parameters, model_output, observations)
         with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
-            self.error_model.compute_log_likelihood(
+            self.error_model.compute_pointwise_ll(
                 parameters, model_output, observations)
 
     def test_compute_sensitivities(self):
