@@ -32,6 +32,18 @@ Detailed API
     :members:
     :inherited-members:
 
+
+Utility functions
+-----------------
+
+- :func:`compute_pointwise_loglikelihood`
+
+Detailed API
+^^^^^^^^^^^^
+
+.. autofunction:: compute_pointwise_loglikelihood
+
+
 Base classes
 ------------
 

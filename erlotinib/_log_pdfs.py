@@ -826,6 +826,7 @@ class LogLikelihood(pints.LogPDF):
         self._mechanistic_model = mechanistic_model
         self._error_models = error_model
         self._observations = observations
+        self._n_obs = [len(obs) for obs in observations]
 
         self._arange_times_for_mechanistic_model(times)
 
@@ -959,10 +960,54 @@ class LogLikelihood(pints.LogPDF):
         self._n_mechanistic_params = self._mechanistic_model.n_parameters()
         self._n_error_params = n_error_params
 
+    def compute_pointwise_ll(self, parameters):
+        """
+        Computes the pointwise log-likelihood score of the parameters for
+        each observation.
+
+        :param parameters: A list of parameter values
+        :type parameters: list, numpy.ndarray
+        """
+        # Check that mechanistic model has sensitivities disabled
+        # (Simply for performance)
+        if self._mechanistic_model.has_sensitivities():
+            self._mechanistic_model.enable_sensitivities(False)
+
+        # Solve the mechanistic model
+        outputs = self._mechanistic_model.simulate(
+            parameters=parameters[:self._n_mechanistic_params],
+            times=self._times)
+
+        # Remember only error parameters
+        parameters = parameters[self._n_mechanistic_params:]
+
+        # Compute the pointwise log-likelihood score
+        start = 0
+        pointwise_ll = []
+        for output_id, error_model in enumerate(self._error_models):
+            # Get relevant mechanistic model outputs and parameters
+            output = outputs[output_id, self._obs_masks[output_id]]
+            end = start + self._n_error_params[output_id]
+
+            # Compute pointwise log-likelihood scores for this output
+            pointwise_ll.append(
+                error_model.compute_pointwise_ll(
+                    parameters=parameters[start:end],
+                    model_output=output,
+                    observations=self._observations[output_id]))
+
+            # Shift start indices
+            start = end
+
+        return np.hstack(pointwise_ll)
+
     def evaluateS1(self, parameters):
         """
         Computes the log-likelihood of the parameters and its
         sensitivities.
+
+        :param parameters: A list of parameter values
+        :type parameters: list, numpy.ndarray
         """
         # Check that mechanistic model has sensitivities enabled
         if not self._mechanistic_model.has_sensitivities():
@@ -1066,7 +1111,7 @@ class LogLikelihood(pints.LogPDF):
         """
         Returns the parameter names of the predictive model.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def get_submodels(self):
         """
@@ -1102,6 +1147,12 @@ class LogLikelihood(pints.LogPDF):
         Returns the number of parameters.
         """
         return self._n_parameters
+
+    def n_observations(self):
+        """
+        Returns the number of observed data points for each output.
+        """
+        return self._n_obs
 
     def set_id(self, label):
         """
