@@ -826,6 +826,7 @@ class LogLikelihood(pints.LogPDF):
         self._mechanistic_model = mechanistic_model
         self._error_models = error_model
         self._observations = observations
+        self._n_obs = [len(obs) for obs in observations]
 
         self._arange_times_for_mechanistic_model(times)
 
@@ -1146,6 +1147,12 @@ class LogLikelihood(pints.LogPDF):
         Returns the number of parameters.
         """
         return self._n_parameters
+
+    def n_observations(self):
+        """
+        Returns the number of observed data points for each output.
+        """
+        return self._n_obs
 
     def set_id(self, label):
         """
