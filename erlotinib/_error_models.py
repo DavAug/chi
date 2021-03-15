@@ -76,9 +76,10 @@ class ErrorModel(object):
             \log p(x^{\text{obs}}_i | \psi , \sigma ) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
-        observed biomarker value. :math:`\psi` and :math:`\sigma` are the
-        parameters of the mechanistic model and the error model, respectively.
+        error model pair and :math:`x^{\text{obs}}_i` is the
+        :math:`i^{\text{th}}` observed biomarker value. :math:`\psi` and
+        :math:`\sigma` are the parameters of the mechanistic model and the
+        error model, respectively.
 
         Parameters
         ----------
@@ -407,8 +408,8 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
-        observed biomarker value.
+        error model pair and :math:`x^{\text{obs}}_i` is the
+        :math:`i^{\text{th}}` observed biomarker value.
 
         Parameters
         ----------
@@ -743,8 +744,8 @@ class GaussianErrorModel(ErrorModel):
             \psi , \sigma ) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
-        observed biomarker value.
+        error model pair and :math:`x^{\text{obs}}_i` is the
+        :math:`i^{\text{th}}` observed biomarker value.
 
         Parameters
         ----------
@@ -1098,8 +1099,8 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
             \psi , \sigma _{\text{base}}, \sigma _{\text{rel}}) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
-        observed biomarker value.
+        error model pair and :math:`x^{\text{obs}}_i` is the
+        :math:`i^{\text{th}}` observed biomarker value.
 
         Parameters
         ----------
@@ -1327,9 +1328,10 @@ class ReducedErrorModel(object):
             \log p(x^{\text{obs}}_i | \psi , \sigma ) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
-        error model pair and :math:`x^{\text{obs}}_i` is the :math:`i`th
-        observed biomarker value. :math:`\psi` and :math:`\sigma` are the
-        parameters of the mechanistic model and the error model, respectively.
+        error model pair and :math:`x^{\text{obs}}_i` is the
+        :math:`i^{\text{th}}` observed biomarker value. :math:`\psi` and
+        :math:`\sigma` are the parameters of the mechanistic model and the
+        error model, respectively.
 
         Parameters
         ----------
