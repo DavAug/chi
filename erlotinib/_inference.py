@@ -28,18 +28,18 @@ def compute_pointwise_loglikelihood(
     :type log_likelihood: LogLikelihood
     :param posterior_samples: Samples from the posterior distribution of the
         model parameters.
-    :type posterior: xarray.Dataset
+    :type posterior_samples: xarray.Dataset
     :param individual: The individual for which the log-likelihoods are
         evaluated. If ``None`` the first individual is chosen.
     :type individual: str, optional
-    :param arviz: A boolean flag which determines whether the
-        log-likelihoods and the posterior are returned as
-        :class:`arviz.InferenceData`.
-    :type arviz: bool, optional
     :param param_map: A dictionary which can be used to map log-likelihood
         parameter names to the parameter names in the :class:`xarray.Dataset`.
         If ``None``, it is assumed that the names are identical.
     :type param_map: dict, optional
+    :param return_inferencedata: A boolean flag which determines whether the
+        log-likelihoods and the posterior are returned as
+        :class:`arviz.InferenceData`.
+    :type return_inferencedata: bool, optional
     """
     # Check inputs
     if not isinstance(log_likelihood, erlo.LogLikelihood):
