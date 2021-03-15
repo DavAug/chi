@@ -7,6 +7,7 @@
 
 import warnings
 
+import arviz as az
 import numpy as np
 import pandas as pd
 import pints
@@ -14,6 +15,143 @@ from tqdm.notebook import tqdm
 import xarray as xr
 
 import erlotinib as erlo
+
+
+def compute_pointwise_loglikelihood(
+        log_likelihood, posterior_samples, individual=None, param_map=None,
+        return_inferencedata=False):
+    """
+    Computes the pointwise log-likelihood for each observation and each
+    parameter sample from the posterior distribution.
+
+    :param log_likelihood: The log-likelihood of the model parameters.
+    :type log_likelihood: LogLikelihood
+    :param posterior_samples: Samples from the posterior distribution of the
+        model parameters.
+    :type posterior: xarray.Dataset
+    :param individual: The individual for which the log-likelihoods are
+        evaluated. If ``None`` the first individual is chosen.
+    :type individual: str, optional
+    :param arviz: A boolean flag which determines whether the
+        log-likelihoods and the posterior are returned as
+        :class:`arviz.InferenceData`.
+    :type arviz: bool, optional
+    :param param_map: A dictionary which can be used to map log-likelihood
+        parameter names to the parameter names in the :class:`xarray.Dataset`.
+        If ``None``, it is assumed that the names are identical.
+    :type param_map: dict, optional
+    """
+    # Check inputs
+    if not isinstance(log_likelihood, erlo.LogLikelihood):
+        raise TypeError(
+            'The log-likelihood must be an instance of a '
+            'erlotinib.LogLikelihood.')
+    if not isinstance(posterior_samples, xr.Dataset):
+        raise TypeError(
+            'The posterior must be an instance of a '
+            'xarray.Dataset.')
+
+    dims = sorted(list(posterior_samples.dims))
+    expected_dims = ['chain', 'draw', 'individual']
+    if (len(dims) == 2):
+        expected_dims = ['chain', 'draw']
+    for dim in expected_dims:
+        if dim not in dims:
+            raise ValueError(
+                'The posterior samples must have the dimensions '
+                '(chain, draw, individual). The current dimensions are <'
+                + str(dims) + '>.')
+
+    # Set default parameter map (no mapping)
+    if param_map is None:
+        param_map = {}
+
+    try:
+        param_map = dict(param_map)
+    except (TypeError, ValueError):
+        raise ValueError(
+            'The parameter map has to be convertable to a python '
+            'dictionary.')
+
+    # Create map from posterior parameter names to model parameter names
+    model_names = log_likelihood.get_parameter_names()
+    for param_id, name in enumerate(model_names):
+        try:
+            model_names[param_id] = param_map[name]
+        except KeyError:
+            # The name is not mapped
+            pass
+
+    # Check that model names are in the dataset
+    for parameter in model_names:
+        if parameter not in posterior_samples.data_vars:
+            raise ValueError(
+                'The parameter <' + str(parameter) + '> cannot be found '
+                'in the posterior.')
+
+    # Get individual
+    ids = posterior_samples.individual
+    if individual is None:
+        # Get default
+        individual = str(ids.data[0])
+    if individual not in ids:
+        raise ValueError(
+            'The individual <' + str(individual) + '> could not be '
+            'found in the ID column.')
+    samples = posterior_samples.sel(individual=individual)
+
+    # Sort parameters into numpy array for simplified iteration
+    # TODO: Definitely not the best way to do this!
+    n_chains = len(samples.chain)
+    n_draws = len(samples.draw)
+    n_parameters = log_likelihood.n_parameters()
+    posterior = np.empty(shape=(n_chains, n_draws, n_parameters))
+    for param_id, parameter in enumerate(model_names):
+        try:
+            # Assumes values have shape (n_chains, n_draws)
+            posterior[:, :, param_id] = \
+                samples[parameter].values
+        except ValueError:
+            # If broadcasting fails, values must be transposed
+            posterior[:, :, param_id] = \
+                samples[parameter].values.T
+
+    # Compute pointwise log-likelihoods
+    n_obs = np.sum(log_likelihood.n_observations())
+    pointwise_ll = np.empty(shape=(n_chains, n_draws, n_obs))
+    for chain_id, chain in enumerate(tqdm(posterior)):
+        for draw_id, draw in enumerate(chain):
+            # Compute pointwise log-likelihood for the
+            # given iteration and chain
+            pointwise_ll[chain_id, draw_id, :] = \
+                log_likelihood.compute_pointwise_ll(draw)
+
+    # Annotate as xarray
+    obs_coords = []
+    for out_id, n_obs in enumerate(log_likelihood.n_observations()):
+        output_id = out_id + 1
+        obs_coords += [
+            'Output %d Observation %d' % (obs, output_id)
+            for obs in range(1, n_obs+1)]
+    pointwise_ll = xr.DataArray(
+        data=pointwise_ll,
+        coords={
+            'chain': samples.chain,
+            'draw': samples.draw,
+            'observation': obs_coords},
+        dims=('chain', 'draw', 'observation'))
+
+    if return_inferencedata is False:
+        return pointwise_ll
+
+    # Compose posterior samples and pointwise log-likelihood to
+    # arviz.InferenceData
+    samples_stats = xr.Dataset({'log_likelihood': pointwise_ll})
+    inference_data = az.InferenceData(
+        posterior=posterior_samples,
+        sample_stats=samples_stats)
+
+    return inference_data
 
 
 class InferenceController(object):
