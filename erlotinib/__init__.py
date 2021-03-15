@@ -42,6 +42,7 @@ from ._model_library_api import (  # noqa
 )
 
 from ._inference import (  # noqa
+    compute_pointwise_loglikelihood,
     InferenceController,
     OptimisationController,
     SamplingController
