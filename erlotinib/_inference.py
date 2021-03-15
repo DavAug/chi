@@ -42,7 +42,7 @@ def compute_pointwise_loglikelihood(
     :type return_inferencedata: bool, optional
     :param show_chain_progress_bar: A boolean flag which determines whether the
         progress for each chain is visualised as a progress bar.
-    :type return_inferencedata: bool, optional
+    :type show_chain_progress_bar: bool, optional
     """
     # Check inputs
     if not isinstance(log_likelihood, erlo.LogLikelihood):
