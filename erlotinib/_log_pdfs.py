@@ -1111,7 +1111,7 @@ class LogLikelihood(pints.LogPDF):
         """
         Returns the parameter names of the predictive model.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def get_submodels(self):
         """
