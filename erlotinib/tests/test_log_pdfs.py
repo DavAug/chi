@@ -977,6 +977,14 @@ class TestLogLikelihood(unittest.TestCase):
         # Reset number of outputs
         self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
 
+    def test_n_observations(self):
+        # Test case I:
+        n_obs = self.log_likelihood.n_observations()
+
+        self.assertEqual(len(n_obs), 2)
+        self.assertEqual(n_obs[0], 4)
+        self.assertEqual(n_obs[1], 3)
+
 
 class TestLogPosterior(unittest.TestCase):
     """
