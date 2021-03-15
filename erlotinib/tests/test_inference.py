@@ -8,16 +8,260 @@
 import copy
 import unittest
 
+import arviz as az
 import numpy as np
 import pandas as pd
 import pints
+import xarray as xr
 
 import erlotinib as erlo
 
 
+class TestComputePointwiseLogLikelihood(unittest.TestCase):
+    """
+    Tests the erlotinib.compute_pointwise_loglikelihood function.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Get test data and model
+        data = erlo.DataLibrary().lung_cancer_control_group()
+        individual = 40
+        mask = data['ID'] == individual  # Arbitrary test id
+        data = data[mask]
+        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        times = data[mask]['Time'].to_numpy()
+        observed_volumes = data[mask]['Measurement'].to_numpy()
+
+        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = erlo.PharmacodynamicModel(path)
+        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.log_likelihood = erlo.LogLikelihood(
+            mechanistic_model, error_model, observed_volumes, times)
+        cls.log_likelihood.set_id(individual)
+
+        # Create a posterior samples
+        n_chains = 2
+        n_draws = 3
+        n_ids = 1
+        samples = np.ones(shape=(n_chains, n_draws, n_ids))
+        samples = xr.DataArray(
+            data=samples,
+            dims=['chain', 'draw', 'individual'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['ID 1']})
+        cls.posterior_samples = xr.Dataset({
+            param: samples for param
+            in cls.log_likelihood.get_parameter_names()})
+
+    def test_call(self):
+        # Test call with defaults
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.log_likelihood, self.posterior_samples)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'observation')
+
+        obs = pw_ll.observation
+        self.assertEqual(len(obs), 10)
+        self.assertEqual(obs[0], 'Output 1 Observation 1')
+        self.assertEqual(obs[1], 'Output 1 Observation 2')
+        self.assertEqual(obs[2], 'Output 1 Observation 3')
+        self.assertEqual(obs[3], 'Output 1 Observation 4')
+        self.assertEqual(obs[4], 'Output 1 Observation 5')
+        self.assertEqual(obs[5], 'Output 1 Observation 6')
+        self.assertEqual(obs[6], 'Output 1 Observation 7')
+        self.assertEqual(obs[7], 'Output 1 Observation 8')
+        self.assertEqual(obs[8], 'Output 1 Observation 9')
+        self.assertEqual(obs[9], 'Output 1 Observation 10')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Test call with differently ordered posterior samples
+        n_chains = 2
+        n_draws = 3
+        n_ids = 1
+        samples = np.ones(shape=(n_draws, n_ids, n_chains))
+        samples = xr.DataArray(
+            data=samples,
+            dims=['draw', 'individual', 'chain'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['ID 1']})
+        posterior_samples = xr.Dataset({
+            param: samples for param
+            in self.log_likelihood.get_parameter_names()})
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.log_likelihood, posterior_samples)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'observation')
+
+        obs = pw_ll.observation
+        self.assertEqual(len(obs), 10)
+        self.assertEqual(obs[0], 'Output 1 Observation 1')
+        self.assertEqual(obs[1], 'Output 1 Observation 2')
+        self.assertEqual(obs[2], 'Output 1 Observation 3')
+        self.assertEqual(obs[3], 'Output 1 Observation 4')
+        self.assertEqual(obs[4], 'Output 1 Observation 5')
+        self.assertEqual(obs[5], 'Output 1 Observation 6')
+        self.assertEqual(obs[6], 'Output 1 Observation 7')
+        self.assertEqual(obs[7], 'Output 1 Observation 8')
+        self.assertEqual(obs[8], 'Output 1 Observation 9')
+        self.assertEqual(obs[9], 'Output 1 Observation 10')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Select individual
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.log_likelihood, self.posterior_samples, individual='ID 1')
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'observation')
+
+        obs = pw_ll.observation
+        self.assertEqual(len(obs), 10)
+        self.assertEqual(obs[0], 'Output 1 Observation 1')
+        self.assertEqual(obs[1], 'Output 1 Observation 2')
+        self.assertEqual(obs[2], 'Output 1 Observation 3')
+        self.assertEqual(obs[3], 'Output 1 Observation 4')
+        self.assertEqual(obs[4], 'Output 1 Observation 5')
+        self.assertEqual(obs[5], 'Output 1 Observation 6')
+        self.assertEqual(obs[6], 'Output 1 Observation 7')
+        self.assertEqual(obs[7], 'Output 1 Observation 8')
+        self.assertEqual(obs[8], 'Output 1 Observation 9')
+        self.assertEqual(obs[9], 'Output 1 Observation 10')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Map parameters
+        param_map = {'myokit.tumour_volume': 'myokit.tumour_volume'}
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.log_likelihood, self.posterior_samples,
+            param_map=param_map)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'observation')
+
+        obs = pw_ll.observation
+        self.assertEqual(len(obs), 10)
+        self.assertEqual(obs[0], 'Output 1 Observation 1')
+        self.assertEqual(obs[1], 'Output 1 Observation 2')
+        self.assertEqual(obs[2], 'Output 1 Observation 3')
+        self.assertEqual(obs[3], 'Output 1 Observation 4')
+        self.assertEqual(obs[4], 'Output 1 Observation 5')
+        self.assertEqual(obs[5], 'Output 1 Observation 6')
+        self.assertEqual(obs[6], 'Output 1 Observation 7')
+        self.assertEqual(obs[7], 'Output 1 Observation 8')
+        self.assertEqual(obs[8], 'Output 1 Observation 9')
+        self.assertEqual(obs[9], 'Output 1 Observation 10')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Return arviz.DataInference
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.log_likelihood, self.posterior_samples,
+            return_inferencedata=True)
+
+        self.assertIsInstance(pw_ll, az.InferenceData)
+
+    def test_call_bad_input(self):
+        # Wrong log-likelihood type
+        log_likelihood = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The log-likelihood must be'):
+            erlo.compute_pointwise_loglikelihood(
+                log_likelihood, self.posterior_samples)
+
+        # Wrong posterior samples type
+        posterior_samples = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The posterior samples must'):
+            erlo.compute_pointwise_loglikelihood(
+                self.log_likelihood, posterior_samples)
+
+        # The posterior samples have the wrong dimension
+        posterior_samples = self.posterior_samples.copy()
+        posterior_samples = posterior_samples.rename_dims(
+            {'draw': 'something else'})
+        with self.assertRaisesRegex(ValueError, 'The posterior samples must'):
+            erlo.compute_pointwise_loglikelihood(
+                self.log_likelihood, posterior_samples)
+
+        # Parameter map has the wrong type
+        param_map = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The parameter map has'):
+            erlo.compute_pointwise_loglikelihood(
+                self.log_likelihood, self.posterior_samples,
+                param_map=param_map)
+
+        # Not all parameters of the log-likelihood can be identified
+        param_map = {'myokit.tumour_volume': 'Something else'}
+        with self.assertRaisesRegex(ValueError, 'The parameter <Something'):
+            erlo.compute_pointwise_loglikelihood(
+                self.log_likelihood, self.posterior_samples,
+                param_map=param_map)
+
+        # The individual is not in the posterior samples
+        individual = 'Dose not exist'
+        with self.assertRaisesRegex(ValueError, 'The parameter <Something'):
+            erlo.compute_pointwise_loglikelihood(
+                self.log_likelihood, self.posterior_samples,
+                individual=individual)
+
+
 class TestInferenceController(unittest.TestCase):
     """
-    Test the erlotinib.InferenceController base class.
+    Tests the erlotinib.InferenceController base class.
     """
 
     @classmethod
