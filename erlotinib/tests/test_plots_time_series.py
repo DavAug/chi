@@ -266,7 +266,7 @@ class TestPKPredictivePlot(unittest.TestCase):
             columns={'Measurement': 'Sample'})
 
         # Create test figure
-        cls.fig = erlo.plots.PDPredictivePlot()
+        cls.fig = erlo.plots.PKPredictivePlot()
 
     def test_add_data_wrong_data_type(self):
         # Create data of wrong type
