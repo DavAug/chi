@@ -22,6 +22,7 @@ from ._optimisation import (  # noqa
 
 from ._time_series import (  # noqa
     PDPredictivePlot,
+    PKPredictivePlot,
     PDTimeSeriesPlot,
     PKTimeSeriesPlot
 )
