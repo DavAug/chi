@@ -17,10 +17,15 @@ Functional classes
 ------------------
 
 - :class:`PDPredictivePlot`
+- :class:`PKPredictivePlot`
 
 Detailed API
 ^^^^^^^^^^^^
 
 .. autoclass:: PDPredictivePlot
+    :members:
+    :inherited-members:
+
+.. autoclass:: PKPredictivePlot
     :members:
     :inherited-members:
