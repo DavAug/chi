@@ -61,7 +61,8 @@ from ._predictive_models import (  # noqa
     PosteriorPredictiveModel,
     PredictiveModel,
     PredictivePopulationModel,
-    PriorPredictiveModel
+    PriorPredictiveModel,
+    StackedPredictiveModel
 )
 
 from ._problems import (  # noqa
