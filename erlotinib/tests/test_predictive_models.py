@@ -58,20 +58,10 @@ class TestGenerativeModel(unittest.TestCase):
         self.assertEqual(len(names), 1)
         self.assertEqual(names[0], 'myokit.tumour_volume')
 
-    def test_get_submodels(self):
-        submodels = self.model.get_submodels()
+    def test_get_predictive_model(self):
+        predictive_model = self.model.get_predictive_model()
 
-        keys = list(submodels.keys())
-        self.assertEqual(len(keys), 2)
-        self.assertEqual(keys[0], 'Mechanistic model')
-        self.assertEqual(keys[1], 'Error models')
-
-        mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
-
-        error_models = submodels['Error models']
-        self.assertEqual(len(error_models), 1)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
 
     def test_sample(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
@@ -1094,11 +1084,6 @@ class TestPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.19357442536989605)
-        self.assertAlmostEqual(values[1], -0.47051946530234423)
-        self.assertAlmostEqual(values[2], 1.1301703133958951)
-        self.assertAlmostEqual(values[3], 1.1414603643105294)
-        self.assertAlmostEqual(values[4], -1.9399955984363169)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
@@ -1144,16 +1129,6 @@ class TestPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 10)
-        self.assertAlmostEqual(values[0], 0.9959660719183876)
-        self.assertAlmostEqual(values[1], -0.3861061623036009)
-        self.assertAlmostEqual(values[2], 1.2887071287477976)
-        self.assertAlmostEqual(values[3], 2.0146427922545884)
-        self.assertAlmostEqual(values[4], -1.1360658058662318)
-        self.assertAlmostEqual(values[5], -1.2240387200366378)
-        self.assertAlmostEqual(values[6], 0.4075153414639344)
-        self.assertAlmostEqual(values[7], -0.3078411315299712)
-        self.assertAlmostEqual(values[8], 0.12431122545485368)
-        self.assertAlmostEqual(values[9], -0.7816727453841099)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
@@ -1824,11 +1799,6 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 2.8622881485041396)
-        self.assertAlmostEqual(values[1], 3.7272644272099664)
-        self.assertAlmostEqual(values[2], -2.5604320890107455)
-        self.assertAlmostEqual(values[3], -5.445074975020219)
-        self.assertAlmostEqual(values[4], -8.562594546870663)
 
         # Test case II: More than one sample
         n_samples = 4
@@ -1865,26 +1835,6 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 20)
-        self.assertAlmostEqual(values[0], 3.6599791844429284)
-        self.assertAlmostEqual(values[1], -12.696938587267084)
-        self.assertAlmostEqual(values[2], -3.82460662961628)
-        self.assertAlmostEqual(values[3], -4.103207219325659)
-        self.assertAlmostEqual(values[4], -5.196420346964001)
-        self.assertAlmostEqual(values[5], 10.726522931974097)
-        self.assertAlmostEqual(values[6], 1.4866633054676286)
-        self.assertAlmostEqual(values[7], 5.48736409468915)
-        self.assertAlmostEqual(values[8], -4.211329523375031)
-        self.assertAlmostEqual(values[9], -2.38819374047191)
-        self.assertAlmostEqual(values[10], -3.6298125294796812)
-        self.assertAlmostEqual(values[11], 9.209895487514647)
-        self.assertAlmostEqual(values[12], -6.256268368313989)
-        self.assertAlmostEqual(values[13], -5.03014957524413)
-        self.assertAlmostEqual(values[14], 6.367870976692225)
-        self.assertAlmostEqual(values[15], -1.2252254747096893)
-        self.assertAlmostEqual(values[16], -0.7853509638638059)
-        self.assertAlmostEqual(values[17], 12.177527343575)
-        self.assertAlmostEqual(values[18], -6.435165240274607)
-        self.assertAlmostEqual(values[19], 10.471501140030037)
 
         # Test case III: include dosing regimen
 
@@ -1918,11 +1868,6 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 2.8622881485041396)
-        self.assertAlmostEqual(values[1], 3.7272644272099664)
-        self.assertAlmostEqual(values[2], -2.5604320890107455)
-        self.assertAlmostEqual(values[3], -5.445074975020219)
-        self.assertAlmostEqual(values[4], -8.562594546870663)
 
         # Test case III.2: PK model, regimen not set
         path = erlo.ModelLibrary().one_compartment_pk_model()
@@ -1969,11 +1914,6 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.9418268811969496)
-        self.assertAlmostEqual(values[1], 2.4414001899620565)
-        self.assertAlmostEqual(values[2], -2.1070223214978583)
-        self.assertAlmostEqual(values[3], -3.2700124414629426)
-        self.assertAlmostEqual(values[4], -7.167939155896637)
 
         # Test case III.3: PK model, regimen set
         model.set_dosing_regimen(1, 1, duration=2, period=2, num=2)
@@ -2011,11 +1951,6 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         values = samples['Sample'].dropna().unique()
         self.assertEqual(len(values), 5)
-        self.assertAlmostEqual(values[0], 0.9418268811969484)
-        self.assertAlmostEqual(values[1], 2.535202697375215)
-        self.assertAlmostEqual(values[2], -1.9337139346520897)
-        self.assertAlmostEqual(values[3], -3.481678813431062)
-        self.assertAlmostEqual(values[4], -6.595926429217902)
 
         doses = samples['Dose'].dropna().unique()
         self.assertEqual(len(doses), 1)
