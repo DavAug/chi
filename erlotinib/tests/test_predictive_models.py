@@ -2112,7 +2112,8 @@ class TestStackedPredictiveModel(unittest.TestCase):
     def test_sample(self):
         # Test case I: Just one sample
         times = [1, 2, 3, 4, 5]
-        samples = self.stacked_model.sample(times)
+        individual = 'ID 1'
+        samples = self.stacked_model.sample(times, individual=individual)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -2143,8 +2144,10 @@ class TestStackedPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case II: More than one sample
+        seed = 1
         n_samples = 4
-        samples = self.stacked_model.sample(times, n_samples=n_samples)
+        samples = self.stacked_model.sample(
+            times, n_samples=n_samples, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
