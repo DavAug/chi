@@ -74,11 +74,11 @@ class GenerativeModel(object):
         """
         return self._predictive_model.get_output_names()
 
-    def get_submodels(self):
+    def get_predictive_model(self):
         """
-        Returns the submodels of the predictive model.
+        Returns the predictive model.
         """
-        return self._predictive_model.get_submodels()
+        return self._predictive_model
 
     def sample(
             self, times, n_samples=None, seed=None, include_regimen=False):
@@ -396,7 +396,7 @@ class PredictiveModel(object):
                     'erlotinib.ErrorModel.')
 
         # Copy mechanistic model
-        mechanistic_model = copy.deepcopy(mechanistic_model)
+        mechanistic_model = mechanistic_model.copy()
 
         # Set outputs
         if outputs is not None:
@@ -1366,3 +1366,184 @@ class PriorPredictiveModel(GenerativeModel):
             container = container.append(regimen)
 
         return container
+
+
+class StackedPredictiveModel(GenerativeModel):
+    r"""
+    A generative model that is defined by the weighted average of different
+    posterior predictive models.
+
+    A stacked predictive model accepts a list of
+    :class:`PosteriorPredictiveModel` instances and a list of relative
+    weights of the models. The resulting predictive model is then determined
+    by the weighted average of the individual models
+
+    .. math::
+        p(x | x^{\mathrm{obs}}) = \sum _m w_m\, p_m(x | x^{\mathrm{obs}}),
+
+    where the sum runs over the individual models and :math:`w_m` is the weight
+    of model :math:`m`.
+
+    Extends :class:`GenerativeModel`.
+    """
+    def __init__(self, predictive_models, weights):
+        # Check inputs
+        for predictive_model in predictive_models:
+            if not isinstance(predictive_model, PosteriorPredictiveModel):
+                raise TypeError(
+                    'The predictive models must be instances of '
+                    'erlotinib.PosteriorPredictiveModel.')
+
+        predictive_model = predictive_models[0].get_predictive_model()
+        super(StackedPredictiveModel, self).__init__(predictive_model)
+
+        n_outputs = self._predictive_model.get_n_outputs()
+        for predictive_model in predictive_models:
+            if n_outputs != predictive_model.get_n_outputs():
+                raise ValueError(
+                    'All predictive models must have the same number of '
+                    'outputs.')
+
+        output_names = self._predictive_model.get_output_names()
+        for predictive_model in predictive_models:
+            if output_names != predictive_model.get_output_names():
+                raise Warning(
+                    'The predictive models appear to have different output '
+                    'names. Stacking of the predictive distributions might '
+                    'therefore not meaningful.')
+
+        if len(predictive_models) != len(weights):
+            raise ValueError(
+                'The model weights must be of the same length as the number '
+                'of predictive models.')
+
+        weights = np.array(weights, dtype=float)
+
+        # Remember models and normalised weights
+        self._predictive_models = predictive_models
+        self._weights = weights / np.sum(weights)
+
+    def get_predictive_model(self):
+        """
+        Returns a list of the
+        :class:`erlotinib.PosteriorPredictiveModel` instances.
+        """
+        return self._predictive_models
+
+    def get_weights(self):
+        """
+        Returns the weights of the individual predictive models.
+        """
+        return copy.copy(self._weights)
+
+    def sample(
+            self, times, n_samples=None, individual=None, seed=None,
+            include_regimen=False):
+        """
+        Samples "measurements" of the biomarkers from the posterior predictive
+        model and returns them in form of a :class:`pandas.DataFrame`.
+
+        For each of the ``n_samples`` a parameter set is drawn from the
+        approximate posterior distribution. These paramaters are then used to
+        sample from the predictive model.
+
+        :param times: Times for the virtual "measurements".
+        :type times: list, numpy.ndarray of shape (n,)
+        :param n_samples: The number of virtual "measurements" that are
+            performed at each time point. If ``None`` the biomarkers are
+            measured only once at each time point.
+        :type n_samples: int, optional
+        :param individual: The ID of the modelled individual. If
+            ``None``, either the first ID or the population is simulated.
+        :type individual: str, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int
+        :param include_regimen: A boolean flag which determines whether the
+            information about the dosing regimen is included.
+        :type include_regimen: bool, optional
+        """
+        # Make sure n_samples is an integer
+        if n_samples is None:
+            n_samples = 1
+        n_samples = int(n_samples)
+
+        # Instantiate random number generator
+        seed = np.random.default_rng(seed=seed)
+
+        # Sample number of samples from each predictive model
+        n_models = len(self._predictive_models)
+        model_indices = np.arange(n_models)
+        model_draws = np.random.choice(
+            model_indices, p=self._weights, size=n_samples)
+        samples_per_model = np.zeros(n_models, dtype=int)
+        for model_id, model in enumerate(model_indices):
+            samples_per_model[model_id] = np.sum(
+                model_draws == model)
+
+        # Sample from predictive models
+        samples = []
+        for model_id, n_samples in enumerate(samples_per_model):
+            # Skip model if no samples are drawn from it
+            if n_samples == 0:
+                continue
+
+            # Sample
+            model = self._predictive_models[model_id]
+            s = model.sample(times, n_samples, individual, seed=seed)
+
+            # Shift IDs by number of previous draws
+            s['ID'] += int(np.sum(samples_per_model[:model_id]))
+
+            # Append samples to list
+            samples.append(s)
+
+        # Concatenate all samples to one dataframe
+        samples = pd.concat(samples)
+
+        # Add dosing regimen, if set
+        final_time = np.max(times)
+        regimen = self.get_dosing_regimen(final_time)
+        if (regimen is not None) and (include_regimen is True):
+            # Append dosing regimen only once for all samples
+            samples = samples.append(regimen)
+
+        return samples
+
+    def set_dosing_regimen(
+            self, dose, start, duration=0.01, period=None, num=None):
+        """
+        Sets the dosing regimen with which the compound is administered.
+
+        By default the dose is administered as a bolus injection (duration on
+        a time scale that is 100 fold smaller than the basic time unit). To
+        model an infusion of the dose over a longer time period, the
+        ``duration`` can be adjusted to the appropriate time scale.
+
+        By default the dose is administered once. To apply multiple doses
+        provide a dose administration period.
+
+        .. note::
+            This method requires a :class:`MechanisticModel` that supports
+            dose administration.
+
+        Parameters
+        ----------
+        dose
+            The amount of the compound that is injected at each administration.
+        start
+            Start time of the treatment.
+        duration
+            Duration of dose administration. For a bolus injection, a dose
+            duration of 1% of the time unit should suffice. By default the
+            duration is set to 0.01 (bolus).
+        period
+            Periodicity at which doses are administered. If ``None`` the dose
+            is administered only once.
+        num
+            Number of administered doses. If ``None`` and the periodicity of
+            the administration is not ``None``, doses are administered
+            indefinitely.
+        """
+        for predictive_model in self._predictive_models:
+            predictive_model.set_dosing_regimen(
+                dose, start, duration, period, num)
