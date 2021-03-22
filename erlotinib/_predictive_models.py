@@ -1468,8 +1468,7 @@ class StackedPredictiveModel(GenerativeModel):
         n_samples = int(n_samples)
 
         # Instantiate random number generator
-        if seed is not None:
-            seed = np.random.Generator(seed)
+        seed = np.random.default_rng(seed=seed)
 
         # Sample number of samples from each predictive model
         n_models = len(self._predictive_models)
@@ -1490,7 +1489,7 @@ class StackedPredictiveModel(GenerativeModel):
 
             # Sample
             model = self._predictive_models[model_id]
-            s = model.sample(times, n_samples, seed=seed)
+            s = model.sample(times, n_samples, individual, seed=seed)
 
             # Shift IDs by number of previous draws
             s['ID'] += int(np.sum(samples_per_model[:model_id]))
