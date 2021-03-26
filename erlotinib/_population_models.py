@@ -143,6 +143,23 @@ class HeterogeneousModel(PopulationModel):
         """
         return 0
 
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the parameters and the observations.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        n_paramaters = len(parameters)
+        n_observations = len(observations)
+        return 0, np.zeros(shape=(n_observations, n_paramaters))
+
     def get_parameter_names(self):
         """
         Returns the name of the the population model parameters. If name were
@@ -208,13 +225,16 @@ class LogNormalModel(PopulationModel):
     distributed in the population
 
     .. math::
-        p(\psi |\mu _{\text{log}}, \sigma _{\text{log}}) =
+        p(\psi |\mu , \sigma ) =
         \frac{1}{\psi} \frac{1}{\sqrt{2\pi} \sigma _{\text{log}}}
         \exp\left(-\frac{(\log \psi - \mu _{\text{log}})^2}
         {2 \sigma ^2_{\text{log}}}\right).
 
-    Here :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` are the
+    Here, :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` are the
     mean and variance of :math:`\log \psi` in the population, respectively.
+    Note that we chose to parametrise the distribution, however, by the
+    somewhat more intuitive mean and standard deviation of theparameter
+    :math:`\psi` itself.
 
     The mean and variance of the parameter :math:`\psi` itself,
     :math:`\mu = \mathbb{E}\left[ \psi \right]` and
@@ -254,10 +274,10 @@ class LogNormalModel(PopulationModel):
         at the population model parameters
 
         .. math::
-            L(\mu _{\text{log}}, \sigma _{\text{log}} | \Psi) =
+            L(\mu , \sigma | \Psi) =
             \sum _{i=1}^N
             \log p(\psi ^{\text{obs}}_i |
-            \mu _{\text{log}}, \sigma _{\text{log}}) ,
+            \mu , \sigma ) ,
 
         where
         :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N)`
@@ -296,6 +316,24 @@ class LogNormalModel(PopulationModel):
             return -np.inf
 
         return score
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the parameters and the observations.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        #TODO:
+        n_paramaters = len(parameters)
+        n_observations = len(observations)
+        return 0, np.zeros(shape=(n_observations, n_paramaters))
 
     def get_parameter_names(self):
         """
@@ -468,8 +506,30 @@ class PooledModel(PopulationModel):
         is 0, if all individual parameters are equal to the population
         parameter, and :math:`-\infty` otherwise.
 
-        If ``observations`` is an empty list, a score of ``0`` is returned for
-        convenience.
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get the population parameter
+        parameter = parameters[0]
+
+        # Return 0 if all observations equal the pooled parameter
+        observations = np.array(observations)
+        mask = observations == parameter
+        if np.all(mask):
+            return 0
+
+        # Otherwise return - infinity
+        return -np.inf
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the parameters and the observations.
 
         Parameters
         ----------
@@ -482,17 +542,16 @@ class PooledModel(PopulationModel):
         # Get the population parameter
         parameter = parameters[0]
 
-        # Return 0, if observations is empty
-        if len(observations) == 0:
-            return 0
+        # Return 0 if all observations equal the pooled parameter
+        observations = np.array(observations)
+        n_observations = len(observations)
+        mask = observations == parameter
+        if np.all(mask):
+            return 0, np.zeros(shape=(n_observations, 1))
 
-        # Return - infinity, if any observation deviates from the parameter
-        for observation in observations:
-            if observation != parameter:
-                return -np.inf
-
-        # If all individual parameters equal the population parameter, return 0
-        return 0
+        # Otherwise return - infinity
+        sens = np.full(shape=(n_observations, 1), fill_value=np.inf)
+        return -np.inf, sens
 
     def get_parameter_names(self):
         """
