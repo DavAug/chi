@@ -20,7 +20,22 @@ class PopulationModel(object):
 
     def compute_log_likelihood(self, parameters, observations):
         """
-        Returns the unnormalised log-likelihood score of the population model.
+        Returns the log-likelihood of the population parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        raise NotImplementedError
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the parameters and the observations.
 
         Parameters
         ----------
