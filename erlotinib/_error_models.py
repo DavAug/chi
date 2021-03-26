@@ -297,7 +297,7 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
             parameters, model_output, model_sensitivities,
             observations):  # pragma: no cover
         """
-        Calculates the log-lieklihood and its sensitivities using numba
+        Calculates the log-likelihood and its sensitivities using numba
         speed up.
 
         Expects:
