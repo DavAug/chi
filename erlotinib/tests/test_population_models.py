@@ -870,6 +870,12 @@ class TestPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.compute_log_likelihood(parameters, observations)
 
+    def test_compute_sensitivities(self):
+        parameters = 'some parameters'
+        observations = 'some observations'
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.compute_sensitivities(parameters, observations)
+
     def test_get_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.get_parameter_names()
@@ -925,6 +931,35 @@ class TestReducedPopulationModel(unittest.TestCase):
             parameters, observations)
 
         self.assertEqual(score, ref_score)
+
+        # Unfix model parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Sigma base': None})
+
+    def test_compute_sensitivities(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 1})
+
+        # Compute log-likelihood
+        parameters = [2]
+        observations = [2, 3, 4, 5]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+
+        # Compute ref score with original error model
+        parameters = [1, 2]
+        error_model = self.pop_model.get_population_model()
+        ref_score, ref_sens = error_model.compute_sensitivities(
+            parameters, observations)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[5])
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
