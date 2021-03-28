@@ -934,7 +934,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Sigma base': None})
+            'Mean': None})
 
     def test_compute_sensitivities(self):
         # Test case I: fix some parameters
@@ -963,7 +963,20 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Sigma base': None})
+            'Mean': None})
+
+        # Compute log-likelihood
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 6)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
