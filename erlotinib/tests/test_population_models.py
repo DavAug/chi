@@ -86,13 +86,14 @@ class TestLogNormalModel(unittest.TestCase):
         n_ids = 10
 
         # Test case I: psis = 1, sigma_log = 1
-        # Score reduces to -n_ids * mu_log^2 / 2
+        # Score reduces to
+        # -n_ids * np.log(2*pi) / 2 - n_ids * mu_log^2 / 2
 
         # Test case I.1:
         psis = [1] * n_ids
         mu_log = 1
         var_log = 1
-        ref_score = -n_ids * mu_log**2 / 2  # mu_log = -5
+        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -112,7 +113,7 @@ class TestLogNormalModel(unittest.TestCase):
         psis = [1] * n_ids
         mu_log = 5
         var_log = 1
-        ref_score = -n_ids * mu_log**2 / 2  # mu_log = -125
+        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -130,13 +131,15 @@ class TestLogNormalModel(unittest.TestCase):
 
         # Test case II: psis = 1.
         # Score reduces to
-        # -n_ids * log(sigma_log) -n_ids * mu_log^2 / (2 * sigma_log^2)
+        # -n_ids * log(sigma_log) - n_ids * log(2 * pi) / 2
+        # - n_ids * mu_log^2 / (2 * sigma_log^2)
 
         # Test case II.1:
         psis = [1] * n_ids
         mu_log = 1
         var_log = np.exp(2)
-        ref_score = -n_ids - n_ids * mu_log**2 / (2 * var_log)
+        ref_score = \
+            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -156,7 +159,8 @@ class TestLogNormalModel(unittest.TestCase):
         psis = [1] * n_ids
         mu_log = 3
         var_log = np.exp(3)
-        ref_score = -1.5 * n_ids - n_ids * mu_log**2 / (2 * var_log)
+        ref_score = \
+            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -174,13 +178,15 @@ class TestLogNormalModel(unittest.TestCase):
 
         # Test case III: psis all the same, sigma_log = 1.
         # Score reduces to
-        # -n_ids * log(psi) - n_ids * (log(psi) - mu_log)^2 / 2
+        # -n_ids * log(psi) - n_ids * np.log(2 * pi) / 2
+        # - n_ids * (log(psi) - mu_log)^2 / 2
 
         # Test case III.1
         psis = [np.exp(4)] * n_ids
         mu_log = 1
         var_log = 1
-        ref_score = -n_ids * 4 - n_ids * (4 - mu_log)**2 / 2  # -85
+        ref_score = \
+            -n_ids * (4 + np.log(2 * np.pi) / 2 + (4 - mu_log)**2 / 2)
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -200,7 +206,7 @@ class TestLogNormalModel(unittest.TestCase):
         psis = [np.exp(3)] * n_ids
         mu_log = 3
         var_log = 1
-        ref_score = -n_ids * 3  # -100
+        ref_score = -n_ids * (3 + np.log(2 * np.pi) / 2)
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
