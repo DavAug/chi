@@ -21,7 +21,7 @@ class PopulationModel(object):
 
     def compute_log_likelihood(self, parameters, observations):
         """
-        Returns the log-likelihood of the population parameters.
+        Returns the log-likelihood of the population model parameters.
 
         Parameters
         ----------
@@ -36,7 +36,7 @@ class PopulationModel(object):
     def compute_sensitivities(self, parameters, observations):
         r"""
         Returns the log-likelihood of the population parameters and its
-        sensitivities w.r.t. the parameters and the observations.
+        sensitivities w.r.t. the observations and the parameters.
 
         Parameters
         ----------
@@ -128,7 +128,7 @@ class HeterogeneousModel(PopulationModel):
 
     def compute_log_likelihood(self, parameters, observations):
         """
-        Returns the unnormalised log-likelihood score of the population model.
+        Returns the log-likelihood of the population model parameters.
 
         A heterogenous population model imposes no restrictions on the
         individuals, as a result the log-likelihood score is zero irrespective
@@ -610,19 +610,20 @@ class PooledModel(PopulationModel):
         # Get the population parameter
         parameter = parameters[0]
 
-        # Return 0 if all observations equal the pooled parameter
+        # Return -inf if any of the observations does not equal the pooled
+        # parameter
         observations = np.array(observations)
-        mask = observations == parameter
-        if np.all(mask):
-            return 0
+        mask = observations != parameter
+        if np.any(mask):
+            return -np.inf
 
-        # Otherwise return - infinity
-        return -np.inf
+        # Otherwise return 0
+        return 0
 
     def compute_sensitivities(self, parameters, observations):
         r"""
         Returns the log-likelihood of the population parameters and its
-        sensitivities w.r.t. the parameters and the observations.
+        sensitivities w.r.t. the observations and the parameters.
 
         Parameters
         ----------
@@ -635,16 +636,16 @@ class PooledModel(PopulationModel):
         # Get the population parameter
         parameter = parameters[0]
 
-        # Return 0 if all observations equal the pooled parameter
+        # Return -inf if any of the observations does not equal the pooled
+        # parameter
         observations = np.array(observations)
-        n_observations = len(observations)
-        mask = observations == parameter
-        if np.all(mask):
-            return 0, np.zeros(shape=(n_observations, 1))
+        n_obs = len(observations)
+        mask = observations != parameter
+        if np.any(mask):
+            return -np.inf, np.full(shape=n_obs + 1, fill_value=np.inf)
 
-        # Otherwise return - infinity
-        sens = np.full(shape=(n_observations, 1), fill_value=np.inf)
-        return -np.inf, sens
+        # Otherwise return 0
+        return 0, np.zeros(shape=n_obs + 1)
 
     def get_parameter_names(self):
         """
