@@ -729,31 +729,65 @@ class TestPooledModel(unittest.TestCase):
         cls.pop_model = erlo.PooledModel()
 
     def test_compute_log_likelihood(self):
-        # Test case I: observations empty
-        # (exception where 0 is returned for convenience)
-        parameters = [1]
-        observations = []
-        score = self.pop_model.compute_log_likelihood(parameters, observations)
-        self.assertEqual(score, 0)
-
-        # Test case II: observation differ from parameter
-        # Test case II.1
+        # Test case I: observation differ from parameter
+        # Test case I.1
         parameters = [1]
         observations = [0, 1, 1, 1]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, -np.inf)
 
-        # Test case II.1
+        # Test case I.1
         parameters = [1]
         observations = [1, 1, 1, 10]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, -np.inf)
 
-        # Test case III: all values agree with parameter
+        # Test case II: all values agree with parameter
         parameters = [1]
         observations = [1, 1, 1, 1]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
+
+    def test_compute_sensitivities(self):
+        # Test case I: observation differ from parameter
+        # Test case I.1
+        parameters = [1]
+        observations = [0, 1, 1, 1]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(sens[3], np.inf)
+        self.assertEqual(sens[4], np.inf)
+
+        # Test case I.1
+        parameters = [1]
+        observations = [1, 1, 1, 10]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(sens[3], np.inf)
+        self.assertEqual(sens[4], np.inf)
+
+        # Test case II: all values agree with parameter
+        parameters = [1]
+        observations = [1, 1, 1, 1]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, 0)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], 0)
+        self.assertEqual(sens[1], 0)
+        self.assertEqual(sens[2], 0)
+        self.assertEqual(sens[3], 0)
+        self.assertEqual(sens[4], 0)
 
     def test_get_parameter_names(self):
         names = ['Pooled']
