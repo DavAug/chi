@@ -29,6 +29,18 @@ class TestHeterogeneousModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
 
+    def test_compute_sensitivities(self):
+        # For efficiency the input is actually not checked, and 0 is returned
+        # regardless
+        parameters = 'some parameters'
+        observations = ['some', 'observations']
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, 0)
+        self.assertEqual(len(sens), 2)
+        self.assertEqual(sens[0], 0)
+        self.assertEqual(sens[1], 0)
+
     def test_get_parameter_names(self):
         self.assertIsNone(self.pop_model.get_parameter_names())
 
