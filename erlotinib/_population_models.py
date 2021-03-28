@@ -289,6 +289,10 @@ class LogNormalModel(PopulationModel):
         var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
         log_psi = np.log(observations)
 
+        # Return -infinity if variance vanishes
+        if var_log == 0:
+            return -np.inf
+
         # Compute log-likelihood score
         n_ids = len(log_psi)
         log_likelihood = \
@@ -335,6 +339,11 @@ class LogNormalModel(PopulationModel):
         var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
         log_psi = np.log(psi)
         transformed_psi = (np.log(psi) - mean_log) / var_log
+
+        # Return -infinity if variance vanishes
+        if var_log == 0:
+            n_obs = len(psi)
+            return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
 
         # Compute log-likelihood score
         n_ids = len(psi)
