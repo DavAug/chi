@@ -7,6 +7,7 @@
 
 import copy
 
+from numba import njit
 import numpy as np
 
 
@@ -266,6 +267,97 @@ class LogNormalModel(PopulationModel):
         # Set default parameter names
         self._parameter_names = ['Mean', 'Std.']
 
+    @staticmethod
+    @njit
+    def _compute_log_likelihood(mean, std, observations):  # pragma: no cover
+        r"""
+        Calculates the log-likelihood using numba speed up.
+
+        The parameters are transformed from mean and std to mean and var of
+        log psi using
+
+        .. math::
+            \mu _{\text{log}} =
+            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
+            \quad
+            \text{and}
+            \quad
+            \sigma ^2_{\text{log}} =
+            -2\log \mu + \log (\mu ^2 + \sigma ^2)
+        """
+        # Transform parameters and observations
+        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
+        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        log_psi = np.log(observations)
+
+        # Compute log-likelihood score
+        n_ids = len(log_psi)
+        log_likelihood = \
+            - n_ids * np.log(2 * np.pi * var_log) / 2 \
+            - np.sum(log_psi) \
+            - np.sum((log_psi - mean_log) ** 2) / (2 * var_log)
+
+        # If score evaluates to NaN, return -infinity
+        if np.isnan(log_likelihood):
+            return -np.inf
+
+        return log_likelihood
+
+    @staticmethod
+    @njit
+    def _compute_sensitivities(mean, std, psi):  # pragma: no cover
+        """
+        Calculates the log-likelihood and its sensitivities using numba
+        speed up.
+
+        Expects:
+        Shape observations =  (n_obs,)
+
+        Returns:
+        log_likelihood: float
+        sensitivities: np.ndarray of shape (n_obs + 2,)
+        """
+        # Transform parameters and observations
+        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
+        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        log_psi = np.log(psi)
+        transformed_psi = (np.log(psi) - mean_log) / var_log
+
+        # Compute log-likelihood score
+        # TODO: Check whether transformed**2 * var_log makes sense!
+        n_ids = len(psi)
+        log_likelihood = \
+            - n_ids * np.log(2 * np.pi * var_log) / 2 \
+            - np.sum(log_psi) \
+            - np.sum((log_psi - mean_log) ** 2) / (2 * var_log)
+
+        # If score evaluates to NaN, return -infinity
+        if np.isnan(log_likelihood):
+            n_obs = len(psi)
+            return -np.inf, np.full(shape=(n_obs, 2), fill_value=np.inf)
+
+        # Compute sensitivities w.r.t. observations (psi)
+        dpsi = - (1 + transformed_psi) / psi
+
+        # Copmute sensitivities w.r.t. parameters
+        # (del f / del var_log * del var_log / del mean +
+        # del f / del mean_log * del mean_log / del mean)
+        dmean = \
+            (np.sum(transformed_psi)**2 - 1 / var_log) \
+            * (mean / (mean**2 + std**2) - 1 / mean) \
+            + np.sum(transformed_psi) * (2 / mean - mean / (mean**2 + std**2))
+
+        # (del f / del var_log * del var_log / del std +
+        # del f / del mean_log * del mean_log / del std)
+        dstd = \
+            (np.sum(transformed_psi**2) - 1 / var_log) \
+            * std / (mean**2 + std**2) \
+            - np.sum(transformed_psi) * std / (mean**2 + std**2)
+
+        sensitivities = np.concatenate((dpsi, dmean, dstd))
+
+        return log_likelihood, sensitivities
+
     def compute_log_likelihood(self, parameters, observations):
         r"""
         Returns the unnormalised log-likelihood score of the population model.
@@ -296,26 +388,14 @@ class LogNormalModel(PopulationModel):
             An array like object with the parameter values for the individuals,
             :math:`\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`.
         """
-        log_psis = np.log(observations)
+        observations = np.asarray(observations)
         mean, std = parameters
 
         if mean <= 0 or std <= 0:
             # The mean and var of log psi are strictly positive
             return -np.inf
 
-        # Transform parameters to mean_log and var_log
-        mean_log, var_log = self.transform_parameters(mean, std)
-
-        # Compute log-likelihood score
-        n_ids = len(log_psis)
-        score = -n_ids * np.log(var_log) / 2 - np.sum(log_psis) \
-            - np.sum((log_psis - mean_log) ** 2) / (2 * var_log)
-
-        # If score evaluates to NaN, return -infinity
-        if np.isnan(score):
-            return -np.inf
-
-        return score
+        return self._compute_log_likelihood(mean, std, observations)
 
     def compute_sensitivities(self, parameters, observations):
         r"""
@@ -330,10 +410,15 @@ class LogNormalModel(PopulationModel):
             An array-like object with the observations of the individuals. Each
             entry is assumed to belong to one individual.
         """
-        #TODO:
-        n_paramaters = len(parameters)
-        n_observations = len(observations)
-        return 0, np.zeros(shape=(n_observations, n_paramaters))
+        observations = np.asarray(observations)
+        mean, std = parameters
+
+        if mean <= 0 or std <= 0:
+            # The mean and var of log psi are strictly positive
+            n_obs = len(observations)
+            return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
+
+        return self._compute_sensitivities(mean, std, observations)
 
     def get_parameter_names(self):
         """
