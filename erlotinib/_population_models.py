@@ -764,7 +764,7 @@ class ReducedPopulationModel(object):
 
     def compute_log_likelihood(self, parameters, observations):
         """
-        Returns the unnormalised log-likelihood score of the population model.
+        Returns the log-likelihood of the population model parameters.
 
         Parameters
         ----------
@@ -784,6 +784,38 @@ class ReducedPopulationModel(object):
             parameters, observations)
 
         return score
+
+    def compute_sensitivities(self, parameters, observations):
+        """
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the observations and the parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        # Compute log-likelihood and sensitivities
+        score, sensitivities = self._population_model.compute_sensitivities(
+            parameters, observations)
+
+        if self._fixed_params_mask is None:
+            return score, sensitivities
+
+        # Filter sensitivities for fixed parameters
+        n_obs = len(observations)
+        mask = np.ones(n_obs + self._n_parameters, dtype=bool)
+        mask[-self._n_parameters:] = ~self._fixed_params_mask
+
+        return score, sensitivities[mask]
 
     def fix_parameters(self, name_value_dict):
         """
