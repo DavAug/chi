@@ -157,9 +157,8 @@ class HeterogeneousModel(PopulationModel):
             An array-like object with the observations of the individuals. Each
             entry is assumed to belong to one individual.
         """
-        n_paramaters = len(parameters)
         n_observations = len(observations)
-        return 0, np.zeros(shape=(n_observations, n_paramaters))
+        return 0, np.zeros(shape=n_observations)
 
     def get_parameter_names(self):
         """
@@ -373,9 +372,9 @@ class LogNormalModel(PopulationModel):
 
     def compute_log_likelihood(self, parameters, observations):
         r"""
-        Returns the unnormalised log-likelihood score of the population model.
+        Returns the log-likelihood of the population model parameters.
 
-        The log-likelihood score of a LogNormalModel is the log-pdf evaluated
+        The log-likelihood of a LogNormalModel is the log-pdf evaluated
         at the population model parameters
 
         .. math::
@@ -387,10 +386,6 @@ class LogNormalModel(PopulationModel):
         where
         :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N)`
         are the observed :math:`\psi` from :math:`N` individuals.
-
-        .. note::
-            All constant terms that do not depend on the model parameters are
-            dropped when computing the log-likelihood score.
 
         Parameters
         ----------
@@ -413,7 +408,7 @@ class LogNormalModel(PopulationModel):
     def compute_sensitivities(self, parameters, observations):
         r"""
         Returns the log-likelihood of the population parameters and its
-        sensitivities w.r.t. the parameters and the observations.
+        sensitivities w.r.t. the observations and the parameters.
 
         Parameters
         ----------
