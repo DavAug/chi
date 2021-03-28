@@ -306,11 +306,25 @@ class LogNormalModel(PopulationModel):
     @staticmethod
     @njit
     def _compute_sensitivities(mean, std, psi):  # pragma: no cover
-        """
+        r"""
         Calculates the log-likelihood and its sensitivities using numba
         speed up.
 
+        The parameters are transformed from mean and std to mean and var of
+        log psi using
+
+        .. math::
+            \mu _{\text{log}} =
+            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
+            \quad
+            \text{and}
+            \quad
+            \sigma ^2_{\text{log}} =
+            -2\log \mu + \log (\mu ^2 + \sigma ^2)
+
         Expects:
+        mean = float
+        std = float
         Shape observations =  (n_obs,)
 
         Returns:
@@ -324,17 +338,16 @@ class LogNormalModel(PopulationModel):
         transformed_psi = (np.log(psi) - mean_log) / var_log
 
         # Compute log-likelihood score
-        # TODO: Check whether transformed**2 * var_log makes sense!
         n_ids = len(psi)
         log_likelihood = \
             - n_ids * np.log(2 * np.pi * var_log) / 2 \
             - np.sum(log_psi) \
-            - np.sum((log_psi - mean_log) ** 2) / (2 * var_log)
+            - np.sum(transformed_psi**2) * var_log / 2
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
             n_obs = len(psi)
-            return -np.inf, np.full(shape=(n_obs, 2), fill_value=np.inf)
+            return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
         dpsi = - (1 + transformed_psi) / psi
@@ -343,7 +356,7 @@ class LogNormalModel(PopulationModel):
         # (del f / del var_log * del var_log / del mean +
         # del f / del mean_log * del mean_log / del mean)
         dmean = \
-            (np.sum(transformed_psi)**2 - 1 / var_log) \
+            (np.sum(transformed_psi**2) - 1 / var_log) \
             * (mean / (mean**2 + std**2) - 1 / mean) \
             + np.sum(transformed_psi) * (2 / mean - mean / (mean**2 + std**2))
 
@@ -354,7 +367,7 @@ class LogNormalModel(PopulationModel):
             * std / (mean**2 + std**2) \
             - np.sum(transformed_psi) * std / (mean**2 + std**2)
 
-        sensitivities = np.concatenate((dpsi, dmean, dstd))
+        sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
 
         return log_likelihood, sensitivities
 
