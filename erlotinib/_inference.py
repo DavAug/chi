@@ -655,7 +655,7 @@ class SamplingController(InferenceController):
 
             # If Hamiltonian Monte Carlo, get number of divergent
             # iterations
-            divergent_iters = None
+            divergent_iters = 'none'
             if issubclass(
                     self._sampler, (pints.HamiltonianMCMC, pints.NoUTurnMCMC)):
                 divergent_iters = [
