@@ -393,8 +393,8 @@ class HierarchicalLogLikelihood(object):
             start = end_pop
 
         # Return if values already lead to a rejection
-        if np.isinf(ll_score) or np.any(np.isinf(sensitivities)):
-            return ll_score, sensitivities
+        if np.isinf(ll_score):
+            return ll_score, np.full(shape=len(parameters), fill_value=np.inf)
 
         # Evaluate individual likelihoods and sensitivities
         for index, log_likelihood in enumerate(self._log_likelihoods):
@@ -651,6 +651,33 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
         # Store mask
         self._top_level_mask = top_level_mask
+
+    def evaluateS1(self, parameters):
+        """
+        Returns the log-posterior score and its sensitivities to the model
+        parameters.
+
+        :param parameters: An array-like object with parameter values.
+        :type parameters: List[float], numpy.ndarray
+        """
+        # Convert parameters
+        parameters = np.asarray(parameters)
+
+        # Evaluate log-prior first, assuming this is very cheap
+        score, sens = self._log_prior.evaluateS1(
+            parameters[self._top_level_mask])
+
+        if np.isinf(score):
+            return score, np.full(shape=len(parameters), fill_value=np.inf)
+
+        # Add log-likelihood score and sensitivities
+        ll_score, sensitivities = self._log_likelihood.evaluateS1(
+            parameters)
+
+        score += ll_score
+        sensitivities[self._top_level_mask] += sens
+
+        return score, sensitivities
 
     def get_log_likelihood(self):
         """
@@ -1325,6 +1352,13 @@ class LogPosterior(pints.LogPDF):
         return score + self._log_likelihood(parameters)
 
     def evaluateS1(self, parameters):
+        """
+        Returns the log-posterior score and its sensitivities to the model
+        parameters.
+
+        :param parameters: An array-like object with parameter values.
+        :type parameters: List[float], numpy.ndarray
+        """
         # Evaluate log-prior first, assuming this is very cheap
         score, sensitivities = self._log_prior.evaluateS1(parameters)
         if np.isinf(score):
