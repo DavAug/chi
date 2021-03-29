@@ -699,15 +699,63 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
 
     def test_call(self):
         # Test case I: Check score contributions add appropriately
-        all_params = np.arange(start=0, stop=13, step=1)
-        top_params = [0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-        score = self.hierarch_log_likelihood(all_params) + \
+        all_params = np.arange(start=1, stop=14, step=1)
+        top_params = [1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        ref_score = self.hierarch_log_likelihood(all_params) + \
             self.log_prior(top_params)
+        score = self.log_posterior(all_params)
 
-        self.assertEqual(self.log_posterior(all_params), score)
+        self.assertNotEqual(score, -np.inf)
+        self.assertEqual(score, ref_score)
 
         # Test case II: Check exception for inf prior score
-        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, -1]
+        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        self.assertEqual(self.log_posterior(parameters), -np.inf)
+
+    def test_evaluateS1(self):
+        # Test case I: Check score contributions add appropriately
+        all_params = np.arange(start=1, stop=14, step=1)
+        top_params = [1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        ref_score1, ref_sens1 = self.hierarch_log_likelihood.evaluateS1(
+            all_params)
+        ref_score2, ref_sens2 = self.log_prior.evaluateS1(top_params)
+        ref_score = ref_score1 + ref_score2
+        ref_sens = [
+            ref_sens1[0] + ref_sens2[0],
+            ref_sens1[1] + ref_sens2[1],
+            ref_sens1[2],
+            ref_sens1[3],
+            ref_sens1[4] + ref_sens2[2],
+            ref_sens1[5] + ref_sens2[3],
+            ref_sens1[6] + ref_sens2[4],
+            ref_sens1[7] + ref_sens2[5],
+            ref_sens1[8] + ref_sens2[6],
+            ref_sens1[9] + ref_sens2[7],
+            ref_sens1[10] + ref_sens2[8],
+            ref_sens1[11] + ref_sens2[9],
+            ref_sens1[12] + ref_sens2[10]]
+
+        score, sens = self.log_posterior.evaluateS1(all_params)
+
+        self.assertNotEqual(score, -np.inf)
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 13)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
+        self.assertEqual(sens[6], ref_sens[6])
+        self.assertEqual(sens[7], ref_sens[7])
+        self.assertEqual(sens[8], ref_sens[8])
+        self.assertEqual(sens[9], ref_sens[9])
+        self.assertEqual(sens[10], ref_sens[10])
+        self.assertEqual(sens[11], ref_sens[11])
+        self.assertEqual(sens[12], ref_sens[12])
+
+        # Test case II: Check exception for inf prior score
+        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         self.assertEqual(self.log_posterior(parameters), -np.inf)
 
     def test_get_log_likelihood(self):
