@@ -373,7 +373,7 @@ class HierarchicalLogLikelihood(object):
 
         # Compute population model likelihood and sensitivities
         start = 0
-        log_likelihood = 0
+        ll_score = 0
         sensitivities = np.zeros(shape=len(parameters))
         for pop_model in self._population_models:
             # Get start and end index of individual parameters and population
@@ -386,24 +386,24 @@ class HierarchicalLogLikelihood(object):
             score, sens = pop_model.compute_sensitivities(
                 parameters=parameters[end_indiv:end_pop],
                 observations=parameters[start:end_indiv])
-            log_likelihood += score
+            ll_score += score
             sensitivities[start:end_pop] += sens
 
             # Shift start index
             start = end_pop
 
         # Return if values already lead to a rejection
-        if np.isinf(score) or np.any(np.isinf(sensitivities)):
-            return score, sensitivities
+        if np.isinf(ll_score) or np.any(np.isinf(sensitivities)):
+            return ll_score, sensitivities
 
         # Evaluate individual likelihoods and sensitivities
         for index, log_likelihood in enumerate(self._log_likelihoods):
             indices = self._indiv_params[index]
-            score, sens = log_likelihood(parameters[indices])
-            log_likelihood += score
+            score, sens = log_likelihood.evaluateS1(parameters[indices])
+            ll_score += score
             sensitivities[indices] += sens
 
-        return score, sensitivities
+        return ll_score, sensitivities
 
     def get_id(self):
         """
