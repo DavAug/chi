@@ -233,6 +233,243 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertEqual(self.hierarchical_model(parameters), -np.inf)
 
+    def test_evaluateS1(self):
+        # Test case I: All parameters pooled
+        model = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=self.log_likelihoods,
+            population_models=[erlo.PooledModel()] * 9)
+
+        # Create reference model
+        pooled_log_pdf = pints.PooledLogPDF(
+            self.log_likelihoods, pooled=[True]*9)
+
+        # Test case I.1
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ref_score, ref_sens = pooled_log_pdf.evaluateS1(parameters)
+        score, sens = model.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 9)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
+        self.assertEqual(sens[6], ref_sens[6])
+        self.assertEqual(sens[7], ref_sens[7])
+        self.assertEqual(sens[8], ref_sens[8])
+
+        # Test case I.2
+        parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
+        ref_score, ref_sens = pooled_log_pdf.evaluateS1(parameters)
+        score, sens = model.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 9)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
+        self.assertEqual(sens[6], ref_sens[6])
+        self.assertEqual(sens[7], ref_sens[7])
+        self.assertEqual(sens[8], ref_sens[8])
+
+        # Test case II.1: Heterogeneous model
+        likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=self.log_likelihoods,
+            population_models=[
+                erlo.HeterogeneousModel()] * 9)
+
+        # Compute score from individual likelihoods
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ref_score = 0
+        ref_senss = []
+        for ll in self.log_likelihoods:
+            s, se = ll.evaluateS1(parameters)
+            ref_score += s
+            ref_senss.append(se)
+
+        n_parameters = 9
+        n_ids = 2
+        parameters = [1] * n_parameters * n_ids
+        score, sens = likelihood.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 18)
+        ref_sens = ref_senss[0]
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[2], ref_sens[1])
+        self.assertEqual(sens[4], ref_sens[2])
+        self.assertEqual(sens[6], ref_sens[3])
+        self.assertEqual(sens[8], ref_sens[4])
+        self.assertEqual(sens[10], ref_sens[5])
+        self.assertEqual(sens[12], ref_sens[6])
+        self.assertEqual(sens[14], ref_sens[7])
+        self.assertEqual(sens[16], ref_sens[8])
+        ref_sens = ref_senss[1]
+        self.assertEqual(sens[1], ref_sens[0])
+        self.assertEqual(sens[3], ref_sens[1])
+        self.assertEqual(sens[5], ref_sens[2])
+        self.assertEqual(sens[7], ref_sens[3])
+        self.assertEqual(sens[9], ref_sens[4])
+        self.assertEqual(sens[11], ref_sens[5])
+        self.assertEqual(sens[13], ref_sens[6])
+        self.assertEqual(sens[15], ref_sens[7])
+        self.assertEqual(sens[17], ref_sens[8])
+
+        # Test case II.2
+        # Compute score from individual likelihoods
+        parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
+        ref_score = 0
+        ref_senss = []
+        for ll in self.log_likelihoods:
+            s, se = ll.evaluateS1(parameters)
+            ref_score += s
+            ref_senss.append(se)
+
+        n_ids = 2
+        parameters = \
+            [parameters[0]] * n_ids + \
+            [parameters[1]] * n_ids + \
+            [parameters[2]] * n_ids + \
+            [parameters[3]] * n_ids + \
+            [parameters[4]] * n_ids + \
+            [parameters[5]] * n_ids + \
+            [parameters[6]] * n_ids + \
+            [parameters[7]] * n_ids + \
+            [parameters[8]] * n_ids
+        score, sens = likelihood.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 18)
+        ref_sens = ref_senss[0]
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[2], ref_sens[1])
+        self.assertEqual(sens[4], ref_sens[2])
+        self.assertEqual(sens[6], ref_sens[3])
+        self.assertEqual(sens[8], ref_sens[4])
+        self.assertEqual(sens[10], ref_sens[5])
+        self.assertEqual(sens[12], ref_sens[6])
+        self.assertEqual(sens[14], ref_sens[7])
+        self.assertEqual(sens[16], ref_sens[8])
+        ref_sens = ref_senss[1]
+        self.assertEqual(sens[1], ref_sens[0])
+        self.assertEqual(sens[3], ref_sens[1])
+        self.assertEqual(sens[5], ref_sens[2])
+        self.assertEqual(sens[7], ref_sens[3])
+        self.assertEqual(sens[9], ref_sens[4])
+        self.assertEqual(sens[11], ref_sens[5])
+        self.assertEqual(sens[13], ref_sens[6])
+        self.assertEqual(sens[15], ref_sens[7])
+        self.assertEqual(sens[17], ref_sens[8])
+
+        # Test case III.1: Non-trivial population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
+
+        # Create reference pop model
+        ref_pop_model = erlo.LogNormalModel()
+        indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
+
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
+
+        ref_s1, ref_sens1 = ref_pop_model.compute_sensitivities(
+                parameters=pop_params,
+                observations=[0.1, 0.2])
+        ref_s2, ref_sens2 = self.log_likelihoods[0].evaluateS1(
+            indiv_parameters_1)
+        ref_s3, ref_sens3 = self.log_likelihoods[1].evaluateS1(
+            indiv_parameters_2)
+
+        ref_score = ref_s1 + ref_s2 + ref_s3
+        ref_sens = [
+            ref_sens2[0] + ref_sens3[0],
+            ref_sens2[1] + ref_sens3[1],
+            ref_sens1[0] + ref_sens2[2],
+            ref_sens1[1] + ref_sens3[2],
+            ref_sens1[2],
+            ref_sens1[3],
+            ref_sens2[3] + ref_sens3[3],
+            ref_sens2[4],
+            ref_sens3[4],
+            ref_sens2[5] + ref_sens3[5],
+            ref_sens2[6] + ref_sens3[6],
+            ref_sens2[7] + ref_sens3[7],
+            ref_sens2[8] + ref_sens3[8]]
+
+        # Compute score and sensitivities with hierarchical model
+        score, sens = self.hierarchical_model.evaluateS1(parameters)
+
+        self.assertNotEqual(score, -np.inf)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 13)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
+        self.assertEqual(sens[6], ref_sens[6])
+        self.assertEqual(sens[7], ref_sens[7])
+        self.assertEqual(sens[8], ref_sens[8])
+        self.assertEqual(sens[9], ref_sens[9])
+        self.assertEqual(sens[10], ref_sens[10])
+        self.assertEqual(sens[11], ref_sens[11])
+        self.assertEqual(sens[12], ref_sens[12])
+
+        # Test case III.2: Returns -np.inf if individuals are far away from
+        # pop distribution
+        indiv_parameters_1 = [10, 1, 10E20, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 10E-10]
+
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
+
+        score, sens = self.hierarchical_model.evaluateS1(parameters)
+
+        self.assertEqual(score, -np.inf)
+
     def test_get_id(self):
         ids = self.hierarchical_model.get_id()
 
