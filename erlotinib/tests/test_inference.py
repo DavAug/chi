@@ -643,7 +643,7 @@ class TestSamplingController(unittest.TestCase):
 
         attrs = result.attrs
         divergent_iters = attrs['divergent iterations']
-        self.assertIsNone(divergent_iters)
+        self.assertEqual(divergent_iters, 'false')
 
         # Case II: Hierarchical model
         sampler = erlo.SamplingController(self.hierarchical_posterior)
@@ -693,7 +693,7 @@ class TestSamplingController(unittest.TestCase):
 
         attrs = result.attrs
         divergent_iters = attrs['divergent iterations']
-        self.assertIsNone(divergent_iters)
+        self.assertEqual(divergent_iters, 'false')
 
         # Case III: Infer multiple independent models
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
@@ -775,10 +775,10 @@ class TestSamplingController(unittest.TestCase):
 
         attrs = result[0].attrs
         divergent_iters = attrs['divergent iterations']
-        self.assertEqual(len(divergent_iters), 3)
+        self.assertEqual(divergent_iters, 'true')
         attrs = result[1].attrs
         divergent_iters = attrs['divergent iterations']
-        self.assertEqual(len(divergent_iters), 3)
+        self.assertEqual(divergent_iters, 'true')
 
     def test_set_initial_parameters(self):
         # Test case I: Individual data

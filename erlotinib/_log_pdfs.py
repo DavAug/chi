@@ -202,26 +202,9 @@ class HierarchicalLogLikelihood(object):
         if np.isinf(score):
             return score
 
-        # Create container for individual parameters
-        individual_params = np.empty(
-            shape=(self._n_ids, self._n_indiv_params))
-
-        # Fill conrainer with parameter values
-        for param_id, indices in enumerate(self._indiv_params):
-            start, end = indices
-            if start == end:
-                # This parameter is pooled, set all parameters to the same
-                # value
-                individual_params[:, param_id] = parameters[start]
-                continue
-
-            # Set the parameter values to the input values
-            individual_params[:, param_id] = parameters[
-                start:end]
-
         # Evaluate individual likelihoods
         for index, log_likelihood in enumerate(self._log_likelihoods):
-            score += log_likelihood(individual_params[index, :])
+            score += log_likelihood(parameters[self._indiv_params[index]])
 
         return score
 
@@ -257,6 +240,30 @@ class HierarchicalLogLikelihood(object):
 
         # Store mask
         self._top_level_mask = top_level_mask
+
+    def _get_individual_parameter_reference_matrix(self, param_ranges):
+        """
+        Returns a matrix of shape
+        (number of individuals, number of parameters per individual) with the
+        indices of the individual parameters.
+        """
+        # Construct matrix of indices which reference the idividual parameters
+        indiv_params = np.zeros(
+            shape=(self._n_ids, self._n_indiv_params), dtype=int)
+        for param_id, indices in enumerate(param_ranges):
+            # Get indices for this parameter
+            start, end = indices
+
+            # Reference parameter for all individuals
+            if start == end:
+                # This parameter is pooled, reference the same value for all
+                # individuals
+                indiv_params[:, param_id] = start
+                continue
+
+            indiv_params[:, param_id] = np.arange(start=start, stop=end)
+
+        return indiv_params
 
     def _set_ids(self):
         """
@@ -350,7 +357,53 @@ class HierarchicalLogLikelihood(object):
         self._n_indiv_params = len(indiv_names)
 
         # Remember positions of individual parameters
-        self._indiv_params = indiv_params
+        self._indiv_params = self._get_individual_parameter_reference_matrix(
+            indiv_params)
+
+    def evaluateS1(self, parameters):
+        """
+        Computes the log-likelihood of the parameters and its
+        sensitivities.
+
+        :param parameters: A list of parameter values
+        :type parameters: list, numpy.ndarray
+        """
+        # Transform parameters to numpy array
+        parameters = np.asarray(parameters)
+
+        # Compute population model likelihood and sensitivities
+        start = 0
+        ll_score = 0
+        sensitivities = np.zeros(shape=len(parameters))
+        for pop_model in self._population_models:
+            # Get start and end index of individual parameters and population
+            # parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+            end_indiv = start + n_indiv
+            end_pop = end_indiv + n_pop
+
+            # Compute likelihood and sensitivities
+            score, sens = pop_model.compute_sensitivities(
+                parameters=parameters[end_indiv:end_pop],
+                observations=parameters[start:end_indiv])
+            ll_score += score
+            sensitivities[start:end_pop] += sens
+
+            # Shift start index
+            start = end_pop
+
+        # Return if values already lead to a rejection
+        if np.isinf(ll_score):
+            return ll_score, np.full(shape=len(parameters), fill_value=np.inf)
+
+        # Evaluate individual likelihoods and sensitivities
+        for index, log_likelihood in enumerate(self._log_likelihoods):
+            indices = self._indiv_params[index]
+            score, sens = log_likelihood.evaluateS1(parameters[indices])
+            ll_score += score
+            sensitivities[indices] += sens
+
+        return ll_score, sensitivities
 
     def get_id(self):
         """
@@ -598,6 +651,33 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
         # Store mask
         self._top_level_mask = top_level_mask
+
+    def evaluateS1(self, parameters):
+        """
+        Returns the log-posterior score and its sensitivities to the model
+        parameters.
+
+        :param parameters: An array-like object with parameter values.
+        :type parameters: List[float], numpy.ndarray
+        """
+        # Convert parameters
+        parameters = np.asarray(parameters)
+
+        # Evaluate log-prior first, assuming this is very cheap
+        score, sens = self._log_prior.evaluateS1(
+            parameters[self._top_level_mask])
+
+        if np.isinf(score):
+            return score, np.full(shape=len(parameters), fill_value=np.inf)
+
+        # Add log-likelihood score and sensitivities
+        ll_score, sensitivities = self._log_likelihood.evaluateS1(
+            parameters)
+
+        score += ll_score
+        sensitivities[self._top_level_mask] += sens
+
+        return score, sensitivities
 
     def get_log_likelihood(self):
         """
@@ -1272,6 +1352,13 @@ class LogPosterior(pints.LogPDF):
         return score + self._log_likelihood(parameters)
 
     def evaluateS1(self, parameters):
+        """
+        Returns the log-posterior score and its sensitivities to the model
+        parameters.
+
+        :param parameters: An array-like object with parameter values.
+        :type parameters: List[float], numpy.ndarray
+        """
         # Evaluate log-prior first, assuming this is very cheap
         score, sensitivities = self._log_prior.evaluateS1(parameters)
         if np.isinf(score):

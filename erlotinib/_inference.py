@@ -571,10 +571,15 @@ class SamplingController(InferenceController):
 
             # Add DataArray to container
             container[parameter] = parameter_chains
+            if divergent_iters is None:
+                attrs = {'divergent iterations': 'false'}
+            else:
+                attrs = {
+                    'divergent iterations chain %d' % idx: iters
+                    for idx, iters in enumerate(divergent_iters)}
+                attrs['divergent iterations'] = 'true'
 
-        return xr.Dataset(
-            container,
-            attrs={'divergent iterations': divergent_iters})
+        return xr.Dataset(container, attrs=attrs)
 
     def _get_id_parameter_pairs(self, log_posterior):
         """
