@@ -756,7 +756,8 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
 
         # Test case II: Check exception for inf prior score
         parameters = [-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-        self.assertEqual(self.log_posterior.evaluateS1(parameters), -np.inf)
+        score, _ = self.log_posterior.evaluateS1(parameters)
+        self.assertEqual(score, -np.inf)
 
     def test_get_log_likelihood(self):
         log_likelihood = self.log_posterior.get_log_likelihood()
