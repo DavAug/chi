@@ -539,19 +539,17 @@ class PharmacokineticModel(MechanisticModel):
             )
         )
 
-        # Remember updated model
-        self._model = model
-
         # Update number of parameters and states, as well as their names
+        self._model = model
         self._set_number_and_names()
 
         # Set default output to pd_output if it is not None
         if self._pd_output is not None:
             self.set_outputs([self._pd_output])
 
-        return dose_drug_amount
+        return model, dose_drug_amount
 
-    def _add_dose_rate(self, drug_amount):
+    def _add_dose_rate(self, compartment, drug_amount):
         """
         Adds a dose rate variable to the state variable, which is bound to the
         dosing regimen.
@@ -559,7 +557,6 @@ class PharmacokineticModel(MechanisticModel):
         # Register a dose rate variable to the compartment and bind it to
         # pace, i.e. tell myokit that its value is set by the dosing regimen/
         # myokit.Protocol
-        compartment = drug_amount.parent()
         dose_rate = compartment.add_variable_allow_renaming(
             str('dose_rate'))
         dose_rate.set_binding('pace')
@@ -671,13 +668,15 @@ class PharmacokineticModel(MechanisticModel):
         # If administration is indirect, add a dosing compartment and update
         # the drug amount variable to the one in the dosing compartment
         if not direct:
-            drug_amount = self._add_dose_compartment(model, drug_amount)
+            model, drug_amount = self._add_dose_compartment(model, drug_amount)
+            comp = model.get(compartment, class_filter=myokit.Component)
 
         # Add dose rate variable to the right hand side of the drug amount
-        self._add_dose_rate(drug_amount)
+        self._add_dose_rate(comp, drug_amount)
 
-        # Update simulator
+        # Update model and simulator
         # (otherwise simulator won't know about pace bound variable)
+        self._model = model
         self.simulator = myokit.Simulation(model)
         self._has_sensitivities = False
 
