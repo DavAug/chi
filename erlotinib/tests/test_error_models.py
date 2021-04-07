@@ -915,63 +915,63 @@ class TestLogNormalErrorModel(unittest.TestCase):
             self.error_model.compute_sensitivities(
                 parameters, model_output, sens, observations)
 
-    # def test_get_parameter_names(self):
-    #     parameters = self.error_model.get_parameter_names()
+    def test_get_parameter_names(self):
+        parameters = self.error_model.get_parameter_names()
 
-    #     self.assertEqual(len(parameters), 1)
-    #     self.assertEqual(parameters[0], 'Sigma')
+        self.assertEqual(len(parameters), 1)
+        self.assertEqual(parameters[0], 'Sigma log')
 
-    # def test_n_parameters(self):
-    #     self.assertEqual(self.error_model.n_parameters(), 1)
+    def test_n_parameters(self):
+        self.assertEqual(self.error_model.n_parameters(), 1)
 
-    # def test_sample(self):
-    #     # Test I: sample size 1
-    #     seed = 42
-    #     parameters = [0.5]
-    #     n_times = 3
-    #     model_output = [1] * n_times
-    #     sample = self.error_model.sample(parameters, model_output, seed=seed)
+    def test_sample(self):
+        # Test I: sample size 1
+        seed = 42
+        parameters = [0.5]
+        n_times = 3
+        model_output = [1] * n_times
+        sample = self.error_model.sample(parameters, model_output, seed=seed)
 
-    #     n_samples = 1
-    #     self.assertEqual(sample.shape, (n_times, n_samples))
+        n_samples = 1
+        self.assertEqual(sample.shape, (n_times, n_samples))
 
-    #     # Test II: sample size > 1
-    #     n_samples = 4
-    #     sample = self.error_model.sample(
-    #         parameters, model_output, n_samples=n_samples, seed=seed)
+        # Test II: sample size > 1
+        n_samples = 4
+        sample = self.error_model.sample(
+            parameters, model_output, n_samples=n_samples, seed=seed)
 
-    #     self.assertEqual(sample.shape, (n_times, n_samples))
+        self.assertEqual(sample.shape, (n_times, n_samples))
 
-    # def test_sample_bad_input(self):
-    #     # Too many paramaters
-    #     parameters = [1, 1, 1, 1, 1]
-    #     model_output = [1] * 10
+    def test_sample_bad_input(self):
+        # Too many paramaters
+        parameters = [1, 1, 1, 1, 1]
+        model_output = [1] * 10
 
-    #     with self.assertRaisesRegex(ValueError, 'The number of provided'):
-    #         self.error_model.sample(parameters, model_output)
+        with self.assertRaisesRegex(ValueError, 'The number of provided'):
+            self.error_model.sample(parameters, model_output)
 
-    # def test_set_parameter_names(self):
-    #     # Set parameter names
-    #     names = ['some name']
-    #     self.error_model.set_parameter_names(names)
-    #     parameters = self.error_model.get_parameter_names()
+    def test_set_parameter_names(self):
+        # Set parameter names
+        names = ['some name']
+        self.error_model.set_parameter_names(names)
+        parameters = self.error_model.get_parameter_names()
 
-    #     self.assertEqual(len(parameters), 1)
-    #     self.assertEqual(parameters[0], 'some name')
+        self.assertEqual(len(parameters), 1)
+        self.assertEqual(parameters[0], 'some name')
 
-    #     # Reset parameter names
-    #     names = None
-    #     self.error_model.set_parameter_names(names)
-    #     parameters = self.error_model.get_parameter_names()
+        # Reset parameter names
+        names = None
+        self.error_model.set_parameter_names(names)
+        parameters = self.error_model.get_parameter_names()
 
-    #     self.assertEqual(len(parameters), 1)
-    #     self.assertEqual(parameters[0], 'Sigma')
+        self.assertEqual(len(parameters), 1)
+        self.assertEqual(parameters[0], 'Sigma log')
 
-    # def test_set_parameter_names_bad_input(self):
-    #     # Not the right number of names
-    #     names = ['Too', 'many', 'names']
-    #     with self.assertRaisesRegex(ValueError, 'Length of names'):
-    #         self.error_model.set_parameter_names(names)
+    def test_set_parameter_names_bad_input(self):
+        # Not the right number of names
+        names = ['Too', 'many', 'names']
+        with self.assertRaisesRegex(ValueError, 'Length of names'):
+            self.error_model.set_parameter_names(names)
 
 
 class TestMultiplicativeGaussianErrorModel(unittest.TestCase):
