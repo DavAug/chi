@@ -795,114 +795,125 @@ class TestLogNormalErrorModel(unittest.TestCase):
         self.assertEqual(pw_score.shape, (10,))
         self.assertAlmostEqual(np.sum(pw_score), score)
 
-    # def test_compute_log_likelihood_bad_input(self):
-    #     # Model output and observations don't match
-    #     parameters = [1]
-    #     model_output = ['some', 'length']
-    #     observations = ['some', 'other', 'length']
-    #     with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
-    #         self.error_model.compute_log_likelihood(
-    #             parameters, model_output, observations)
-    #     with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
-    #         self.error_model.compute_pointwise_ll(
-    #             parameters, model_output, observations)
+    def test_compute_log_likelihood_bad_input(self):
+        # Model output and observations don't match
+        parameters = [1]
+        model_output = ['some', 'length']
+        observations = ['some', 'other', 'length']
+        with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
+            self.error_model.compute_log_likelihood(
+                parameters, model_output, observations)
+        with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
+            self.error_model.compute_pointwise_ll(
+                parameters, model_output, observations)
 
-    # def test_compute_sensitivities(self):
-    #     # Test case I: If X = X^m, the scores reduce to
-    #     # L = -np.log(2pi)/2 - np.log(sigma)
-    #     # dL/dpsi = 0
-    #     # dL/dsigma_base = -1/sigma
+    def test_compute_sensitivities(self):
+        # Test case I: If If log X - log X^m = - sigma^2/2,
+        # the scores reduce to
+        # L = -np.log(2pi)/2 - np.log(sigma) - np.log(X)
+        # dL/dpsi = 0
+        # dL/dsigma = -1/sigma
 
-    #     # Test case I.1:
-    #     parameters = [0.5]
-    #     model_output = [1] * 10
-    #     observations = [1] * 10
-    #     sens = np.array([[1] * 10, [2] * 10]).T
-    #     ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.5)
-    #     ref_dpsi_0 = 0
-    #     ref_dpsi_1 = 0
-    #     ref_dsigma_base = -10 / (0.5)
+        # Test case I.1:
+        parameters = [0.5]
+        model_output = [1 * np.exp(parameters[0]**2 / 2)] * 10
+        observations = [1] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = \
+            -5 * np.log(2 * np.pi) - 10 * (np.log(0.5) + np.log(1))
+        ref_dpsi_0 = 0
+        ref_dpsi_1 = 0
+        ref_dsigma_base = -10 / (0.5)
 
-    #     score, sens = self.error_model.compute_sensitivities(
-    #         parameters, model_output, sens, observations)
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
 
-    #     self.assertAlmostEqual(score, ref_score)
-    #     self.assertEqual(len(sens), 3)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
-    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_base)
 
-    #     # Test case I.2:
-    #     parameters = [0.5]
-    #     model_output = [10] * 10
-    #     observations = [10] * 10
-    #     sens = np.array([[1] * 10, [2] * 10]).T
-    #     ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.5)
-    #     ref_dpsi_0 = 0
-    #     ref_dpsi_1 = 0
-    #     ref_dsigma_base = -10 / (0.5)
+        # Test case I.2:
+        parameters = [0.5]
+        model_output = [10 * np.exp(parameters[0]**2 / 2)] * 10
+        observations = [10] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = \
+            -5 * np.log(2 * np.pi) - 10 * (np.log(0.5) + np.log(10))
+        ref_dpsi_0 = 0
+        ref_dpsi_1 = 0
+        ref_dsigma_base = -10 / (0.5)
 
-    #     score, sens = self.error_model.compute_sensitivities(
-    #         parameters, model_output, sens, observations)
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
 
-    #     self.assertAlmostEqual(score, ref_score)
-    #     self.assertEqual(len(sens), 3)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
-    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_base)
 
-    #     # Test case II: If sigma = 1, the scores reduce to
-    #     # L = -np.log(2pi)/2 - (X-X^m) / 2
-    #     # dL/dpsi = error * dx/dpsi
-    #     # dL/dsigma_base = - 1 + error^2
+        # Test case II: If sigma = 1, the scores reduce to
+        # L = -np.log(2pi)/2 - log X - (log X - log X^m + 1 / 2) / 2
+        # dL/dpsi = error * dx/dpsi
+        # dL/dsigma_base = - 1 + error^2
 
-    #     # Test case II.1:
-    #     parameters = [1]
-    #     model_output = [1] * 10
-    #     observations = [2] * 10
-    #     sens = np.array([[1] * 10, [2] * 10]).T
-    #     ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 2)**2 / 2
-    #     ref_dpsi_0 = 10 * (1) * 1
-    #     ref_dpsi_1 = 10 * (1) * 2
-    #     ref_dsigma_base = -10 + 10 * 1
+        # Test case II.1:
+        parameters = [1]
+        model_output = [1] * 10
+        observations = [2] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = \
+            - 5 * np.log(2 * np.pi) - 10 * np.log(2) \
+            - 10 * (np.log(1) - np.log(2) - 1 / 2)**2 / 2
+        ref_dpsi_0 = 10 * (np.log(2) - np.log(1) + 1 / 2) / 1 * 1
+        ref_dpsi_1 = 10 * (np.log(2) - np.log(1) + 1 / 2) / 1 * 2
+        ref_dsigma_base = \
+            -10 + 10 * (np.log(1) - np.log(2) - 1 / 2)**2 \
+            - 10 * (np.log(2) - np.log(1) + 1 / 2)
 
-    #     score, sens = self.error_model.compute_sensitivities(
-    #         parameters, model_output, sens, observations)
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
 
-    #     self.assertAlmostEqual(score, ref_score)
-    #     self.assertEqual(len(sens), 3)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
-    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_base)
 
-    #     # Test case II.2:
-    #     parameters = [1]
-    #     model_output = [1] * 10
-    #     observations = [10] * 10
-    #     sens = np.array([[1] * 10, [2] * 10]).T
-    #     ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 10)**2 / 2
-    #     ref_dpsi_0 = 10 * (9) * 1
-    #     ref_dpsi_1 = 10 * (9) * 2
-    #     ref_dsigma_base = -10 + 10 * 9**2
+        # Test case II.2:
+        parameters = [1]
+        model_output = [1] * 10
+        observations = [10] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+        ref_score = \
+            - 5 * np.log(2 * np.pi) - 10 * np.log(10) \
+            - 10 * (np.log(1) - np.log(10) - 1 / 2)**2 / 2
+        ref_dpsi_0 = 10 * (np.log(10) - np.log(1) + 1 / 2) / 1 * 1
+        ref_dpsi_1 = 10 * (np.log(10) - np.log(1) + 1 / 2) / 1 * 2
+        ref_dsigma_base = \
+            -10 + 10 * (np.log(1) - np.log(10) - 1 / 2)**2 \
+            - 10 * (np.log(10) - np.log(1) + 1 / 2)
 
-    #     score, sens = self.error_model.compute_sensitivities(
-    #         parameters, model_output, sens, observations)
+        score, sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
 
-    #     self.assertAlmostEqual(score, ref_score)
-    #     self.assertEqual(len(sens), 3)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
-    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_dpsi_0)
+        self.assertAlmostEqual(sens[1], ref_dpsi_1)
+        self.assertAlmostEqual(sens[2], ref_dsigma_base)
 
-    # def test_compute_sensitivities_bad_input(self):
-    #     # Model output and sensitivities don't match
-    #     parameters = [1]
-    #     model_output = ['some', 'length']
-    #     observations = ['some', 'length']
-    #     sens = ['some', 'other', 'length']
-    #     with self.assertRaisesRegex(ValueError, 'The first dimension of'):
-    #         self.error_model.compute_sensitivities(
-    #             parameters, model_output, sens, observations)
+    def test_compute_sensitivities_bad_input(self):
+        # Model output and sensitivities don't match
+        parameters = [1]
+        model_output = ['some', 'length']
+        observations = ['some', 'length']
+        sens = ['some', 'other', 'length']
+        with self.assertRaisesRegex(ValueError, 'The first dimension of'):
+            self.error_model.compute_sensitivities(
+                parameters, model_output, sens, observations)
 
     # def test_get_parameter_names(self):
     #     parameters = self.error_model.get_parameter_names()
