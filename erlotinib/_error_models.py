@@ -906,7 +906,7 @@ class LogNormalErrorModel(ErrorModel):
 
     Here, :math:`\sigma _{\mathrm{log}}` is the standard deviation of
     :math:`\log X` and
-    :math:`\mu := -\sigma _{\mathrm{log}} ^2 / 2 + \log y` is chosen such that
+    :math:`\mu := -\sigma _{\mathrm{log}} ^2 / 2` is chosen such that
 
     .. math::
         \mathbb{E}[X] = y.
@@ -1142,7 +1142,7 @@ class LogNormalErrorModel(ErrorModel):
 
         .. math::
             \frac{\partial L}{\partial \psi}, \quad
-            \frac{\partial L}{\partial \sigma }.
+            \frac{\partial L}{\partial \sigma _{\mathrm{log}} }.
 
         :param parameters: An array-like object with the error model
             parameters.
@@ -1190,7 +1190,6 @@ class LogNormalErrorModel(ErrorModel):
             Seed for the pseudo-random number generator. If ``None``, the
             pseudo-random number generator is not seeded.
         """
-        #TODO:
         if len(parameters) != self._n_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
@@ -1206,15 +1205,17 @@ class LogNormalErrorModel(ErrorModel):
         sample_shape = (n_times, int(n_samples))
 
         # Get parameters
-        sigma = parameters[0]
+        sigma_log = parameters[0]
+        mean_log = -sigma_log**2 / 2
 
         # Sample from Gaussian distributions
         rng = np.random.default_rng(seed=seed)
-        samples = rng.normal(loc=0, scale=sigma, size=sample_shape)
+        samples = rng.lognormal(
+            mean=mean_log, sigma=sigma_log, size=sample_shape)
 
         # Construct final samples
         model_output = np.expand_dims(model_output, axis=1)
-        samples = model_output + samples
+        samples = model_output * samples
 
         return samples
 
@@ -1229,10 +1230,9 @@ class LogNormalErrorModel(ErrorModel):
             :meth:`n_parameters`. If ``None``, parameter names are reset to
             defaults.
         """
-        #TODO:
         if names is None:
             # Reset names to defaults
-            self._parameter_names = ['Sigma']
+            self._parameter_names = ['Sigma log']
             return None
 
         if len(names) != self._n_parameters:
