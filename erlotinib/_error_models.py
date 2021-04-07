@@ -945,7 +945,7 @@ class LogNormalErrorModel(ErrorModel):
         # Get parameters
         sigma = parameters[0]
 
-        if sigma <= 0:
+        if (sigma <= 0) or np.any(model_output <= 0):
             # sigma is strictly positive
             return -np.inf
 
@@ -973,7 +973,7 @@ class LogNormalErrorModel(ErrorModel):
         # Get parameters
         sigma = parameters[0]
 
-        if sigma <= 0:
+        if (sigma <= 0) or np.any(model_output <= 0):
             # sigma is strictly positive
             n_obs = len(model_output)
             return np.full(n_obs, -np.inf)
@@ -1006,7 +1006,7 @@ class LogNormalErrorModel(ErrorModel):
         # Get parameters
         sigma = parameters[0]
 
-        if sigma <= 0:
+        if (sigma <= 0) or np.any(model_output <= 0):
             # sigma is strictly positive
             n_parameters = model_sensitivities.shape[1] + 1
             return -np.inf, np.full(n_parameters, np.inf)
