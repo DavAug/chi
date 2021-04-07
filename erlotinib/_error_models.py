@@ -940,7 +940,7 @@ class LogNormalErrorModel(ErrorModel):
     def _compute_log_likelihood(
             parameters, model_output, observations):  # pragma: no cover
         """
-        Calculates the log-lieklihood using numba speed up.
+        Calculates the log-likelihood using numba speed up.
         """
         # Get parameters
         sigma = parameters[0]
@@ -981,7 +981,11 @@ class LogNormalErrorModel(ErrorModel):
         # Compute log-likelihood
         pointwise_ll = \
             - (np.log(2 * np.pi) / 2 + np.log(sigma)) \
-            - (model_output - observations)**2 / sigma**2 / 2
+            - np.log(observations) \
+            - (
+                np.log(model_output) - sigma**2 / 2
+                - np.log(observations)
+            )**2 / sigma**2 / 2
 
         return pointwise_ll
 
@@ -1086,9 +1090,9 @@ class LogNormalErrorModel(ErrorModel):
         Formally the pointwise log-likelihood is given by
 
         .. math::
-            L(\psi , \sigma | x^{\text{obs}}_i) =
+            L(\psi , \sigma _{\mathrm{log}} | x^{\text{obs}}_i) =
             \log p(x^{\text{obs}} _i |
-            \psi , \sigma ) ,
+            \psi , \sigma _{\mathrm{log}} ) ,
 
         where :math:`p` is the distribution defined by the mechanistic model-
         error model pair and :math:`x^{\text{obs}}_i` is the
