@@ -1011,22 +1011,27 @@ class LogNormalErrorModel(ErrorModel):
             n_parameters = model_sensitivities.shape[1] + 1
             return -np.inf, np.full(n_parameters, np.inf)
 
-        # Compute error and squared error
-        error = observations - model_output
+        # Compute "error" and squared "error"
+        # (Analogous to error for Gaussian model, but not really error here)
+        error = np.log(observations) - np.log(model_output) + sigma**2 / 2
         summed_squared_error = np.sum(error**2, axis=0)
 
         # Compute log-likelihood
         n_obs = len(model_output)
         log_likelihood = \
             - n_obs * (np.log(2 * np.pi) / 2 + np.log(sigma)) \
+            - np.sum(np.log(observations)) \
             - summed_squared_error / sigma**2 / 2
         log_likelihood = log_likelihood[0]
 
         # Compute sensitivities
         dpsi = \
-            np.sum(error * model_sensitivities, axis=0) / sigma**2
+            np.sum(error / model_output * model_sensitivities, axis=0) \
+            / sigma**2
         dsigma = \
-            summed_squared_error / sigma**3 - n_obs / sigma
+            - np.sum(error) / sigma \
+            + summed_squared_error / sigma**3 \
+            - n_obs / sigma
         sensitivities = np.concatenate((dpsi, dsigma))
 
         return log_likelihood, sensitivities
@@ -1109,7 +1114,6 @@ class LogNormalErrorModel(ErrorModel):
         observations
             An array-like object with the observations of a biomarker.
         """
-        #TODO:
         parameters = np.asarray(parameters)
         model = np.asarray(model_output)
         obs = np.asarray(observations)
@@ -1155,7 +1159,6 @@ class LogNormalErrorModel(ErrorModel):
             biomarker.
         :type observations: list, numpy.ndarray of length t
         """
-        #TODO:
         parameters = np.asarray(parameters)
         n_obs = len(observations)
         model = np.asarray(model_output).reshape((n_obs, 1))
