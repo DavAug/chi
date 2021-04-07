@@ -18,6 +18,7 @@ from ._error_models import (  # noqa
     ConstantAndMultiplicativeGaussianErrorModel,
     ErrorModel,
     GaussianErrorModel,
+    LogNormalErrorModel,
     MultiplicativeGaussianErrorModel,
     ReducedErrorModel
 )

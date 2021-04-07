@@ -1342,6 +1342,12 @@ class TestLogPosterior(unittest.TestCase):
         self.assertEqual(sens[5], ref_sens[5])
         self.assertEqual(sens[6], ref_sens[6])
 
+        # Test that it returns inf when parameters outside
+        # priors
+        parameters = [-1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+        score, _ = self.log_posterior.evaluateS1(parameters)
+        self.assertEqual(score, -np.inf)
+
     def test_get_id(self):
         # Test case I: Non-trivial IDs
         _id = self.log_posterior.get_id()
