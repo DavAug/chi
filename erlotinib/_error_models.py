@@ -916,7 +916,7 @@ class LogNormalErrorModel(ErrorModel):
     :math:`X`.
 
     At each time point :math:`t` the distribution of the observable biomarkers
-    can be expressed in terms of a Gaussian distribution
+    can be expressed in terms of a log-normal distribution
 
     .. math::
         p(x | \psi , \sigma _{\mathrm{log}} ) =
