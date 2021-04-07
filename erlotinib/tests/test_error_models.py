@@ -678,6 +678,291 @@ class TestGaussianErrorModel(unittest.TestCase):
             self.error_model.set_parameter_names(names)
 
 
+class TestLogNormalErrorModel(unittest.TestCase):
+    """
+    Tests the erlo.LogNormalErrorModel class.
+    """
+    @classmethod
+    def setUpClass(cls):
+        cls.error_model = erlo.LogNormalErrorModel()
+
+    def test_compute_log_likelihood(self):
+        # Tests :meth:`compute_log_likelihood` and
+        # :meth:`compute_pointwise_ll`
+
+        # Test case I: If log X - log X^m = - sigma^2/2,
+        # the score reduces to
+        # -np.log(2pi)/2 - np.log(sigma) - np.log(X)
+
+        # Test case I.1:
+        parameters = [0.5]
+        model_output = [1 * np.exp(parameters[0]**2 / 2)] * 10
+        observations = [1] * 10
+        ref_score = \
+            -5 * np.log(2 * np.pi) - 10 * (np.log(0.5) + np.log(1))
+
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+        # Test case I.2:
+        parameters = [0.5]
+        model_output = [10 * np.exp(parameters[0]**2 / 2)] * 6
+        observations = [10] * 6
+        ref_score = \
+            -3 * np.log(2 * np.pi) - 6 * (np.log(0.5) + np.log(10))
+
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (6,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+        # Test case II: If sigma = 1, the score reduces to
+        # -np.log(2pi)/2 - log X - (log X - log X^m - 1/2)^2 / 2
+
+        # Test case II.1:
+        parameters = [1]
+        model_output = [1] * 10
+        observations = [2] * 10
+        ref_score = \
+            -5 * np.log(2 * np.pi) - 10 * np.log(2) \
+            - 10 * (np.log(1) - np.log(2) - 1 / 2)**2 / 2
+
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+        # Test case II.2:
+        parameters = [1]
+        model_output = [1] * 10
+        observations = [10] * 10
+        ref_score = \
+            -5 * np.log(2 * np.pi) - 10 * np.log(10) \
+            - 10 * (np.log(1) - np.log(10) - 1 / 2)**2 / 2
+
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+        # Test case III: -Infinity for not allowed regimes
+
+        # Test case III.1: Zero sigma
+        parameters = [0]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+        # Test case III.2: Negative sigma
+        parameters = [-1]
+        model_output = [1] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+    # def test_compute_log_likelihood_bad_input(self):
+    #     # Model output and observations don't match
+    #     parameters = [1]
+    #     model_output = ['some', 'length']
+    #     observations = ['some', 'other', 'length']
+    #     with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
+    #         self.error_model.compute_log_likelihood(
+    #             parameters, model_output, observations)
+    #     with self.assertRaisesRegex(ValueError, 'The number of model outputs'):
+    #         self.error_model.compute_pointwise_ll(
+    #             parameters, model_output, observations)
+
+    # def test_compute_sensitivities(self):
+    #     # Test case I: If X = X^m, the scores reduce to
+    #     # L = -np.log(2pi)/2 - np.log(sigma)
+    #     # dL/dpsi = 0
+    #     # dL/dsigma_base = -1/sigma
+
+    #     # Test case I.1:
+    #     parameters = [0.5]
+    #     model_output = [1] * 10
+    #     observations = [1] * 10
+    #     sens = np.array([[1] * 10, [2] * 10]).T
+    #     ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.5)
+    #     ref_dpsi_0 = 0
+    #     ref_dpsi_1 = 0
+    #     ref_dsigma_base = -10 / (0.5)
+
+    #     score, sens = self.error_model.compute_sensitivities(
+    #         parameters, model_output, sens, observations)
+
+    #     self.assertAlmostEqual(score, ref_score)
+    #     self.assertEqual(len(sens), 3)
+    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
+    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
+    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+
+    #     # Test case I.2:
+    #     parameters = [0.5]
+    #     model_output = [10] * 10
+    #     observations = [10] * 10
+    #     sens = np.array([[1] * 10, [2] * 10]).T
+    #     ref_score = -5 * np.log(2 * np.pi) - 10 * np.log(0.5)
+    #     ref_dpsi_0 = 0
+    #     ref_dpsi_1 = 0
+    #     ref_dsigma_base = -10 / (0.5)
+
+    #     score, sens = self.error_model.compute_sensitivities(
+    #         parameters, model_output, sens, observations)
+
+    #     self.assertAlmostEqual(score, ref_score)
+    #     self.assertEqual(len(sens), 3)
+    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
+    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
+    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+
+    #     # Test case II: If sigma = 1, the scores reduce to
+    #     # L = -np.log(2pi)/2 - (X-X^m) / 2
+    #     # dL/dpsi = error * dx/dpsi
+    #     # dL/dsigma_base = - 1 + error^2
+
+    #     # Test case II.1:
+    #     parameters = [1]
+    #     model_output = [1] * 10
+    #     observations = [2] * 10
+    #     sens = np.array([[1] * 10, [2] * 10]).T
+    #     ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 2)**2 / 2
+    #     ref_dpsi_0 = 10 * (1) * 1
+    #     ref_dpsi_1 = 10 * (1) * 2
+    #     ref_dsigma_base = -10 + 10 * 1
+
+    #     score, sens = self.error_model.compute_sensitivities(
+    #         parameters, model_output, sens, observations)
+
+    #     self.assertAlmostEqual(score, ref_score)
+    #     self.assertEqual(len(sens), 3)
+    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
+    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
+    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+
+    #     # Test case II.2:
+    #     parameters = [1]
+    #     model_output = [1] * 10
+    #     observations = [10] * 10
+    #     sens = np.array([[1] * 10, [2] * 10]).T
+    #     ref_score = -5 * np.log(2 * np.pi) - 10 * (1 - 10)**2 / 2
+    #     ref_dpsi_0 = 10 * (9) * 1
+    #     ref_dpsi_1 = 10 * (9) * 2
+    #     ref_dsigma_base = -10 + 10 * 9**2
+
+    #     score, sens = self.error_model.compute_sensitivities(
+    #         parameters, model_output, sens, observations)
+
+    #     self.assertAlmostEqual(score, ref_score)
+    #     self.assertEqual(len(sens), 3)
+    #     self.assertAlmostEqual(sens[0], ref_dpsi_0)
+    #     self.assertAlmostEqual(sens[1], ref_dpsi_1)
+    #     self.assertAlmostEqual(sens[2], ref_dsigma_base)
+
+    # def test_compute_sensitivities_bad_input(self):
+    #     # Model output and sensitivities don't match
+    #     parameters = [1]
+    #     model_output = ['some', 'length']
+    #     observations = ['some', 'length']
+    #     sens = ['some', 'other', 'length']
+    #     with self.assertRaisesRegex(ValueError, 'The first dimension of'):
+    #         self.error_model.compute_sensitivities(
+    #             parameters, model_output, sens, observations)
+
+    # def test_get_parameter_names(self):
+    #     parameters = self.error_model.get_parameter_names()
+
+    #     self.assertEqual(len(parameters), 1)
+    #     self.assertEqual(parameters[0], 'Sigma')
+
+    # def test_n_parameters(self):
+    #     self.assertEqual(self.error_model.n_parameters(), 1)
+
+    # def test_sample(self):
+    #     # Test I: sample size 1
+    #     seed = 42
+    #     parameters = [0.5]
+    #     n_times = 3
+    #     model_output = [1] * n_times
+    #     sample = self.error_model.sample(parameters, model_output, seed=seed)
+
+    #     n_samples = 1
+    #     self.assertEqual(sample.shape, (n_times, n_samples))
+
+    #     # Test II: sample size > 1
+    #     n_samples = 4
+    #     sample = self.error_model.sample(
+    #         parameters, model_output, n_samples=n_samples, seed=seed)
+
+    #     self.assertEqual(sample.shape, (n_times, n_samples))
+
+    # def test_sample_bad_input(self):
+    #     # Too many paramaters
+    #     parameters = [1, 1, 1, 1, 1]
+    #     model_output = [1] * 10
+
+    #     with self.assertRaisesRegex(ValueError, 'The number of provided'):
+    #         self.error_model.sample(parameters, model_output)
+
+    # def test_set_parameter_names(self):
+    #     # Set parameter names
+    #     names = ['some name']
+    #     self.error_model.set_parameter_names(names)
+    #     parameters = self.error_model.get_parameter_names()
+
+    #     self.assertEqual(len(parameters), 1)
+    #     self.assertEqual(parameters[0], 'some name')
+
+    #     # Reset parameter names
+    #     names = None
+    #     self.error_model.set_parameter_names(names)
+    #     parameters = self.error_model.get_parameter_names()
+
+    #     self.assertEqual(len(parameters), 1)
+    #     self.assertEqual(parameters[0], 'Sigma')
+
+    # def test_set_parameter_names_bad_input(self):
+    #     # Not the right number of names
+    #     names = ['Too', 'many', 'names']
+    #     with self.assertRaisesRegex(ValueError, 'Length of names'):
+    #         self.error_model.set_parameter_names(names)
+
+
 class TestMultiplicativeGaussianErrorModel(unittest.TestCase):
     """
     Tests the erlotinib.MultiplicativeGaussianErrorModel class.
