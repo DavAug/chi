@@ -795,6 +795,21 @@ class TestLogNormalErrorModel(unittest.TestCase):
         self.assertEqual(pw_score.shape, (10,))
         self.assertAlmostEqual(np.sum(pw_score), score)
 
+        # Test case III.3: Zero model output
+        parameters = [1]
+        model_output = [0] * 10
+        observations = [1] * 10
+        ref_score = -np.inf
+
+        pw_score = self.error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(pw_score.shape, (10,))
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
     def test_compute_log_likelihood_bad_input(self):
         # Model output and observations don't match
         parameters = [1]
