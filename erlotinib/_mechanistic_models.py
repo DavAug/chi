@@ -783,8 +783,11 @@ class PharmacokineticModel(MechanisticModel):
 
 class ReducedMechanisticModel(object):
     """
-    A class that can be used to permanently fix model parameters of a
-    :class:`MechanisticModel` instance.
+    A class that can be used to reduce the parameter space of a
+    :class:`MechanisticModel`.
+
+    The parameter space of a mechanistic model may be reduced by either
+    fixing parameter values, or unifying previously independent parameters.
 
     This may be useful to explore simplified versions of a model before
     defining a new SBML file.
@@ -810,6 +813,7 @@ class ReducedMechanisticModel(object):
         # Set defaults
         self._fixed_params_mask = None
         self._fixed_params_values = None
+        self._unified_params_masks = None
         self._n_parameters = mechanistic_model.n_parameters()
         self._parameter_names = mechanistic_model.parameters()
 
@@ -1128,3 +1132,54 @@ class ReducedMechanisticModel(object):
         Returns the model's unit of time.
         """
         return self._mechanistic_model.time_unit()
+
+    def unify_parameters(self, parameters, name=None):
+        """
+        Unifies model parameters, and effectively reduces them to a
+        single parameter of the model.
+
+        To reverse the unification the method can be called on a list of
+        parameters that only contains the unified parameter.
+
+        Optionally a name for the unfied parameter can be provided. By default
+        the name of the parameter will assume the name of the first parameter
+        in the list.
+
+        :param parameters: A list of parameter names.
+        :type parameters: list[str]
+        :param name: A name for the unified parameter.
+        :type name: str, optional
+        """
+        #TODO: Need to shuffle around indices for subsequent unify calls...
+        # Check inputs
+        model_parameters = self.parameters()
+        for parameter in parameters:
+            if parameter not in model_parameters:
+                raise ValueError(
+                    'The parameter <' + str(parameter) + '> could not be '
+                    'found in the list of model paramters.')
+
+        # If no model parameters have been unfied before, instantiate a mask
+        if self._unified_params_masks is None:
+            self._unified_params_masks = []
+
+        # Update the mask and values
+        for index, name in enumerate(self._parameter_names):
+            try:
+                value = name_value_dict[name]
+            except KeyError:
+                # KeyError indicates that parameter name is not being fixed
+                continue
+
+            # Fix parameter if value is not None, else unfix it
+            self._fixed_params_mask[index] = value is not None
+            self._fixed_params_values[index] = value
+
+        # If all parameters are free, set mask and values to None again
+        if np.alltrue(~self._fixed_params_mask):
+            self._fixed_params_mask = None
+            self._fixed_params_values = None
+
+        # Remove sensitivities for fixed parameters
+        if self.has_sensitivities() is True:
+            self.enable_sensitivities(True)
