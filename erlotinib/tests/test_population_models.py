@@ -29,6 +29,32 @@ class TestHeterogeneousModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
 
+    def test_compute_pointwise_ll(self):
+        # Test case I: Only the number of observations determines how many 0s
+        # are returned
+        # Test case I.1
+        parameters = [1]
+        observations = [0, 1, 1, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 4)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], 0)
+
+        # Test case I.2
+        parameters = [1]
+        observations = [1, 2, 1, 10, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 5)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], 0)
+        self.assertEqual(scores[4], 0)
+
     def test_compute_sensitivities(self):
         # For efficiency the input is actually not checked, and 0 is returned
         # regardless
