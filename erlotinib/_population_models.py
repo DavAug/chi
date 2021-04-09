@@ -342,6 +342,45 @@ class LogNormalModel(PopulationModel):
 
     @staticmethod
     @njit
+    def _compute_pointwise_ll(mean, std, observations):  # pragma: no cover
+        r"""
+        Calculates the pointwise log-likelihoods using numba speed up.
+
+        The parameters are transformed from mean and std to mean and var of
+        log psi using
+
+        .. math::
+            \mu _{\text{log}} =
+            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
+            \quad
+            \text{and}
+            \quad
+            \sigma ^2_{\text{log}} =
+            -2\log \mu + \log (\mu ^2 + \sigma ^2)
+        """
+        # Transform parameters and observations
+        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
+        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        log_psi = np.log(observations)
+
+        # Return -infinity if variance vanishes
+        if var_log == 0:
+            return np.full(shape=len(observations), fill_value=-np.inf)
+
+        # Compute log-likelihood score
+        log_likelihood = \
+            - np.log(2 * np.pi * var_log) / 2 \
+            - log_psi \
+            - (log_psi - mean_log) ** 2 / (2 * var_log)
+
+        # If score evaluates to NaN, return -infinity
+        mask = np.isnan(log_likelihood)
+        log_likelihood[mask] = -np.inf
+
+        return log_likelihood
+
+    @staticmethod
+    @njit
     def _compute_sensitivities(mean, std, psi):  # pragma: no cover
         r"""
         Calculates the log-likelihood and its sensitivities using numba
@@ -418,17 +457,22 @@ class LogNormalModel(PopulationModel):
         Returns the log-likelihood of the population model parameters.
 
         The log-likelihood of a LogNormalModel is the log-pdf evaluated
-        at the population model parameters
+        at the observations
 
         .. math::
             L(\mu , \sigma | \Psi) =
             \sum _{i=1}^N
-            \log p(\psi ^{\text{obs}}_i |
+            \log p(\psi _i |
             \mu , \sigma ) ,
 
         where
-        :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N)`
-        are the observed :math:`\psi` from :math:`N` individuals.
+        :math:`\Psi := (\psi _1, \ldots , \psi _N)`
+        are the "observed" :math:`\psi` from :math:`N` individuals.
+
+        .. note::
+            Note that in the context of PKPD modelling the individual
+            parameters are really "observed", but rather inferred from
+            biomarker measurements.
 
         Parameters
         ----------
@@ -437,7 +481,7 @@ class LogNormalModel(PopulationModel):
             :math:`\mu` and :math:`\sigma`.
         observations
             An array like object with the parameter values for the individuals,
-            :math:`\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`.
+            :math:`\psi _1, \ldots , \psi _N`.
         """
         observations = np.asarray(observations)
         mean, std = parameters
@@ -447,6 +491,46 @@ class LogNormalModel(PopulationModel):
             return -np.inf
 
         return self._compute_log_likelihood(mean, std, observations)
+
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        The pointwise log-likelihood of a LogNormalModel is the log-pdf
+        evaluated at the observations
+
+        .. math::
+            L(\mu , \sigma | \psi _i) =
+            \log p(\psi _i |
+            \mu , \sigma ) ,
+
+        where
+        :math:`\psi _i` are the "observed" :math:`\psi` from individual
+        :math:`i`.
+
+        .. note::
+            Note that in the context of PKPD modelling the individual
+            parameters :math:`\psi _i` are never really "observed", but rather
+            inferred from biomarker measurements.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the model parameter values for
+            :math:`\mu` and :math:`\sigma`.
+        observations
+            An array like object with the parameter values for the individuals,
+            :math:`\psi _1, \ldots , \psi _N`.
+        """
+        observations = np.asarray(observations)
+        mean, std = parameters
+
+        if mean <= 0 or std <= 0:
+            # The mean and var of log psi are strictly positive
+            return np.full(shape=len(observations), fill_value=-np.inf)
+
+        return self._compute_pointwise_ll(mean, std, observations)
 
     def compute_sensitivities(self, parameters, observations):
         r"""
