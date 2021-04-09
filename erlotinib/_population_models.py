@@ -890,7 +890,6 @@ class PooledModel(PopulationModel):
 
 
 class ReducedPopulationModel(object):
-    #TODO:
     """
     A class that can be used to permanently fix model parameters of a
     :class:`PopulationModel` instance.
@@ -942,6 +941,30 @@ class ReducedPopulationModel(object):
             parameters, observations)
 
         return score
+
+    def compute_pointwise_ll(self, parameters, observations):
+        """
+        Returns the pointwise log-likelihood of the population model parameters
+        for each observation.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        # Compute log-likelihood
+        scores = self._population_model.compute_pointwise_ll(
+            parameters, observations)
+
+        return scores
 
     def compute_sensitivities(self, parameters, observations):
         """
