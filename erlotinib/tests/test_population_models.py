@@ -748,6 +748,41 @@ class TestPooledModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
 
+    def test_compute_pointwise_ll(self):
+        # Test case I: observation differ from parameter
+        # Test case I.1
+        parameters = [1]
+        observations = [0, 1, 1, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 4)
+        self.assertEqual(scores[0], -np.inf)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], 0)
+
+        # Test case I.2
+        parameters = [1]
+        observations = [1, 2, 1, 10, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 5)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], -np.inf)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], -np.inf)
+        self.assertEqual(scores[4], 0)
+
+        # Test case II: all values agree with parameter
+        parameters = [1]
+        observations = [1, 1, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 3)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+
     def test_compute_sensitivities(self):
         # Test case I: observation differ from parameter
         # Test case I.1
@@ -869,6 +904,12 @@ class TestPopulationModel(unittest.TestCase):
         observations = 'some observations'
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.compute_log_likelihood(parameters, observations)
+
+    def test_compute_pointwise_ll(self):
+        parameters = 'some parameters'
+        observations = 'some observations'
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.compute_pointwise_ll(parameters, observations)
 
     def test_compute_sensitivities(self):
         parameters = 'some parameters'
