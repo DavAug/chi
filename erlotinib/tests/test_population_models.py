@@ -1219,6 +1219,33 @@ class TestReducedPopulationModel(unittest.TestCase):
         self.pop_model.fix_parameters(name_value_dict={
             'Mean': None})
 
+    def test_compute_pointwise_ll(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 1})
+
+        # Compute log-likelihood
+        parameters = [2]
+        observations = [2, 3, 4, 5]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+
+        # Compute ref score with original error model
+        parameters = [1, 2]
+        error_model = self.pop_model.get_population_model()
+        ref_scores = error_model.compute_pointwise_ll(
+            parameters, observations)
+
+        self.assertEqual(len(scores), 4)
+        self.assertEqual(scores[0], ref_scores[0])
+        self.assertEqual(scores[1], ref_scores[1])
+        self.assertEqual(scores[2], ref_scores[2])
+        self.assertEqual(scores[3], ref_scores[3])
+
+        # Unfix model parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': None})
+
     def test_compute_sensitivities(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
