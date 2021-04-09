@@ -770,13 +770,12 @@ class PooledModel(PopulationModel):
 
         # Return -inf if any of the observations does not equal the pooled
         # parameter
+        log_likelihood = np.zeros(shape=len(observations))
         observations = np.array(observations)
         mask = observations != parameter
-        if np.any(mask):
-            return np.full(shape=len(observations), fill_value=-np.inf)
+        log_likelihood[mask] = -np.inf
 
-        # Otherwise return 0
-        return np.zeros(shape=len(observations))
+        return log_likelihood
 
     def compute_sensitivities(self, parameters, observations):
         r"""
@@ -891,6 +890,7 @@ class PooledModel(PopulationModel):
 
 
 class ReducedPopulationModel(object):
+    #TODO:
     """
     A class that can be used to permanently fix model parameters of a
     :class:`PopulationModel` instance.
