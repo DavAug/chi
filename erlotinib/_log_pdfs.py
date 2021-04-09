@@ -33,24 +33,25 @@ class HierarchicalLogLikelihood(object):
     mechanistic and error model (or bottom-level parameters).
     :math:`\theta` are the parameters of the population model (or
     top-level parameters). For multiple outputs of the
-    mechanistic model, :math:`p` will be a multivariate distribution.
+    mechanistic model, :math:`p(x | t; \theta )` will be a multivariate
+    distribution.
 
     The integral over the :math:`\psi` can in general not be solved
-    analytically. To nevertheless be able to always construct the
-    hierarchical log-likelihood we postpone solving the integral for now
-    and sum the individual log-likelihoods
+    analytically. Numerically the integral can be solved using Monte Carlo
+    sampling. To this end, we define the hierarchical log-likelihood as
+    the sum over the individual log-likelihoods
 
     .. math::
         L(\Psi , \theta | X^{\text{obs}}) =
-        \sum _{i, j} \log p(x^{\text{obs}}_{ij} | \psi _j )
-        + \sum _{j=1}^n \log p(\psi _j | \theta ) .
+        \sum _{i, n} \log p(x^{\text{obs}}_{in} | \psi _i )
+        + \sum _{i} \log p(\psi _i | \theta ) .
 
-    Here, :math:`\Psi = \{ \psi _j\}` are the
-    bottom-level parameters of the individual likelihoods,
+    Here, :math:`\psi _i` are the
+    bottom-level parameters of individual :math:`i`,
     :math:`\theta` are the top-level parameters of the population models,
-    and :math:`X^{\text{obs}} = \{ x^{\text{obs}}_{ij}\}`
-    are the observations for each individual, where :math:`i` runs over
-    the observation points and :math:`j` over the individuals.
+    and :math:`X^{\text{obs}} = \{ x^{\text{obs}}_{in}\}`
+    are the observations for each individual, where :math:`n` runs over
+    the observation points and :math:`i` over the individuals.
 
     This log-likelihood can now be optimised or sampled from. While
     sampling will converge to the true solution of the integral,
@@ -359,6 +360,89 @@ class HierarchicalLogLikelihood(object):
         # Remember positions of individual parameters
         self._indiv_params = self._get_individual_parameter_reference_matrix(
             indiv_params)
+
+    def compute_pointwise_ll(self, parameters, per_individual=True):
+        r"""
+        Returns the pointwise log-likelihood scores of the parameters for each
+        observation.
+
+        The pointwise log-likelihood for an hierarchical model can be
+        straightforwardly defined when each observation is treated as one
+        "point"
+
+        .. math::
+            L(\Psi , \theta | x^{\text{obs}}_{i}) =
+                \sum _n \log p(x^{\text{obs}}_{in} | \psi _i )
+                + \log p(\psi _i | \theta ) ,
+
+        where the sum runs over all :math:`N_i` observations of individual
+        :math:`i`.
+
+        Alternatively, the pointwise log-likelihoods may be computed per
+        observation point, assuming that the population contribution can
+        be uniformly attributed to each observation
+
+        .. math::
+            L(\Psi , \theta | x^{\text{obs}}_{in}) =
+                \log p(x^{\text{obs}}_{in} | \psi _i )
+                + \log p(\psi _i | \theta ) / N_i .
+
+        Setting the flag ``per_individual`` to ``True`` or ``False`` switches
+        between the two modi.
+
+        :param parameters: A list of parameter values.
+        :type parameters: list, numpy.ndarray
+        :param per_individual: A boolean flag that determines whether the
+            scores are computed per individual or per observation.
+        :type per_individual: bool, optional
+        """
+        # Transform parameters to numpy array
+        parameters = np.asarray(parameters)
+
+        # Compute population model scores of individuals
+        start = 0
+        pop_scores = np.zeros(shape=self._n_ids)
+        for pop_model in self._population_models:
+            # Get number of individual and population level parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+
+            # Get parameter ranges
+            end_indiv = start + n_indiv
+            end_pop = end_indiv + n_pop
+
+            # Add score, if individual parameters exist
+            if n_indiv > 0:
+                pop_scores += pop_model.compute_pointwise_ll(
+                    parameters=parameters[end_indiv:end_pop],
+                    observations=parameters[start:end_indiv])
+
+            # Shift start index
+            start = end_pop
+
+        if per_individual is True:
+            # Compute aggregated individual likelihoods
+            pw_log_likelihoods = pop_scores
+            for index, log_likelihood in enumerate(self._log_likelihoods):
+                # Compute scores for each observation
+                pw_log_likelihoods[index] += log_likelihood(
+                    parameters[self._indiv_params[index]])
+
+            return pw_log_likelihoods
+
+        # Evaluate individual likelihoods pointwise
+        pw_log_likelihoods = []
+        for index, log_likelihood in enumerate(self._log_likelihoods):
+            # Compute scores for each observation
+            scores = log_likelihood.compute_pointwise_ll(
+                parameters[self._indiv_params[index]])
+
+            # Add population contribution
+            scores += pop_scores[index] / len(scores)
+
+            # Safe scores
+            pw_log_likelihoods.append(scores)
+
+        return np.hstack(pw_log_likelihoods)
 
     def evaluateS1(self, parameters):
         """
@@ -1042,7 +1126,7 @@ class LogLikelihood(pints.LogPDF):
 
     def compute_pointwise_ll(self, parameters):
         """
-        Computes the pointwise log-likelihood score of the parameters for
+        Returns the pointwise log-likelihood scores of the parameters for
         each observation.
 
         :param parameters: A list of parameter values
