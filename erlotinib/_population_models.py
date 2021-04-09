@@ -638,7 +638,7 @@ class PooledModel(PopulationModel):
         Returns the unnormalised log-likelihood score of the population model.
 
         A pooled population model is a delta-distribution centred at the
-        population model parameter. As a results the the log-likelihood score
+        population model parameter. As a result the log-likelihood score
         is 0, if all individual parameters are equal to the population
         parameter, and :math:`-\infty` otherwise.
 
@@ -662,6 +662,37 @@ class PooledModel(PopulationModel):
 
         # Otherwise return 0
         return 0
+
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        A pooled population model is a delta-distribution centred at the
+        population model parameter. As a result the log-likelihood score
+        is 0, if all individual parameters are equal to the population
+        parameter, and :math:`-\infty` otherwise.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get the population parameter
+        parameter = parameters[0]
+
+        # Return -inf if any of the observations does not equal the pooled
+        # parameter
+        observations = np.array(observations)
+        mask = observations != parameter
+        if np.any(mask):
+            return np.full(shape=len(observations), fill_value=-np.inf)
+
+        # Otherwise return 0
+        return np.zeros(shape=len(observations))
 
     def compute_sensitivities(self, parameters, observations):
         r"""
