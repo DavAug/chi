@@ -233,6 +233,155 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertEqual(self.hierarchical_model(parameters), -np.inf)
 
+    def test_compute_pointwise_ll(self):
+        # Test case I: All parameters pooled
+        likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=self.log_likelihoods,
+            population_models=[erlo.PooledModel()] * 9)
+
+        # Test case I.1
+        parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        score = likelihood(parameters)
+        indiv_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=True)
+        pw_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=False)
+
+        self.assertEqual(len(indiv_scores), 2)
+        self.assertAlmostEqual(np.sum(indiv_scores), score)
+        self.assertEqual(len(pw_scores), 14)
+        self.assertAlmostEqual(np.sum(pw_scores), score)
+
+        # Test case I.2
+        parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
+        score = likelihood(parameters)
+        indiv_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=True)
+        pw_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=False)
+
+        self.assertEqual(len(indiv_scores), 2)
+        self.assertAlmostEqual(np.sum(indiv_scores), score)
+        self.assertEqual(len(pw_scores), 14)
+        self.assertAlmostEqual(np.sum(pw_scores), score)
+
+        # Test case II.1: Heterogeneous model
+        likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=self.log_likelihoods,
+            population_models=[
+                erlo.HeterogeneousModel()] * 9)
+
+        # Compute score from individual likelihoods
+        n_ids = 2
+        n_parameters = 9
+        parameters = [1] * n_parameters * n_ids
+        score = likelihood(parameters)
+        indiv_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=True)
+        pw_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=False)
+
+        self.assertEqual(len(indiv_scores), 2)
+        self.assertAlmostEqual(np.sum(indiv_scores), score)
+        self.assertEqual(len(pw_scores), 14)
+        self.assertAlmostEqual(np.sum(pw_scores), score)
+
+        # Test case II.2
+        # Compute score from individual likelihoods
+        parameters = \
+            [parameters[0]] * n_ids + \
+            [parameters[1]] * n_ids + \
+            [parameters[2]] * n_ids + \
+            [parameters[3]] * n_ids + \
+            [parameters[4]] * n_ids + \
+            [parameters[5]] * n_ids + \
+            [parameters[6]] * n_ids + \
+            [parameters[7]] * n_ids + \
+            [parameters[8]] * n_ids
+        score = likelihood(parameters)
+        indiv_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=True)
+        pw_scores = likelihood.compute_pointwise_ll(
+            parameters, per_individual=False)
+
+        self.assertEqual(len(indiv_scores), 2)
+        self.assertAlmostEqual(np.sum(indiv_scores), score)
+        self.assertEqual(len(pw_scores), 14)
+        self.assertAlmostEqual(np.sum(pw_scores), score)
+
+        # Test case III.1: Non-trivial population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
+
+        # Create reference pop model
+        indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
+
+        score = self.hierarchical_model(parameters)
+        indiv_scores = self.hierarchical_model.compute_pointwise_ll(
+            parameters, per_individual=True)
+        pw_scores = self.hierarchical_model.compute_pointwise_ll(
+            parameters, per_individual=False)
+
+        self.assertEqual(len(indiv_scores), 2)
+        self.assertAlmostEqual(np.sum(indiv_scores), score)
+        self.assertEqual(len(pw_scores), 14)
+        self.assertAlmostEqual(np.sum(pw_scores), score)
+
+        # Test case III.2: Works if infinty is returned
+        indiv_parameters_1 = [10, 1, 10E20, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 10E-10]
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
+
+        score = self.hierarchical_model(parameters)
+        indiv_scores = self.hierarchical_model.compute_pointwise_ll(
+            parameters, per_individual=True)
+        pw_scores = self.hierarchical_model.compute_pointwise_ll(
+            parameters, per_individual=False)
+
+        self.assertEqual(len(indiv_scores), 2)
+        self.assertAlmostEqual(np.sum(indiv_scores), score)
+        self.assertEqual(len(pw_scores), 14)
+        self.assertAlmostEqual(np.sum(pw_scores), score)
+
     def test_evaluateS1(self):
         # Test case I: All parameters pooled
         model = erlo.HierarchicalLogLikelihood(
