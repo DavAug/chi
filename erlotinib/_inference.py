@@ -244,7 +244,7 @@ def _format_posterior(
                     posterior_samples[parameter].values.T
 
             # Continue to next parameter
-            continue
+            continue  # noqa
 
         # Get parameters of individual
         _id = ids[id_index % n_ids]
