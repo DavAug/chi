@@ -295,7 +295,7 @@ def compute_pointwise_loglikelihood(
     :type param_map: dict, optional
     :param per_individual: A boolean flag that determines whether the
             scores are computed per individual or per observation.
-        :type per_individual: bool, optional
+    :type per_individual: bool, optional
     :param return_inference_data: A boolean flag which determines whether the
         log-likelihoods and the posterior are returned as
         :class:`arviz.InferenceData`.
