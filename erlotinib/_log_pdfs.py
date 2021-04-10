@@ -490,11 +490,29 @@ class HierarchicalLogLikelihood(object):
 
         return ll_score, sensitivities
 
-    def get_id(self):
+    def get_id(self, individual_ids=False):
         """
         Returns the IDs (prefixes) of the model parameters.
+
+        By default the IDs of all parameters (bottom and top level) parameters
+        are returned in the order of the parameter names. If ``individual_ids``
+        is set to ``True``, the IDs of the modelled individual log-likelihoods
+        are returned.
         """
-        return self._ids
+
+        if individual_ids is False:
+            return self._ids
+
+        # Filter None values and keep each ID only once
+        ids = []
+        for _id in self._ids:
+            if (_id is None) or (_id in ids):
+                continue
+
+            # Add ID to list
+            ids.append(_id)
+
+        return ids
 
     def get_parameter_names(
             self, exclude_bottom_level=False, include_ids=False):

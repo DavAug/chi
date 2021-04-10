@@ -620,6 +620,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(score, -np.inf)
 
     def test_get_id(self):
+        # Test case I: Get parameter IDs
         ids = self.hierarchical_model.get_id()
 
         self.assertEqual(len(ids), 13)
@@ -636,6 +637,13 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertIsNone(ids[10])
         self.assertIsNone(ids[11])
         self.assertIsNone(ids[12])
+
+        # Test case II: Get individual IDs
+        ids = self.hierarchical_model.get_id(individual_ids=True)
+
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(ids[0], 'automatic-id-1')
+        self.assertEqual(ids[1], 'automatic-id-2')
 
     def test_get_parameter_names(self):
         # Test case I: without ids
