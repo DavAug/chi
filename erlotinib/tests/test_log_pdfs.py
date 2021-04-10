@@ -760,6 +760,13 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             exclude_bottom_level=True)
         self.assertEqual(n_parameters, 11)
 
+    def test_n_observations(self):
+        n_obs = self.hierarchical_model.n_observations()
+
+        self.assertEqual(len(n_obs), 2)
+        self.assertEqual(n_obs[0], 7)
+        self.assertEqual(n_obs[1], 7)
+
 
 class TestHierarchicalLogPosterior(unittest.TestCase):
     """
