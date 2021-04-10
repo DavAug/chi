@@ -4,3 +4,7 @@ omit =
     erlotinib/apps/*
     erlotinib/plots/_base.py
     erlotinib/tests/*
+
+[report]
+exclude_lines =
+    continue  # noqa
