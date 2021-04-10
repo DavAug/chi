@@ -504,9 +504,13 @@ class HierarchicalLogLikelihood(object):
 
         # Filter None values and keep each ID only once
         ids = []
-        for _id in self._ids:
-            if (_id is None) or (_id in ids):
-                continue
+        index = 0
+        for log_likelihood in self._log_likelihoods:
+            _id = log_likelihood.get_id()
+
+            # If ID not set, generate some ID
+            if _id is None:
+                _id = 'automatic-id-%d' % (index + 1)
 
             # Add ID to list
             ids.append(_id)
