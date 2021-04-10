@@ -163,6 +163,7 @@ class HierarchicalLogLikelihood(object):
         self._log_likelihoods = log_likelihoods
         self._population_models = population_models
         self._n_ids = len(log_likelihoods)
+        self._n_obs = [np.sum(ll.n_observations()) for ll in log_likelihoods]
 
         # Set IDs
         self._set_ids()
@@ -562,6 +563,12 @@ class HierarchicalLogLikelihood(object):
             return int(np.sum(self._top_level_mask))
 
         return self._n_parameters
+
+    def n_observations(self):
+        """
+        Returns the number of observed data points per individual.
+        """
+        return self._n_obs
 
 
 class HierarchicalLogPosterior(pints.LogPDF):
