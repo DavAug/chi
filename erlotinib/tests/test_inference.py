@@ -24,6 +24,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Test case I: Non-hierarchical log-likelihood
         # Get test data and model
         data = erlo.DataLibrary().lung_cancer_control_group()
         individual = 40
@@ -56,7 +57,55 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
             param: samples for param
             in cls.log_likelihood.get_parameter_names()})
 
+        # Test case II: Hierarchical Log-likelihood
+        cls.log_likelihood_2 = erlo.LogLikelihood(
+            mechanistic_model, error_model, observed_volumes, times)
+        cls.log_likelihood_2.set_id(56)
+        pop_models = [
+            erlo.PooledModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+        cls.hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+            log_likelihoods=[cls.log_likelihood, cls.log_likelihood_2],
+            population_models=pop_models)
+
+        # Create posterior
+        n_chains = 2
+        n_draws = 3
+        n_ids = 2
+        bottom_samples = np.ones(shape=(n_chains, n_draws, n_ids))
+        top_samples = np.ones(shape=(n_chains, n_draws))
+        bottom_samples = xr.DataArray(
+            data=bottom_samples,
+            dims=['chain', 'draw', 'individual'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['ID 40', 'ID 56']})
+        top_samples = xr.DataArray(
+            data=top_samples,
+            dims=['chain', 'draw'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws))})
+        parameter_names = cls.hierarch_log_likelihood.get_parameter_names()
+        cls.hierarch_posterior_samples = xr.Dataset({
+            parameter_names[0]: top_samples,
+            parameter_names[1]: bottom_samples,
+            parameter_names[3]: top_samples,
+            parameter_names[4]: top_samples,
+            parameter_names[5]: top_samples,
+            parameter_names[6]: bottom_samples,
+            parameter_names[8]: top_samples,
+            parameter_names[9]: top_samples,
+            parameter_names[10]: top_samples})
+
     def test_call(self):
+        # Test case I: Non-hierarchical log-likelihood
         # Test call with defaults
         pw_ll = erlo.compute_pointwise_loglikelihood(
             self.log_likelihood, self.posterior_samples)
@@ -212,9 +261,225 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         # Return arviz.DataInference
         pw_ll = erlo.compute_pointwise_loglikelihood(
             self.log_likelihood, self.posterior_samples,
-            return_inferencedata=True)
+            return_inference_data=True)
 
         self.assertIsInstance(pw_ll, az.InferenceData)
+
+        # Test case II: Hierarchical log-likelihood
+        # Test call with defaults
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.hierarch_log_likelihood,
+            self.hierarch_posterior_samples)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
+
+        ids = pw_ll.individual
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(ids[0], 'ID 40')
+        self.assertEqual(ids[1], 'ID 56')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Test call per observation
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.hierarch_log_likelihood,
+            self.hierarch_posterior_samples,
+            per_individual=False)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'observation')
+
+        obs = pw_ll.observation
+        self.assertEqual(len(obs), 20)
+        self.assertEqual(obs[0], 'ID 40 Observation 1')
+        self.assertEqual(obs[1], 'ID 40 Observation 2')
+        self.assertEqual(obs[2], 'ID 40 Observation 3')
+        self.assertEqual(obs[3], 'ID 40 Observation 4')
+        self.assertEqual(obs[4], 'ID 40 Observation 5')
+        self.assertEqual(obs[5], 'ID 40 Observation 6')
+        self.assertEqual(obs[6], 'ID 40 Observation 7')
+        self.assertEqual(obs[7], 'ID 40 Observation 8')
+        self.assertEqual(obs[8], 'ID 40 Observation 9')
+        self.assertEqual(obs[9], 'ID 40 Observation 10')
+        self.assertEqual(obs[10], 'ID 56 Observation 1')
+        self.assertEqual(obs[11], 'ID 56 Observation 2')
+        self.assertEqual(obs[12], 'ID 56 Observation 3')
+        self.assertEqual(obs[13], 'ID 56 Observation 4')
+        self.assertEqual(obs[14], 'ID 56 Observation 5')
+        self.assertEqual(obs[15], 'ID 56 Observation 6')
+        self.assertEqual(obs[16], 'ID 56 Observation 7')
+        self.assertEqual(obs[17], 'ID 56 Observation 8')
+        self.assertEqual(obs[18], 'ID 56 Observation 9')
+        self.assertEqual(obs[19], 'ID 56 Observation 10')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Test call with differently ordered posterior samples
+        n_chains = 2
+        n_draws = 3
+        n_ids = 2
+        bottom_samples = np.ones(shape=(n_draws, n_chains, n_ids))
+        top_samples = np.ones(shape=(n_draws, n_chains))
+        bottom_samples = xr.DataArray(
+            data=bottom_samples,
+            dims=['draw', 'chain', 'individual'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['ID 40', 'ID 56']})
+        top_samples = xr.DataArray(
+            data=top_samples,
+            dims=['draw', 'chain'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws))})
+        parameter_names = self.hierarch_log_likelihood.get_parameter_names()
+        hierarch_posterior_samples = xr.Dataset({
+            parameter_names[0]: top_samples,
+            parameter_names[1]: bottom_samples,
+            parameter_names[3]: top_samples,
+            parameter_names[4]: top_samples,
+            parameter_names[5]: top_samples,
+            parameter_names[6]: bottom_samples,
+            parameter_names[8]: top_samples,
+            parameter_names[9]: top_samples,
+            parameter_names[10]: top_samples})
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.hierarch_log_likelihood, hierarch_posterior_samples)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
+
+        ids = pw_ll.individual
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(ids[0], 'ID 40')
+        self.assertEqual(ids[1], 'ID 56')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Map parameters
+        param_map = {
+            'Pooled myokit.tumour_volume': 'Pooled myokit.tumour_volume'}
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.hierarch_log_likelihood,
+            self.hierarch_posterior_samples,
+            param_map=param_map)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
+
+        ids = pw_ll.individual
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(ids[0], 'ID 40')
+        self.assertEqual(ids[1], 'ID 56')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
+
+        # Return arviz.DataInference
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            self.hierarch_log_likelihood,
+            self.hierarch_posterior_samples,
+            return_inference_data=True)
+
+        self.assertIsInstance(pw_ll, az.InferenceData)
+
+        # Test case III: Fully pooled model
+        pop_models = [erlo.PooledModel()] * 7
+        hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+            [self.log_likelihood, self.log_likelihood_2],
+            pop_models)
+        n_chains = 2
+        n_draws = 3
+        top_samples = np.ones(shape=(n_draws, n_chains))
+        top_samples = xr.DataArray(
+            data=top_samples,
+            dims=['draw', 'chain'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws))})
+        parameter_names = hierarch_log_likelihood.get_parameter_names()
+        hierarch_posterior_samples = xr.Dataset({
+            parameter_names[0]: top_samples,
+            parameter_names[1]: top_samples,
+            parameter_names[2]: top_samples,
+            parameter_names[3]: top_samples,
+            parameter_names[4]: top_samples,
+            parameter_names[5]: top_samples,
+            parameter_names[6]: top_samples})
+        pw_ll = erlo.compute_pointwise_loglikelihood(
+            hierarch_log_likelihood,
+            hierarch_posterior_samples)
+
+        dimensions = list(pw_ll.dims)
+        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(dimensions[0], 'chain')
+        self.assertEqual(dimensions[1], 'draw')
+        self.assertEqual(dimensions[2], 'individual')
+
+        ids = pw_ll.individual
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(ids[0], 'ID 40')
+        self.assertEqual(ids[1], 'ID 56')
+
+        chains = pw_ll.chain
+        self.assertEqual(len(chains), 2)
+        self.assertEqual(chains.loc[0], 0)
+        self.assertEqual(chains.loc[1], 1)
+
+        draws = pw_ll.draw
+        self.assertEqual(len(draws), 3)
+        self.assertEqual(draws.loc[0], 0)
+        self.assertEqual(draws.loc[1], 1)
+        self.assertEqual(draws.loc[2], 2)
 
     def test_call_bad_input(self):
         # Wrong log-likelihood type
@@ -256,6 +521,13 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The individual <Does not'):
             erlo.compute_pointwise_loglikelihood(
                 self.log_likelihood, self.posterior_samples,
+                individual=individual)
+
+        # Select individual with hierarchical model
+        individual = 'Some ID'
+        with self.assertRaisesRegex(ValueError, "Individual IDs cannot be"):
+            erlo.compute_pointwise_loglikelihood(
+                self.hierarch_log_likelihood, self.hierarch_posterior_samples,
                 individual=individual)
 
 
