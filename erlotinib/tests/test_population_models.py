@@ -298,7 +298,7 @@ class TestLogNormalModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, -np.inf)
 
-    def test_compute_log_likelihood(self):
+    def test_compute_pointwise_ll(self):
         # Hard to test exactly, but at least test some edge cases where
         # loglikelihood is straightforward to compute analytically
 
