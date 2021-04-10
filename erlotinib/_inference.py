@@ -277,7 +277,7 @@ def compute_pointwise_loglikelihood(
     For a :class:`HierarchicalLogLikelihood` pointwise log-likelihoods are
     by default computed and aggregated per individual. If the pointwise
     log-likelihoods are supposed to be computed per observation,
-    ``per_individual`` can be set to ``False. For more info see
+    ``per_individual`` can be set to ``False``. For more info see
     :meth:`HierarchicalLogLikelihood.compute_pointwise_ll`.
 
     :param log_likelihood: The log-likelihood of the model parameters.
