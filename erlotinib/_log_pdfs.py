@@ -499,7 +499,6 @@ class HierarchicalLogLikelihood(object):
         is set to ``True``, the IDs of the modelled individual log-likelihoods
         are returned.
         """
-
         if individual_ids is False:
             return self._ids
 
