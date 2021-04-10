@@ -504,6 +504,17 @@ class HierarchicalLogLikelihood(object):
 
         # Filter None values and keep each ID only once
         ids = []
+        for _id in self._ids:
+            if (_id is None) or (_id in ids):
+                continue
+
+            ids.append(_id)
+
+        if ids:
+            return ids
+
+        # For fully pooled problems all IDs in self._ids will be None
+        # So we need to construct IDs from scratch
         index = 0
         for log_likelihood in self._log_likelihoods:
             _id = log_likelihood.get_id()
