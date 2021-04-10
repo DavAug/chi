@@ -645,6 +645,26 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(ids[0], 'automatic-id-1')
         self.assertEqual(ids[1], 'automatic-id-2')
 
+        # Test case III: Get IDs for fully pooled model
+        # Create population models
+        population_models = [
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+        hierarchical_model = erlo.HierarchicalLogLikelihood(
+            self.log_likelihoods, population_models)
+        ids = hierarchical_model.get_id(individual_ids=True)
+
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(ids[0], 'automatic-id-1')
+        self.assertEqual(ids[1], 'automatic-id-2')
+
     def test_get_parameter_names(self):
         # Test case I: without ids
         parameter_names = self.hierarchical_model.get_parameter_names()

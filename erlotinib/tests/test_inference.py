@@ -530,6 +530,41 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
                 self.hierarch_log_likelihood, self.hierarch_posterior_samples,
                 individual=individual)
 
+        # Posterior does not have all IDs of the hierarchical model
+        n_chains = 2
+        n_draws = 3
+        n_ids = 2
+        bottom_samples = np.ones(shape=(n_draws, n_chains, n_ids))
+        top_samples = np.ones(shape=(n_draws, n_chains))
+        bottom_samples = xr.DataArray(
+            data=bottom_samples,
+            dims=['draw', 'chain', 'individual'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['Wrong', 'IDs']})
+        top_samples = xr.DataArray(
+            data=top_samples,
+            dims=['draw', 'chain'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws))})
+        parameter_names = self.hierarch_log_likelihood.get_parameter_names()
+        hierarch_posterior_samples = xr.Dataset({
+            parameter_names[0]: top_samples,
+            parameter_names[1]: bottom_samples,
+            parameter_names[3]: top_samples,
+            parameter_names[4]: top_samples,
+            parameter_names[5]: top_samples,
+            parameter_names[6]: bottom_samples,
+            parameter_names[8]: top_samples,
+            parameter_names[9]: top_samples,
+            parameter_names[10]: top_samples})
+
+        with self.assertRaisesRegex(ValueError, "The ID <ID 40> does not"):
+            erlo.compute_pointwise_loglikelihood(
+                self.hierarch_log_likelihood, hierarch_posterior_samples)
+
 
 class TestInferenceController(unittest.TestCase):
     """
