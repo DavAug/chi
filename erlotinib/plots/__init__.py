@@ -12,12 +12,16 @@ from ._base import (  # noqa
     SingleSubplotFigure
 )
 
-from ._sampling import (  # noqa
-    MarginalPosteriorPlot
-)
-
 from ._optimisation import (  # noqa
     ParameterEstimatePlot
+)
+
+from ._residuals import (  # noqa
+    ResidualPlot
+)
+
+from ._sampling import (  # noqa
+    MarginalPosteriorPlot
 )
 
 from ._time_series import (  # noqa
