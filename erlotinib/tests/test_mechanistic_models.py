@@ -13,7 +13,7 @@ import numpy as np
 import erlotinib as erlo
 
 
-class TestModel(unittest.TestCase):
+class TestMechanisticModel(unittest.TestCase):
     """
     Tests `erlotinib.MechanisticModel`.
     """
@@ -21,6 +21,97 @@ class TestModel(unittest.TestCase):
     def setUpClass(cls):
         path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.MechanisticModel(path)
+
+    def test_copy(self):
+        # Case I: Copy model and check that all public properties coincide
+        model = self.model.copy()
+
+        self.assertFalse(model.has_sensitivities())
+        self.assertFalse(self.model.has_sensitivities())
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(self.model.n_parameters(), 5)
+        params_c = model.parameters()
+        params = self.model.parameters()
+        self.assertEqual(params_c[0], 'myokit.tumour_volume')
+        self.assertEqual(params_c[1], 'myokit.drug_concentration')
+        self.assertEqual(params_c[2], 'myokit.kappa')
+        self.assertEqual(params_c[3], 'myokit.lambda_0')
+        self.assertEqual(params_c[4], 'myokit.lambda_1')
+        self.assertEqual(params[0], 'myokit.tumour_volume')
+        self.assertEqual(params[1], 'myokit.drug_concentration')
+        self.assertEqual(params[2], 'myokit.kappa')
+        self.assertEqual(params[3], 'myokit.lambda_0')
+        self.assertEqual(params[4], 'myokit.lambda_1')
+
+        # Change output name
+        model.set_output_names({'myokit.tumour_volume': 'test'})
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+        # Set new outputs
+        model.set_outputs(
+            ['myokit.tumour_volume', 'myokit.tumour_volume'])
+        self.assertEqual(model.n_outputs(), 2)
+        self.assertEqual(self.model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs_c[1], 'test')
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        model.set_outputs(['myokit.tumour_volume'])
+
+        # Rename some parameters
+        model.set_parameter_names({
+            'myokit.kappa': 'new 1',
+            'myokit.lambda_0': 'new 2'})
+        self.assertEqual(model.n_parameters(), 5)
+        self.assertEqual(self.model.n_parameters(), 5)
+        params_c = model.parameters()
+        params = self.model.parameters()
+        self.assertEqual(params_c[0], 'myokit.tumour_volume')
+        self.assertEqual(params_c[1], 'myokit.drug_concentration')
+        self.assertEqual(params_c[2], 'new 1')
+        self.assertEqual(params_c[3], 'new 2')
+        self.assertEqual(params_c[4], 'myokit.lambda_1')
+        self.assertEqual(params[0], 'myokit.tumour_volume')
+        self.assertEqual(params[1], 'myokit.drug_concentration')
+        self.assertEqual(params[2], 'myokit.kappa')
+        self.assertEqual(params[3], 'myokit.lambda_0')
+        self.assertEqual(params[4], 'myokit.lambda_1')
+
+    def test_enable_sensitivities(self):
+        # Enable sensitivities
+        self.model.enable_sensitivities(True)
+        self.assertTrue(self.model.has_sensitivities())
+
+        # Enable sensitivties for a subset of parameters
+        parameters = ['myokit.tumour_volume', 'myokit.kappa']
+        self.model.enable_sensitivities(True, parameters)
+        self.assertTrue(self.model.has_sensitivities())
+
+        # Disable sensitivities
+        self.model.enable_sensitivities(False)
+        self.assertFalse(self.model.has_sensitivities())
+
+        # Disable sensitvities a second time
+        self.model.enable_sensitivities(False)
+        self.assertFalse(self.model.has_sensitivities())
+
+    def test_enable_sensitivities_bad_input(self):
+        # Specify parameter names that cannot be identified
+        parameters = ['do', 'not', 'exist']
+        with self.assertRaisesRegex(ValueError, 'None of the'):
+            self.model.enable_sensitivities(True, parameters)
 
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
@@ -43,11 +134,6 @@ class TestModel(unittest.TestCase):
         self.assertEqual(parameters[4], 'myokit.lambda_1')
 
     def test_set_outputs(self):
-
-        # Set bad output
-        self.assertRaisesRegex(
-            KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
-
         # Set twice the same output
         outputs = ['myokit.tumour_volume', 'myokit.tumour_volume']
         self.model.set_outputs(outputs)
@@ -63,6 +149,53 @@ class TestModel(unittest.TestCase):
         self.assertEqual(self.model.n_outputs(), 1)
         output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
         self.assertEqual(output.shape, (1, 2))
+
+    def test_set_ouputs_bad_input(self):
+        # Set not existing output output
+        self.assertRaisesRegex(
+            KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
+
+        # Set output to constant
+        with self.assertRaisesRegex(ValueError, 'Outputs have to be state or'):
+            self.model.set_outputs(['myokit.kappa'])
+
+    def test_set_output_names(self):
+        # Set output name
+        names = {'myokit.tumour_volume': 'Some name'}
+        self.model.set_output_names(names)
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'Some name')
+
+        # Provide a dictionary of unnecessary names
+        names = {'Some name': 'Some other name', 'does not exist': 'bla'}
+        self.model.set_output_names(names)
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'Some other name')
+
+        # Set name back to default
+        names = {'Some other name': 'myokit.tumour_volume'}
+        self.model.set_output_names(names)
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+
+    def test_set_output_names_bad_input(self):
+        # List input is not ok!
+        names = ['TV', 'some name']
+        with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
+            self.model.set_output_names(names)
+
+        # New names are not unique
+        names = {'param 1': 'Some name', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The new output names'):
+            self.model.set_output_names(names)
+
+        # New names exist already
+        names = {'param 1': 'myokit.tumour_volume', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The output names cannot'):
+            self.model.set_output_names(names)
 
     def test_set_parameter_names(self):
         # Set some parameter names
@@ -94,19 +227,36 @@ class TestModel(unittest.TestCase):
     def test_set_parameter_names_bad_input(self):
         # List input is not ok!
         names = ['TV', 'some name']
-
         with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
             self.model.set_parameter_names(names)
 
-    def test_simulate(self):
+        # New names are not unique
+        names = {'param 1': 'Some name', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The new parameter names'):
+            self.model.set_parameter_names(names)
 
+        # New names exist already
+        names = {'param 1': 'myokit.tumour_volume', 'param 2': 'Some name'}
+        with self.assertRaisesRegex(ValueError, 'The parameter names cannot'):
+            self.model.set_parameter_names(names)
+
+    def test_simulate(self):
         times = [0, 1, 2, 3]
 
-        # Test model with bare parameters
+        # Test simulation of output
         parameters = [0.1, 1, 1, 1, 1]
         output = self.model.simulate(parameters, times)
         self.assertIsInstance(output, np.ndarray)
         self.assertEqual(output.shape, (1, 4))
+
+        # Test simulation with sensitivities
+        parameters = [0.1, 1, 1, 1, 1]
+        self.model.enable_sensitivities(True)
+        output, sens = self.model.simulate(parameters, times)
+        self.assertIsInstance(output, np.ndarray)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertIsInstance(sens, np.ndarray)
+        self.assertEqual(sens.shape, (4, 1, 5))
 
     def test_simulator(self):
         self.assertIsInstance(self.model.simulator, myokit.Simulation)
@@ -222,16 +372,6 @@ class TestPharmacodynamicModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The name does not'):
             self.model.set_pk_input(pk_input)
 
-    def test_simulate(self):
-
-        times = [0, 1, 2, 3]
-
-        # Test model with bare parameters
-        parameters = [0.1, 1, 1, 1, 1]
-        output = self.model.simulate(parameters, times)
-        self.assertIsInstance(output, np.ndarray)
-        self.assertEqual(output.shape, (1, 4))
-
 
 class TestPharmacokineticModel(unittest.TestCase):
     """
@@ -266,6 +406,42 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(len(admin.keys()), 2)
         self.assertEqual(admin['compartment'], 'central')
         self.assertFalse(admin['direct'])
+
+    def test_enable_sensitivities(self):
+        path = erlo.ModelLibrary().one_compartment_pk_model()
+        model = erlo.PharmacokineticModel(path)
+
+        # Disable sensitivities before setting administration
+        model.enable_sensitivities(False)
+        self.assertFalse(model.has_sensitivities())
+
+        # Set administration and check that sensitivities are still
+        # disabled
+        model.set_administration(compartment='central', direct=False)
+        self.assertFalse(model.has_sensitivities())
+
+        # Enable sensitivities
+        model.enable_sensitivities(True)
+        self.assertTrue(model.has_sensitivities())
+        times = [0, 1, 2, 3]
+        parameters = [1, 1, 1, 1, 1]
+        output, sens = model.simulate(parameters, times)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertEqual(sens.shape, (4, 1, 5))
+
+        # Enable sensitivities before setting an administration
+        model = erlo.PharmacokineticModel(path)
+        model.enable_sensitivities(True)
+        self.assertTrue(model.has_sensitivities())
+        times = [0, 1, 2, 3]
+        parameters = [1, 1, 1]
+        output, sens = model.simulate(parameters, times)
+        self.assertEqual(output.shape, (1, 4))
+        self.assertEqual(sens.shape, (4, 1, 3))
+
+        # Set administration
+        model.set_administration(compartment='central', direct=False)
+        self.assertFalse(model.has_sensitivities())
 
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
@@ -442,6 +618,36 @@ class TestPharmacokineticModel(unittest.TestCase):
         output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
         self.assertEqual(output.shape, (1, 2))
 
+    def set_output_names(self):
+        # Rename only one output
+        outputs = ['central.drug_amount', 'central.drug_concentration']
+        self.model.set_outputs(outputs)
+        self.model.set_output_names({'central.drug_amount': 'Some name'})
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'Some name')
+        self.assertEqual(outputs[1], 'central.drug_concentration')
+
+        # Rename the other output
+        self.model.set_output_names({
+            'central.drug_concentration': 'Some other name'})
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'Some name')
+        self.assertEqual(outputs[1], 'Some other name')
+
+        # Set output back to default
+        outputs = ['Some name']
+        self.model.set_outputs(outputs)
+        self.assertEqual(self.model.outputs(), outputs)
+        self.assertEqual(self.model.n_outputs(), 1)
+
+        # Set output name to default
+        self.model.set_output_names({'Some name': 'central.drug_amount'})
+        outputs = self.model.outputs()
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0], 'central.drug_amount')
+
     def test_set_parameter_names(self):
         # Set some parameter names
         names = {
@@ -525,6 +731,72 @@ class TestReducedMechanisticModel(unittest.TestCase):
         model = 'Bad type'
         with self.assertRaisesRegex(ValueError, 'The mechanistic model'):
             erlo.ReducedMechanisticModel(model)
+
+    def test_copy(self):
+        # Fix some parameters
+        self.pk_model.fix_parameters({
+            'central.size': 1})
+
+        # Copy model and make sure the are identical
+        model = self.pk_model.copy()
+
+        self.assertFalse(model.has_sensitivities())
+        self.assertFalse(self.pk_model.has_sensitivities())
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'central.drug_concentration')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+        self.assertEqual(model.n_parameters(), 2)
+        self.assertEqual(self.pk_model.n_parameters(), 2)
+        params_c = model.parameters()
+        params = self.pk_model.parameters()
+        self.assertEqual(params_c[0], 'central.drug_amount')
+        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params[0], 'central.drug_amount')
+        self.assertEqual(params[1], 'myokit.elimination_rate')
+
+        # Rename the output
+        model.set_output_names({'central.drug_concentration': 'test'})
+        self.assertEqual(model.n_outputs(), 1)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+
+        # Set new ouputs
+        model.set_outputs(['test', 'central.drug_amount'])
+        self.assertEqual(model.n_outputs(), 2)
+        self.assertEqual(self.pk_model.n_outputs(), 1)
+        outputs_c = model.outputs()
+        outputs = self.pk_model.outputs()
+        self.assertEqual(outputs_c[0], 'test')
+        self.assertEqual(outputs_c[1], 'central.drug_amount')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+
+        # Fix different parameters
+        model.fix_parameters({
+            'central.size': None,
+            'central.drug_amount': 1})
+        self.assertEqual(model.n_parameters(), 2)
+        self.assertEqual(self.pk_model.n_parameters(), 2)
+        params_c = model.parameters()
+        params = self.pk_model.parameters()
+        self.assertEqual(params_c[0], 'central.size')
+        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params[0], 'central.drug_amount')
+        self.assertEqual(params[1], 'myokit.elimination_rate')
+
+    def test_enable_sensitivities(self):
+        # Enable sensitivities
+        self.pd_model.enable_sensitivities(True)
+        self.assertTrue(self.pd_model.has_sensitivities())
+
+        # Disable sensitvities
+        self.pd_model.enable_sensitivities(False)
+        self.assertFalse(self.pd_model.has_sensitivities())
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
@@ -658,7 +930,16 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(outputs[0], 'myokit.tumour_volume')
         self.assertEqual(outputs[1], 'myokit.tumour_volume')
 
+        self.pd_model.set_output_names(
+            {'myokit.tumour_volume': 'Some name'})
+        outputs = self.pd_model.outputs()
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], 'Some name')
+        self.assertEqual(outputs[1], 'Some name')
+
         # Test case II: Set outputs back to default
+        self.pd_model.set_output_names(
+            {'Some name': 'myokit.tumour_volume'})
         self.pd_model.set_outputs(['myokit.tumour_volume'])
 
         outputs = self.pd_model.outputs()
@@ -699,18 +980,73 @@ class TestReducedMechanisticModel(unittest.TestCase):
         # Simulate
         times = [1, 2, 3]
         parameters = [0, 0.5, 0.3]
-        sim = self.pd_model.simulate(parameters, times).flatten()
+        output = self.pd_model.simulate(parameters, times).flatten()
 
         # Simulate unfixed model with the same parameters
         model = self.pd_model.mechanistic_model()
         parameters = [1, 0, 1, 0.5, 0.3]
-        ref_sim = model.simulate(parameters, times).flatten()
+        ref_output = model.simulate(parameters, times).flatten()
 
-        self.assertEqual(len(sim), 3)
-        self.assertEqual(len(ref_sim), 3)
-        self.assertEqual(sim[0], ref_sim[0])
-        self.assertEqual(sim[1], ref_sim[1])
-        self.assertEqual(sim[2], ref_sim[2])
+        self.assertEqual(len(output), 3)
+        self.assertEqual(len(ref_output), 3)
+        self.assertEqual(output[0], ref_output[0])
+        self.assertEqual(output[1], ref_output[1])
+        self.assertEqual(output[2], ref_output[2])
+
+        # Enable sensitivities
+        self.pd_model.enable_sensitivities(True)
+
+        # Simulate
+        times = [1, 2, 3]
+        parameters = [0, 0.5, 0.3]
+        output, sens = self.pd_model.simulate(parameters, times)
+        output = output.squeeze()
+
+        # Simulate unfixed model with the same parameters
+        model = self.pd_model.mechanistic_model()
+        parameters = [1, 0, 1, 0.5, 0.3]
+        ref_output, ref_sens = model.simulate(parameters, times)
+        ref_output = ref_output.squeeze()
+
+        self.assertEqual(len(output), 3)
+        self.assertEqual(len(ref_output), 3)
+        self.assertEqual(output[0], ref_output[0])
+        self.assertEqual(output[1], ref_output[1])
+        self.assertEqual(output[2], ref_output[2])
+
+        self.assertEqual(sens.shape, (3, 1, 3))
+        self.assertEqual(ref_sens.shape, (3, 1, 3))
+        self.assertEqual(sens[0, 0, 0], ref_sens[0, 0, 0])
+        self.assertEqual(sens[1, 0, 0], ref_sens[1, 0, 0])
+        self.assertEqual(sens[2, 0, 0], ref_sens[2, 0, 0])
+        self.assertEqual(sens[0, 0, 1], ref_sens[0, 0, 1])
+        self.assertEqual(sens[1, 0, 1], ref_sens[1, 0, 1])
+        self.assertEqual(sens[2, 0, 1], ref_sens[2, 0, 1])
+        self.assertEqual(sens[0, 0, 2], ref_sens[0, 0, 2])
+        self.assertEqual(sens[1, 0, 2], ref_sens[1, 0, 2])
+        self.assertEqual(sens[2, 0, 2], ref_sens[2, 0, 2])
+
+        # Fix parameters after enabling sensitivities
+        self.pd_model.fix_parameters({'myokit.lambda_0': 0.5})
+        times = [1, 2, 3]
+        parameters = [0, 0.3]
+        output, sens = self.pd_model.simulate(parameters, times)
+        output = output.squeeze()
+
+        self.assertEqual(len(output), 3)
+        self.assertEqual(len(ref_output), 3)
+        self.assertEqual(output[0], ref_output[0])
+        self.assertEqual(output[1], ref_output[1])
+        self.assertEqual(output[2], ref_output[2])
+
+        self.assertEqual(sens.shape, (3, 1, 2))
+        self.assertEqual(ref_sens.shape, (3, 1, 3))
+        self.assertEqual(sens[0, 0, 0], ref_sens[0, 0, 0])
+        self.assertEqual(sens[1, 0, 0], ref_sens[1, 0, 0])
+        self.assertEqual(sens[2, 0, 0], ref_sens[2, 0, 0])
+        self.assertEqual(sens[0, 0, 1], ref_sens[0, 0, 2])
+        self.assertEqual(sens[1, 0, 1], ref_sens[1, 0, 2])
+        self.assertEqual(sens[2, 0, 1], ref_sens[2, 0, 2])
 
     def test_simulator(self):
         self.assertIsInstance(self.pd_model.simulator, myokit.Simulation)

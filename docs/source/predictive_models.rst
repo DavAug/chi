@@ -19,6 +19,7 @@ Functional classes
 - :class:`PredictiveModel`
 - :class:`PredictivePopulationModel`
 - :class:`PriorPredictiveModel`
+- :class:`StackedPredictiveModel`
 
 Detailed API
 ^^^^^^^^^^^^
@@ -38,13 +39,17 @@ Detailed API
     :members:
     :inherited-members:
 
+.. autoclass:: StackedPredictiveModel
+    :members:
+    :inherited-members:
+
 Base classes
 ------------
 
-- :class:`DataDrivenPredictiveModel`
+- :class:`GenerativeModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
-.. autoclass:: DataDrivenPredictiveModel
+.. autoclass:: GenerativeModel
     :members:

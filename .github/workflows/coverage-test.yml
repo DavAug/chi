@@ -25,6 +25,7 @@ jobs:
       
       - name: install sundials
         run: |
+          sudo apt-get update
           sudo apt-get install libsundials-dev
       - name: install erlotinib
         run: |

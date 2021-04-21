@@ -14,12 +14,22 @@ Functional classes
 ------------------
 
 - :class:`ConstantAndMultiplicativeGaussianErrorModel`
+- :class:`GaussianErrorModel`
+- :class:`LogNormalErrorModel`
 - :class:`MultiplicativeGaussianErrorModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
 .. autoclass:: ConstantAndMultiplicativeGaussianErrorModel
+    :members:
+    :inherited-members:
+
+.. autoclass:: GaussianErrorModel
+    :members:
+    :inherited-members:
+
+.. autoclass:: LogNormalErrorModel
     :members:
     :inherited-members:
 

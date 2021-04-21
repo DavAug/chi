@@ -17,12 +17,15 @@ from ._data_library_api import (  # noqa
 from ._error_models import (  # noqa
     ConstantAndMultiplicativeGaussianErrorModel,
     ErrorModel,
+    GaussianErrorModel,
+    LogNormalErrorModel,
     MultiplicativeGaussianErrorModel,
     ReducedErrorModel
 )
 
 from ._log_pdfs import (  # noqa
     HierarchicalLogLikelihood,
+    HierarchicalLogPosterior,
     LogLikelihood,
     LogPosterior,
     ReducedLogPDF
@@ -40,6 +43,7 @@ from ._model_library_api import (  # noqa
 )
 
 from ._inference import (  # noqa
+    compute_pointwise_loglikelihood,
     InferenceController,
     OptimisationController,
     SamplingController
@@ -54,11 +58,12 @@ from ._population_models import (  # noqa
 )
 
 from ._predictive_models import (  # noqa
-    DataDrivenPredictiveModel,
+    GenerativeModel,
     PosteriorPredictiveModel,
     PredictiveModel,
     PredictivePopulationModel,
-    PriorPredictiveModel
+    PriorPredictiveModel,
+    StackedPredictiveModel
 )
 
 from ._problems import (  # noqa

@@ -7,6 +7,7 @@
 
 import copy
 
+from numba import njit
 import numpy as np
 
 
@@ -20,7 +21,37 @@ class PopulationModel(object):
 
     def compute_log_likelihood(self, parameters, observations):
         """
-        Returns the unnormalised log-likelihood score of the population model.
+        Returns the log-likelihood of the population model parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        raise NotImplementedError
+
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        raise NotImplementedError
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the observations and the parameters.
 
         Parameters
         ----------
@@ -112,7 +143,7 @@ class HeterogeneousModel(PopulationModel):
 
     def compute_log_likelihood(self, parameters, observations):
         """
-        Returns the unnormalised log-likelihood score of the population model.
+        Returns the log-likelihood of the population model parameters.
 
         A heterogenous population model imposes no restrictions on the
         individuals, as a result the log-likelihood score is zero irrespective
@@ -127,6 +158,41 @@ class HeterogeneousModel(PopulationModel):
             entry is assumed to belong to one individual.
         """
         return 0
+
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        A heterogenous population model imposes no restrictions on the
+        individuals, as a result the log-likelihood score is zero irrespective
+        of the model parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        return np.zeros(shape=len(observations))
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the parameters and the observations.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        n_observations = len(observations)
+        return 0, np.zeros(shape=n_observations)
 
     def get_parameter_names(self):
         """
@@ -193,13 +259,16 @@ class LogNormalModel(PopulationModel):
     distributed in the population
 
     .. math::
-        p(\psi |\mu _{\text{log}}, \sigma _{\text{log}}) =
+        p(\psi |\mu , \sigma ) =
         \frac{1}{\psi} \frac{1}{\sqrt{2\pi} \sigma _{\text{log}}}
         \exp\left(-\frac{(\log \psi - \mu _{\text{log}})^2}
         {2 \sigma ^2_{\text{log}}}\right).
 
-    Here :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` are the
+    Here, :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` are the
     mean and variance of :math:`\log \psi` in the population, respectively.
+    Note that we chose to parametrise the distribution, however, by the
+    somewhat more intuitive mean and standard deviation of theparameter
+    :math:`\psi` itself.
 
     The mean and variance of the parameter :math:`\psi` itself,
     :math:`\mu = \mathbb{E}\left[ \psi \right]` and
@@ -231,26 +300,179 @@ class LogNormalModel(PopulationModel):
         # Set default parameter names
         self._parameter_names = ['Mean', 'Std.']
 
-    def compute_log_likelihood(self, parameters, observations):
+    @staticmethod
+    @njit
+    def _compute_log_likelihood(mean, std, observations):  # pragma: no cover
         r"""
-        Returns the unnormalised log-likelihood score of the population model.
+        Calculates the log-likelihood using numba speed up.
 
-        The log-likelihood score of a LogNormalModel is the log-pdf evaluated
-        at the population model parameters
+        The parameters are transformed from mean and std to mean and var of
+        log psi using
 
         .. math::
-            L(\mu _{\text{log}}, \sigma _{\text{log}} | \Psi) =
+            \mu _{\text{log}} =
+            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
+            \quad
+            \text{and}
+            \quad
+            \sigma ^2_{\text{log}} =
+            -2\log \mu + \log (\mu ^2 + \sigma ^2)
+        """
+        # Transform parameters and observations
+        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
+        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        log_psi = np.log(observations)
+
+        # Return -infinity if variance vanishes
+        if var_log == 0:
+            return -np.inf
+
+        # Compute log-likelihood score
+        n_ids = len(log_psi)
+        log_likelihood = \
+            - n_ids * np.log(2 * np.pi * var_log) / 2 \
+            - np.sum(log_psi) \
+            - np.sum((log_psi - mean_log) ** 2) / (2 * var_log)
+
+        # If score evaluates to NaN, return -infinity
+        if np.isnan(log_likelihood):
+            return -np.inf
+
+        return log_likelihood
+
+    @staticmethod
+    @njit
+    def _compute_pointwise_ll(mean, std, observations):  # pragma: no cover
+        r"""
+        Calculates the pointwise log-likelihoods using numba speed up.
+
+        The parameters are transformed from mean and std to mean and var of
+        log psi using
+
+        .. math::
+            \mu _{\text{log}} =
+            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
+            \quad
+            \text{and}
+            \quad
+            \sigma ^2_{\text{log}} =
+            -2\log \mu + \log (\mu ^2 + \sigma ^2)
+        """
+        # Transform parameters and observations
+        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
+        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        log_psi = np.log(observations)
+
+        # Return -infinity if variance vanishes
+        if var_log == 0:
+            return np.full(shape=len(observations), fill_value=-np.inf)
+
+        # Compute log-likelihood score
+        log_likelihood = \
+            - np.log(2 * np.pi * var_log) / 2 \
+            - log_psi \
+            - (log_psi - mean_log) ** 2 / (2 * var_log)
+
+        # If score evaluates to NaN, return -infinity
+        mask = np.isnan(log_likelihood)
+        log_likelihood[mask] = -np.inf
+
+        return log_likelihood
+
+    @staticmethod
+    @njit
+    def _compute_sensitivities(mean, std, psi):  # pragma: no cover
+        r"""
+        Calculates the log-likelihood and its sensitivities using numba
+        speed up.
+
+        The parameters are transformed from mean and std to mean and var of
+        log psi using
+
+        .. math::
+            \mu _{\text{log}} =
+            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
+            \quad
+            \text{and}
+            \quad
+            \sigma ^2_{\text{log}} =
+            -2\log \mu + \log (\mu ^2 + \sigma ^2)
+
+        Expects:
+        mean = float
+        std = float
+        Shape observations =  (n_obs,)
+
+        Returns:
+        log_likelihood: float
+        sensitivities: np.ndarray of shape (n_obs + 2,)
+        """
+        # Transform parameters and observations
+        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
+        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        log_psi = np.log(psi)
+        transformed_psi = (np.log(psi) - mean_log) / var_log
+
+        # Return -infinity if variance vanishes
+        if var_log == 0:
+            n_obs = len(psi)
+            return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
+
+        # Compute log-likelihood score
+        n_ids = len(psi)
+        log_likelihood = \
+            - n_ids * np.log(2 * np.pi * var_log) / 2 \
+            - np.sum(log_psi) \
+            - np.sum(transformed_psi**2) * var_log / 2
+
+        # If score evaluates to NaN, return -infinity
+        if np.isnan(log_likelihood):
+            n_obs = len(psi)
+            return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
+
+        # Compute sensitivities w.r.t. observations (psi)
+        dpsi = - (1 + transformed_psi) / psi
+
+        # Copmute sensitivities w.r.t. parameters
+        # (del f / del var_log * del var_log / del mean +
+        # del f / del mean_log * del mean_log / del mean)
+        dmean = \
+            (np.sum(transformed_psi**2) - 1 / var_log) \
+            * (mean / (mean**2 + std**2) - 1 / mean) \
+            + np.sum(transformed_psi) * (2 / mean - mean / (mean**2 + std**2))
+
+        # (del f / del var_log * del var_log / del std +
+        # del f / del mean_log * del mean_log / del std)
+        dstd = \
+            (np.sum(transformed_psi**2) - 1 / var_log) \
+            * std / (mean**2 + std**2) \
+            - np.sum(transformed_psi) * std / (mean**2 + std**2)
+
+        sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
+
+        return log_likelihood, sensitivities
+
+    def compute_log_likelihood(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population model parameters.
+
+        The log-likelihood of a LogNormalModel is the log-pdf evaluated
+        at the observations
+
+        .. math::
+            L(\mu , \sigma | \Psi) =
             \sum _{i=1}^N
-            \log p(\psi ^{\text{obs}}_i |
-            \mu _{\text{log}}, \sigma _{\text{log}}) ,
+            \log p(\psi _i |
+            \mu , \sigma ) ,
 
         where
-        :math:`\Psi := (\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N)`
-        are the observed :math:`\psi` from :math:`N` individuals.
+        :math:`\Psi := (\psi _1, \ldots , \psi _N)`
+        are the "observed" :math:`\psi` from :math:`N` individuals.
 
         .. note::
-            All constant terms that do not depend on the model parameters are
-            dropped when computing the log-likelihood score.
+            Note that in the context of PKPD modelling the individual
+            parameters are really "observed", but rather inferred from
+            biomarker measurements.
 
         Parameters
         ----------
@@ -259,28 +481,79 @@ class LogNormalModel(PopulationModel):
             :math:`\mu` and :math:`\sigma`.
         observations
             An array like object with the parameter values for the individuals,
-            :math:`\psi ^{\text{obs}}_1, \ldots , \psi ^{\text{obs}}_N`.
+            :math:`\psi _1, \ldots , \psi _N`.
         """
-        log_psis = np.log(observations)
+        observations = np.asarray(observations)
         mean, std = parameters
 
         if mean <= 0 or std <= 0:
             # The mean and var of log psi are strictly positive
             return -np.inf
 
-        # Transform parameters to mean_log and var_log
-        mean_log, var_log = self.transform_parameters(mean, std)
+        return self._compute_log_likelihood(mean, std, observations)
 
-        # Compute log-likelihood score
-        n_ids = len(log_psis)
-        score = -n_ids * np.log(var_log) / 2 - np.sum(log_psis) \
-            - np.sum((log_psis - mean_log) ** 2) / (2 * var_log)
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
 
-        # If score evaluates to NaN, return -infinity
-        if np.isnan(score):
-            return -np.inf
+        The pointwise log-likelihood of a LogNormalModel is the log-pdf
+        evaluated at the observations
 
-        return score
+        .. math::
+            L(\mu , \sigma | \psi _i) =
+            \log p(\psi _i |
+            \mu , \sigma ) ,
+
+        where
+        :math:`\psi _i` are the "observed" :math:`\psi` from individual
+        :math:`i`.
+
+        .. note::
+            Note that in the context of PKPD modelling the individual
+            parameters :math:`\psi _i` are never really "observed", but rather
+            inferred from biomarker measurements.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the model parameter values for
+            :math:`\mu` and :math:`\sigma`.
+        observations
+            An array like object with the parameter values for the individuals,
+            :math:`\psi _1, \ldots , \psi _N`.
+        """
+        observations = np.asarray(observations)
+        mean, std = parameters
+
+        if mean <= 0 or std <= 0:
+            # The mean and var of log psi are strictly positive
+            return np.full(shape=len(observations), fill_value=-np.inf)
+
+        return self._compute_pointwise_ll(mean, std, observations)
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the observations and the parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        observations = np.asarray(observations)
+        mean, std = parameters
+
+        if mean <= 0 or std <= 0:
+            # The mean and var of log psi are strictly positive
+            n_obs = len(observations)
+            return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
+
+        return self._compute_sensitivities(mean, std, observations)
 
     def get_parameter_names(self):
         """
@@ -449,12 +722,9 @@ class PooledModel(PopulationModel):
         Returns the unnormalised log-likelihood score of the population model.
 
         A pooled population model is a delta-distribution centred at the
-        population model parameter. As a results the the log-likelihood score
+        population model parameter. As a result the log-likelihood score
         is 0, if all individual parameters are equal to the population
         parameter, and :math:`-\infty` otherwise.
-
-        If ``observations`` is an empty list, a score of ``0`` is returned for
-        convenience.
 
         Parameters
         ----------
@@ -467,17 +737,72 @@ class PooledModel(PopulationModel):
         # Get the population parameter
         parameter = parameters[0]
 
-        # Return 0, if observations is empty
-        if len(observations) == 0:
-            return 0
+        # Return -inf if any of the observations does not equal the pooled
+        # parameter
+        observations = np.array(observations)
+        mask = observations != parameter
+        if np.any(mask):
+            return -np.inf
 
-        # Return - infinity, if any observation deviates from the parameter
-        for observation in observations:
-            if observation != parameter:
-                return -np.inf
-
-        # If all individual parameters equal the population parameter, return 0
+        # Otherwise return 0
         return 0
+
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        A pooled population model is a delta-distribution centred at the
+        population model parameter. As a result the log-likelihood score
+        is 0, if all individual parameters are equal to the population
+        parameter, and :math:`-\infty` otherwise.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get the population parameter
+        parameter = parameters[0]
+
+        # Return -inf if any of the observations does not equal the pooled
+        # parameter
+        log_likelihood = np.zeros(shape=len(observations))
+        observations = np.array(observations)
+        mask = observations != parameter
+        log_likelihood[mask] = -np.inf
+
+        return log_likelihood
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the observations and the parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get the population parameter
+        parameter = parameters[0]
+
+        # Return -inf if any of the observations does not equal the pooled
+        # parameter
+        observations = np.array(observations)
+        n_obs = len(observations)
+        mask = observations != parameter
+        if np.any(mask):
+            return -np.inf, np.full(shape=n_obs + 1, fill_value=np.inf)
+
+        # Otherwise return 0
+        return 0, np.zeros(shape=n_obs + 1)
 
     def get_parameter_names(self):
         """
@@ -596,7 +921,7 @@ class ReducedPopulationModel(object):
 
     def compute_log_likelihood(self, parameters, observations):
         """
-        Returns the unnormalised log-likelihood score of the population model.
+        Returns the log-likelihood of the population model parameters.
 
         Parameters
         ----------
@@ -616,6 +941,62 @@ class ReducedPopulationModel(object):
             parameters, observations)
 
         return score
+
+    def compute_pointwise_ll(self, parameters, observations):
+        """
+        Returns the pointwise log-likelihood of the population model parameters
+        for each observation.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        # Compute log-likelihood
+        scores = self._population_model.compute_pointwise_ll(
+            parameters, observations)
+
+        return scores
+
+    def compute_sensitivities(self, parameters, observations):
+        """
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the observations and the parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
+        # Compute log-likelihood and sensitivities
+        score, sensitivities = self._population_model.compute_sensitivities(
+            parameters, observations)
+
+        if self._fixed_params_mask is None:
+            return score, sensitivities
+
+        # Filter sensitivities for fixed parameters
+        n_obs = len(observations)
+        mask = np.ones(n_obs + self._n_parameters, dtype=bool)
+        mask[-self._n_parameters:] = ~self._fixed_params_mask
+
+        return score, sensitivities[mask]
 
     def fix_parameters(self, name_value_dict):
         """

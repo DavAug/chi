@@ -29,6 +29,44 @@ class TestHeterogeneousModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
 
+    def test_compute_pointwise_ll(self):
+        # Test case I: Only the number of observations determines how many 0s
+        # are returned
+        # Test case I.1
+        parameters = [1]
+        observations = [0, 1, 1, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 4)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], 0)
+
+        # Test case I.2
+        parameters = [1]
+        observations = [1, 2, 1, 10, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 5)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], 0)
+        self.assertEqual(scores[4], 0)
+
+    def test_compute_sensitivities(self):
+        # For efficiency the input is actually not checked, and 0 is returned
+        # regardless
+        parameters = 'some parameters'
+        observations = ['some', 'observations']
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, 0)
+        self.assertEqual(len(sens), 2)
+        self.assertEqual(sens[0], 0)
+        self.assertEqual(sens[1], 0)
+
     def test_get_parameter_names(self):
         self.assertIsNone(self.pop_model.get_parameter_names())
 
@@ -86,13 +124,14 @@ class TestLogNormalModel(unittest.TestCase):
         n_ids = 10
 
         # Test case I: psis = 1, sigma_log = 1
-        # Score reduces to -n_ids * mu_log^2 / 2
+        # Score reduces to
+        # -n_ids * np.log(2*pi) / 2 - n_ids * mu_log^2 / 2
 
         # Test case I.1:
         psis = [1] * n_ids
         mu_log = 1
         var_log = 1
-        ref_score = -n_ids * mu_log**2 / 2  # mu_log = -5
+        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -112,7 +151,7 @@ class TestLogNormalModel(unittest.TestCase):
         psis = [1] * n_ids
         mu_log = 5
         var_log = 1
-        ref_score = -n_ids * mu_log**2 / 2  # mu_log = -125
+        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -130,13 +169,15 @@ class TestLogNormalModel(unittest.TestCase):
 
         # Test case II: psis = 1.
         # Score reduces to
-        # -n_ids * log(sigma_log) -n_ids * mu_log^2 / (2 * sigma_log^2)
+        # -n_ids * log(sigma_log) - n_ids * log(2 * pi) / 2
+        # - n_ids * mu_log^2 / (2 * sigma_log^2)
 
         # Test case II.1:
         psis = [1] * n_ids
         mu_log = 1
         var_log = np.exp(2)
-        ref_score = -n_ids - n_ids * mu_log**2 / (2 * var_log)
+        ref_score = \
+            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -156,7 +197,8 @@ class TestLogNormalModel(unittest.TestCase):
         psis = [1] * n_ids
         mu_log = 3
         var_log = np.exp(3)
-        ref_score = -1.5 * n_ids - n_ids * mu_log**2 / (2 * var_log)
+        ref_score = \
+            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -174,13 +216,15 @@ class TestLogNormalModel(unittest.TestCase):
 
         # Test case III: psis all the same, sigma_log = 1.
         # Score reduces to
-        # -n_ids * log(psi) - n_ids * (log(psi) - mu_log)^2 / 2
+        # -n_ids * log(psi) - n_ids * np.log(2 * pi) / 2
+        # - n_ids * (log(psi) - mu_log)^2 / 2
 
         # Test case III.1
         psis = [np.exp(4)] * n_ids
         mu_log = 1
         var_log = 1
-        ref_score = -n_ids * 4 - n_ids * (4 - mu_log)**2 / 2  # -85
+        ref_score = \
+            -n_ids * (4 + np.log(2 * np.pi) / 2 + (4 - mu_log)**2 / 2)
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -200,7 +244,7 @@ class TestLogNormalModel(unittest.TestCase):
         psis = [np.exp(3)] * n_ids
         mu_log = 3
         var_log = 1
-        ref_score = -n_ids * 3  # -100
+        ref_score = -n_ids * (3 + np.log(2 * np.pi) / 2)
 
         # Transform parameters
         mu = np.exp(mu_log + var_log / 2)
@@ -253,6 +297,567 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = [mu] + [sigma]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, -np.inf)
+
+    def test_compute_pointwise_ll(self):
+        # Hard to test exactly, but at least test some edge cases where
+        # loglikelihood is straightforward to compute analytically
+
+        n_ids = 10
+
+        # Test case I: psis = 1, sigma_log = 1
+        # Score reduces to
+        # -n_ids * np.log(2*pi) / 2 - n_ids * mu_log^2 / 2
+
+        # Test case I.1:
+        psis = [1] * n_ids
+        mu_log = 1
+        var_log = 1
+        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertEqual(transformed[1], var_log)
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(len(scores), 10)
+        self.assertEqual(np.sum(scores), ref_score)
+        self.assertTrue(np.allclose(scores, ref_score / 10))
+
+        # Test case I.2:
+        n_ids = 6
+        psis = [1] * n_ids
+        mu_log = 5
+        var_log = 1
+        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertEqual(transformed[1], var_log)
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(len(scores), 6)
+        self.assertEqual(np.sum(scores), ref_score)
+        self.assertTrue(np.allclose(scores, ref_score / 6))
+
+        # Test case II: psis = 1.
+        # Score reduces to
+        # -n_ids * log(sigma_log) - n_ids * log(2 * pi) / 2
+        # - n_ids * mu_log^2 / (2 * sigma_log^2)
+
+        # Test case II.1:
+        n_ids = 10
+        psis = [1] * n_ids
+        mu_log = 1
+        var_log = np.exp(2)
+        ref_score = \
+            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(len(scores), 10)
+        self.assertEqual(np.sum(scores), ref_score)
+        self.assertTrue(np.allclose(scores, ref_score / 10))
+
+        # Test case II.2:
+        psis = [1] * n_ids
+        mu_log = 3
+        var_log = np.exp(3)
+        ref_score = \
+            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(len(scores), 10)
+        self.assertEqual(np.sum(scores), ref_score)
+        self.assertTrue(np.allclose(scores, ref_score / 10))
+
+        # Test case III: Different psis
+        psis = [1, 2]
+        mu = 1
+        sigma = 1
+
+        parameters = [mu] + [sigma]
+        ref_score = self.pop_model.compute_log_likelihood(parameters, psis)
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(len(scores), 2)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
+        self.assertNotEqual(scores[0], scores[1])
+
+        # Test case III: psis all the same, sigma_log = 1.
+        # Score reduces to
+        # -n_ids * log(psi) - n_ids * np.log(2 * pi) / 2
+        # - n_ids * (log(psi) - mu_log)^2 / 2
+
+        # Test case III.1
+        psis = [np.exp(4)] * n_ids
+        mu_log = 1
+        var_log = 1
+        ref_score = \
+            -n_ids * (4 + np.log(2 * np.pi) / 2 + (4 - mu_log)**2 / 2)
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(len(scores), 10)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
+        self.assertTrue(np.allclose(scores, ref_score / 10))
+
+        # Test case III.2
+        psis = [np.exp(3)] * n_ids
+        mu_log = 3
+        var_log = 1
+        ref_score = -n_ids * (3 + np.log(2 * np.pi) / 2)
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Make sure that the transform works
+        transformed = self.pop_model.transform_parameters(mu, sigma)
+        self.assertEqual(transformed[0], mu_log)
+        self.assertAlmostEqual(transformed[1], var_log)
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(len(scores), 10)
+        self.assertEqual(np.sum(scores), ref_score)
+        self.assertTrue(np.allclose(scores, ref_score / 10))
+
+        # Test case IV: mu_log or sigma_log negative or zero
+
+        # Test case IV.1
+        n_ids = 3
+        psis = [np.exp(10)] * n_ids
+        mu = 0
+        sigma = 1
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(scores[0], -np.inf)
+        self.assertEqual(scores[1], -np.inf)
+        self.assertEqual(scores[2], -np.inf)
+
+        # # Test case IV.2
+        psis = [np.exp(10)] * n_ids
+        mu = 1
+        sigma = 0
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(scores[0], -np.inf)
+        self.assertEqual(scores[1], -np.inf)
+        self.assertEqual(scores[2], -np.inf)
+
+        # Test case IV.3
+        psis = [np.exp(10)] * n_ids
+        mu = -10
+        sigma = 1
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(scores[0], -np.inf)
+        self.assertEqual(scores[1], -np.inf)
+        self.assertEqual(scores[2], -np.inf)
+
+        # Test case IV.4
+        psis = [np.exp(10)] * n_ids
+        mu = 1
+        sigma = -10
+
+        parameters = [mu] + [sigma]
+        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        self.assertEqual(scores[0], -np.inf)
+        self.assertEqual(scores[1], -np.inf)
+        self.assertEqual(scores[2], -np.inf)
+
+    def test_compute_sensitivities(self):
+        # Hard to test exactly, but at least test some edge cases where
+        # loglikelihood is straightforward to compute analytically
+
+        n_ids = 10
+
+        # Test case I: psis = 1, sigma_log = 1
+        # Sensitivities reduce to
+        # dpsi = -1 + mu_log
+        # dmu =
+        #   (n_ids * mu_log**2 - 1) * (mu / (mu**2 + sigma**2) - 1 / mu)
+        #   - n_ids * mu_log * (2 / mu - mu / (mu**2 + sigma**2))
+        # dsigma =
+        #   (n_ids * mu_log**2 - 1) * sigma / (mu**2 + sigma**2)
+        #   + n_ids * mu_log * sigma / (mu**2 + sigma**2)
+
+        # Test case I.1:
+        psis = [1] * n_ids
+        mu_log = 1
+        var_log = 1
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Compute ref scores
+        parameters = [mu] + [sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = -1 + mu_log
+        ref_dmu = \
+            (n_ids * mu_log**2 - 1) * (mu / (mu**2 + var) - 1 / mu) \
+            - n_ids * mu_log * (2 / mu - mu / (mu**2 + var))
+        ref_dsigma = \
+            (n_ids * mu_log**2 - 1) * sigma / (mu**2 + var) \
+            + n_ids * mu_log * sigma / (mu**2 + var)
+
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+
+        self.assertEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertEqual(sens[0], ref_dpsi)
+        self.assertEqual(sens[1], ref_dpsi)
+        self.assertEqual(sens[2], ref_dpsi)
+        self.assertEqual(sens[3], ref_dpsi)
+        self.assertEqual(sens[4], ref_dpsi)
+        self.assertEqual(sens[5], ref_dpsi)
+        self.assertEqual(sens[6], ref_dpsi)
+        self.assertEqual(sens[7], ref_dpsi)
+        self.assertEqual(sens[8], ref_dpsi)
+        self.assertEqual(sens[9], ref_dpsi)
+        self.assertEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
+
+        # Test case I.2:
+        psis = [1] * n_ids
+        mu_log = 5
+        var_log = 1
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Compute ref scores
+        parameters = [mu] + [sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = -1 + mu_log
+        ref_dmu = \
+            (n_ids * mu_log**2 - 1) * (mu / (mu**2 + var) - 1 / mu) \
+            - n_ids * mu_log * (2 / mu - mu / (mu**2 + var))
+        ref_dsigma = \
+            (n_ids * mu_log**2 - 1) * sigma / (mu**2 + var) \
+            + n_ids * mu_log * sigma / (mu**2 + var)
+
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+
+        self.assertEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertEqual(sens[0], ref_dpsi)
+        self.assertEqual(sens[1], ref_dpsi)
+        self.assertEqual(sens[2], ref_dpsi)
+        self.assertEqual(sens[3], ref_dpsi)
+        self.assertEqual(sens[4], ref_dpsi)
+        self.assertEqual(sens[5], ref_dpsi)
+        self.assertEqual(sens[6], ref_dpsi)
+        self.assertEqual(sens[7], ref_dpsi)
+        self.assertEqual(sens[8], ref_dpsi)
+        self.assertEqual(sens[9], ref_dpsi)
+        self.assertEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
+
+        # Test case II: psis = 1.
+        # Sensitivities reduce to
+        # dpsi = -1 + mu_log / var_log
+        # dmu =
+        #   (n_ids * (mu_log / var_log)**2 - 1 / var_log)
+        #   * (mu / (mu**2 + sigma**2) - 1 / mu)
+        #   - n_ids * mu_log / var_log
+        #   * (2 / mu - mu / (mu**2 + sigma**2))
+        # dsigma =
+        #   (n_ids * (mu_log / var_log)**2 - 1 / var_log)
+        #   * sigma / (mu**2 + sigma**2)
+        #   + n_ids * mu_log / var_log
+        #   * sigma / (mu**2 + sigma**2)
+
+        # Test case II.1:
+        psis = [1] * n_ids
+        mu_log = 1
+        var_log = np.exp(2)
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Compute ref scores
+        parameters = [mu] + [sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = -1 + mu_log / var_log
+        ref_dmu = \
+            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
+            * (mu / (mu**2 + var) - 1 / mu) \
+            - n_ids * mu_log / var_log \
+            * (2 / mu - mu / (mu**2 + var))
+        ref_dsigma = \
+            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
+            * sigma / (mu**2 + var) \
+            + n_ids * mu_log / var_log \
+            * sigma / (mu**2 + var)
+
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+
+        self.assertEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertEqual(sens[0], ref_dpsi)
+        self.assertEqual(sens[1], ref_dpsi)
+        self.assertEqual(sens[2], ref_dpsi)
+        self.assertEqual(sens[3], ref_dpsi)
+        self.assertEqual(sens[4], ref_dpsi)
+        self.assertEqual(sens[5], ref_dpsi)
+        self.assertEqual(sens[6], ref_dpsi)
+        self.assertEqual(sens[7], ref_dpsi)
+        self.assertEqual(sens[8], ref_dpsi)
+        self.assertEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
+
+        # Test case II.2:
+        psis = [1] * n_ids
+        mu_log = 3
+        var_log = np.exp(3)
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Compute ref scores
+        parameters = [mu] + [sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = -1 + mu_log / var_log
+        ref_dmu = \
+            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
+            * (mu / (mu**2 + var) - 1 / mu) \
+            - n_ids * mu_log / var_log \
+            * (2 / mu - mu / (mu**2 + var))
+        ref_dsigma = \
+            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
+            * sigma / (mu**2 + var) \
+            + n_ids * mu_log / var_log \
+            * sigma / (mu**2 + var)
+
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+
+        self.assertEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertEqual(sens[0], ref_dpsi)
+        self.assertEqual(sens[1], ref_dpsi)
+        self.assertEqual(sens[2], ref_dpsi)
+        self.assertEqual(sens[3], ref_dpsi)
+        self.assertEqual(sens[4], ref_dpsi)
+        self.assertEqual(sens[5], ref_dpsi)
+        self.assertEqual(sens[6], ref_dpsi)
+        self.assertEqual(sens[7], ref_dpsi)
+        self.assertEqual(sens[8], ref_dpsi)
+        self.assertEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
+
+        # Test case III: psis all the same, sigma_log = 1.
+        # Score reduces to
+        # dpsi = (-1 + mu_log - log psi) / psi
+        # dmu =
+        #   (n_ids * (log psi - mu_log)**2 - 1)
+        #   * (mu / (mu**2 + sigma**2) - 1 / mu)
+        #   + n_ids * (log psi - mu_log)
+        #   * (2 / mu - mu / (mu**2 + sigma**2))
+        # dsigma =
+        #   (n_ids * (log psi - mu_log)**2 - 1)
+        #   * sigma / (mu**2 + sigma**2)
+        #   - n_ids * n_ids * (log psi - mu_log)
+        #   * sigma / (mu**2 + sigma**2)
+
+        # Test case III.1
+        psi = [np.exp(4)] * n_ids
+        mu_log = 1
+        var_log = 1
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Compute ref scores
+        parameters = [mu] + [sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
+        ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
+        ref_dmu = \
+            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
+            * (mu / (mu**2 + var) - 1 / mu) \
+            + n_ids * (np.log(psi[0]) - mu_log) \
+            * (2 / mu - mu / (mu**2 + var))
+        ref_dsigma = \
+            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
+            * sigma / (mu**2 + var) \
+            - n_ids * (np.log(psi[0]) - mu_log) \
+            * sigma / (mu**2 + var)
+
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psi)
+
+        self.assertEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertEqual(sens[0], ref_dpsi)
+        self.assertEqual(sens[1], ref_dpsi)
+        self.assertEqual(sens[2], ref_dpsi)
+        self.assertEqual(sens[3], ref_dpsi)
+        self.assertEqual(sens[4], ref_dpsi)
+        self.assertEqual(sens[5], ref_dpsi)
+        self.assertEqual(sens[6], ref_dpsi)
+        self.assertEqual(sens[7], ref_dpsi)
+        self.assertEqual(sens[8], ref_dpsi)
+        self.assertEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
+
+        # Test case III.2
+        psi = [np.exp(3)] * n_ids
+        mu_log = 3
+        var_log = 1
+
+        # Transform parameters
+        mu = np.exp(mu_log + var_log / 2)
+        var = mu**2 * (np.exp(var_log) - 1)
+        sigma = np.sqrt(var)
+
+        # Compute ref scores
+        parameters = [mu] + [sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
+        ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
+        ref_dmu = \
+            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
+            * (mu / (mu**2 + var) - 1 / mu) \
+            + n_ids * (np.log(psi[0]) - mu_log) \
+            * (2 / mu - mu / (mu**2 + var))
+        ref_dsigma = \
+            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
+            * sigma / (mu**2 + var) \
+            - n_ids * (np.log(psi[0]) - mu_log) \
+            * sigma / (mu**2 + var)
+
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psi)
+
+        self.assertEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertEqual(sens[0], ref_dpsi)
+        self.assertEqual(sens[1], ref_dpsi)
+        self.assertEqual(sens[2], ref_dpsi)
+        self.assertEqual(sens[3], ref_dpsi)
+        self.assertEqual(sens[4], ref_dpsi)
+        self.assertEqual(sens[5], ref_dpsi)
+        self.assertEqual(sens[6], ref_dpsi)
+        self.assertEqual(sens[7], ref_dpsi)
+        self.assertEqual(sens[8], ref_dpsi)
+        self.assertEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
+
+        # Test case IV: mu_log or sigma_log negative or zero
+
+        # Test case IV.1
+        n_ids = 1
+        psis = [np.exp(10)] * n_ids
+        mu = 0
+        sigma = 1
+
+        parameters = [mu] + [sigma]
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+
+        # # Test case IV.2
+        psis = [np.exp(10)] * n_ids
+        mu = 1
+        sigma = 0
+
+        parameters = [mu] + [sigma]
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+
+        # Test case IV.3
+        psis = [np.exp(10)] * n_ids
+        mu = -10
+        sigma = 1
+
+        parameters = [mu] + [sigma]
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+
+        # Test case IV.4
+        psis = [np.exp(10)] * n_ids
+        mu = 1
+        sigma = -10
+
+        parameters = [mu] + [sigma]
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
 
     def test_get_parameter_names(self):
         names = ['Mean', 'Std.']
@@ -366,31 +971,100 @@ class TestPooledModel(unittest.TestCase):
         cls.pop_model = erlo.PooledModel()
 
     def test_compute_log_likelihood(self):
-        # Test case I: observations empty
-        # (exception where 0 is returned for convenience)
-        parameters = [1]
-        observations = []
-        score = self.pop_model.compute_log_likelihood(parameters, observations)
-        self.assertEqual(score, 0)
-
-        # Test case II: observation differ from parameter
-        # Test case II.1
+        # Test case I: observation differ from parameter
+        # Test case I.1
         parameters = [1]
         observations = [0, 1, 1, 1]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, -np.inf)
 
-        # Test case II.1
+        # Test case I.1
         parameters = [1]
         observations = [1, 1, 1, 10]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, -np.inf)
 
-        # Test case III: all values agree with parameter
+        # Test case II: all values agree with parameter
         parameters = [1]
         observations = [1, 1, 1, 1]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
+
+    def test_compute_pointwise_ll(self):
+        # Test case I: observation differ from parameter
+        # Test case I.1
+        parameters = [1]
+        observations = [0, 1, 1, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 4)
+        self.assertEqual(scores[0], -np.inf)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], 0)
+
+        # Test case I.2
+        parameters = [1]
+        observations = [1, 2, 1, 10, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 5)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], -np.inf)
+        self.assertEqual(scores[2], 0)
+        self.assertEqual(scores[3], -np.inf)
+        self.assertEqual(scores[4], 0)
+
+        # Test case II: all values agree with parameter
+        parameters = [1]
+        observations = [1, 1, 1]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+        self.assertEqual(len(scores), 3)
+        self.assertEqual(scores[0], 0)
+        self.assertEqual(scores[1], 0)
+        self.assertEqual(scores[2], 0)
+
+    def test_compute_sensitivities(self):
+        # Test case I: observation differ from parameter
+        # Test case I.1
+        parameters = [1]
+        observations = [0, 1, 1, 1]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(sens[3], np.inf)
+        self.assertEqual(sens[4], np.inf)
+
+        # Test case I.1
+        parameters = [1]
+        observations = [1, 1, 1, 10]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(sens[3], np.inf)
+        self.assertEqual(sens[4], np.inf)
+
+        # Test case II: all values agree with parameter
+        parameters = [1]
+        observations = [1, 1, 1, 1]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, 0)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], 0)
+        self.assertEqual(sens[1], 0)
+        self.assertEqual(sens[2], 0)
+        self.assertEqual(sens[3], 0)
+        self.assertEqual(sens[4], 0)
 
     def test_get_parameter_names(self):
         names = ['Pooled']
@@ -473,6 +1147,18 @@ class TestPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.compute_log_likelihood(parameters, observations)
 
+    def test_compute_pointwise_ll(self):
+        parameters = 'some parameters'
+        observations = 'some observations'
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.compute_pointwise_ll(parameters, observations)
+
+    def test_compute_sensitivities(self):
+        parameters = 'some parameters'
+        observations = 'some observations'
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.compute_sensitivities(parameters, observations)
+
     def test_get_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.get_parameter_names()
@@ -531,7 +1217,76 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Sigma base': None})
+            'Mean': None})
+
+    def test_compute_pointwise_ll(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 1})
+
+        # Compute log-likelihood
+        parameters = [2]
+        observations = [2, 3, 4, 5]
+        scores = self.pop_model.compute_pointwise_ll(
+            parameters, observations)
+
+        # Compute ref score with original error model
+        parameters = [1, 2]
+        error_model = self.pop_model.get_population_model()
+        ref_scores = error_model.compute_pointwise_ll(
+            parameters, observations)
+
+        self.assertEqual(len(scores), 4)
+        self.assertEqual(scores[0], ref_scores[0])
+        self.assertEqual(scores[1], ref_scores[1])
+        self.assertEqual(scores[2], ref_scores[2])
+        self.assertEqual(scores[3], ref_scores[3])
+
+        # Unfix model parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': None})
+
+    def test_compute_sensitivities(self):
+        # Test case I: fix some parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': 1})
+
+        # Compute log-likelihood
+        parameters = [2]
+        observations = [2, 3, 4, 5]
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+
+        # Compute ref score with original error model
+        parameters = [1, 2]
+        error_model = self.pop_model.get_population_model()
+        ref_score, ref_sens = error_model.compute_sensitivities(
+            parameters, observations)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 5)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[5])
+
+        # Unfix model parameters
+        self.pop_model.fix_parameters(name_value_dict={
+            'Mean': None})
+
+        # Compute log-likelihood
+        score, sens = self.pop_model.compute_sensitivities(
+            parameters, observations)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(len(sens), 6)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
