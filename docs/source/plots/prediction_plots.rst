@@ -18,6 +18,7 @@ Functional classes
 
 - :class:`PDPredictivePlot`
 - :class:`PKPredictivePlot`
+- :class:`ResidualPlot`
 
 Detailed API
 ^^^^^^^^^^^^
@@ -27,5 +28,9 @@ Detailed API
     :inherited-members:
 
 .. autoclass:: PKPredictivePlot
+    :members:
+    :inherited-members:
+
+.. autoclass:: ResidualPlot
     :members:
     :inherited-members:
