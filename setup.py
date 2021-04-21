@@ -20,8 +20,6 @@ setup(
     # List of dependencies
     install_requires=[
         'arviz',
-        'dash>=1.17.0',
-        'dash-bootstrap-components>=0.10',
         'jupyter==1.0.0',
         'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
         'numba>=0.50',

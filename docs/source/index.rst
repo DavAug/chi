@@ -9,7 +9,6 @@
     :hidden:
     :maxdepth: 1
 
-    apps
     data_library
     error_models
     inference
