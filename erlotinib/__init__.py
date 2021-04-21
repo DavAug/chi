@@ -6,7 +6,6 @@
 #
 
 from . import (  # noqa
-    apps,
     plots
 )
 
