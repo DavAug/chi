@@ -163,5 +163,6 @@ class TestResidualPlot(unittest.TestCase):
         # Select an individual
         self.fig.add_data(self.data, individual=40)
 
+
 if __name__ == '__main__':
     unittest.main()
