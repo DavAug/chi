@@ -137,6 +137,9 @@ class TestResidualPlot(unittest.TestCase):
             self.fig.add_data(
                 data, sample_key='SOME WRONG KEY')
 
+    def test_add_data_show_relative(self):
+        self.fig.add_data(self.data, show_relative=True)
+
 
 if __name__ == '__main__':
     unittest.main()
