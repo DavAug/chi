@@ -57,10 +57,19 @@ class TestResidualPlot(unittest.TestCase):
             self.fig.add_data(data)
 
     def test_add_data_wrong_biomarker(self):
+        # Biomarker does not exist in prediction dataframe
         biomarker = 'Does not exist'
 
         with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
             self.fig.add_data(self.data, biomarker)
+
+        # Biomarker does not exist in measurement dataframe
+        data = self.data.copy()
+        data['Biomarker'] = 'Does not exist'
+        biomarker = 'Does not exist'
+
+        with self.assertRaisesRegex(ValueError, 'The biomarker <Does not'):
+            self.fig.add_data(data, biomarker)
 
     def test_add_data_wrong_individual(self):
         individual = 'does not exist'
@@ -140,6 +149,19 @@ class TestResidualPlot(unittest.TestCase):
     def test_add_data_show_relative(self):
         self.fig.add_data(self.data, show_relative=True)
 
+    def test_data_wrong_time_points(self):
+        # Not all measured time points can be found in the prediction
+        # dataframe
+        data = self.data.copy()
+        data['Time'] = 1
+
+        with self.assertRaisesRegex(
+                ValueError, 'The prediction dataframe is not'):
+            self.fig.add_data(data)
+
+    def test_add_data_individual(self):
+        # Select an individual
+        self.fig.add_data(self.data, individual=40)
 
 if __name__ == '__main__':
     unittest.main()
