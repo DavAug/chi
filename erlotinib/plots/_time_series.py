@@ -244,8 +244,8 @@ class PDPredictivePlot(eplt.SingleFigure):
         measurement. The biomarker column determines the biomarker type.
 
         A list of bulk probabilities ``bulk_probs`` can be specified, which are
-        then added as area to the figure. The corresponding upper and lower
-        percentiles are estimated from the ranks of the provided
+        then added as shaded areas to the figure. The corresponding upper and
+        lower percentiles are estimated from the ranks of the provided
         samples.
 
         .. warning::
