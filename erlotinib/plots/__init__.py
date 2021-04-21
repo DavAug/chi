@@ -17,7 +17,7 @@ from ._optimisation import (  # noqa
 )
 
 from ._residuals import (  # noqa
-    PredictiveResidualPlot
+    ResidualPlot
 )
 
 from ._sampling import (  # noqa
