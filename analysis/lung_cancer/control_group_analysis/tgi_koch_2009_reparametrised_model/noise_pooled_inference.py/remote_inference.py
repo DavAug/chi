@@ -20,6 +20,8 @@ mechanistic_model.set_parameter_names(names={
     'myokit.drug_concentration': 'Drug concentration in mg/L',
     'myokit.kappa': 'Potency in L/mg/day',
     'myokit.lambda': 'Exponential growth rate in 1/day'})
+mechanistic_model.set_output_names({
+    'myokit.tumour_volume': 'Tumour volume'})
 
 # Define error model
 error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
