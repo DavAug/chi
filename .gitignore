@@ -136,3 +136,7 @@ monolix
 
 # DS Store
 .DS_Store
+
+# Ignore posterior samples in .csv format
+*chain_log.csv
+*chain_parameters**.csv
