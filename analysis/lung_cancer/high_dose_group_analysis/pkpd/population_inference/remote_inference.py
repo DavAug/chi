@@ -111,28 +111,29 @@ transform = pints.LogTransformation(
 
 # Sample initial parameters using erlotinib
 n_parameters = problem.get_n_parameters()
-initial_parameters = np.empty(shape=(1, n_chains, n_parameters))
-np.random.seed(1)
-sampler = erlo.SamplingController(log_posterior)
-sampler.set_n_runs(1)
-initial_parameters[0, 0] = sampler._initial_params[0, 0]
+initial_parameters = np.empty(shape=(n_chains, n_parameters))
+np.random.seed(15)
+temp = erlo.SamplingController(log_posterior)
+temp.set_n_runs(1)
+initial_parameters[0] = temp._initial_params[0, 0]
 np.random.seed(2)
-sampler = erlo.SamplingController(log_posterior)
-sampler.set_n_runs(1)
-initial_parameters[0, 1] = sampler._initial_params[0, 0]
+temp = erlo.SamplingController(log_posterior)
+temp.set_n_runs(1)
+initial_parameters[1] = temp._initial_params[0, 0]
 np.random.seed(3)
-sampler = erlo.SamplingController(log_posterior)
-sampler.set_n_runs(1)
-initial_parameters[0, 2] = sampler._initial_params[0, 0]
+temp = erlo.SamplingController(log_posterior)
+temp.set_n_runs(1)
+initial_parameters[2] = temp._initial_params[0, 0]
 np.random.seed(5)
-sampler = erlo.SamplingController(log_posterior)
-sampler.set_n_runs(1)
-initial_parameters[0, 3] = sampler._initial_params[0, 0]
+temp = erlo.SamplingController(log_posterior)
+temp.set_n_runs(1)
+initial_parameters[3] = temp._initial_params[0, 0]
 np.random.seed(12)
-sampler = erlo.SamplingController(log_posterior)
-sampler.set_n_runs(1)
-initial_parameters[0, 4] = sampler._initial_params[0, 0]
+temp = erlo.SamplingController(log_posterior)
+temp.set_n_runs(1)
+initial_parameters[4] = temp._initial_params[0, 0]
 
+np.random.seed(1)
 controller = pints.MCMCController(
     log_pdf=log_posterior,
     chains=n_chains,
