@@ -6,7 +6,9 @@
 #
 
 import copy
+import warnings
 
+import myokit
 import numpy as np
 import pints
 
@@ -1040,9 +1042,16 @@ class LogLikelihood(pints.LogPDF):
             self._mechanistic_model.enable_sensitivities(False)
 
         # Solve the mechanistic model
-        outputs = self._mechanistic_model.simulate(
-            parameters=parameters[:self._n_mechanistic_params],
-            times=self._times)
+        try:
+            outputs = self._mechanistic_model.simulate(
+                parameters=parameters[:self._n_mechanistic_params],
+                times=self._times)
+        except myokit.SimulationError as e:
+            warnings.warn(
+                'An error occured while solving the mechanistic model: \n'
+                + str(e) + '.\n A score of -infinity is returned.',
+                RuntimeWarning)
+            return -np.infty
 
         # Remember only error parameters
         parameters = parameters[self._n_mechanistic_params:]
@@ -1207,9 +1216,17 @@ class LogLikelihood(pints.LogPDF):
             self._mechanistic_model.enable_sensitivities(True)
 
         # Solve the mechanistic model
-        outputs, senss = self._mechanistic_model.simulate(
-            parameters=parameters[:self._n_mechanistic_params],
-            times=self._times)
+        try:
+            outputs, senss = self._mechanistic_model.simulate(
+                parameters=parameters[:self._n_mechanistic_params],
+                times=self._times)
+        except myokit.SimulationError as e:
+            warnings.warn(
+                'An error occured while solving the mechanistic model: \n'
+                + str(e) + '.\n A score of -infinity is returned.',
+                RuntimeWarning)
+            n_parameters = len(parameters)
+            return -np.infty, np.full(shape=n_parameters, fill_value=np.infty)
 
         # Remember only error parameters
         parameters = parameters[self._n_mechanistic_params:]
