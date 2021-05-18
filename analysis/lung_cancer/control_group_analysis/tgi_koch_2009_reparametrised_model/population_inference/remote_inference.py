@@ -78,7 +78,7 @@ print('Setting up inference ...')
 n_chains = 5
 n_iterations = 100000
 logging_steps = 500
-sampler = pints.HamiltonianMCMC
+sampler = pints.NoUTurnMCMC
 max_tree_depth = 6
 n_adaption_steps = 10000
 transform = pints.LogTransformation(
