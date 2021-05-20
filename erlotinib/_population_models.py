@@ -536,14 +536,8 @@ class LogNormalModel(PopulationModel):
         return self._n_parameters
 
     def sample(self, parameters, n_samples=None, seed=None):
-        #TODO:
         r"""
-        Returns random samples from the underlying population
-        distribution.
-
-        For a LogNormalModel random samples from a log-normal
-        distribution are returned, where the population model parameters
-        :math:`\mu` and :math:`\sigma` are given by ``parameters``.
+        Returns random samples from the population distribution.
 
         The returned value is a NumPy array with shape ``(n_samples,)``.
 
@@ -570,19 +564,17 @@ class LogNormalModel(PopulationModel):
         # Get parameters
         mean, std = parameters
 
-        if mean <= 0 or std <= 0:
+        if std <= 0:
             raise ValueError(
                 'A log-normal distribution only accepts strictly positive '
-                'means and standard deviations.')
-
-        # Transfrom parameters
-        mean_log, var_log = self.transform_parameters(mean, std)
-        std_log = np.sqrt(var_log)
+                'standard deviations.')
 
         # Sample from population distribution
+        # (Mean and sigma are the mean and standard deviation of
+        # the log samples)
         rng = np.random.default_rng(seed=seed)
         samples = rng.lognormal(
-            mean=mean_log, sigma=std_log, size=sample_shape)
+            mean=mean, sigma=std, size=sample_shape)
 
         return samples
 
