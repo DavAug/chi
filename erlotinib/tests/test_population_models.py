@@ -237,20 +237,10 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case I.1:
         psis = [1] * n_ids
         mu_log = 1
-        var_log = 1
+        sigma_log = 1
         ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
         self.assertEqual(np.sum(scores), ref_score)
@@ -260,20 +250,10 @@ class TestLogNormalModel(unittest.TestCase):
         n_ids = 6
         psis = [1] * n_ids
         mu_log = 5
-        var_log = 1
+        sigma_log = 1
         ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 6)
         self.assertEqual(np.sum(scores), ref_score)
@@ -288,21 +268,13 @@ class TestLogNormalModel(unittest.TestCase):
         n_ids = 10
         psis = [1] * n_ids
         mu_log = 1
-        var_log = np.exp(2)
+        sigma_log = np.exp(2)
         ref_score = \
-            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
+            -n_ids * (
+                np.log(2 * np.pi * sigma_log**2)
+                + mu_log**2 / sigma_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
         self.assertEqual(np.sum(scores), ref_score)
@@ -311,21 +283,13 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case II.2:
         psis = [1] * n_ids
         mu_log = 3
-        var_log = np.exp(3)
+        sigma_log = np.exp(3)
         ref_score = \
-            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
+            -n_ids * (
+                np.log(2 * np.pi * sigma_log**2)
+                + mu_log**2 / sigma_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
         self.assertEqual(np.sum(scores), ref_score)
@@ -351,21 +315,11 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case III.1
         psis = [np.exp(4)] * n_ids
         mu_log = 1
-        var_log = 1
+        sigma_log = 1
         ref_score = \
             -n_ids * (4 + np.log(2 * np.pi) / 2 + (4 - mu_log)**2 / 2)
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
         self.assertAlmostEqual(np.sum(scores), ref_score)
@@ -374,20 +328,10 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case III.2
         psis = [np.exp(3)] * n_ids
         mu_log = 3
-        var_log = 1
+        sigma_log = 1
         ref_score = -n_ids * (3 + np.log(2 * np.pi) / 2)
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
         self.assertEqual(np.sum(scores), ref_score)
@@ -396,18 +340,6 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case IV: mu_log or sigma_log negative or zero
 
         # Test case IV.1
-        n_ids = 3
-        psis = [np.exp(10)] * n_ids
-        mu = 0
-        sigma = 1
-
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
-
-        # # Test case IV.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = 0
@@ -418,18 +350,7 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(scores[1], -np.inf)
         self.assertEqual(scores[2], -np.inf)
 
-        # Test case IV.3
-        psis = [np.exp(10)] * n_ids
-        mu = -10
-        sigma = 1
-
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
-
-        # Test case IV.4
+        # Test case IV.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = -10
@@ -730,8 +651,8 @@ class TestLogNormalModel(unittest.TestCase):
         names = self.pop_model.get_parameter_names()
 
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Mean')
-        self.assertEqual(names[1], 'Std.')
+        self.assertEqual(names[0], 'Mean log')
+        self.assertEqual(names[1], 'Std. log')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
