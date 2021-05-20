@@ -1213,8 +1213,8 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         parameter_names = model.get_parameter_names()
         self.assertEqual(len(parameter_names), 8)
-        self.assertEqual(parameter_names[0], 'Mean myokit.tumour_volume')
-        self.assertEqual(parameter_names[1], 'Std. myokit.tumour_volume')
+        self.assertEqual(parameter_names[0], 'Mean log myokit.tumour_volume')
+        self.assertEqual(parameter_names[1], 'Std. log myokit.tumour_volume')
         self.assertEqual(
             parameter_names[2], 'Pooled myokit.drug_concentration')
         self.assertEqual(parameter_names[3], 'Pooled myokit.kappa')
@@ -1264,7 +1264,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
         # (Heterogenous params cannot be fixed)
         self.model.fix_parameters(name_value_dict={
             'myokit.tumour_volume': 1,
-            'Mean myokit.drug_concentration': 1,
+            'Mean log myokit.drug_concentration': 1,
             'Pooled myokit.kappa': 1})
 
         n_parameters = self.model.n_parameters()
@@ -1274,7 +1274,8 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(parameter_names), 6)
         self.assertEqual(
             parameter_names[0], 'myokit.tumour_volume')
-        self.assertEqual(parameter_names[1], 'Std. myokit.drug_concentration')
+        self.assertEqual(
+            parameter_names[1], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[2], 'Pooled myokit.lambda_0')
         self.assertEqual(parameter_names[3], 'Pooled myokit.lambda_1')
         self.assertEqual(parameter_names[4], 'Pooled Sigma base')
@@ -1293,14 +1294,15 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(parameter_names), 5)
         self.assertEqual(
             parameter_names[0], 'myokit.tumour_volume')
-        self.assertEqual(parameter_names[1], 'Std. myokit.drug_concentration')
+        self.assertEqual(
+            parameter_names[1], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[2], 'Pooled myokit.kappa')
         self.assertEqual(parameter_names[3], 'Pooled myokit.lambda_1')
         self.assertEqual(parameter_names[4], 'Pooled Sigma base')
 
         # Test case III: unfix all parameters
         self.model.fix_parameters(name_value_dict={
-            'Mean myokit.drug_concentration': None,
+            'Mean log myokit.drug_concentration': None,
             'Pooled myokit.lambda_0': None,
             'Pooled Sigma rel.': None})
 
@@ -1311,8 +1313,10 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(parameter_names), 8)
         self.assertEqual(
             parameter_names[0], 'myokit.tumour_volume')
-        self.assertEqual(parameter_names[1], 'Mean myokit.drug_concentration')
-        self.assertEqual(parameter_names[2], 'Std. myokit.drug_concentration')
+        self.assertEqual(
+            parameter_names[1], 'Mean log myokit.drug_concentration')
+        self.assertEqual(
+            parameter_names[2], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[3], 'Pooled myokit.kappa')
         self.assertEqual(parameter_names[4], 'Pooled myokit.lambda_0')
         self.assertEqual(parameter_names[5], 'Pooled myokit.lambda_1')
@@ -1339,8 +1343,8 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(names), 8)
         self.assertEqual(
             names[0], 'myokit.tumour_volume')
-        self.assertEqual(names[1], 'Mean myokit.drug_concentration')
-        self.assertEqual(names[2], 'Std. myokit.drug_concentration')
+        self.assertEqual(names[1], 'Mean log myokit.drug_concentration')
+        self.assertEqual(names[2], 'Std. log myokit.drug_concentration')
         self.assertEqual(names[3], 'Pooled myokit.kappa')
         self.assertEqual(names[4], 'Pooled myokit.lambda_0')
         self.assertEqual(names[5], 'Pooled myokit.lambda_1')
@@ -1364,8 +1368,8 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(names), 10)
         self.assertEqual(
             names[0], 'central.drug_amount')
-        self.assertEqual(names[1], 'Mean dose.drug_amount')
-        self.assertEqual(names[2], 'Std. dose.drug_amount')
+        self.assertEqual(names[1], 'Mean log dose.drug_amount')
+        self.assertEqual(names[2], 'Std. log dose.drug_amount')
         self.assertEqual(names[3], 'Pooled central.size')
         self.assertEqual(names[4], 'Pooled dose.absorption_rate')
         self.assertEqual(names[5], 'Pooled myokit.elimination_rate')
