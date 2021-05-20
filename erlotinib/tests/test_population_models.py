@@ -958,7 +958,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_compute_log_likelihood(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': 1})
+            'Mean log': 1})
 
         # Compute log-likelihood
         parameters = [2]
@@ -976,12 +976,12 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': None})
+            'Mean log': None})
 
     def test_compute_pointwise_ll(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': 1})
+            'Mean log': 1})
 
         # Compute log-likelihood
         parameters = [2]
@@ -1003,12 +1003,12 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': None})
+            'Mean log': None})
 
     def test_compute_sensitivities(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': 1})
+            'Mean log': 1})
 
         # Compute log-likelihood
         parameters = [2]
@@ -1032,7 +1032,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': None})
+            'Mean log': None})
 
         # Compute log-likelihood
         score, sens = self.pop_model.compute_sensitivities(
@@ -1050,19 +1050,19 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_fix_parameters(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': 1})
+            'Mean log': 1})
 
         n_parameters = self.pop_model.n_parameters()
         self.assertEqual(n_parameters, 1)
 
         parameter_names = self.pop_model.get_parameter_names()
         self.assertEqual(len(parameter_names), 1)
-        self.assertEqual(parameter_names[0], 'Std.')
+        self.assertEqual(parameter_names[0], 'Std. log')
 
         # Test case II: fix overlapping set of parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': 0.2,
-            'Std.': 0.1})
+            'Mean log': 0.2,
+            'Std. log': 0.1})
 
         n_parameters = self.pop_model.n_parameters()
         self.assertEqual(n_parameters, 0)
@@ -1072,16 +1072,16 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Test case III: unfix all parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': None,
-            'Std.': None})
+            'Mean log': None,
+            'Std. log': None})
 
         n_parameters = self.pop_model.n_parameters()
         self.assertEqual(n_parameters, 2)
 
         parameter_names = self.pop_model.get_parameter_names()
         self.assertEqual(len(parameter_names), 2)
-        self.assertEqual(parameter_names[0], 'Mean')
-        self.assertEqual(parameter_names[1], 'Std.')
+        self.assertEqual(parameter_names[0], 'Mean log')
+        self.assertEqual(parameter_names[1], 'Std. log')
 
     def test_fix_parameters_bad_input(self):
         name_value_dict = 'Bad type'
@@ -1095,7 +1095,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_n_hierarchical_parameters(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std.': 0.1})
+            'Std. log': 0.1})
 
         n_ids = 10
         n_indiv, n_pop = self.pop_model.n_hierarchical_parameters(n_ids)
@@ -1104,7 +1104,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix all parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std.': None})
+            'Std. log': None})
 
         n_ids = 10
         n_indiv, n_pop = self.pop_model.n_hierarchical_parameters(n_ids)
@@ -1114,13 +1114,13 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_n_fixed_parameters(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std.': 0.1})
+            'Std. log': 0.1})
 
         self.assertEqual(self.pop_model.n_fixed_parameters(), 1)
 
         # Unfix all parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std.': None})
+            'Std. log': None})
 
         self.assertEqual(self.pop_model.n_fixed_parameters(), 0)
 
@@ -1131,7 +1131,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_sample(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': 0.1})
+            'Mean log': 0.1})
 
         # Sample
         seed = 42
@@ -1153,7 +1153,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': None})
+            'Mean log': None})
 
     def test_set_get_parameter_names(self):
         # Set some parameter names
@@ -1170,29 +1170,29 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Mean')
-        self.assertEqual(names[1], 'Std.')
+        self.assertEqual(names[0], 'Mean log')
+        self.assertEqual(names[1], 'Std. log')
 
         # Fix parameter and set parameter name
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': 1})
+            'Mean log': 1})
         self.pop_model.set_parameter_names(
-            ['Std. myokit.tumour_volume'])
+            ['Std. log myokit.tumour_volume'])
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 1)
-        self.assertEqual(names[0], 'Std. myokit.tumour_volume')
+        self.assertEqual(names[0], 'Std. log myokit.tumour_volume')
 
         # Reset to defaults
         self.pop_model.set_parameter_names(None)
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 1)
-        self.assertEqual(names[0], 'Std.')
+        self.assertEqual(names[0], 'Std. log')
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean': None})
+            'Mean log': None})
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
