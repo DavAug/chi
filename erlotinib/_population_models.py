@@ -259,16 +259,13 @@ class LogNormalModel(PopulationModel):
     distributed in the population
 
     .. math::
-        p(\psi |\mu , \sigma ) =
+        p(\psi |\mu _{\text{log}}, \sigma _{\text{log}}) =
         \frac{1}{\psi} \frac{1}{\sqrt{2\pi} \sigma _{\text{log}}}
         \exp\left(-\frac{(\log \psi - \mu _{\text{log}})^2}
         {2 \sigma ^2_{\text{log}}}\right).
 
     Here, :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` are the
     mean and variance of :math:`\log \psi` in the population, respectively.
-    Note that we chose to parametrise the distribution, however, by the
-    somewhat more intuitive mean and standard deviation of theparameter
-    :math:`\psi` itself.
 
     The mean and variance of the parameter :math:`\psi` itself,
     :math:`\mu = \mathbb{E}\left[ \psi \right]` and
@@ -286,7 +283,7 @@ class LogNormalModel(PopulationModel):
     Calling the LogNormalModel returns the log-likelihood score of the model,
     assuming that the first ``n_ids`` parameters are the realisations of
     :math:`\psi` for the observed individuals, and the remaining 2 parameters
-    are :math:`\mu` and :math:`\sigma`.
+    are :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
 
     Extends :class:`PopulationModel`.
     """
@@ -298,41 +295,23 @@ class LogNormalModel(PopulationModel):
         self._n_parameters = 2
 
         # Set default parameter names
-        self._parameter_names = ['Mean', 'Std.']
+        self._parameter_names = ['Mean log', 'Std. log']
 
     @staticmethod
     @njit
     def _compute_log_likelihood(mean, std, observations):  # pragma: no cover
         r"""
         Calculates the log-likelihood using numba speed up.
-
-        The parameters are transformed from mean and std to mean and var of
-        log psi using
-
-        .. math::
-            \mu _{\text{log}} =
-            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
-            \quad
-            \text{and}
-            \quad
-            \sigma ^2_{\text{log}} =
-            -2\log \mu + \log (\mu ^2 + \sigma ^2)
         """
-        # Transform parameters and observations
-        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
-        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        # Transform observations
         log_psi = np.log(observations)
-
-        # Return -infinity if variance vanishes
-        if var_log == 0:
-            return -np.inf
 
         # Compute log-likelihood score
         n_ids = len(log_psi)
         log_likelihood = \
-            - n_ids * np.log(2 * np.pi * var_log) / 2 \
+            - n_ids * np.log(2 * np.pi * std**2) / 2 \
             - np.sum(log_psi) \
-            - np.sum((log_psi - mean_log) ** 2) / (2 * var_log)
+            - np.sum((log_psi - mean) ** 2) / (2 * std**2)
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -386,18 +365,6 @@ class LogNormalModel(PopulationModel):
         Calculates the log-likelihood and its sensitivities using numba
         speed up.
 
-        The parameters are transformed from mean and std to mean and var of
-        log psi using
-
-        .. math::
-            \mu _{\text{log}} =
-            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
-            \quad
-            \text{and}
-            \quad
-            \sigma ^2_{\text{log}} =
-            -2\log \mu + \log (\mu ^2 + \sigma ^2)
-
         Expects:
         mean = float
         std = float
@@ -408,22 +375,16 @@ class LogNormalModel(PopulationModel):
         sensitivities: np.ndarray of shape (n_obs + 2,)
         """
         # Transform parameters and observations
-        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
-        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
+        var = std ** 2
         log_psi = np.log(psi)
-        transformed_psi = (np.log(psi) - mean_log) / var_log
-
-        # Return -infinity if variance vanishes
-        if var_log == 0:
-            n_obs = len(psi)
-            return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
+        transformed_psi = (np.log(psi) - mean) / var
 
         # Compute log-likelihood score
         n_ids = len(psi)
         log_likelihood = \
-            - n_ids * np.log(2 * np.pi * var_log) / 2 \
+            - n_ids * np.log(2 * np.pi * var) / 2 \
             - np.sum(log_psi) \
-            - np.sum(transformed_psi**2) * var_log / 2
+            - np.sum(transformed_psi**2) * var / 2
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -431,22 +392,11 @@ class LogNormalModel(PopulationModel):
             return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
-        dpsi = - (1 + transformed_psi) / psi
+        dpsi = - (transformed_psi + 1) / psi
 
         # Copmute sensitivities w.r.t. parameters
-        # (del f / del var_log * del var_log / del mean +
-        # del f / del mean_log * del mean_log / del mean)
-        dmean = \
-            (np.sum(transformed_psi**2) - 1 / var_log) \
-            * (mean / (mean**2 + std**2) - 1 / mean) \
-            + np.sum(transformed_psi) * (2 / mean - mean / (mean**2 + std**2))
-
-        # (del f / del var_log * del var_log / del std +
-        # del f / del mean_log * del mean_log / del std)
-        dstd = \
-            (np.sum(transformed_psi**2) - 1 / var_log) \
-            * std / (mean**2 + std**2) \
-            - np.sum(transformed_psi) * std / (mean**2 + std**2)
+        dmean = np.sum(transformed_psi)
+        dstd = (np.sum(transformed_psi - 1)) / std
 
         sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
 
@@ -460,10 +410,10 @@ class LogNormalModel(PopulationModel):
         at the observations
 
         .. math::
-            L(\mu , \sigma | \Psi) =
+            L(\mu _{\text{log}}, \sigma _{\text{log}}| \Psi) =
             \sum _{i=1}^N
             \log p(\psi _i |
-            \mu , \sigma ) ,
+            \mu _{\text{log}}, \sigma _{\text{log}}) ,
 
         where
         :math:`\Psi := (\psi _1, \ldots , \psi _N)`
@@ -478,7 +428,7 @@ class LogNormalModel(PopulationModel):
         ----------
         parameters
             An array-like object with the model parameter values for
-            :math:`\mu` and :math:`\sigma`.
+            :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
         observations
             An array like object with the parameter values for the individuals,
             :math:`\psi _1, \ldots , \psi _N`.
@@ -486,13 +436,14 @@ class LogNormalModel(PopulationModel):
         observations = np.asarray(observations)
         mean, std = parameters
 
-        if mean <= 0 or std <= 0:
-            # The mean and var of log psi are strictly positive
+        if std <= 0:
+            # The standard deviation of log psi is strictly positive
             return -np.inf
 
         return self._compute_log_likelihood(mean, std, observations)
 
     def compute_pointwise_ll(self, parameters, observations):
+        #TODO:
         r"""
         Returns the pointwise log-likelihood of the model parameters for
         each observation.
@@ -548,8 +499,8 @@ class LogNormalModel(PopulationModel):
         observations = np.asarray(observations)
         mean, std = parameters
 
-        if mean <= 0 or std <= 0:
-            # The mean and var of log psi are strictly positive
+        if std <= 0:
+            # The standard deviation of log psi is strictly positive
             n_obs = len(observations)
             return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
 
@@ -585,6 +536,7 @@ class LogNormalModel(PopulationModel):
         return self._n_parameters
 
     def sample(self, parameters, n_samples=None, seed=None):
+        #TODO:
         r"""
         Returns random samples from the underlying population
         distribution.
@@ -660,6 +612,7 @@ class LogNormalModel(PopulationModel):
         self._parameter_names = [str(label) for label in names]
 
     def transform_parameters(self, mean, std):
+        #TODO:
         r"""
         Returns the standard parameters :math:`\mu _{\text{log}}` and
         :math:`\sigma ^2_{\text{log}}` for a given population mean and
