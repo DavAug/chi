@@ -145,8 +145,8 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'Pooled myokit.lambda_1': pop_samples,
             'Pooled Sigma base': pop_samples,
             'Sigma rel.': samples,
-            'Mean Sigma rel.': pop_samples,
-            'Std. Sigma rel.': pop_samples})
+            'Mean log Sigma rel.': pop_samples,
+            'Std. log Sigma rel.': pop_samples})
 
         cls.pop_model = erlo.PosteriorPredictiveModel(
             cls.pred_pop_model, cls.pop_post_samples)
