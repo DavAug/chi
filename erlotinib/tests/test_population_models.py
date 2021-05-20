@@ -130,40 +130,20 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case I.1:
         psis = [1] * n_ids
         mu_log = 1
-        var_log = 1
+        sigma_log = 1
         ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, ref_score)
 
         # Test case I.2:
         psis = [1] * n_ids
         mu_log = 5
-        var_log = 1
+        sigma_log = 1
         ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, ref_score)
 
@@ -175,42 +155,26 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case II.1:
         psis = [1] * n_ids
         mu_log = 1
-        var_log = np.exp(2)
+        sigma_log = 2
         ref_score = \
-            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
+            -n_ids * (
+                np.log(2 * np.pi * sigma_log**2)
+                + mu_log**2 / sigma_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, ref_score)
 
         # Test case II.2:
         psis = [1] * n_ids
         mu_log = 3
-        var_log = np.exp(3)
+        sigma_log = np.exp(3)
         ref_score = \
-            -n_ids * (np.log(2 * np.pi * var_log) + mu_log**2 / var_log) / 2
+            -n_ids * (
+                np.log(2 * np.pi * sigma_log**2)
+                + mu_log**2 / sigma_log**2) / 2
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, ref_score)
 
@@ -222,56 +186,27 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case III.1
         psis = [np.exp(4)] * n_ids
         mu_log = 1
-        var_log = 1
+        sigma_log = 1
         ref_score = \
             -n_ids * (4 + np.log(2 * np.pi) / 2 + (4 - mu_log)**2 / 2)
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, ref_score)
 
         # Test case III.2
         psis = [np.exp(3)] * n_ids
         mu_log = 3
-        var_log = 1
+        sigma_log = 1
         ref_score = -n_ids * (3 + np.log(2 * np.pi) / 2)
 
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
-
-        # Make sure that the transform works
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-        self.assertEqual(transformed[0], mu_log)
-        self.assertAlmostEqual(transformed[1], var_log)
-
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, ref_score)
 
-        # Test case IV: mu_log or sigma_log negative or zero
+        # Test case IV: sigma_log negative or zero
 
         # Test case IV.1
-        psis = [np.exp(10)] * n_ids
-        mu = 0
-        sigma = 1
-
-        parameters = [mu] + [sigma]
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, -np.inf)
-
-        # # Test case IV.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = 0
@@ -280,16 +215,7 @@ class TestLogNormalModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, -np.inf)
 
-        # Test case IV.3
-        psis = [np.exp(10)] * n_ids
-        mu = -10
-        sigma = 1
-
-        parameters = [mu] + [sigma]
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, -np.inf)
-
-        # Test case IV.4
+        # Test case IV.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = -10
@@ -523,33 +449,20 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case I: psis = 1, sigma_log = 1
         # Sensitivities reduce to
         # dpsi = -1 + mu_log
-        # dmu =
-        #   (n_ids * mu_log**2 - 1) * (mu / (mu**2 + sigma**2) - 1 / mu)
-        #   - n_ids * mu_log * (2 / mu - mu / (mu**2 + sigma**2))
-        # dsigma =
-        #   (n_ids * mu_log**2 - 1) * sigma / (mu**2 + sigma**2)
-        #   + n_ids * mu_log * sigma / (mu**2 + sigma**2)
+        # dmu = - mu_log * nids
+        # dsigma = -(1 + mu_log) * nids
 
         # Test case I.1:
         psis = [1] * n_ids
         mu_log = 1
-        var_log = 1
-
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
+        sigma_log = 1
 
         # Compute ref scores
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
         ref_dpsi = -1 + mu_log
-        ref_dmu = \
-            (n_ids * mu_log**2 - 1) * (mu / (mu**2 + var) - 1 / mu) \
-            - n_ids * mu_log * (2 / mu - mu / (mu**2 + var))
-        ref_dsigma = \
-            (n_ids * mu_log**2 - 1) * sigma / (mu**2 + var) \
-            + n_ids * mu_log * sigma / (mu**2 + var)
+        ref_dmu = -mu_log * n_ids
+        ref_dsigma = -(1 + mu_log) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -572,23 +485,14 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case I.2:
         psis = [1] * n_ids
         mu_log = 5
-        var_log = 1
-
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
+        sigma_log = 1
 
         # Compute ref scores
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
         ref_dpsi = -1 + mu_log
-        ref_dmu = \
-            (n_ids * mu_log**2 - 1) * (mu / (mu**2 + var) - 1 / mu) \
-            - n_ids * mu_log * (2 / mu - mu / (mu**2 + var))
-        ref_dsigma = \
-            (n_ids * mu_log**2 - 1) * sigma / (mu**2 + var) \
-            + n_ids * mu_log * sigma / (mu**2 + var)
+        ref_dmu = -mu_log * n_ids
+        ref_dsigma = -(1 + mu_log) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -611,41 +515,20 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case II: psis = 1.
         # Sensitivities reduce to
         # dpsi = -1 + mu_log / var_log
-        # dmu =
-        #   (n_ids * (mu_log / var_log)**2 - 1 / var_log)
-        #   * (mu / (mu**2 + sigma**2) - 1 / mu)
-        #   - n_ids * mu_log / var_log
-        #   * (2 / mu - mu / (mu**2 + sigma**2))
-        # dsigma =
-        #   (n_ids * (mu_log / var_log)**2 - 1 / var_log)
-        #   * sigma / (mu**2 + sigma**2)
-        #   + n_ids * mu_log / var_log
-        #   * sigma / (mu**2 + sigma**2)
+        # dmu = - mu_log / var_log * nids
+        # dsigma = -(1 + mu_log / var_log) / std_log * nids
 
         # Test case II.1:
         psis = [1] * n_ids
         mu_log = 1
-        var_log = np.exp(2)
-
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
+        sigma_log = np.exp(2)
 
         # Compute ref scores
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-        ref_dpsi = -1 + mu_log / var_log
-        ref_dmu = \
-            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
-            * (mu / (mu**2 + var) - 1 / mu) \
-            - n_ids * mu_log / var_log \
-            * (2 / mu - mu / (mu**2 + var))
-        ref_dsigma = \
-            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
-            * sigma / (mu**2 + var) \
-            + n_ids * mu_log / var_log \
-            * sigma / (mu**2 + var)
+        ref_dpsi = -1 + mu_log / sigma_log**2
+        ref_dmu = -mu_log / sigma_log**2 * n_ids
+        ref_dsigma = -(1 + mu_log / sigma_log**2) / sigma_log * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -668,27 +551,14 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case II.2:
         psis = [1] * n_ids
         mu_log = 3
-        var_log = np.exp(3)
-
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
+        sigma_log = np.exp(3)
 
         # Compute ref scores
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-        ref_dpsi = -1 + mu_log / var_log
-        ref_dmu = \
-            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
-            * (mu / (mu**2 + var) - 1 / mu) \
-            - n_ids * mu_log / var_log \
-            * (2 / mu - mu / (mu**2 + var))
-        ref_dsigma = \
-            (n_ids * (mu_log / var_log)**2 - 1 / var_log) \
-            * sigma / (mu**2 + var) \
-            + n_ids * mu_log / var_log \
-            * sigma / (mu**2 + var)
+        ref_dpsi = -1 + mu_log / sigma_log**2
+        ref_dmu = -mu_log / sigma_log**2 * n_ids
+        ref_dsigma = -(1 + mu_log / sigma_log**2) / sigma_log * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -711,41 +581,20 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case III: psis all the same, sigma_log = 1.
         # Score reduces to
         # dpsi = (-1 + mu_log - log psi) / psi
-        # dmu =
-        #   (n_ids * (log psi - mu_log)**2 - 1)
-        #   * (mu / (mu**2 + sigma**2) - 1 / mu)
-        #   + n_ids * (log psi - mu_log)
-        #   * (2 / mu - mu / (mu**2 + sigma**2))
-        # dsigma =
-        #   (n_ids * (log psi - mu_log)**2 - 1)
-        #   * sigma / (mu**2 + sigma**2)
-        #   - n_ids * n_ids * (log psi - mu_log)
-        #   * sigma / (mu**2 + sigma**2)
+        # dmu = (log psi - mu_log) * nids
+        # dsigma = (log psi - mu_log - 1) * nids
 
         # Test case III.1
         psi = [np.exp(4)] * n_ids
         mu_log = 1
-        var_log = 1
-
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
+        sigma_log = 1
 
         # Compute ref scores
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
         ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
-        ref_dmu = \
-            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
-            * (mu / (mu**2 + var) - 1 / mu) \
-            + n_ids * (np.log(psi[0]) - mu_log) \
-            * (2 / mu - mu / (mu**2 + var))
-        ref_dsigma = \
-            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
-            * sigma / (mu**2 + var) \
-            - n_ids * (np.log(psi[0]) - mu_log) \
-            * sigma / (mu**2 + var)
+        ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
+        ref_dsigma = (np.log(psi[0]) - mu_log - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psi)
@@ -768,27 +617,14 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case III.2
         psi = [np.exp(3)] * n_ids
         mu_log = 3
-        var_log = 1
-
-        # Transform parameters
-        mu = np.exp(mu_log + var_log / 2)
-        var = mu**2 * (np.exp(var_log) - 1)
-        sigma = np.sqrt(var)
+        sigma_log = 1
 
         # Compute ref scores
-        parameters = [mu] + [sigma]
+        parameters = [mu_log] + [sigma_log]
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
         ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
-        ref_dmu = \
-            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
-            * (mu / (mu**2 + var) - 1 / mu) \
-            + n_ids * (np.log(psi[0]) - mu_log) \
-            * (2 / mu - mu / (mu**2 + var))
-        ref_dsigma = \
-            (n_ids * (np.log(psi[0]) - mu_log)**2 - 1) \
-            * sigma / (mu**2 + var) \
-            - n_ids * (np.log(psi[0]) - mu_log) \
-            * sigma / (mu**2 + var)
+        ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
+        ref_dsigma = (np.log(psi[0]) - mu_log - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psi)
@@ -811,19 +647,6 @@ class TestLogNormalModel(unittest.TestCase):
         # Test case IV: mu_log or sigma_log negative or zero
 
         # Test case IV.1
-        n_ids = 1
-        psis = [np.exp(10)] * n_ids
-        mu = 0
-        sigma = 1
-
-        parameters = [mu] + [sigma]
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
-        self.assertEqual(score, -np.inf)
-        self.assertEqual(sens[0], np.inf)
-        self.assertEqual(sens[1], np.inf)
-        self.assertEqual(sens[2], np.inf)
-
-        # # Test case IV.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = 0
@@ -835,19 +658,7 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(sens[1], np.inf)
         self.assertEqual(sens[2], np.inf)
 
-        # Test case IV.3
-        psis = [np.exp(10)] * n_ids
-        mu = -10
-        sigma = 1
-
-        parameters = [mu] + [sigma]
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
-        self.assertEqual(score, -np.inf)
-        self.assertEqual(sens[0], np.inf)
-        self.assertEqual(sens[1], np.inf)
-        self.assertEqual(sens[2], np.inf)
-
-        # Test case IV.4
+        # Test case IV.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = -10
@@ -860,7 +671,7 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(sens[2], np.inf)
 
     def test_get_parameter_names(self):
-        names = ['Mean', 'Std.']
+        names = ['Mean log', 'Std. log']
 
         self.assertEqual(self.pop_model.get_parameter_names(), names)
 
