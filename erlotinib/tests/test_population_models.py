@@ -694,7 +694,6 @@ class TestLogNormalModel(unittest.TestCase):
 
         n_samples = 1
         self.assertEqual(sample.shape, (n_samples,))
-        self.assertEqual(sample[0], 3.0027582879721875)
 
         # Test II: sample size > 1
         parameters = [3, 2]
@@ -704,22 +703,12 @@ class TestLogNormalModel(unittest.TestCase):
 
         self.assertEqual(
             sample.shape, (n_samples,))
-        self.assertAlmostEqual(sample[0], 3.0027582879721875)
-        self.assertAlmostEqual(sample[1], 1.3285661271871976)
-        self.assertAlmostEqual(sample[2], 3.9346654828223047)
-        self.assertAlmostEqual(sample[3], 4.415456848935877)
 
     def test_sample_bad_input(self):
         # Too many paramaters
         parameters = [1, 1, 1, 1, 1]
 
         with self.assertRaisesRegex(ValueError, 'The number of provided'):
-            self.pop_model.sample(parameters)
-
-        # Negative mean
-        parameters = [-1, 1]
-
-        with self.assertRaisesRegex(ValueError, 'A log-normal distribution'):
             self.pop_model.sample(parameters)
 
         # Negative std
