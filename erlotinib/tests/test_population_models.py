@@ -591,6 +591,65 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(sens[1], np.inf)
         self.assertEqual(sens[2], np.inf)
 
+    def test_get_mean_and_std(self):
+        # Test case I: std_log = 0
+        # Then:
+        # mean = exp(mean_log)
+        # std = 0
+
+        # Test case I.1:
+        mean_log = 1
+        std_log = 0
+        parameters = [mean_log, std_log]
+        mean, std = self.pop_model.get_mean_and_std(parameters)
+
+        self.assertEqual(np.exp(mean_log), mean)
+        self.assertEqual(std_log, std)
+
+        # Test case I.2:
+        mean_log = -3
+        std_log = 0
+        parameters = [mean_log, std_log]
+        mean, std = self.pop_model.get_mean_and_std(parameters)
+
+        self.assertEqual(np.exp(mean_log), mean)
+        self.assertEqual(std_log, std)
+
+        # Test case II: mean_log = 0
+        # Then:
+        # mean = exp(std_log**2/2)
+        # std = sqrt(exp(std_log**2)*(exp(std_log**2) - 1))
+
+        # Test case I.1:
+        mean_log = 0
+        std_log = 1
+
+        # Compute references
+        mean_ref = np.exp(std_log**2 / 2)
+        std_ref = np.sqrt(
+            np.exp(std_log**2)*(np.exp(std_log**2) - 1))
+
+        parameters = [mean_log, std_log]
+        mean, std = self.pop_model.get_mean_and_std(parameters)
+
+        self.assertEqual(mean, mean_ref)
+        self.assertEqual(std, std_ref)
+
+        # Test case I.2:
+        mean_log = 0
+        std_log = 2
+
+        # Compute references
+        mean_ref = np.exp(std_log**2 / 2)
+        std_ref = np.sqrt(
+            np.exp(std_log**2)*(np.exp(std_log**2) - 1))
+
+        parameters = [mean_log, std_log]
+        mean, std = self.pop_model.get_mean_and_std(parameters)
+
+        self.assertEqual(mean, mean_ref)
+        self.assertEqual(std, std_ref)
+
     def test_get_parameter_names(self):
         names = ['Mean log', 'Std. log']
 
@@ -659,27 +718,6 @@ class TestLogNormalModel(unittest.TestCase):
         names = ['only', 'two', 'is', 'allowed']
         with self.assertRaisesRegex(ValueError, 'Length of names'):
             self.pop_model.set_parameter_names(names)
-
-    def test_transform_parameters(self):
-        # Test case I:
-        mu = 1
-        sigma = 1
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-
-        self.assertEqual(len(transformed), 2)
-        mu_log, sigma_log = transformed
-        self.assertEqual(mu_log, -np.log(2) / 2)
-        self.assertEqual(sigma_log, np.log(2))
-
-        # Test case II:
-        mu = 2
-        sigma = 2
-        transformed = self.pop_model.transform_parameters(mu, sigma)
-
-        self.assertEqual(len(transformed), 2)
-        mu_log, var_log = transformed
-        self.assertAlmostEqual(mu_log, np.log(2) / 2)
-        self.assertAlmostEqual(var_log, np.log(2))
 
 
 class TestPooledModel(unittest.TestCase):
