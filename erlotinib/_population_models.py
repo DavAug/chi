@@ -270,11 +270,6 @@ class LogNormalModel(PopulationModel):
     Any observed individual with parameter :math:`\psi _i` is
     assumed to be a realisation of the random variable :math:`\psi`.
 
-    Calling the LogNormalModel returns the log-likelihood score of the model,
-    assuming that the first ``n_ids`` parameters are the realisations of
-    :math:`\psi` for the observed individuals, and the remaining 2 parameters
-    are :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
-
     Extends :class:`PopulationModel`.
     """
 
@@ -389,17 +384,17 @@ class LogNormalModel(PopulationModel):
 
         .. note::
             Note that in the context of PKPD modelling the individual
-            parameters are really "observed", but rather inferred from
-            biomarker measurements.
+            parameters are never "observed" directly, but rather inferred
+            from biomarker measurements.
 
         Parameters
         ----------
         parameters
-            An array-like object with the model parameter values for
-            :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
+            An array-like object with the model parameter values, i.e.
+            [:math:`\mu _{\text{log}}`, :math:`\sigma _{\text{log}}`].
         observations
             An array like object with the parameter values for the individuals,
-            :math:`\psi _1, \ldots , \psi _N`.
+            i.e. [:math:`\psi _1, \ldots , \psi _N`].
         """
         observations = np.asarray(observations)
         mean, std = parameters
@@ -427,19 +422,14 @@ class LogNormalModel(PopulationModel):
         :math:`\psi _i` are the "observed" parameters :math:`\psi` from
         individual :math:`i`.
 
-        .. note::
-            Note that in the context of PKPD modelling the individual
-            parameters :math:`\psi _i` are never really "observed", but rather
-            inferred from biomarker measurements.
-
         Parameters
         ----------
         parameters
-            An array-like object with the model parameter values for
-            :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
+            An array-like object with the model parameter values, i.e.
+            [:math:`\mu _{\text{log}}`, :math:`\sigma _{\text{log}}`].
         observations
             An array like object with the parameter values for the individuals,
-            :math:`\psi _1, \ldots , \psi _N`.
+            i.e. [:math:`\psi _1, \ldots , \psi _N`].
         """
         observations = np.asarray(observations)
         mean, std = parameters
@@ -453,7 +443,7 @@ class LogNormalModel(PopulationModel):
     def compute_sensitivities(self, parameters, observations):
         r"""
         Returns the log-likelihood of the population parameters and its
-        sensitivities w.r.t. the observations and the parameters.
+        sensitivity w.r.t. the observations and the parameters.
 
         Parameters
         ----------
@@ -476,7 +466,7 @@ class LogNormalModel(PopulationModel):
     def get_mean_and_std(self, parameters):
         r"""
         Returns the mean and the standard deviation of the population
-        for given :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}`.
+        for given :math:`\mu _{\text{log}}` and :math:`\sigma _{\text{log}}`.
 
         The mean and variance of the parameter :math:`\psi`,
         :math:`\mu = \mathbb{E}\left[ \psi \right]` and
@@ -491,10 +481,9 @@ class LogNormalModel(PopulationModel):
         Parameters
         ----------
         mean_log
-            Mean of :math:`\log \psi` in the population :math:`\mu`.
+            Mean of :math:`\log \psi` in the population.
         std_log
-            Standard deviation of :math:`\log \psi` in the population
-            :math:`\sigma`.
+            Standard deviation of :math:`\log \psi` in the population.
         """
         # Check input
         mean_log, std_log = parameters
