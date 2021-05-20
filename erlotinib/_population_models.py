@@ -267,17 +267,7 @@ class LogNormalModel(PopulationModel):
     Here, :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` are the
     mean and variance of :math:`\log \psi` in the population, respectively.
 
-    The mean and variance of the parameter :math:`\psi` itself,
-    :math:`\mu = \mathbb{E}\left[ \psi \right]` and
-    :math:`\sigma ^2 = \text{Var}\left[ \psi \right]`, are given by
-
-    .. math::
-        \mu = \mathrm{e}^{\mu _{\text{log}} + \sigma ^2_{\text{log}} / 2}
-        \quad \text{and} \quad
-        \sigma ^2 =
-        \mu ^2 \left( \mathrm{e}^{\sigma ^2_{\text{log}}} - 1\right) .
-
-    As a result, any observed individual with parameter :math:`\psi _i` is
+    Any observed individual with parameter :math:`\psi _i` is
     assumed to be a realisation of the random variable :math:`\psi`.
 
     Calling the LogNormalModel returns the log-likelihood score of the model,
@@ -483,6 +473,41 @@ class LogNormalModel(PopulationModel):
 
         return self._compute_sensitivities(mean, std, observations)
 
+    def get_mean_and_std(self, parameters):
+        r"""
+        Returns the mean and the standard deviation of the population
+        for given :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}`.
+
+        The mean and variance of the parameter :math:`\psi`,
+        :math:`\mu = \mathbb{E}\left[ \psi \right]` and
+        :math:`\sigma ^2 = \text{Var}\left[ \psi \right]`, are given by
+
+        .. math::
+            \mu = \mathrm{e}^{\mu _{\text{log}} + \sigma ^2_{\text{log}} / 2}
+            \quad \text{and} \quad
+            \sigma ^2 =
+            \mu ^2 \left( \mathrm{e}^{\sigma ^2_{\text{log}}} - 1\right) .
+
+        Parameters
+        ----------
+        mean_log
+            Mean of :math:`\log \psi` in the population :math:`\mu`.
+        std_log
+            Standard deviation of :math:`\log \psi` in the population
+            :math:`\sigma`.
+        """
+        # Check input
+        mean_log, std_log = parameters
+        if std_log < 0:
+            raise ValueError('The standard deviation cannot be negative.')
+
+        # Compute mean and standard deviation
+        mean = np.exp(mean_log + std_log**2 / 2)
+        std = np.sqrt(
+            np.exp(2 * mean_log + std_log**2) * (np.exp(std_log**2) - 1))
+
+        return [mean, std]
+
     def get_parameter_names(self):
         """
         Returns the name of the the population model parameters. If name were
@@ -579,45 +604,6 @@ class LogNormalModel(PopulationModel):
                 'Length of names does not match the number of parameters.')
 
         self._parameter_names = [str(label) for label in names]
-
-    def transform_parameters(self, mean, std):
-        #TODO:
-        r"""
-        Returns the standard parameters :math:`\mu _{\text{log}}` and
-        :math:`\sigma ^2_{\text{log}}` for a given population mean and
-        standard deviation.
-
-        Log-normal distributions are typically parametrised by
-        :math:`\mu _{\text{log}}` and :math:`\sigma ^2_{\text{log}}` which
-        represent the mean and variance of :math:`\log \psi`.
-
-        We choose to parametrise the log-normal distribution by the somewhat
-        more intuitive mean and standard deviation of the parameter
-        :math:`\psi` itself, :math:`\mu` and :math:`\sigma`.
-
-        The transformation is given by
-
-        .. math::
-            \mu _{\text{log}} =
-            2\log \mu - \frac{1}{2} \log (\mu ^2 + \sigma ^2)
-            \quad
-            \text{and}
-            \quad
-            \sigma ^2_{\text{log}} =
-            -2\log \mu + \log (\mu ^2 + \sigma ^2)
-
-        Parameters
-        ----------
-        mean
-            Mean of :math:`\psi` in the population :math:`\mu`.
-        std
-            Standard deviation of :math:`\psi` in the population
-            :math:`\sigma`.
-        """
-        mean_log = 2 * np.log(mean) - np.log(mean**2 + std**2) / 2
-        var_log = -2 * np.log(mean) + np.log(mean**2 + std**2)
-
-        return [mean_log, var_log]
 
 
 class PooledModel(PopulationModel):
