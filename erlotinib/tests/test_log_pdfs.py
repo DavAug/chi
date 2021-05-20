@@ -210,6 +210,40 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertNotEqual(score, -np.inf)
         self.assertAlmostEqual(self.hierarchical_model(parameters), score)
 
+        # Test case IV: Infinite log-pdf from population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
+
+        indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
+
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
+
+        self.assertEqual(self.hierarchical_model(parameters), -np.inf)
+
     def test_compute_pointwise_ll(self):
         # Test case I: All parameters pooled
         likelihood = erlo.HierarchicalLogLikelihood(
@@ -541,6 +575,54 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(sens[11], ref_sens[11])
         self.assertEqual(sens[12], ref_sens[12])
 
+        # Test case IV: Infinite log-pdf from population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
+
+        indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
+
+        parameters = [
+            indiv_parameters_1[0],
+            indiv_parameters_1[1],
+            indiv_parameters_1[2],
+            indiv_parameters_2[2],
+            pop_params[0],
+            pop_params[1],
+            indiv_parameters_1[3],
+            indiv_parameters_1[4],
+            indiv_parameters_2[4],
+            indiv_parameters_1[5],
+            indiv_parameters_1[6],
+            indiv_parameters_1[7],
+            indiv_parameters_1[8]]
+
+        score, sens = self.hierarchical_model.evaluateS1(parameters)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(sens[3], np.inf)
+        self.assertEqual(sens[4], np.inf)
+        self.assertEqual(sens[5], np.inf)
+        self.assertEqual(sens[6], np.inf)
+        self.assertEqual(sens[7], np.inf)
+        self.assertEqual(sens[8], np.inf)
+        self.assertEqual(sens[9], np.inf)
+        self.assertEqual(sens[10], np.inf)
+        self.assertEqual(sens[11], np.inf)
+        self.assertEqual(sens[12], np.inf)
+
     def test_get_id(self):
         # Test case I: Get parameter IDs
         ids = self.hierarchical_model.get_id()
@@ -861,7 +943,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(sens[12], ref_sens[12])
 
         # Test case II: Check exception for inf prior score
-        parameters = [-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         score, _ = self.log_posterior.evaluateS1(parameters)
         self.assertEqual(score, -np.inf)
 

@@ -650,6 +650,13 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(mean, mean_ref)
         self.assertEqual(std, std_ref)
 
+        # Test case II: Negative standard deviation
+        mean_log = 0
+        std_log = -1
+        parameters = [mean_log, std_log]
+        with self.assertRaisesRegex(ValueError, 'The standard deviation'):
+            self.pop_model.get_mean_and_std(parameters)
+
     def test_get_parameter_names(self):
         names = ['Mean log', 'Std. log']
 
