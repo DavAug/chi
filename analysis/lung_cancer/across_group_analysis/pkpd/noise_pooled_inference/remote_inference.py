@@ -255,7 +255,10 @@ log_priors = [
         mean=0.1, sd=0.1, a=0, b=np.inf)]    # Pooled Tumour volume Sigma rel.
 
 # Define log-posterior
-problem.set_data(data)
+problem.set_data(data,
+    output_biomarker_dict={
+        'Plasma conc. in ng/mL': 'Plasma concentration',
+        'Tumour volume in cm^3': 'Tumour volume'})
 problem.set_log_prior(log_priors)
 log_posterior = problem.get_log_posterior()
 
