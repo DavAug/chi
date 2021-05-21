@@ -174,8 +174,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[4], 'ID 0: Sigma rel.')
         self.assertEqual(param_names[5], 'ID 1: Sigma rel.')
         self.assertEqual(param_names[6], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[7], 'Mean Sigma rel.')
-        self.assertEqual(param_names[8], 'Std. Sigma rel.')
+        self.assertEqual(param_names[7], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[8], 'Std. log Sigma rel.')
 
         # Fix parameters after setting a population model
         # (Only population models can be fixed)
@@ -194,8 +194,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[3], 'ID 0: Sigma rel.')
         self.assertEqual(param_names[4], 'ID 1: Sigma rel.')
         self.assertEqual(param_names[5], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[6], 'Mean Sigma rel.')
-        self.assertEqual(param_names[7], 'Std. Sigma rel.')
+        self.assertEqual(param_names[6], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[7], 'Std. log Sigma rel.')
 
         # Test case II: PKPD model
         # Fix model parameters
@@ -420,9 +420,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(ids[7], 'ID 1')
         self.assertEqual(names[8], 'Sigma rel.')
         self.assertEqual(ids[8], 'ID 2')
-        self.assertEqual(names[9], 'Mean Sigma rel.')
+        self.assertEqual(names[9], 'Mean log Sigma rel.')
         self.assertIsNone(ids[9])
-        self.assertEqual(names[10], 'Std. Sigma rel.')
+        self.assertEqual(names[10], 'Std. log Sigma rel.')
         self.assertIsNone(ids[10])
 
         # Make sure that selecting an individual is ignored for population
@@ -455,9 +455,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(ids[7], 'ID 1')
         self.assertEqual(names[8], 'Sigma rel.')
         self.assertEqual(ids[8], 'ID 2')
-        self.assertEqual(names[9], 'Mean Sigma rel.')
+        self.assertEqual(names[9], 'Mean log Sigma rel.')
         self.assertIsNone(ids[9])
-        self.assertEqual(names[10], 'Std. Sigma rel.')
+        self.assertEqual(names[10], 'Std. log Sigma rel.')
         self.assertIsNone(ids[10])
 
     def test_get_log_posteriors_bad_input(self):
@@ -641,10 +641,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
         self.assertEqual(param_names[2], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[3], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[4], 'Mean Sigma base')
-        self.assertEqual(param_names[5], 'Std. Sigma base')
-        self.assertEqual(param_names[6], 'Mean Sigma rel.')
-        self.assertEqual(param_names[7], 'Std. Sigma rel.')
+        self.assertEqual(param_names[4], 'Mean log Sigma base')
+        self.assertEqual(param_names[5], 'Std. log Sigma base')
+        self.assertEqual(param_names[6], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[7], 'Std. log Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -664,10 +664,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
         self.assertEqual(param_names[2], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[3], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[4], 'Mean Sigma base')
-        self.assertEqual(param_names[5], 'Std. Sigma base')
-        self.assertEqual(param_names[6], 'Mean Sigma rel.')
-        self.assertEqual(param_names[7], 'Std. Sigma rel.')
+        self.assertEqual(param_names[4], 'Mean log Sigma base')
+        self.assertEqual(param_names[5], 'Std. log Sigma base')
+        self.assertEqual(param_names[6], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[7], 'Std. log Sigma rel.')
 
         # Test case I.3: Set data
         problem.set_data(
@@ -685,13 +685,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[7], 'ID 0: Sigma base')
         self.assertEqual(param_names[8], 'ID 1: Sigma base')
         self.assertEqual(param_names[9], 'ID 2: Sigma base')
-        self.assertEqual(param_names[10], 'Mean Sigma base')
-        self.assertEqual(param_names[11], 'Std. Sigma base')
+        self.assertEqual(param_names[10], 'Mean log Sigma base')
+        self.assertEqual(param_names[11], 'Std. log Sigma base')
         self.assertEqual(param_names[12], 'ID 0: Sigma rel.')
         self.assertEqual(param_names[13], 'ID 1: Sigma rel.')
         self.assertEqual(param_names[14], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[15], 'Mean Sigma rel.')
-        self.assertEqual(param_names[16], 'Std. Sigma rel.')
+        self.assertEqual(param_names[15], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[16], 'Std. log Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -714,10 +714,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
         self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[7], 'Mean Sigma base')
-        self.assertEqual(param_names[8], 'Std. Sigma base')
-        self.assertEqual(param_names[9], 'Mean Sigma rel.')
-        self.assertEqual(param_names[10], 'Std. Sigma rel.')
+        self.assertEqual(param_names[7], 'Mean log Sigma base')
+        self.assertEqual(param_names[8], 'Std. log Sigma base')
+        self.assertEqual(param_names[9], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[10], 'Std. log Sigma rel.')
 
         # Test case II: PKPD model
         problem = copy.deepcopy(self.pkpd_problem)
@@ -794,10 +794,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'Pooled myokit.critical_volume')
         self.assertEqual(param_names[3], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[4], 'Mean myokit.kappa')
-        self.assertEqual(param_names[5], 'Std. myokit.kappa')
-        self.assertEqual(param_names[6], 'Mean myokit.lambda')
-        self.assertEqual(param_names[7], 'Std. myokit.lambda')
+        self.assertEqual(param_names[4], 'Mean log myokit.kappa')
+        self.assertEqual(param_names[5], 'Std. log myokit.kappa')
+        self.assertEqual(param_names[6], 'Mean log myokit.lambda')
+        self.assertEqual(param_names[7], 'Std. log myokit.lambda')
         self.assertEqual(
             param_names[8], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
@@ -831,10 +831,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'Pooled myokit.critical_volume')
         self.assertEqual(param_names[3], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[4], 'Mean myokit.kappa')
-        self.assertEqual(param_names[5], 'Std. myokit.kappa')
-        self.assertEqual(param_names[6], 'Mean myokit.lambda')
-        self.assertEqual(param_names[7], 'Std. myokit.lambda')
+        self.assertEqual(param_names[4], 'Mean log myokit.kappa')
+        self.assertEqual(param_names[5], 'Std. log myokit.kappa')
+        self.assertEqual(param_names[6], 'Mean log myokit.lambda')
+        self.assertEqual(param_names[7], 'Std. log myokit.lambda')
         self.assertEqual(
             param_names[8], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
@@ -862,13 +862,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[7], 'ID 0: myokit.kappa')
         self.assertEqual(param_names[8], 'ID 1: myokit.kappa')
         self.assertEqual(param_names[9], 'ID 2: myokit.kappa')
-        self.assertEqual(param_names[10], 'Mean myokit.kappa')
-        self.assertEqual(param_names[11], 'Std. myokit.kappa')
+        self.assertEqual(param_names[10], 'Mean log myokit.kappa')
+        self.assertEqual(param_names[11], 'Std. log myokit.kappa')
         self.assertEqual(param_names[12], 'ID 0: myokit.lambda')
         self.assertEqual(param_names[13], 'ID 1: myokit.lambda')
         self.assertEqual(param_names[14], 'ID 2: myokit.lambda')
-        self.assertEqual(param_names[15], 'Mean myokit.lambda')
-        self.assertEqual(param_names[16], 'Std. myokit.lambda')
+        self.assertEqual(param_names[15], 'Mean log myokit.lambda')
+        self.assertEqual(param_names[16], 'Std. log myokit.lambda')
         self.assertEqual(
             param_names[17], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
@@ -905,10 +905,10 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[4], 'ID 2: central.size')
         self.assertEqual(param_names[5], 'Pooled myokit.critical_volume')
         self.assertEqual(param_names[6], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[7], 'Mean myokit.kappa')
-        self.assertEqual(param_names[8], 'Std. myokit.kappa')
-        self.assertEqual(param_names[9], 'Mean myokit.lambda')
-        self.assertEqual(param_names[10], 'Std. myokit.lambda')
+        self.assertEqual(param_names[7], 'Mean log myokit.kappa')
+        self.assertEqual(param_names[8], 'Std. log myokit.kappa')
+        self.assertEqual(param_names[9], 'Mean log myokit.lambda')
+        self.assertEqual(param_names[10], 'Std. log myokit.lambda')
         self.assertEqual(
             param_names[11], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
@@ -1137,8 +1137,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[8], 'ID 0: Sigma rel.')
         self.assertEqual(param_names[9], 'ID 1: Sigma rel.')
         self.assertEqual(param_names[10], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[11], 'Mean Sigma rel.')
-        self.assertEqual(param_names[12], 'Std. Sigma rel.')
+        self.assertEqual(param_names[11], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[12], 'Std. log Sigma rel.')
 
         # Test case I.2: Specify order
         parameter_names = [
@@ -1160,8 +1160,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[3], 'ID 0: myokit.lambda_0')
         self.assertEqual(param_names[4], 'ID 1: myokit.lambda_0')
         self.assertEqual(param_names[5], 'ID 2: myokit.lambda_0')
-        self.assertEqual(param_names[6], 'Mean myokit.lambda_0')
-        self.assertEqual(param_names[7], 'Std. myokit.lambda_0')
+        self.assertEqual(param_names[6], 'Mean log myokit.lambda_0')
+        self.assertEqual(param_names[7], 'Std. log myokit.lambda_0')
         self.assertEqual(param_names[8], 'ID 0: myokit.lambda_1')
         self.assertEqual(param_names[9], 'ID 1: myokit.lambda_1')
         self.assertEqual(param_names[10], 'ID 2: myokit.lambda_1')
@@ -1197,18 +1197,18 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[0], 'ID 0: central.drug_amount')
         self.assertEqual(param_names[1], 'ID 1: central.drug_amount')
         self.assertEqual(param_names[2], 'ID 2: central.drug_amount')
-        self.assertEqual(param_names[3], 'Mean central.drug_amount')
-        self.assertEqual(param_names[4], 'Std. central.drug_amount')
+        self.assertEqual(param_names[3], 'Mean log central.drug_amount')
+        self.assertEqual(param_names[4], 'Std. log central.drug_amount')
         self.assertEqual(param_names[5], 'ID 0: myokit.tumour_volume')
         self.assertEqual(param_names[6], 'ID 1: myokit.tumour_volume')
         self.assertEqual(param_names[7], 'ID 2: myokit.tumour_volume')
-        self.assertEqual(param_names[8], 'Mean myokit.tumour_volume')
-        self.assertEqual(param_names[9], 'Std. myokit.tumour_volume')
+        self.assertEqual(param_names[8], 'Mean log myokit.tumour_volume')
+        self.assertEqual(param_names[9], 'Std. log myokit.tumour_volume')
         self.assertEqual(param_names[10], 'ID 0: central.size')
         self.assertEqual(param_names[11], 'ID 1: central.size')
         self.assertEqual(param_names[12], 'ID 2: central.size')
-        self.assertEqual(param_names[13], 'Mean central.size')
-        self.assertEqual(param_names[14], 'Std. central.size')
+        self.assertEqual(param_names[13], 'Mean log central.size')
+        self.assertEqual(param_names[14], 'Std. log central.size')
         self.assertEqual(param_names[15], 'Pooled myokit.critical_volume')
         self.assertEqual(param_names[16], 'Pooled myokit.elimination_rate')
         self.assertEqual(param_names[17], 'ID 0: myokit.kappa')
@@ -1224,9 +1224,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(
             param_names[24], 'ID 2: central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[25], 'Mean central.drug_concentration Sigma rel.')
+            param_names[25], 'Mean log central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[26], 'Std. central.drug_concentration Sigma rel.')
+            param_names[26], 'Std. log central.drug_concentration Sigma rel.')
         self.assertEqual(
             param_names[27], 'Pooled myokit.tumour_volume Sigma base')
         self.assertEqual(
@@ -1236,9 +1236,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(
             param_names[30], 'ID 2: myokit.tumour_volume Sigma rel.')
         self.assertEqual(
-            param_names[31], 'Mean myokit.tumour_volume Sigma rel.')
+            param_names[31], 'Mean log myokit.tumour_volume Sigma rel.')
         self.assertEqual(
-            param_names[32], 'Std. myokit.tumour_volume Sigma rel.')
+            param_names[32], 'Std. log myokit.tumour_volume Sigma rel.')
 
     def test_set_population_model_bad_input(self):
         # Population models have the wrong type
