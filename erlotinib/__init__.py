@@ -53,7 +53,8 @@ from ._population_models import (  # noqa
     LogNormalModel,
     PooledModel,
     PopulationModel,
-    ReducedPopulationModel
+    ReducedPopulationModel,
+    TruncatedGaussianModel
 )
 
 from ._predictive_models import (  # noqa
