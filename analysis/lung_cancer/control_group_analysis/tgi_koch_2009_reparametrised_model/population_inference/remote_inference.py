@@ -75,8 +75,15 @@ logging_steps = 100
 sampler = pints.NoUTurnMCMC
 max_tree_depth = 10
 n_adaption_steps = 1000
-transform = pints.LogTransformation(
-    n_parameters=problem.get_n_parameters())
+transform = pints.ComposedTransformation(
+    pints.LogTransformation(n_parameters=8),       # Individual
+    pints.IdentityTransformation(n_parameters=1),  # Mean log
+    pints.LogTransformation(n_parameters=9),       # Std log + Individual
+    pints.IdentityTransformation(n_parameters=1),  # Mean log
+    pints.LogTransformation(n_parameters=9),       # Std log + Individual
+    pints.IdentityTransformation(n_parameters=1),  # Mean log
+    pints.LogTransformation(n_parameters=2)        # Std log + noise
+)
 
 # Sample initial parameters using erlotinib
 np.random.seed(2)
