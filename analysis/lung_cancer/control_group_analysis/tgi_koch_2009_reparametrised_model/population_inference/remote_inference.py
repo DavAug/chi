@@ -31,7 +31,6 @@ population_model = [
     erlo.LogNormalModel(),  # Initial tumour volume
     erlo.LogNormalModel(),  # Critical tumour volume
     erlo.LogNormalModel(),  # Tumour growth rate
-    erlo.PooledModel(),     # Base noise
     erlo.PooledModel()]     # Relative noise
 
 # Build model
@@ -39,7 +38,8 @@ problem = erlo.ProblemModellingController(
     mechanistic_model, error_model)
 problem.fix_parameters({
     'Drug concentration in mg/L': 0,
-    'Potency in L/mg/day': 0})
+    'Potency in L/mg/day': 0,
+    'Sigma base': 0.001})
 problem.set_population_model(population_model)
 
 # Import data
@@ -47,23 +47,17 @@ data = erlo.DataLibrary().lung_cancer_control_group()
 
 # Define prior distribution
 log_priors = [
+    pints.GaussianLogPrior(mean=-3, sd=0.5),    # Mean log Initial volume
     pints.TruncatedGaussianLogPrior(
-        mean=0.1, sd=1, a=0, b=np.inf),      # Mean Initial tumour volume
+        mean=1, sd=0.5, a=0, b=np.inf),         # Std. log Initial volume
+    pints.GaussianLogPrior(mean=-1, sd=0.5),    # Mean log Critical volume
     pints.TruncatedGaussianLogPrior(
-        mean=1, sd=1, a=0, b=np.inf),        # Std. Initial tumour volume
+        mean=1, sd=0.5, a=0, b=np.inf),         # Std. log Critical volume
+    pints.GaussianLogPrior(mean=-2.5, sd=0.5),  # Mean log Growth rate
     pints.TruncatedGaussianLogPrior(
-        mean=1, sd=1, a=0, b=np.inf),        # Mean Critical tumour volume
+        mean=0.5, sd=0.5, a=0, b=np.inf),       # Std. log Growth rate
     pints.TruncatedGaussianLogPrior(
-        mean=1, sd=1, a=0, b=np.inf),        # Std. Critical tumour volume
-    pints.TruncatedGaussianLogPrior(
-        mean=0.1, sd=1, a=0, b=np.inf),      # Mean Growth rate
-    pints.TruncatedGaussianLogPrior(
-        mean=1, sd=1, a=0, b=np.inf),        # Std. Growth rate
-    pints.TruncatedGaussianLogPrior(
-        mean=0.1, sd=1, a=0, b=np.inf),      # Pooled Sigma base
-    pints.TruncatedGaussianLogPrior(
-        mean=0.1, sd=0.1, a=0, b=np.inf)]    # Pooled Sigma rel.
-log_prior = pints.ComposedLogPrior(*log_priors)
+        mean=0.1, sd=0.1, a=0, b=np.inf)]       # Pooled Sigma rel.
 
 # Define log-posterior
 problem.set_data(data)
@@ -76,11 +70,11 @@ print('Setting up inference ...')
 
 # Setup sampling controller
 n_chains = 5
-n_iterations = 100000
-logging_steps = 500
+n_iterations = 30000
+logging_steps = 100
 sampler = pints.NoUTurnMCMC
-max_tree_depth = 6
-n_adaption_steps = 10000
+max_tree_depth = 10
+n_adaption_steps = 1000
 transform = pints.LogTransformation(
     n_parameters=problem.get_n_parameters())
 
