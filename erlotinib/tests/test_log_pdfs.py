@@ -210,11 +210,22 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertNotEqual(score, -np.inf)
         self.assertAlmostEqual(self.hierarchical_model(parameters), score)
 
-        # Test case III.2: Returns -np.inf if individuals are far away from
-        # pop distribution
-        indiv_parameters_1 = [10, 1, 10E20, 1, 3, 1, 1, 2, 1.2]
-        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
-        pop_params = [0.2, 10E-10]
+        # Test case IV: Infinite log-pdf from population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
+
+        indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
 
         parameters = [
             indiv_parameters_1[0],
@@ -326,36 +337,6 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
         pop_params = [0.2, 1]
-        parameters = [
-            indiv_parameters_1[0],
-            indiv_parameters_1[1],
-            indiv_parameters_1[2],
-            indiv_parameters_2[2],
-            pop_params[0],
-            pop_params[1],
-            indiv_parameters_1[3],
-            indiv_parameters_1[4],
-            indiv_parameters_2[4],
-            indiv_parameters_1[5],
-            indiv_parameters_1[6],
-            indiv_parameters_1[7],
-            indiv_parameters_1[8]]
-
-        score = self.hierarchical_model(parameters)
-        indiv_scores = self.hierarchical_model.compute_pointwise_ll(
-            parameters, per_individual=True)
-        pw_scores = self.hierarchical_model.compute_pointwise_ll(
-            parameters, per_individual=False)
-
-        self.assertEqual(len(indiv_scores), 2)
-        self.assertAlmostEqual(np.sum(indiv_scores), score)
-        self.assertEqual(len(pw_scores), 14)
-        self.assertAlmostEqual(np.sum(pw_scores), score)
-
-        # Test case III.2: Works if infinty is returned
-        indiv_parameters_1 = [10, 1, 10E20, 1, 3, 1, 1, 2, 1.2]
-        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
-        pop_params = [0.2, 10E-10]
         parameters = [
             indiv_parameters_1[0],
             indiv_parameters_1[1],
@@ -594,11 +575,22 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(sens[11], ref_sens[11])
         self.assertEqual(sens[12], ref_sens[12])
 
-        # Test case III.2: Returns -np.inf if individuals are far away from
-        # pop distribution
-        indiv_parameters_1 = [10, 1, 10E20, 1, 3, 1, 1, 2, 1.2]
-        indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
-        pop_params = [0.2, 10E-10]
+        # Test case IV: Infinite log-pdf from population model
+        # Reminder of population model
+        # cls.population_models = [
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
+
+        indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
+        indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
+        pop_params = [0.2, 1]
 
         parameters = [
             indiv_parameters_1[0],
@@ -616,8 +608,20 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             indiv_parameters_1[8]]
 
         score, sens = self.hierarchical_model.evaluateS1(parameters)
-
         self.assertEqual(score, -np.inf)
+        self.assertEqual(sens[0], np.inf)
+        self.assertEqual(sens[1], np.inf)
+        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(sens[3], np.inf)
+        self.assertEqual(sens[4], np.inf)
+        self.assertEqual(sens[5], np.inf)
+        self.assertEqual(sens[6], np.inf)
+        self.assertEqual(sens[7], np.inf)
+        self.assertEqual(sens[8], np.inf)
+        self.assertEqual(sens[9], np.inf)
+        self.assertEqual(sens[10], np.inf)
+        self.assertEqual(sens[11], np.inf)
+        self.assertEqual(sens[12], np.inf)
 
     def test_get_id(self):
         # Test case I: Get parameter IDs
@@ -674,8 +678,8 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
         self.assertEqual(parameter_names[2], 'central.size')
         self.assertEqual(parameter_names[3], 'central.size')
-        self.assertEqual(parameter_names[4], 'Mean central.size')
-        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Mean log central.size')
+        self.assertEqual(parameter_names[5], 'Std. log central.size')
         self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
         self.assertEqual(parameter_names[7], 'myokit.elimination_rate')
         self.assertEqual(parameter_names[8], 'myokit.elimination_rate')
@@ -695,8 +699,8 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(len(parameter_names), 11)
         self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
-        self.assertEqual(parameter_names[2], 'Mean central.size')
-        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[2], 'Mean log central.size')
+        self.assertEqual(parameter_names[3], 'Std. log central.size')
         self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
         self.assertEqual(parameter_names[5], 'myokit.elimination_rate')
         self.assertEqual(parameter_names[6], 'myokit.elimination_rate')
@@ -718,8 +722,8 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
         self.assertEqual(parameter_names[2], 'automatic-id-1 central.size')
         self.assertEqual(parameter_names[3], 'automatic-id-2 central.size')
-        self.assertEqual(parameter_names[4], 'Mean central.size')
-        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Mean log central.size')
+        self.assertEqual(parameter_names[5], 'Std. log central.size')
         self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
         self.assertEqual(
             parameter_names[7], 'automatic-id-1 myokit.elimination_rate')
@@ -741,8 +745,8 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(len(parameter_names), 11)
         self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
-        self.assertEqual(parameter_names[2], 'Mean central.size')
-        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[2], 'Mean log central.size')
+        self.assertEqual(parameter_names[3], 'Std. log central.size')
         self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
         self.assertEqual(
             parameter_names[5], 'automatic-id-1 myokit.elimination_rate')
@@ -939,7 +943,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(sens[12], ref_sens[12])
 
         # Test case II: Check exception for inf prior score
-        parameters = [-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         score, _ = self.log_posterior.evaluateS1(parameters)
         self.assertEqual(score, -np.inf)
 
@@ -978,8 +982,8 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
         self.assertEqual(parameter_names[2], 'central.size')
         self.assertEqual(parameter_names[3], 'central.size')
-        self.assertEqual(parameter_names[4], 'Mean central.size')
-        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Mean log central.size')
+        self.assertEqual(parameter_names[5], 'Std. log central.size')
         self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
         self.assertEqual(parameter_names[7], 'myokit.elimination_rate')
         self.assertEqual(parameter_names[8], 'myokit.elimination_rate')
@@ -999,8 +1003,8 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(len(parameter_names), 11)
         self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
-        self.assertEqual(parameter_names[2], 'Mean central.size')
-        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[2], 'Mean log central.size')
+        self.assertEqual(parameter_names[3], 'Std. log central.size')
         self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
         self.assertEqual(parameter_names[5], 'myokit.elimination_rate')
         self.assertEqual(parameter_names[6], 'myokit.elimination_rate')
@@ -1022,8 +1026,8 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
         self.assertEqual(parameter_names[2], 'automatic-id-1 central.size')
         self.assertEqual(parameter_names[3], 'automatic-id-2 central.size')
-        self.assertEqual(parameter_names[4], 'Mean central.size')
-        self.assertEqual(parameter_names[5], 'Std. central.size')
+        self.assertEqual(parameter_names[4], 'Mean log central.size')
+        self.assertEqual(parameter_names[5], 'Std. log central.size')
         self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
         self.assertEqual(
             parameter_names[7], 'automatic-id-1 myokit.elimination_rate')
@@ -1045,8 +1049,8 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(len(parameter_names), 11)
         self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
         self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
-        self.assertEqual(parameter_names[2], 'Mean central.size')
-        self.assertEqual(parameter_names[3], 'Std. central.size')
+        self.assertEqual(parameter_names[2], 'Mean log central.size')
+        self.assertEqual(parameter_names[3], 'Std. log central.size')
         self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
         self.assertEqual(
             parameter_names[5], 'automatic-id-1 myokit.elimination_rate')

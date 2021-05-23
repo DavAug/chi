@@ -805,8 +805,8 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(parameters[4], 'Pooled myokit.lambda_1')
         self.assertEqual(parameters[5], 'Pooled Sigma base')
         self.assertEqual(parameters[6], 'Sigma rel.')
-        self.assertEqual(parameters[7], 'Mean Sigma rel.')
-        self.assertEqual(parameters[8], 'Std. Sigma rel.')
+        self.assertEqual(parameters[7], 'Mean log Sigma rel.')
+        self.assertEqual(parameters[8], 'Std. log Sigma rel.')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -920,6 +920,8 @@ class TestSamplingController(unittest.TestCase):
         sampler.set_parallel_evaluation(False)
 
         sampler.set_n_runs(3)
+        n_parameters = self.log_posterior_id_40.n_parameters()
+        sampler._initial_params = np.ones(shape=(1, 3, n_parameters))
         result = sampler.run(n_iterations=20)
 
         dimensions = list(result.dims)
@@ -961,6 +963,8 @@ class TestSamplingController(unittest.TestCase):
         sampler.set_parallel_evaluation(False)
 
         sampler.set_n_runs(3)
+        n_parameters = self.hierarchical_posterior.n_parameters()
+        sampler._initial_params = np.ones(shape=(1, 3, n_parameters))
         result = sampler.run(n_iterations=20)
 
         dimensions = list(result.dims)
@@ -982,14 +986,14 @@ class TestSamplingController(unittest.TestCase):
 
         parameters = sorted(list(result.data_vars.keys()))
         self.assertEqual(len(parameters), 9)
-        self.assertEqual(parameters[0], 'Mean Sigma rel.')
+        self.assertEqual(parameters[0], 'Mean log Sigma rel.')
         self.assertEqual(parameters[1], 'Pooled Sigma base')
         self.assertEqual(parameters[2], 'Pooled myokit.drug_concentration')
         self.assertEqual(parameters[3], 'Pooled myokit.lambda_0')
         self.assertEqual(parameters[4], 'Pooled myokit.lambda_1')
         self.assertEqual(parameters[5], 'Pooled myokit.tumour_volume')
         self.assertEqual(parameters[6], 'Sigma rel.')
-        self.assertEqual(parameters[7], 'Std. Sigma rel.')
+        self.assertEqual(parameters[7], 'Std. log Sigma rel.')
         self.assertEqual(parameters[8], 'myokit.kappa')
 
         chains = result.chain
@@ -1026,6 +1030,8 @@ class TestSamplingController(unittest.TestCase):
         sampler.set_parallel_evaluation(False)
 
         sampler.set_n_runs(3)
+        n_parameters = self.log_posterior_id_40.n_parameters()
+        sampler._initial_params = np.ones(shape=(2, 3, n_parameters))
         hyperparameters = [1, 1]
         result = sampler.run(
             n_iterations=20, hyperparameters=hyperparameters)
