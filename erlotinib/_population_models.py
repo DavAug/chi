@@ -6,6 +6,7 @@
 #
 
 import copy
+import math
 
 from numba import njit
 import numpy as np
@@ -1125,13 +1126,19 @@ class TruncatedGaussianModel(PopulationModel):
     def _compute_log_likelihood(mean, std, observations):  # pragma: no cover
         r"""
         Calculates the log-likelihood using numba speed up.
+
+        We are using the relationship between the Gaussian CDF and the
+        error function
+
+        ..math::
+            Phi(x) = (1 + erf(x/sqrt(2))) / 2
         """
         # Compute log-likelihood score
         n_ids = len(observations)
         log_likelihood = \
             - n_ids * np.log(2 * np.pi * std**2) / 2 \
             - np.sum((observations - mean) ** 2) / (2 * std**2) \
-            - np.log(1 - norm.cdf(-mean/std))
+            - n_ids * np.log(1 - _norm_cdf(-mean/std))
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -1149,7 +1156,7 @@ class TruncatedGaussianModel(PopulationModel):
         log_likelihood = \
             - np.log(2 * np.pi * std**2) / 2 \
             - (observations - mean) ** 2 / (2 * std**2) \
-            - np.log(1 - norm.cdf(-mean/std))
+            - np.log(1 - math.erf(-mean/std/math.sqrt(2))) + np.log(2)
 
         return log_likelihood
 
@@ -1176,8 +1183,8 @@ class TruncatedGaussianModel(PopulationModel):
         n_ids = len(psi)
         log_likelihood = \
             - n_ids * np.log(2 * np.pi * std**2) / 2 \
-            - np.sum(transformed_psi**2) / 2 \
-            - np.log(1 - norm.cdf(-mean/std))
+            - np.sum((psi - mean) ** 2) / (2 * std**2) \
+            - n_ids * np.log(1 - _norm_cdf(-mean/std))
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -1190,11 +1197,11 @@ class TruncatedGaussianModel(PopulationModel):
         # Copmute sensitivities w.r.t. parameters
         dmean = (
             np.sum(transformed_psi)
-            - norm.pdf(mean/std) / (1 - norm.cdf(-mean/std))
+            - _norm_pdf(mean/std) / (1 - _norm_cdf(-mean/std)) * n_ids
             ) / std
         dstd = (
             np.sum(transformed_psi**2)
-            - norm.pdf(mean/std) * mean / (1 - norm.cdf(-mean/std))
+            - _norm_pdf(mean/std) * mean / (1 - _norm_cdf(-mean/std)) * n_ids
             ) / std
 
         sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
@@ -1417,6 +1424,12 @@ class TruncatedGaussianModel(PopulationModel):
                 'standard deviations.')
 
         # Convert seed to int if seed is a rng
+        # (Unfortunately truncated normal is not yet available with numpys
+        # random number generator API)
+        if isinstance(seed, np.random.Generator):
+            # Draw new seed such that rng is propagated, but truncated normal
+            # samples can also be seeded.
+            seed = seed.integers(low=0, high=1E6)
         np.random.seed(seed)
 
         # Sample from population distribution
@@ -1449,3 +1462,21 @@ class TruncatedGaussianModel(PopulationModel):
                 'Length of names does not match the number of parameters.')
 
         self._parameter_names = [str(label) for label in names]
+
+
+@njit
+def _norm_cdf(x):
+    """
+    Returns the cumulative distribution function value of a standard normal
+    Gaussian distribtion.
+    """
+    return 0.5 * (1 + math.erf(x/math.sqrt(2)))
+
+
+@njit
+def _norm_pdf(x):
+    """
+    Returns the probability density function value of a standard normal
+    Gaussian distribtion.
+    """
+    return math.exp(-x**2/2) / math.sqrt(2 * math.pi)
