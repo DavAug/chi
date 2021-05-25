@@ -1465,7 +1465,7 @@ class TruncatedGaussianModel(PopulationModel):
 
 
 @njit
-def _norm_cdf(x):
+def _norm_cdf(x):  # pragma: no cover
     """
     Returns the cumulative distribution function value of a standard normal
     Gaussian distribtion.
@@ -1474,7 +1474,7 @@ def _norm_cdf(x):
 
 
 @njit
-def _norm_pdf(x):
+def _norm_pdf(x):  # pragma: no cover
     """
     Returns the probability density function value of a standard normal
     Gaussian distribtion.
