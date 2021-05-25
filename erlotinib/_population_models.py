@@ -6,9 +6,11 @@
 #
 
 import copy
+import math
 
 from numba import njit
 import numpy as np
+from scipy.stats import norm, truncnorm
 
 
 class PopulationModel(object):
@@ -1079,3 +1081,402 @@ class ReducedPopulationModel(object):
         # Set parameter names
         self._population_model.set_parameter_names(parameter_names)
         self._parameter_names = self._population_model.get_parameter_names()
+
+
+class TruncatedGaussianModel(PopulationModel):
+    r"""
+    A population model which assumes that model parameters across individuals
+    are distributed according to a Gaussian distribution which is truncated at
+    zero.
+
+    A truncated Gaussian population model assumes that a model parameter
+    :math:`\psi` varies across individuals such that :math:`\psi` is
+    Gaussian distributed in the population for :math:`\psi` greater 0
+
+    .. math::
+        p(\psi |\mu, \sigma) =
+        \frac{1}{1 - \Phi (-\mu / \sigma )} \frac{1}{\sqrt{2\pi} \sigma}
+        \exp\left(-\frac{(\psi - \mu )^2}
+        {2 \sigma ^2}\right)\quad \text{for} \quad \psi > 0
+
+    and :math:`p(\psi |\mu, \sigma) = 0` for :math:`\psi \leq 0`.
+    :math:`\Phi (\psi )` denotes the cumulative distribution function of
+    the Gaussian distribution.
+
+    Here, :math:`\mu` and :math:`\sigma ^2` are the
+    mean and variance of the untruncated Gaussian distribution.
+
+    Any observed individual with parameter :math:`\psi _i` is
+    assumed to be a realisation of the random variable :math:`\psi`.
+
+    Extends :class:`PopulationModel`.
+    """
+
+    def __init__(self):
+        super(TruncatedGaussianModel, self).__init__()
+
+        # Set number of parameters
+        self._n_parameters = 2
+
+        # Set default parameter names
+        self._parameter_names = ['Mu', 'Sigma']
+
+    @staticmethod
+    @njit
+    def _compute_log_likelihood(mean, std, observations):  # pragma: no cover
+        r"""
+        Calculates the log-likelihood using numba speed up.
+
+        We are using the relationship between the Gaussian CDF and the
+        error function
+
+        ..math::
+            Phi(x) = (1 + erf(x/sqrt(2))) / 2
+        """
+        # Compute log-likelihood score
+        n_ids = len(observations)
+        log_likelihood = \
+            - n_ids * np.log(2 * np.pi * std**2) / 2 \
+            - np.sum((observations - mean) ** 2) / (2 * std**2) \
+            - n_ids * np.log(1 - _norm_cdf(-mean/std))
+
+        # If score evaluates to NaN, return -infinity
+        if np.isnan(log_likelihood):
+            return -np.inf
+
+        return log_likelihood
+
+    @staticmethod
+    @njit
+    def _compute_pointwise_ll(mean, std, observations):  # pragma: no cover
+        r"""
+        Calculates the pointwise log-likelihoods using numba speed up.
+        """
+        # Compute log-likelihood score
+        log_likelihood = \
+            - np.log(2 * np.pi * std**2) / 2 \
+            - (observations - mean) ** 2 / (2 * std**2) \
+            - np.log(1 - math.erf(-mean/std/math.sqrt(2))) + np.log(2)
+
+        return log_likelihood
+
+    @staticmethod
+    @njit
+    def _compute_sensitivities(mean, std, psi):  # pragma: no cover
+        r"""
+        Calculates the log-likelihood and its sensitivities using numba
+        speed up.
+
+        Expects:
+        mean = float
+        std = float
+        Shape observations =  (n_obs,)
+
+        Returns:
+        log_likelihood: float
+        sensitivities: np.ndarray of shape (n_obs + 2,)
+        """
+        # Transform parameters and observations
+        transformed_psi = (psi - mean) / std
+
+        # Compute log-likelihood score
+        n_ids = len(psi)
+        log_likelihood = \
+            - n_ids * np.log(2 * np.pi * std**2) / 2 \
+            - np.sum((psi - mean) ** 2) / (2 * std**2) \
+            - n_ids * np.log(1 - _norm_cdf(-mean/std))
+
+        # If score evaluates to NaN, return -infinity
+        if np.isnan(log_likelihood):
+            n_obs = len(psi)
+            return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
+
+        # Compute sensitivities w.r.t. observations (psi)
+        dpsi = -transformed_psi / std
+
+        # Copmute sensitivities w.r.t. parameters
+        dmean = (
+            np.sum(transformed_psi)
+            - _norm_pdf(mean/std) / (1 - _norm_cdf(-mean/std)) * n_ids
+            ) / std
+        dstd = (
+            np.sum(transformed_psi**2)
+            - _norm_pdf(mean/std) * mean / (1 - _norm_cdf(-mean/std)) * n_ids
+            ) / std
+
+        sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
+
+        return log_likelihood, sensitivities
+
+    def compute_log_likelihood(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population model parameters.
+
+        The log-likelihood of a truncated Gaussian distribution is the log-pdf
+        evaluated at the observations
+
+        .. math::
+            L(\mu , \sigma | \Psi) =
+            \sum _{i=1}^N
+            \log p(\psi _i |
+            \mu , \sigma ) ,
+
+        where
+        :math:`\Psi := (\psi _1, \ldots , \psi _N)`
+        are the "observed" :math:`\psi` from :math:`N` individuals.
+
+        .. note::
+            Note that in the context of PKPD modelling the individual
+            parameters are never "observed" directly, but rather inferred
+            from biomarker measurements.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the model parameter values, i.e.
+            [:math:`\mu`, :math:`\sigma`].
+        observations
+            An array like object with the parameter values for the individuals,
+            i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        """
+        observations = np.asarray(observations)
+        mean, std = parameters
+
+        if (mean <= 0) or (std <= 0):
+            # The mean and std. of the Gaussian distribution are
+            # strictly positive if truncated at zero
+            return -np.inf
+
+        return self._compute_log_likelihood(mean, std, observations)
+
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        The pointwise log-likelihood of a truncated Gaussian distribution is
+        the log-pdf evaluated at the observations
+
+        .. math::
+            L(\mu , \sigma | \psi _i) =
+            \log p(\psi _i |
+            \mu , \sigma ) ,
+
+        where
+        :math:`\psi _i` are the "observed" parameters :math:`\psi` from
+        individual :math:`i`.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the model parameter values, i.e.
+            [:math:`\mu`, :math:`\sigma`].
+        observations
+            An array like object with the parameter values for the individuals,
+            i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        """
+        observations = np.asarray(observations)
+        mean, std = parameters
+
+        if (mean <= 0) or (std <= 0):
+            # The mean and std. of the Gaussian distribution are
+            # strictly positive if truncated at zero
+            return np.full(shape=len(observations), fill_value=-np.inf)
+
+        return self._compute_pointwise_ll(mean, std, observations)
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivity w.r.t. the observations and the parameters.
+
+        Parameters
+        ----------
+        parameters
+            An array-like object with the parameters of the population model.
+        observations
+            An array-like object with the observations of the individuals. Each
+            entry is assumed to belong to one individual.
+        """
+        observations = np.asarray(observations)
+        mean, std = parameters
+
+        if (mean <= 0) or (std <= 0):
+            # The mean and std. of the Gaussian distribution are
+            # strictly positive if truncated at zero
+            n_obs = len(observations)
+            return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
+
+        return self._compute_sensitivities(mean, std, observations)
+
+    def get_mean_and_std(self, parameters):
+        r"""
+        Returns the mean and the standard deviation of the population
+        for given :math:`\mu` and :math:`\sigma`.
+
+        The mean and variance of the parameter :math:`\psi` are given
+        by
+
+        .. math::
+            \mathbb{E}\left[ \psi \right] =
+                \mu + \sigma F(\mu/\sigma)
+            \quad \text{and} \quad
+            \text{Var}\left[ \psi \right] =
+                \sigma ^2 \left[
+                    1 - \frac{\mu}{\sigma}F(\mu/\sigma)
+                    - F(\mu/\sigma) ^2
+                \right],
+
+        where :math:`F(\mu/\sigma) = \phi(\mu/\sigma )/(1-\Phi(-\mu/\sigma))`
+        is a function given by the Gaussian probability density function
+        :math:`\phi(\psi)` and the Gaussian cumulative distribution function
+        :math:`\Phi(\psi)`.
+
+        Parameters
+        ----------
+        mu
+            Mean of untruncated Gaussian distribution.
+        sigma
+            Standard deviation of untruncated Gaussian distribution.
+        """
+        # Check input
+        mu, sigma = parameters
+        if (mu < 0) or (sigma < 0):
+            # The mean and std. of the Gaussian distribution are
+            # strictly positive if truncated at zero
+            raise ValueError(
+                'The parameters mu and sigma cannot be negative.')
+
+        # Compute mean and standard deviation
+        mean = mu + sigma * norm.pdf(mu/sigma) / (1 - norm.cdf(-mu/sigma))
+        std = np.sqrt(
+            sigma**2 * (
+                1 -
+                mu / sigma * norm.pdf(mu/sigma) / (1 - norm.cdf(-mu/sigma))
+                - (norm.pdf(mu/sigma) / (1 - norm.cdf(-mu/sigma)))**2)
+            )
+
+        return [mean, std]
+
+    def get_parameter_names(self):
+        """
+        Returns the name of the the population model parameters. If name were
+        not set, defaults are returned.
+        """
+        return copy.copy(self._parameter_names)
+
+    def n_hierarchical_parameters(self, n_ids):
+        """
+        Returns a tuple of the number of individual parameters and the number
+        of population parameters that this model expects in context of a
+        :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
+        modelled.
+
+        Parameters
+        ----------
+        n_ids
+            Number of individuals.
+        """
+        n_ids = int(n_ids)
+
+        return (n_ids, self._n_parameters)
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the population model.
+        """
+        return self._n_parameters
+
+    def sample(self, parameters, n_samples=None, seed=None):
+        r"""
+        Returns random samples from the population distribution.
+
+        The returned value is a NumPy array with shape ``(n_samples,)``.
+
+        Parameters
+        ----------
+        parameters
+            Parameter values of the top-level parameters that are used for the
+            simulation.
+        n_samples
+            Number of samples. If ``None``, one sample is returned.
+        seed
+            A seed for the pseudo-random number generator.
+        """
+        if len(parameters) != self._n_parameters:
+            raise ValueError(
+                'The number of provided parameters does not match the expected'
+                ' number of top-level parameters.')
+
+        # Define shape of samples
+        if n_samples is None:
+            n_samples = 1
+        sample_shape = (int(n_samples),)
+
+        # Get parameters
+        mu, sigma = parameters
+
+        if (mu < 0) or (sigma < 0):
+            # The mean and std. of the Gaussian distribution are
+            # strictly positive if truncated at zero
+            raise ValueError(
+                'A log-normal distribution only accepts strictly positive '
+                'standard deviations.')
+
+        # Convert seed to int if seed is a rng
+        # (Unfortunately truncated normal is not yet available with numpys
+        # random number generator API)
+        if isinstance(seed, np.random.Generator):
+            # Draw new seed such that rng is propagated, but truncated normal
+            # samples can also be seeded.
+            seed = seed.integers(low=0, high=1E6)
+        np.random.seed(seed)
+
+        # Sample from population distribution
+        samples = truncnorm.rvs(
+            a=0, b=np.inf, loc=mu, scale=sigma, size=sample_shape)
+
+        return samples
+
+    def set_parameter_names(self, names=None):
+        r"""
+        Sets the names of the population model parameters.
+
+        The population parameter of a LogNormalModel are the population mean
+        and standard deviation of the parameter :math:`\psi`.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_parameters`. If ``None``, parameter names are reset to
+            defaults.
+        """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = ['Mu', 'Sigma']
+            return None
+
+        if len(names) != self._n_parameters:
+            raise ValueError(
+                'Length of names does not match the number of parameters.')
+
+        self._parameter_names = [str(label) for label in names]
+
+
+@njit
+def _norm_cdf(x):  # pragma: no cover
+    """
+    Returns the cumulative distribution function value of a standard normal
+    Gaussian distribtion.
+    """
+    return 0.5 * (1 + math.erf(x/math.sqrt(2)))
+
+
+@njit
+def _norm_pdf(x):  # pragma: no cover
+    """
+    Returns the probability density function value of a standard normal
+    Gaussian distribtion.
+    """
+    return math.exp(-x**2/2) / math.sqrt(2 * math.pi)
