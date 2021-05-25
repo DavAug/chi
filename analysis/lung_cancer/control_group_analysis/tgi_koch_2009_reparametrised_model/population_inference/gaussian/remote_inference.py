@@ -50,15 +50,15 @@ log_priors = [
     pints.TruncatedGaussianLogPrior(
         mean=0.1, sd=1, a=0, b=np.inf),      # Mu Initial tumour volume
     pints.TruncatedGaussianLogPrior(
-        mean=0.1, sd=0.5, a=0, b=np.inf),    # Sigma Initial tumour volume
+        mean=0.1, sd=0.05, a=0, b=np.inf),   # Sigma Initial tumour volume
     pints.TruncatedGaussianLogPrior(
         mean=1, sd=1, a=0, b=np.inf),        # Mu Critical tumour volume
     pints.TruncatedGaussianLogPrior(
         mean=1, sd=1, a=0, b=np.inf),        # Sigma Critical tumour volume
     pints.TruncatedGaussianLogPrior(
-        mean=0.1, sd=1, a=0, b=np.inf),      # Mu Growth rate
+        mean=0.1, sd=0.2, a=0, b=np.inf),    # Mu Growth rate
     pints.TruncatedGaussianLogPrior(
-        mean=0.1, sd=0.5, a=0, b=np.inf),    # Sigma Growth rate
+        mean=0.1, sd=0.05, a=0, b=np.inf),   # Sigma Growth rate
     pints.TruncatedGaussianLogPrior(
         mean=0.1, sd=0.1, a=0, b=np.inf)]    # Pooled Sigma rel.
 
