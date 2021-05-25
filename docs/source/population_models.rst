@@ -15,6 +15,7 @@ Functional classes
 - :class:`HeterogeneousModel`
 - :class:`LogNormalModel`
 - :class:`PooledModel`
+- :class:`TruncatedGaussianModel`
 
 Detailed API
 ^^^^^^^^^^^^
@@ -28,6 +29,10 @@ Detailed API
     :inherited-members:
 
 .. autoclass:: PooledModel
+    :members:
+    :inherited-members:
+
+.. autoclass:: TruncatedGaussianModel
     :members:
     :inherited-members:
 
