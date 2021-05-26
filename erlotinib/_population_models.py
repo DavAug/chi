@@ -1200,8 +1200,9 @@ class TruncatedGaussianModel(PopulationModel):
             - _norm_pdf(mean/std) / (1 - _norm_cdf(-mean/std)) * n_ids
             ) / std
         dstd = (
-            np.sum(transformed_psi**2)
-            - _norm_pdf(mean/std) * mean / (1 - _norm_cdf(-mean/std)) * n_ids
+            -n_ids + np.sum(transformed_psi**2)
+            + _norm_pdf(mean/std) * mean / std / (1 - _norm_cdf(-mean/std))
+            * n_ids
             ) / std
 
         sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
