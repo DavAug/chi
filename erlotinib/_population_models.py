@@ -290,15 +290,12 @@ class LogNormalModel(PopulationModel):
         r"""
         Calculates the log-likelihood using numba speed up.
         """
-        # Transform observations
-        log_psi = np.log(observations)
-
         # Compute log-likelihood score
-        n_ids = len(log_psi)
+        n_ids = len(observations)
         log_likelihood = \
             - n_ids * np.log(2 * np.pi * std**2) / 2 \
-            - np.sum(log_psi) \
-            - np.sum((log_psi - mean) ** 2) / (2 * std**2)
+            - np.sum(np.log(observations)) \
+            - np.sum((np.log(observations) - mean)**2) / 2 / std**2
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -339,17 +336,12 @@ class LogNormalModel(PopulationModel):
         log_likelihood: float
         sensitivities: np.ndarray of shape (n_obs + 2,)
         """
-        # Transform parameters and observations
-        var = std ** 2
-        log_psi = np.log(psi)
-        transformed_psi = (np.log(psi) - mean) / var
-
         # Compute log-likelihood score
         n_ids = len(psi)
         log_likelihood = \
-            - n_ids * np.log(2 * np.pi * var) / 2 \
-            - np.sum(log_psi) \
-            - np.sum(transformed_psi**2) * var / 2
+            - n_ids * np.log(2 * np.pi * std**2) / 2 \
+            - np.sum(np.log(psi)) \
+            - np.sum((np.log(psi) - mean)**2) / 2 / std**2
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -357,11 +349,11 @@ class LogNormalModel(PopulationModel):
             return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
-        dpsi = - (transformed_psi + 1) / psi
+        dpsi = - ((np.log(psi) - mean) / std**2 + 1) / psi
 
         # Copmute sensitivities w.r.t. parameters
-        dmean = np.sum(transformed_psi)
-        dstd = (np.sum(transformed_psi - 1)) / std
+        dmean = np.sum(np.log(psi) - mean) / std**2
+        dstd = (np.sum((np.log(psi) - mean)**2) / std**2 - n_ids) / std
 
         sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
 
@@ -1176,14 +1168,11 @@ class TruncatedGaussianModel(PopulationModel):
         log_likelihood: float
         sensitivities: np.ndarray of shape (n_obs + 2,)
         """
-        # Transform parameters and observations
-        transformed_psi = psi - mean
-
         # Compute log-likelihood score
         n_ids = len(psi)
         log_likelihood = \
-            - n_ids * np.log(2 * np.pi * std**2) / 2 \
-            - np.sum((psi - mean) ** 2) / (2 * std**2) \
+            - n_ids * (np.log(2 * np.pi) / 2 + np.log(std)) \
+            - np.sum((psi - mean)**2) / (2 * std**2) \
             - n_ids * np.log(1 - _norm_cdf(-mean/std))
 
         # If score evaluates to NaN, return -infinity
@@ -1192,15 +1181,15 @@ class TruncatedGaussianModel(PopulationModel):
             return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
-        dpsi = -transformed_psi / std**2
+        dpsi = (mean - psi) / std**2
 
         # Copmute sensitivities w.r.t. parameters
         dmean = (
-            np.sum(transformed_psi) / std
+            np.sum(psi - mean) / std
             - _norm_pdf(mean/std) / (1 - _norm_cdf(-mean/std)) * n_ids
             ) / std
         dstd = (
-            -n_ids + np.sum(transformed_psi**2) / std**2
+            -n_ids + np.sum((psi - mean)**2) / std**2
             + _norm_pdf(mean/std) * mean / std / (1 - _norm_cdf(-mean/std))
             * n_ids
             ) / std
