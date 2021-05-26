@@ -1177,7 +1177,7 @@ class TruncatedGaussianModel(PopulationModel):
         sensitivities: np.ndarray of shape (n_obs + 2,)
         """
         # Transform parameters and observations
-        transformed_psi = (psi - mean) / std
+        transformed_psi = psi - mean
 
         # Compute log-likelihood score
         n_ids = len(psi)
@@ -1192,15 +1192,15 @@ class TruncatedGaussianModel(PopulationModel):
             return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
-        dpsi = -transformed_psi / std
+        dpsi = -transformed_psi / std**2
 
         # Copmute sensitivities w.r.t. parameters
         dmean = (
-            np.sum(transformed_psi)
+            np.sum(transformed_psi) / std
             - _norm_pdf(mean/std) / (1 - _norm_cdf(-mean/std)) * n_ids
             ) / std
         dstd = (
-            -n_ids + np.sum(transformed_psi**2)
+            -n_ids + np.sum(transformed_psi**2) / std**2
             + _norm_pdf(mean/std) * mean / std / (1 - _norm_cdf(-mean/std))
             * n_ids
             ) / std
