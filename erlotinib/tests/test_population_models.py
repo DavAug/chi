@@ -1443,226 +1443,229 @@ class TestTruncatedGaussianModel(unittest.TestCase):
     def test_compute_sensitivities(self):
         n_ids = 10
 
-    #     # Test case I: psis = mu, sigma = 1
-    #     # Sensitivities reduce to
-    #     # dpsi = 0
-    #     # dmu = - phi(mu) * nids / (1 - Phi(-mu))
-    #     # dsigma = - phi(mu) * mu * nids / (1 - Phi(-mu))
+        # Test case I: psis = mu, sigma = 1
+        # Sensitivities reduce to
+        # dpsi = 0
+        # dmu = - phi(mu) * nids / (1 - Phi(-mu))
+        # dsigma = -n_ids + phi(mu) * mu * nids / (1 - Phi(-mu))
 
-    #     # Test case I.1:
-    #     psis = [1] * n_ids
-    #     mu = 1
-    #     sigma = 1
+        # Test case I.1:
+        psis = [1] * n_ids
+        mu = 1
+        sigma = 1
 
-    #     # Compute ref scores
-    #     parameters = [mu, sigma]
-    #     ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-    #     ref_dpsi = 0
-    #     ref_dmu = -norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
-    #     ref_dsigma = -norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = 0
+        ref_dmu = -norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
+        ref_dsigma = -n_ids + norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
 
-    #     # Compute log-likelihood and sensitivities
-    #     score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
 
-    #     self.assertAlmostEqual(score, ref_ll)
-    #     self.assertEqual(len(sens), n_ids + 2)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi)
-    #     self.assertAlmostEqual(sens[2], ref_dpsi)
-    #     self.assertAlmostEqual(sens[3], ref_dpsi)
-    #     self.assertAlmostEqual(sens[4], ref_dpsi)
-    #     self.assertAlmostEqual(sens[5], ref_dpsi)
-    #     self.assertAlmostEqual(sens[6], ref_dpsi)
-    #     self.assertAlmostEqual(sens[7], ref_dpsi)
-    #     self.assertAlmostEqual(sens[8], ref_dpsi)
-    #     self.assertAlmostEqual(sens[9], ref_dpsi)
-    #     self.assertAlmostEqual(sens[10], ref_dmu)
-    #     self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
 
-    #     # Test case I.2:
-    #     psis = [10] * n_ids
-    #     mu = 10
-    #     sigma = 1
+        # Test case I.2:
+        psis = [10] * n_ids
+        mu = 10
+        sigma = 1
 
-    #     # Compute ref scores
-    #     parameters = [mu, sigma]
-    #     ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-    #     ref_dpsi = 0
-    #     ref_dmu = -norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
-    #     ref_dsigma = -norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = 0
+        ref_dmu = -norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
+        ref_dsigma = -n_ids + norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
 
-    #     # Compute log-likelihood and sensitivities
-    #     score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
 
-    #     self.assertAlmostEqual(score, ref_ll)
-    #     self.assertEqual(len(sens), n_ids + 2)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi)
-    #     self.assertAlmostEqual(sens[2], ref_dpsi)
-    #     self.assertAlmostEqual(sens[3], ref_dpsi)
-    #     self.assertAlmostEqual(sens[4], ref_dpsi)
-    #     self.assertAlmostEqual(sens[5], ref_dpsi)
-    #     self.assertAlmostEqual(sens[6], ref_dpsi)
-    #     self.assertAlmostEqual(sens[7], ref_dpsi)
-    #     self.assertAlmostEqual(sens[8], ref_dpsi)
-    #     self.assertAlmostEqual(sens[9], ref_dpsi)
-    #     self.assertAlmostEqual(sens[10], ref_dmu)
-    #     self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
 
-    #     # Test case II: psis != mu, sigma = 1
-    #     # Sensitivities reduce to
-    #     # dpsi = mu - psi
-    #     # dmu = psi - mu - phi(mu) * nids / (1 - Phi(-mu))
-    #     # dsigma = (psi - mu)^2 - phi(mu) * mu * nids / (1 - Phi(-mu))
+        # Test case II: psis != mu, sigma = 1
+        # Sensitivities reduce to
+        # dpsi = mu - psi
+        # dmu = psi - mu - phi(mu) * nids / (1 - Phi(-mu))
+        # dsigma = (psi - mu)^2 - phi(mu) * mu * nids / (1 - Phi(-mu))
 
-    #     # Test case II.1:
-    #     psis = np.array([1] * n_ids)
-    #     mu = 10
-    #     sigma = 1
+        # Test case II.1:
+        psis = np.array([1] * n_ids)
+        mu = 10
+        sigma = 1
 
-    #     # Compute ref scores
-    #     parameters = [mu, sigma]
-    #     ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-    #     ref_dpsi = mu - psis[0]
-    #     ref_dmu = \
-    #         np.sum(psis - mu) \
-    #         - norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
-    #     ref_dsigma = \
-    #         np.sum((psis - mu)**2) \
-    #         - norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = mu - psis[0]
+        ref_dmu = \
+            np.sum(psis - mu) \
+            - norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
+        ref_dsigma = \
+            - n_ids + np.sum((psis - mu)**2) \
+            + norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
 
-    #     # Compute log-likelihood and sensitivities
-    #     score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
 
-    #     self.assertAlmostEqual(score, ref_ll)
-    #     self.assertEqual(len(sens), n_ids + 2)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi)
-    #     self.assertAlmostEqual(sens[2], ref_dpsi)
-    #     self.assertAlmostEqual(sens[3], ref_dpsi)
-    #     self.assertAlmostEqual(sens[4], ref_dpsi)
-    #     self.assertAlmostEqual(sens[5], ref_dpsi)
-    #     self.assertAlmostEqual(sens[6], ref_dpsi)
-    #     self.assertAlmostEqual(sens[7], ref_dpsi)
-    #     self.assertAlmostEqual(sens[8], ref_dpsi)
-    #     self.assertAlmostEqual(sens[9], ref_dpsi)
-    #     self.assertAlmostEqual(sens[10], ref_dmu)
-    #     self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
 
-    #     # Test case II.1:
-    #     psis = np.array([7] * n_ids)
-    #     mu = 5
-    #     sigma = 1
+        # Test case II.2:
+        psis = np.array([7] * n_ids)
+        mu = 5
+        sigma = 1
 
-    #     # Compute ref scores
-    #     parameters = [mu, sigma]
-    #     ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-    #     ref_dpsi = mu - psis[0]
-    #     ref_dmu = \
-    #         np.sum(psis - mu) \
-    #         - norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
-    #     ref_dsigma = \
-    #         np.sum((psis - mu)**2) \
-    #         - norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = mu - psis[0]
+        ref_dmu = \
+            np.sum(psis - mu) \
+            - norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
+        ref_dsigma = \
+            - n_ids + np.sum((psis - mu)**2) \
+            + norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
 
-    #     # Compute log-likelihood and sensitivities
-    #     score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
 
-    #     self.assertAlmostEqual(score, ref_ll)
-    #     self.assertEqual(len(sens), n_ids + 2)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi)
-    #     self.assertAlmostEqual(sens[2], ref_dpsi)
-    #     self.assertAlmostEqual(sens[3], ref_dpsi)
-    #     self.assertAlmostEqual(sens[4], ref_dpsi)
-    #     self.assertAlmostEqual(sens[5], ref_dpsi)
-    #     self.assertAlmostEqual(sens[6], ref_dpsi)
-    #     self.assertAlmostEqual(sens[7], ref_dpsi)
-    #     self.assertAlmostEqual(sens[8], ref_dpsi)
-    #     self.assertAlmostEqual(sens[9], ref_dpsi)
-    #     self.assertAlmostEqual(sens[10], ref_dmu)
-    #     self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
 
-    #     # Test case III: psis != mu, sigma != 1
-    #     # Sensitivities reduce to
-    #     # dpsi = (mu - psi) / sigma^2
-    #     # dmu =
-    #     #   (psi - mu - phi(mu/sigma) * nids / (1 - Phi(-mu/sigma))) / sigma
-    #     # dsigma =
-    #     #   (psi - mu)^2 / sigma^3
-    #     #   - phi(mu) * mu * nids / (1 - Phi(-mu)) / sigma
+        # Test case III: psis != mu, sigma != 1
+        # Sensitivities reduce to
+        # dpsi = (mu - psi) / sigma^2
+        # dmu =
+        #   (psi - mu - phi(mu/sigma) * nids / (1 - Phi(-mu/sigma))) / sigma
+        # dsigma =
+        #   -nids / sigma
+        #   + (psi - mu)^2 / sigma^3
+        #   + phi(mu) * mu * nids / (1 - Phi(-mu)) / sigma^2
 
-    #     # Test case III.1:
-    #     psis = np.array([1] * n_ids)
-    #     mu = 10
-    #     sigma = 1
+        # Test case III.1:
+        psis = np.array([1] * n_ids)
+        mu = 10
+        sigma = 2
 
-    #     # Compute ref scores
-    #     parameters = [mu, sigma]
-    #     ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-    #     ref_dpsi = (mu - psis[0]) / sigma**2
-    #     ref_dmu = (
-    #         np.sum(psis - mu)
-    #         - norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
-    #         ) / sigma
-    #     ref_dsigma = (
-    #         np.sum((psis - mu)**2) / sigma**2
-    #         - norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
-    #         ) / sigma
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = (mu - psis[0]) / sigma**2
+        ref_dmu = (
+            np.sum(psis - mu) / sigma
+            - norm.pdf(mu/sigma) * n_ids / (1 - norm.cdf(-mu/sigma))
+            ) / sigma
+        ref_dsigma = (
+            -n_ids + np.sum((psis - mu)**2) / sigma**2
+            + norm.pdf(mu/sigma) * mu / sigma * n_ids /
+            (1 - norm.cdf(-mu/sigma))
+        ) / sigma
 
-    #     # Compute log-likelihood and sensitivities
-    #     score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
 
-    #     self.assertAlmostEqual(score, ref_ll)
-    #     self.assertEqual(len(sens), n_ids + 2)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi)
-    #     self.assertAlmostEqual(sens[2], ref_dpsi)
-    #     self.assertAlmostEqual(sens[3], ref_dpsi)
-    #     self.assertAlmostEqual(sens[4], ref_dpsi)
-    #     self.assertAlmostEqual(sens[5], ref_dpsi)
-    #     self.assertAlmostEqual(sens[6], ref_dpsi)
-    #     self.assertAlmostEqual(sens[7], ref_dpsi)
-    #     self.assertAlmostEqual(sens[8], ref_dpsi)
-    #     self.assertAlmostEqual(sens[9], ref_dpsi)
-    #     self.assertAlmostEqual(sens[10], ref_dmu)
-    #     self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma, 5)
 
-    #     # Test case III.2:
-    #     psis = np.array([7] * n_ids)
-    #     mu = 5
-    #     sigma = 1
+        # Test case III.2:
+        psis = np.array([7] * n_ids)
+        mu = 0.5
+        sigma = 0.1
 
-    #     # Compute ref scores
-    #     parameters = [mu, sigma]
-    #     ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-    #     ref_dpsi = (mu - psis[0]) / sigma**2
-    #     ref_dmu = (
-    #         np.sum(psis - mu)
-    #         - norm.pdf(mu) * n_ids / (1 - norm.cdf(-mu))
-    #         ) / sigma
-    #     ref_dsigma = (
-    #         np.sum((psis - mu)**2) / sigma**2
-    #         - norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
-    #         ) / sigma
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = (mu - psis[0]) / sigma**2
+        ref_dmu = (
+            np.sum(psis - mu) / sigma
+            - norm.pdf(mu/sigma) * n_ids / (1 - norm.cdf(-mu/sigma))
+            ) / sigma
+        ref_dsigma = (
+            -n_ids + np.sum((psis - mu)**2) / sigma**2
+            + norm.pdf(mu/sigma) * mu / sigma * n_ids /
+            (1 - norm.cdf(-mu/sigma))
+        ) / sigma
 
-    #     # Compute log-likelihood and sensitivities
-    #     score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        # Compute log-likelihood and sensitivities
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
 
-    #     self.assertAlmostEqual(score, ref_ll)
-    #     self.assertEqual(len(sens), n_ids + 2)
-    #     self.assertAlmostEqual(sens[0], ref_dpsi)
-    #     self.assertAlmostEqual(sens[1], ref_dpsi)
-    #     self.assertAlmostEqual(sens[2], ref_dpsi)
-    #     self.assertAlmostEqual(sens[3], ref_dpsi)
-    #     self.assertAlmostEqual(sens[4], ref_dpsi)
-    #     self.assertAlmostEqual(sens[5], ref_dpsi)
-    #     self.assertAlmostEqual(sens[6], ref_dpsi)
-    #     self.assertAlmostEqual(sens[7], ref_dpsi)
-    #     self.assertAlmostEqual(sens[8], ref_dpsi)
-    #     self.assertAlmostEqual(sens[9], ref_dpsi)
-    #     self.assertAlmostEqual(sens[10], ref_dmu)
-    #     self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
 
         # Test case IV: Compare gradients to numpy.gradient
         epsilon = 0.001
