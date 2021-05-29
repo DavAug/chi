@@ -59,6 +59,21 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         cls.hierarchical_model = erlo.HierarchicalLogLikelihood(
             cls.log_likelihoods, cls.population_models)
 
+        # Second (more complex) hierarchical model
+        population_models = [
+            erlo.TruncatedGaussianModel(),
+            erlo.TruncatedGaussianModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.HeterogeneousModel(),
+            erlo.LogNormalModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel(),
+            erlo.PooledModel()]
+
+        cls.hierarchical_model2 = erlo.HierarchicalLogLikelihood(
+            cls.log_likelihoods, population_models)
+
     def test_bad_instantiation(self):
         # Log-likelihoods are not pints.LogPDF
         log_likelihoods = ['bad', 'type']
@@ -575,7 +590,57 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(sens[11], ref_sens[11])
         self.assertEqual(sens[12], ref_sens[12])
 
-        # Test case IV: Infinite log-pdf from population model
+        # Test case IV: More complex hierarchical model and
+        # numpy gradients
+        # population_models = [
+        #     erlo.TruncatedGaussianModel(),
+        #     erlo.TruncatedGaussianModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.HeterogeneousModel(),
+        #     erlo.LogNormalModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel(),
+        #     erlo.PooledModel()]
+        epsilon = 0.00001
+        n_parameters = self.hierarchical_model2.n_parameters()
+        parameters = np.full(shape=n_parameters, fill_value=0.3)
+        ref_sens = []
+        for index in range(n_parameters):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.hierarchical_model2(low),
+                    self.hierarchical_model2(parameters),
+                    self.hierarchical_model2(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities with hierarchical model
+        _, sens = self.hierarchical_model2.evaluateS1(parameters)
+
+        self.assertEqual(len(sens), 22)
+        self.assertAlmostEqual(sens[0], ref_sens[0], 1)
+        self.assertAlmostEqual(sens[1], ref_sens[1], 1)
+        self.assertAlmostEqual(sens[2], ref_sens[2], 4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], 4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], 1)
+        self.assertAlmostEqual(sens[5], ref_sens[5], 1)
+        self.assertAlmostEqual(sens[6], ref_sens[6], 4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], 4)
+        self.assertEqual(sens[8], ref_sens[8])
+        self.assertEqual(sens[9], ref_sens[9])
+        self.assertEqual(sens[10], ref_sens[10])
+        self.assertEqual(sens[11], ref_sens[11])
+        self.assertEqual(sens[12], ref_sens[12])
+
+        # Test case V: Infinite log-pdf from population model
         # Reminder of population model
         # cls.population_models = [
         #     erlo.PooledModel(),
@@ -1108,6 +1173,10 @@ class TestLogLikelihood(unittest.TestCase):
         cls.log_likelihood = erlo.LogLikelihood(
             cls.model, cls.error_models, cls.observations, cls.times)
 
+        error_models = [erlo.GaussianErrorModel()] * 2
+        cls.log_likelihood2 = erlo.LogLikelihood(
+            cls.model, error_models, cls.observations, cls.times)
+
     def test_instantiation(self):
         # Check whether changing the model changes the log-likelihood
         obs = [1, 1.1, 1.2, 1.3]
@@ -1303,6 +1372,92 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertAlmostEqual(sens[6], ref_sens_1[6])
         self.assertAlmostEqual(sens[7], ref_sens_2[5])
         self.assertAlmostEqual(sens[8], ref_sens_2[6])
+
+        #TODO: For now this remains a myokit problem!
+        # (can investigate further when that is fixed!!)
+        # # Test case II: Comparison against numpy gradients
+        # # Test case II.1: ConstantAndMultiplicativeError
+        # epsilon = 0.00001
+        # n_parameters = self.log_likelihood.n_parameters()
+        # parameters = np.full(shape=n_parameters, fill_value=0.1)
+        # ref_sens = []
+        # for index in range(n_parameters):
+        #     # Construct parameter grid
+        #     low = parameters.copy()
+        #     low[index] -= epsilon
+        #     high = parameters.copy()
+        #     high[index] += epsilon
+
+        #     # Compute reference using numpy.gradient
+        #     sens = np.gradient(
+        #         [
+        #             self.log_likelihood(low),
+        #             self.log_likelihood(parameters),
+        #             self.log_likelihood(high)],
+        #         (epsilon))
+        #     print('%d :' % index, sens)
+        #     ref_sens.append(sens[1])
+
+        # # Compute sensitivities with hierarchical model
+        # _, sens = self.log_likelihood.evaluateS1(parameters)
+
+        # self.assertEqual(len(sens), 9)
+        # self.assertAlmostEqual(sens[0], ref_sens[0])
+        # self.assertAlmostEqual(sens[1], ref_sens[1])
+        # self.assertAlmostEqual(sens[2], ref_sens[2])
+        # self.assertAlmostEqual(sens[3], ref_sens[3])
+        # self.assertAlmostEqual(sens[4], ref_sens[4])
+        # self.assertAlmostEqual(sens[5], ref_sens[5])
+        # self.assertAlmostEqual(sens[6], ref_sens[6])
+        # self.assertAlmostEqual(sens[7], ref_sens[7])
+        # self.assertEqual(sens[8], ref_sens[8])
+
+        # #TODO: (Algebraic expressions?)
+        # # Test case II.1: GaussianError
+        # epsilon = 0.01
+        # print(self.log_likelihood2.get_parameter_names())
+        # n_parameters = self.log_likelihood2.n_parameters()
+        # parameters = np.full(shape=n_parameters, fill_value=0.1)
+        # ref_sens = []
+        # for index in range(n_parameters):
+        #     # Construct parameter grid
+        #     low = np.full(shape=n_parameters, fill_value=0.1)
+        #     low[index] -= epsilon
+        #     high = np.full(shape=n_parameters, fill_value=0.1)
+        #     high[index] += epsilon
+
+        #     print('low: ', self.log_likelihood2(low))
+        #     print('center: ', self.log_likelihood2(parameters))
+        #     print('high: ', self.log_likelihood2(high))
+        #     print(' ')
+
+        #     # Compute reference using numpy.gradient
+        #     sens = np.gradient(
+        #         [
+        #             self.log_likelihood2(low),
+        #             self.log_likelihood2(parameters),
+        #             self.log_likelihood2(high)],
+        #         (epsilon))
+        #     ref_sens.append(sens[1])
+
+        # print('P: ', parameters)
+        # print('T: ', times)
+        # model_output, model_sens = self.model.simulate(
+        #     parameters[:5], times)
+        # print(model_sens.shape)
+        # print('Model sens: ', model_sens[:, :, 2])
+        # print(self.model.simulator._model.code())
+        # # Compute sensitivities with hierarchical model
+        # _, sens = self.log_likelihood2.evaluateS1(parameters)
+
+        # self.assertEqual(len(sens), 7)
+        # self.assertAlmostEqual(sens[0], ref_sens[0], 1)
+        # self.assertAlmostEqual(sens[1], ref_sens[1], 1)
+        # self.assertAlmostEqual(sens[2], ref_sens[2], 1)
+        # self.assertAlmostEqual(sens[3], ref_sens[3], 1)
+        # self.assertAlmostEqual(sens[4], ref_sens[4], 1)
+        # self.assertAlmostEqual(sens[5], ref_sens[5])
+        # self.assertAlmostEqual(sens[6], ref_sens[6])
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
