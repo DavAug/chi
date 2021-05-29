@@ -1046,7 +1046,7 @@ class LogLikelihood(pints.LogPDF):
             outputs = self._mechanistic_model.simulate(
                 parameters=parameters[:self._n_mechanistic_params],
                 times=self._times)
-        except (myokit.SimulationError, Exception) as e:
+        except (myokit.SimulationError, Exception) as e:  # pragma: no cover
             warnings.warn(
                 'An error occured while solving the mechanistic model: \n'
                 + str(e) + '.\n A score of -infinity is returned.',
@@ -1220,7 +1220,7 @@ class LogLikelihood(pints.LogPDF):
             outputs, senss = self._mechanistic_model.simulate(
                 parameters=parameters[:self._n_mechanistic_params],
                 times=self._times)
-        except (myokit.SimulationError, Exception) as e:
+        except (myokit.SimulationError, Exception) as e:  # pragma: no cover
             warnings.warn(
                 'An error occured while solving the mechanistic model: \n'
                 + str(e) + '.\n A score of -infinity is returned.',
