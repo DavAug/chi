@@ -372,7 +372,7 @@ class TestLogNormalModel(unittest.TestCase):
         # Sensitivities reduce to
         # dpsi = -1 + mu_log
         # dmu = - mu_log * nids
-        # dsigma = -(1 + mu_log) * nids
+        # dsigma = -(1 + mu_log^2) * nids
 
         # Test case I.1:
         psis = [1] * n_ids
@@ -384,7 +384,7 @@ class TestLogNormalModel(unittest.TestCase):
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
         ref_dpsi = -1 + mu_log
         ref_dmu = -mu_log * n_ids
-        ref_dsigma = -(1 + mu_log) * n_ids
+        ref_dsigma = (mu_log**2 - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -414,7 +414,7 @@ class TestLogNormalModel(unittest.TestCase):
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
         ref_dpsi = -1 + mu_log
         ref_dmu = -mu_log * n_ids
-        ref_dsigma = -(1 + mu_log) * n_ids
+        ref_dsigma = (mu_log**2 - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -438,7 +438,7 @@ class TestLogNormalModel(unittest.TestCase):
         # Sensitivities reduce to
         # dpsi = -1 + mu_log / var_log
         # dmu = - mu_log / var_log * nids
-        # dsigma = -(1 + mu_log / var_log) / std_log * nids
+        # dsigma = (mu_log^2 / var_log - 1) / std_log * nids
 
         # Test case II.1:
         psis = [1] * n_ids
@@ -450,7 +450,7 @@ class TestLogNormalModel(unittest.TestCase):
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
         ref_dpsi = -1 + mu_log / sigma_log**2
         ref_dmu = -mu_log / sigma_log**2 * n_ids
-        ref_dsigma = -(1 + mu_log / sigma_log**2) / sigma_log * n_ids
+        ref_dsigma = (mu_log**2 / sigma_log**2 - 1) / sigma_log * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -480,7 +480,7 @@ class TestLogNormalModel(unittest.TestCase):
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
         ref_dpsi = -1 + mu_log / sigma_log**2
         ref_dmu = -mu_log / sigma_log**2 * n_ids
-        ref_dsigma = -(1 + mu_log / sigma_log**2) / sigma_log * n_ids
+        ref_dsigma = (mu_log**2 / sigma_log**2 - 1) / sigma_log * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psis)
@@ -504,7 +504,7 @@ class TestLogNormalModel(unittest.TestCase):
         # Score reduces to
         # dpsi = (-1 + mu_log - log psi) / psi
         # dmu = (log psi - mu_log) * nids
-        # dsigma = (log psi - mu_log - 1) * nids
+        # dsigma = ((log psi - mu_log)^2 - 1) * nids
 
         # Test case III.1
         psi = [np.exp(4)] * n_ids
@@ -516,7 +516,7 @@ class TestLogNormalModel(unittest.TestCase):
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
         ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
         ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
-        ref_dsigma = (np.log(psi[0]) - mu_log - 1) * n_ids
+        ref_dsigma = ((np.log(psi[0]) - mu_log)**2 - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psi)
@@ -546,7 +546,7 @@ class TestLogNormalModel(unittest.TestCase):
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
         ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
         ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
-        ref_dsigma = (np.log(psi[0]) - mu_log - 1) * n_ids
+        ref_dsigma = ((np.log(psi[0]) - mu_log)**2 - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
         score, sens = self.pop_model.compute_sensitivities(parameters, psi)
@@ -566,9 +566,51 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertAlmostEqual(sens[10], ref_dmu)
         self.assertAlmostEqual(sens[11], ref_dsigma)
 
-        # Test case IV: mu_log or sigma_log negative or zero
+        # Test case IV: Compare gradients to numpy.gradient
+        epsilon = 0.00001
+        n_parameters = n_ids + self.pop_model.n_parameters()
+        parameters = np.full(shape=n_parameters, fill_value=0.3)
+        ref_sens = []
+        for index in range(n_parameters):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
 
-        # Test case IV.1
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.pop_model.compute_log_likelihood(
+                        low[n_ids:], low[:n_ids]),
+                    self.pop_model.compute_log_likelihood(
+                        parameters[n_ids:], parameters[:n_ids]),
+                    self.pop_model.compute_log_likelihood(
+                        high[n_ids:], high[:n_ids])],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities with hierarchical model
+        _, sens = self.pop_model.compute_sensitivities(
+            parameters[n_ids:], parameters[:n_ids])
+
+        self.assertEqual(len(sens), 12)
+        self.assertAlmostEqual(sens[0], ref_sens[0])
+        self.assertAlmostEqual(sens[1], ref_sens[1])
+        self.assertAlmostEqual(sens[2], ref_sens[2])
+        self.assertAlmostEqual(sens[3], ref_sens[3])
+        self.assertAlmostEqual(sens[4], ref_sens[4])
+        self.assertAlmostEqual(sens[5], ref_sens[5])
+        self.assertAlmostEqual(sens[6], ref_sens[6])
+        self.assertAlmostEqual(sens[7], ref_sens[7])
+        self.assertAlmostEqual(sens[8], ref_sens[8])
+        self.assertAlmostEqual(sens[9], ref_sens[9])
+        self.assertAlmostEqual(sens[10], ref_sens[10], 5)
+        self.assertAlmostEqual(sens[11], ref_sens[11], 5)
+
+        # Test case V: mu_log or sigma_log negative or zero
+
+        # Test case V.1
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = 0
@@ -580,7 +622,7 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(sens[1], np.inf)
         self.assertEqual(sens[2], np.inf)
 
-        # Test case IV.2
+        # Test case V.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = -10
