@@ -1373,7 +1373,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertAlmostEqual(sens[7], ref_sens_2[5])
         self.assertAlmostEqual(sens[8], ref_sens_2[6])
 
-        #TODO: For now this remains a myokit problem!
+        # TODO: For now this remains a myokit problem!
         # (can investigate further when that is fixed!!)
         # # Test case II: Comparison against numpy gradients
         # # Test case II.1: ConstantAndMultiplicativeError
