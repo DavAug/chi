@@ -1,7 +1,5 @@
 #
-# This script infers the posterior distribution according to
-# `hmc_three_hierarchical_parameters.ipynb` and stores the samples
-# to files.
+# This script infers a posterior distribution and stores the samples to files.
 #
 
 import numpy as np
