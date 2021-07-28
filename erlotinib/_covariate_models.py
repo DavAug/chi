@@ -5,6 +5,12 @@
 # full license details.
 #
 
+from warnings import warn
+
+import numpy as np
+
+import erlotinib as erlo
+
 
 class CovariateModel(object):
     r"""
@@ -45,6 +51,18 @@ class CovariateModel(object):
 
         self._parameter_names = None
 
+    def check_compatibility(self, population_model):
+        r"""
+        Takes an instance of a :class:`PopulationModel` and checks
+        the compatibility with this CovariateModel.
+
+        If the model is not compatible, a warning is raised.
+
+        :param population_model: A population model for :math:`\eta`.
+        :type population_model: PopulationModel
+        """
+        raise NotImplementedError
+
     def compute_individual_parameters(self, parameters, eta, covariates):
         r"""
         Returns the individual parameters :math:`\psi`.
@@ -72,7 +90,7 @@ class CovariateModel(object):
         :type eta: np.ndarray of length (n,)
         :param covariates: Individual covariates :math:`\chi`.
         :type covariates: np.ndarray of length (n, c)
-        :returns: Individual parameters and sensitivities of shape (n, p + 1).
+        :returns: Individual parameters and sensitivities of shape (p + 1, n).
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
         raise NotImplementedError
@@ -123,3 +141,111 @@ class CovariateModel(object):
         :type names: List
         """
         raise NotImplementedError
+
+
+class CentredLogNormalModel(CovariateModel):
+    r"""
+    This model implements a reparametrisation of a
+    :class:`erlotinib.LogNormalModel` to
+
+    .. math::
+        \log \psi = \mu _{\mathrm{log}} + \sigma _{\mathrm{log}} * \eta ,
+
+    where :math:`\mu _{\mathrm{log}}` and :math:`\sigma _{\mathrm{log}}` are
+    the mean and variance of :math:`\log \psi` and :math:`\eta` are the
+    inter-individual fluctuations. :math:`\psi` are the parameters across
+    individuals.
+
+    Note that for :math:`\psi` to be log-normally distributed, :math:`\eta` has
+    to be distributed according to a standard normal distribution
+
+    .. math::
+        \eta \sim \mathcal{N}(0, 1).
+
+    .. note::
+        This model does not implement a model for covariates, but demonstrates
+        how the :class:`CovariateModel` interface may be used to reparametrise
+        :class:`PopulationModel`.
+
+    Extends :class:`CovariateModel`.
+    """
+
+    def __init__(self):
+        super(CentredLogNormalModel, self).__init__()
+
+        # Set number of parameters
+        self._n_parameters = 2
+
+        # Set default parameter names
+        self._parameter_names = ['Mean log', 'Std. log']
+
+    def check_compatibility(self, population_model):
+        r"""
+        Takes an instance of a :class:`PopulationModel` and checks
+        the compatibility with this CovariateModel.
+
+        If the model is not compatible, a warning is raised.
+
+        A CentredLogNormalModel is only compatible with a
+        :class:`GaussianModel`.
+
+        :param population_model: A population model for :math:`\eta`.
+        :type population_model: PopulationModel
+        """
+        if not isinstance(population_model, erlo.GaussianModel):
+            warn(
+                'This CovariateModel is only intended for the use with a '
+                'GaussianModel.', UserWarning)
+
+    def compute_individual_parameters(self, parameters, eta, covariates=None):
+        r"""
+        Returns the individual parameters :math:`\psi`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :param eta: Inter-individual fluctuations :math:`\eta`.
+        :type eta: np.ndarray of length (n,)
+        :param covariates: Individual covariates :math:`\chi`. In this model
+            the covariates do not influence the output.
+        :type covariates: np.ndarray of length (n, c)
+        :returns: Individual parameters :math:`\psi`.
+        :rtype: np.ndarray of length (n,)
+        """
+        # Unpack parameters
+        mu, sigma = parameters
+
+        # Compute individual parameters
+        psi = np.exp(mu + sigma * eta)
+
+        return psi
+
+    def compute_individual_sensitivities(self, parameters, eta, covariates):
+        r"""
+        Returns the individual parameters :math:`\psi` and their sensitivities
+        with respect to the model parameters :math:`\vartheta` and the relevant
+        fluctuation :math:`\eta`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :param eta: Inter-individual fluctuations :math:`\eta`.
+        :type eta: np.ndarray of length (n,)
+        :param covariates: Individual covariates :math:`\chi`. In this model
+            the covariates do not influence the output.
+        :type covariates: np.ndarray of length (n, c)
+        :returns: Individual parameters and sensitivities of shape (p + 1, n).
+        :rtype: Tuple[np.ndarray, np.ndarray]
+        """
+        # Unpack parameters
+        mu, sigma = parameters
+
+        # Compute individual parameters
+        psi = np.exp(mu + sigma * eta)
+
+        # Compute sensitivities
+        dmu = psi
+        dsigma = eta * psi
+        deta = eta * psi
+        sensitivities = np.vstack((dmu, dsigma, deta))
+
+        return sensitivities
+
