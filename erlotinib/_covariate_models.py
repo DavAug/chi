@@ -115,7 +115,7 @@ class CovariateModel(object):
 
         :param parameters: Model parameters :math:`\vartheta`.
         :type parameters: np.ndarray of length (p,)
-        :returns: Population parameters and sensitivities of shape (p', p).
+        :returns: Population parameters and sensitivities of shape (p, p').
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
         raise NotImplementedError
@@ -249,3 +249,56 @@ class CentredLogNormalModel(CovariateModel):
 
         return sensitivities
 
+    def compute_population_parameters(self, parameters):
+        r"""
+        Returns the population model parameters :math:`\theta` for the
+        inter-individual fluctuations :math:`\eta`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :returns: Population parameters :math:`\theta` for :math:`\eta`.
+        :rtype: np.ndarray of length (p',)
+        """
+        # As a result of the `centering` the population parameters for
+        # eta (mean and std.) are constant.
+        return np.array([0, 1])
+
+    def compute_population_sensitivities(self, parameters):
+        r"""
+        Returns the population model parameters :math:`\theta` for the
+        inter-individual fluctuations :math:`\eta` and their sensitivities
+        with respect to the model parameters :math:`\vartheta`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :returns: Population parameters and sensitivities of shape (p, p').
+        :rtype: Tuple[np.ndarray, np.ndarray]
+        """
+        # As a result of the `centering` the population parameters for
+        # eta (mean and std.) are constant.
+        return np.array([[0, 0]] * len(parameters))
+
+    def n_parameters(self):
+        """
+        Returns the number of model parameters.
+        """
+        return self._n_parameters
+
+    def set_parameter_names(self, names=None):
+        """
+        Sets the names of the model parameters.
+
+        :param names: A list of parameter names. If ``None``, parameter names
+            are reset to defaults.
+        :type names: List
+        """
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = ['Mean log', 'Std. log']
+            return None
+
+        if len(names) != self._n_parameters:
+            raise ValueError(
+                'Length of names does not match n_parameters.')
+
+        self._parameter_names = [str(label) for label in names]
