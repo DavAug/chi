@@ -43,7 +43,29 @@ class CovariateModel(object):
     def __init__(self):
         super(CovariateModel, self).__init__()
 
+    def compute_individual_parameters(self, parameters, eta, covariates):
+        r"""
+        Returns the individual parameters :math:`\psi`.
+
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of length (p,)
+        :param eta: Inter-individual fluctuations.
+        :type eta: np.ndarray of length (n,)
+        :param covariates: Individual covariates.
+        :type covariates: np.ndarray of length (n, c)
+        :returns: Individual parameters :math:`\psi`.
+        :rtype: np.ndarray of length (n,)
+        """
+        raise NotImplementedError
+
     def compute_population_parameters(self, parameters):
         r"""
-        Returns the parameters of the population model for :math:`\eta`.
+        Returns the population model parameters :math:`\theta` for the
+        inter-indiviudal fluctuations :math:`\eta`.
+
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of length (p,)
+        :returns: Population parameters :math:`\theta` for :math:`\eta`.
+        :rtype: np.ndarray of length (p',)
         """
+        raise NotImplementedError
