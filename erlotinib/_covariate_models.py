@@ -43,29 +43,83 @@ class CovariateModel(object):
     def __init__(self):
         super(CovariateModel, self).__init__()
 
+        self._parameter_names = None
+
     def compute_individual_parameters(self, parameters, eta, covariates):
         r"""
         Returns the individual parameters :math:`\psi`.
 
-        :param parameters: Model parameters.
+        :param parameters: Model parameters :math:`\vartheta`.
         :type parameters: np.ndarray of length (p,)
-        :param eta: Inter-individual fluctuations.
+        :param eta: Inter-individual fluctuations :math:`\eta`.
         :type eta: np.ndarray of length (n,)
-        :param covariates: Individual covariates.
+        :param covariates: Individual covariates :math:`\chi`.
         :type covariates: np.ndarray of length (n, c)
         :returns: Individual parameters :math:`\psi`.
         :rtype: np.ndarray of length (n,)
         """
         raise NotImplementedError
 
+    def compute_individual_sensitivities(self, parameters, eta, covariates):
+        r"""
+        Returns the individual parameters :math:`\psi` and their sensitivities
+        with respect to the model parameters :math:`\vartheta` and the relevant
+        fluctuation :math:`\eta`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :param eta: Inter-individual fluctuations :math:`\eta`.
+        :type eta: np.ndarray of length (n,)
+        :param covariates: Individual covariates :math:`\chi`.
+        :type covariates: np.ndarray of length (n, c)
+        :returns: Individual parameters and sensitivities of shape (n, p + 1).
+        :rtype: Tuple[np.ndarray, np.ndarray]
+        """
+        raise NotImplementedError
+
     def compute_population_parameters(self, parameters):
         r"""
         Returns the population model parameters :math:`\theta` for the
-        inter-indiviudal fluctuations :math:`\eta`.
+        inter-individual fluctuations :math:`\eta`.
 
-        :param parameters: Model parameters.
+        :param parameters: Model parameters :math:`\vartheta`.
         :type parameters: np.ndarray of length (p,)
         :returns: Population parameters :math:`\theta` for :math:`\eta`.
         :rtype: np.ndarray of length (p',)
+        """
+        raise NotImplementedError
+
+    def compute_population_sensitivities(self, parameters):
+        r"""
+        Returns the population model parameters :math:`\theta` for the
+        inter-individual fluctuations :math:`\eta` and their sensitivities
+        with respect to the model parameters :math:`\vartheta`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :returns: Population parameters and sensitivities of shape (p', p).
+        :rtype: Tuple[np.ndarray, np.ndarray]
+        """
+        raise NotImplementedError
+
+    def get_parameter_names(self):
+        """
+        Returns the names of the model parameters.
+        """
+        return self._parameter_names
+
+    def n_parameters(self):
+        """
+        Returns the number of model parameters.
+        """
+        raise NotImplementedError
+
+    def set_parameter_names(self, names=None):
+        """
+        Sets the names of the model parameters.
+
+        :param names: A list of parameter names. If ``None``, parameter names
+            are reset to defaults.
+        :type names: List
         """
         raise NotImplementedError
