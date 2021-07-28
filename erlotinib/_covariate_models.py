@@ -146,7 +146,7 @@ class CovariateModel(object):
 class CentredLogNormalModel(CovariateModel):
     r"""
     This model implements a reparametrisation of a
-    :class:`erlotinib.LogNormalModel` to
+    :class:`LogNormalModel` to
 
     .. math::
         \log \psi = \mu _{\mathrm{log}} + \sigma _{\mathrm{log}} * \eta ,
@@ -165,7 +165,7 @@ class CentredLogNormalModel(CovariateModel):
     .. note::
         This model does not implement a model for covariates, but demonstrates
         how the :class:`CovariateModel` interface may be used to reparametrise
-        :class:`PopulationModel`.
+        a :class:`PopulationModel`.
 
     Extends :class:`CovariateModel`.
     """
