@@ -67,7 +67,7 @@ class PopulationModel(object):
 
     def get_parameter_names(self):
         """
-        Returns the name of the the population model parameters. If name were
+        Returns the names of the population model parameters. If name is
         not set, defaults are returned.
         """
         raise NotImplementedError
