@@ -145,7 +145,7 @@ class CovariateModel(object):
 
 class CentredLogNormalModel(CovariateModel):
     r"""
-    This model implements a reparametrisation of a
+    This model implements a reparametrisation of the
     :class:`LogNormalModel` to
 
     .. math::
@@ -247,10 +247,10 @@ class CentredLogNormalModel(CovariateModel):
         # Compute sensitivities
         dmu = psi
         dsigma = eta * psi
-        deta = eta * psi
+        deta = sigma * psi
         sensitivities = np.vstack((dmu, dsigma, deta))
 
-        return sensitivities
+        return (psi, sensitivities)
 
     def compute_population_parameters(self, parameters):
         r"""
@@ -279,7 +279,7 @@ class CentredLogNormalModel(CovariateModel):
         """
         # As a result of the `centering` the population parameters for
         # eta (mean and std.) are constant.
-        return np.array([[0, 0]] * len(parameters))
+        return (np.array([0, 1]), np.array([[0, 0]] * len(parameters)))
 
     def n_parameters(self):
         """
