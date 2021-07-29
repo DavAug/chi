@@ -139,7 +139,7 @@ class GaussianModel(PopulationModel):
         {2 \sigma ^2}\right).
 
     Here, :math:`\mu` and :math:`\sigma ^2` are the
-    mean and variance of the untruncated Gaussian distribution.
+    mean and variance of the Gaussian distribution.
 
     Any observed individual with parameter :math:`\psi _i` is
     assumed to be a realisation of the random variable :math:`\psi`.
@@ -148,7 +148,7 @@ class GaussianModel(PopulationModel):
     """
 
     def __init__(self):
-        super(TruncatedGaussianModel, self).__init__()
+        super(GaussianModel, self).__init__()
 
         # Set number of parameters
         self._n_parameters = 2
@@ -219,7 +219,7 @@ class GaussianModel(PopulationModel):
 
         # Copmute sensitivities w.r.t. parameters
         dmean = np.sum(psi - mean) / std**2
-        dstd = -n_ids + np.sum((psi - mean)**2) / std**3
+        dstd = -n_ids / std + np.sum((psi - mean)**2) / std**3
 
         sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
 
@@ -394,7 +394,7 @@ class GaussianModel(PopulationModel):
         # Sample from population distribution
         rng = np.random.default_rng(seed=seed)
         samples = rng.normal(
-            mean=mu, sigma=sigma, size=sample_shape)
+            loc=mu, scale=sigma, size=sample_shape)
 
         return samples
 
