@@ -39,7 +39,7 @@ class CovariateModel(object):
     :math:`\psi`  and the new population parameters :math:`\theta`
 
     .. math::
-        \theta = f(\vartheta)
+        \theta = f(\vartheta)  \quad \mathrm{and} \quad
         \psi = g(\vartheta , \eta, \chi ).
 
     This base class provides an API to implement the functions :math:`f` and
@@ -149,7 +149,7 @@ class CentredLogNormalModel(CovariateModel):
     :class:`LogNormalModel` to
 
     .. math::
-        \log \psi = \mu _{\mathrm{log}} + \sigma _{\mathrm{log}} * \eta ,
+        \log \psi = \mu _{\mathrm{log}} + \sigma _{\mathrm{log}} \eta ,
 
     where :math:`\mu _{\mathrm{log}}` and :math:`\sigma _{\mathrm{log}}` are
     the mean and variance of :math:`\log \psi` and :math:`\eta` are the
@@ -161,6 +161,19 @@ class CentredLogNormalModel(CovariateModel):
 
     .. math::
         \eta \sim \mathcal{N}(0, 1).
+
+    In the notation from :class:`CovariateModel`, the mappings :math:`f` and
+    :math:`g` are therefore
+
+    .. math::
+        \theta = (0, 1) \quad \mathrm{and} \quad
+        \psi = \exp \left(\mu _{\mathrm{log}} + \sigma _{\mathrm{log}} \eta
+            \right),
+
+    where the model parameters are
+    :math:`\vartheta = (\mu _{\mathrm{log}}, \sigma _{\mathrm{log}})` and the
+    new population parameters :math:`\theta` are the mean and variance of the
+    Gaussian distribution of :math:`\eta`.
 
     .. note::
         This model does not implement a model for covariates, but demonstrates
