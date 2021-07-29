@@ -33,7 +33,7 @@ The main features of erlotinib are
 - Simulation of the dose response variability in a population (hierarchical models/non-linear mixed effects models).
 - Inference of population parameters from data (classical or Bayesian).
 - Simulation of structured populations, where inter-individual variability can be partly explained by covariates.
-- Inference of model parameters in a strcutured population from data (classical or Bayesian).
+- Inference of model parameters in a structured population from data (classical or Bayesian).
 
 This page provides the API, or developer documentation for
 erlotinib.
