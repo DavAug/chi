@@ -10,12 +10,11 @@
     :maxdepth: 1
 
     covariate_models
-    data_library
     error_models
     inference
+    library/index
     log_pdfs
     mechanistic_models
-    model_library
     plots/index
     population_models
     predictive_models
