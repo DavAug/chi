@@ -23,7 +23,7 @@ setup(
         'jupyter==1.0.0',
         'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
         'numba>=0.50',
-        'numpy>=1.8',
+        'numpy<1.21,>=1.17',
         'pandas>=0.24',
         'pints @ git+git://github.com/pints-team/pints.git#egg=pints',
         'plotly==4.8.1',
