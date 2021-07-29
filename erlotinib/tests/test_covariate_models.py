@@ -5,7 +5,6 @@
 # full license details.
 #
 
-import warnings
 import unittest
 
 import numpy as np
