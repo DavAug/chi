@@ -20,7 +20,6 @@ setup(
     # List of dependencies
     install_requires=[
         'arviz',
-        'jupyter==1.0.0',
         'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
         'numba>=0.50',
         'numpy<1.21,>=1.17',
@@ -39,5 +38,8 @@ setup(
             'furo',
             'sphinx>=1.5, !=1.7.3',     # For doc generation
         ],
+        'notebooks': [
+            'jupyter==1.0.0',
+        ]
     },
 )
