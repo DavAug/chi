@@ -5,17 +5,9 @@
 # full license details.
 #
 
-from . import (  # noqa
-    plots
-)
-
 from ._covariate_models import (  # noqa
     CovariateModel,
     CentredLogNormalModel
-)
-
-from ._data_library_api import (  # noqa
-    DataLibrary
 )
 
 from ._error_models import (  # noqa
@@ -40,10 +32,6 @@ from ._mechanistic_models import (  # noqa
     PharmacodynamicModel,
     PharmacokineticModel,
     ReducedMechanisticModel
-)
-
-from ._model_library_api import (  # noqa
-    ModelLibrary
 )
 
 from ._inference import (  # noqa

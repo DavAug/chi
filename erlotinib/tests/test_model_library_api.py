@@ -10,7 +10,7 @@ import unittest
 
 import myokit.formats.sbml as sbml
 
-import erlotinib as erlo
+from erlotinib.library import ModelLibrary
 
 
 class TestModelLibrary(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestModelLibrary(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.model_library = erlo.ModelLibrary()
+        cls.model_library = ModelLibrary()
 
     def test_existence_erlotinib_tumour_growth_inhibition_model(self):
         path = self.model_library.erlotinib_tumour_growth_inhibition_model()
@@ -53,7 +53,7 @@ class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.ModelLibrary()
+        lib = ModelLibrary()
         path = lib.erlotinib_tumour_growth_inhibition_model()
         importer = sbml.SBMLImporter()
         cls.model = importer.model(path)
@@ -98,7 +98,7 @@ class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.ModelLibrary()
+        lib = ModelLibrary()
         path = lib.tumour_growth_inhibition_model_koch()
         importer = sbml.SBMLImporter()
         cls.model = importer.model(path)
@@ -142,7 +142,7 @@ class TestTumourGrowthInhibitionModelKochReparametrised(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.ModelLibrary()
+        lib = ModelLibrary()
         path = lib.tumour_growth_inhibition_model_koch_reparametrised()
         importer = sbml.SBMLImporter()
         cls.model = importer.model(path)
@@ -184,7 +184,7 @@ class TestOneCompartmentPKModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.ModelLibrary()
+        lib = ModelLibrary()
         path = lib.one_compartment_pk_model()
         importer = sbml.SBMLImporter()
         cls.model = importer.model(path)

@@ -15,6 +15,7 @@ import pints
 import xarray as xr
 
 import erlotinib as erlo
+from erlotinib.library import DataLibrary, ModelLibrary
 
 
 class TestComputePointwiseLogLikelihood(unittest.TestCase):
@@ -26,7 +27,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
     def setUpClass(cls):
         # Test case I: Non-hierarchical log-likelihood
         # Get test data and model
-        data = erlo.DataLibrary().lung_cancer_control_group()
+        data = DataLibrary().lung_cancer_control_group()
         individual = 40
         mask = data['ID'] == individual  # Arbitrary test id
         data = data[mask]
@@ -34,7 +35,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         times = data[mask]['Time'].to_numpy()
         observed_volumes = data[mask]['Measurement'].to_numpy()
 
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
         error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
         cls.log_likelihood = erlo.LogLikelihood(
@@ -574,7 +575,7 @@ class TestInferenceController(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get test data and model
-        data = erlo.DataLibrary().lung_cancer_control_group()
+        data = DataLibrary().lung_cancer_control_group()
         individual = 40
         mask = data['ID'] == individual  # Arbitrary test id
         data = data[mask]
@@ -582,7 +583,7 @@ class TestInferenceController(unittest.TestCase):
         times = data[mask]['Time'].to_numpy()
         observed_volumes = data[mask]['Measurement'].to_numpy()
 
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
         error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
         cls.log_likelihood = erlo.LogLikelihood(
@@ -687,12 +688,12 @@ class TestOptimisationController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         cls.problem = erlo.ProblemModellingController(model, error_models)
 
-        data = erlo.DataLibrary().lung_cancer_control_group()
+        data = DataLibrary().lung_cancer_control_group()
         cls.problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
 
         n_parameters = 7
@@ -876,12 +877,12 @@ class TestSamplingController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         problem = erlo.ProblemModellingController(model, error_models)
 
-        data = erlo.DataLibrary().lung_cancer_control_group()
+        data = DataLibrary().lung_cancer_control_group()
         problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
 
         n_parameters = 7
@@ -1007,11 +1008,11 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(divergent_iters, 'false')
 
         # Case III: Infer multiple independent models
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         problem = erlo.ProblemModellingController(model, error_models)
-        data = erlo.DataLibrary().lung_cancer_control_group()
+        data = DataLibrary().lung_cancer_control_group()
         mask_id_40 = data['ID'] == 40
         mask_id_140 = data['ID'] == 140
         data = data[mask_id_40 | mask_id_140]

@@ -12,6 +12,7 @@ import pints
 import pints.toy
 
 import erlotinib as erlo
+from erlotinib.library import ModelLibrary
 
 
 class TestHierarchicalLogLikelihood(unittest.TestCase):
@@ -30,7 +31,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         cls.times = [times_1, times_2]
 
         # Set up mechanistic and error models
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         cls.model = erlo.PharmacokineticModel(path)
         cls.model.set_administration('central', direct=False)
         cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
@@ -82,7 +83,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
                 log_likelihoods, self.population_models)
 
         # Log-likelihoods are defined on different parameter spaces
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         error_models = [
@@ -891,7 +892,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         times = [times_1, times_2]
 
         # Set up mechanistic and error models
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
@@ -1172,7 +1173,7 @@ class TestLogLikelihood(unittest.TestCase):
         cls.times = [times_1, times_2]
 
         # Set up mechanistic and error models
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         cls.model = erlo.PharmacokineticModel(path)
         cls.model.set_administration('central', direct=False)
         cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
@@ -1191,7 +1192,7 @@ class TestLogLikelihood(unittest.TestCase):
         # Check whether changing the model changes the log-likelihood
         obs = [1, 1.1, 1.2, 1.3]
         times = [1, 2, 3, 4]
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
         error_model = [
             erlo.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -1637,7 +1638,7 @@ class TestLogPosterior(unittest.TestCase):
         values = [10, 11, 12, 13]
 
         # Create test model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
         cls.log_likelihood = erlo.LogLikelihood(
@@ -1736,7 +1737,7 @@ class TestReducedLogPDF(unittest.TestCase):
         values = [1, 2, 3, 4, 5]
 
         # Set up inverse problem
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         problem = erlo.InverseProblem(model, times, values)
         cls.log_likelihood = pints.GaussianLogLikelihood(problem)

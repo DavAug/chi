@@ -13,6 +13,7 @@ import pandas as pd
 import pints
 
 import erlotinib as erlo
+from erlotinib.library import ModelLibrary
 
 
 class TestProblemModellingControllerPDProblem(unittest.TestCase):
@@ -43,7 +44,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             'Duration': [np.nan]*12 + duration})
 
         # Test case I: create PD modelling problem
-        lib = erlo.ModelLibrary()
+        lib = ModelLibrary()
         path = lib.tumour_growth_inhibition_model_koch()
         cls.pd_model = erlo.PharmacodynamicModel(path)
         cls.error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
@@ -51,7 +52,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             cls.pd_model, cls.error_model)
 
         # Test case II: create PKPD modelling problem
-        lib = erlo.ModelLibrary()
+        lib = ModelLibrary()
         path = lib.erlotinib_tumour_growth_inhibition_model()
         cls.pkpd_model = erlo.PharmacokineticModel(path)
         cls.pkpd_model.set_outputs([
@@ -1270,7 +1271,7 @@ class TestInverseProblem(unittest.TestCase):
         cls.values = [1, 2, 3, 4, 5]
 
         # Set up inverse problem
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.PharmacodynamicModel(path)
         cls.problem = erlo.InverseProblem(cls.model, cls.times, cls.values)
 
