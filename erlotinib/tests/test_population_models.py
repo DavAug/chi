@@ -719,7 +719,7 @@ class TestLogNormalModel(unittest.TestCase):
 
         parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
 
         # Test case III.2
         psis = [np.exp(3)] * n_ids
@@ -804,7 +804,7 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
-        self.assertEqual(np.sum(scores), ref_score)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 10))
 
         # Test case II.2:
