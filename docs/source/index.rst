@@ -24,18 +24,26 @@
 Welcome to Erlotinib's documentation!
 =====================================
 
-**Erlotinib** is a repository hosted on GitHub_, which enables users to analyse and
-model the pharmacokinetic and pharmacodynamic (PKPD) properties of the anti-cancer
-drug *Erlotinib*.
+**Erlotinib** is an open source Python package hosted on GitHub_,
+which is designed for pharmacokinetic and pharmacodynamic (PKPD) modelling.
 
-Erlotinib is a type of targeted cancer drug, and is also known by its
-brand name Tarceva. It is used in clinical practice to treat metastatic non small
-cell lung cancer (NSLC), and advanced pancreatic cancer.
+The main features of erlotinib are
+
+- Simulation of mechanistic dose response models (differential equations)
+    for arbitrary dosing regimens.
+- Inference of mechanistic model parameters from data (classical or Bayesian).
+- Simulation of the dose response variability in a population
+    (hierarchical models/non-linear mixed effects models).
+- Inference of population parameters from data (classical or Bayesian).
+- Simulation of structured populations, where inter-individual variability can
+    be partly explained by covariates.
+- Inference of model parameters in a strcutured population from data
+    (classical or Bayesian).
 
 This page provides the API, or developer documentation for
-`erlotinib`, the software used to analyse and model erlonitib's
-PKPD.
+erlotinib.
 
-While the package may also be used to model the PKPD of any other compound, the
-`erlotinib` package provides data and model libraries which are specific to
-Erlotinib (Tarceva).
+.. note::
+    This package is still in its infancy and is continuously being developed.
+    So if you find any bugs, please don't hesitate to reach out to us and share
+    your feedback.
