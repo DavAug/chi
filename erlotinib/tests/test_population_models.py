@@ -2418,7 +2418,7 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         # Negative std
         parameters = [1, -1]
 
-        with self.assertRaisesRegex(ValueError, 'A log-normal distribution'):
+        with self.assertRaisesRegex(ValueError, 'A truncated Gaussian distribution'):
             self.pop_model.sample(parameters)
 
     def test_set_parameter_names(self):
