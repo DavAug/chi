@@ -65,7 +65,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Erlotinib'
-copyright = u'2020, David Augustin'
+copyright = u'2021, David Augustin'
 author = u'David Augustin'
 
 # The version info for the project you're documenting, acts as replacement for
