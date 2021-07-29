@@ -9,6 +9,7 @@
     :hidden:
     :maxdepth: 1
 
+    covariate_models
     data_library
     error_models
     inference
