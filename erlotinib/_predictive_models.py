@@ -291,14 +291,16 @@ class PosteriorPredictiveModel(GenerativeModel):
         try:
             n_draws = len(self._posterior.sel(
                     individual=individual).dropna(dim='draw').draw)
-        except ValueError:
+        # Note: ValueError -> KeyError for xarray>=0.19.0
+        except (ValueError, KeyError):
             n_draws = len(self._posterior.dropna(dim='draw').draw)
         posterior = np.empty(shape=(n_chains * n_draws, n_parameters))
         for param_id, parameter in enumerate(self._parameter_names):
             try:
                 posterior[:, param_id] = self._posterior[parameter].sel(
                     individual=individual).dropna(dim='draw').values.flatten()
-            except ValueError:
+            # Note: ValueError -> KeyError for xarray>=0.19.0
+            except (ValueError, KeyError):
                 # If individual dimension does not exist, the parameter must
                 # be a population parameter.
                 posterior[:, param_id] = self._posterior[

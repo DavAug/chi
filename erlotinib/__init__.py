@@ -9,6 +9,11 @@ from . import (  # noqa
     plots
 )
 
+from ._covariate_models import (  # noqa
+    CovariateModel,
+    CentredLogNormalModel
+)
+
 from ._data_library_api import (  # noqa
     DataLibrary
 )
@@ -49,6 +54,7 @@ from ._inference import (  # noqa
 )
 
 from ._population_models import (  # noqa
+    GaussianModel,
     HeterogeneousModel,
     LogNormalModel,
     PooledModel,
