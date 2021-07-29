@@ -215,11 +215,13 @@ class CentredLogNormalModel(CovariateModel):
         mu, sigma = parameters
 
         # Compute individual parameters
+        eta = np.array(eta)
         psi = np.exp(mu + sigma * eta)
 
         return psi
 
-    def compute_individual_sensitivities(self, parameters, eta, covariates):
+    def compute_individual_sensitivities(
+            self, parameters, eta, covariates=None):
         r"""
         Returns the individual parameters :math:`\psi` and their sensitivities
         with respect to the model parameters :math:`\vartheta` and the relevant
@@ -239,6 +241,7 @@ class CentredLogNormalModel(CovariateModel):
         mu, sigma = parameters
 
         # Compute individual parameters
+        eta = np.array(eta)
         psi = np.exp(mu + sigma * eta)
 
         # Compute sensitivities

@@ -9,6 +9,11 @@ from . import (  # noqa
     plots
 )
 
+from ._covariate_models import (  # noqa
+    CovariateModel,
+    CentredLogNormalModel
+)
+
 from ._data_library_api import (  # noqa
     DataLibrary
 )
