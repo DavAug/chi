@@ -7,7 +7,7 @@
 
 ## About
 
-**Erlotinib** is an open source Python package hosted on GitHub_,
+**Erlotinib** is an open source Python package hosted on GitHub,
 which is designed for pharmacokinetic and pharmacodynamic (PKPD) modelling.
 
 The main features of erlotinib are
