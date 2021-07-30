@@ -1,4 +1,4 @@
-# Erlotinib
+# Chi
 
 [![Unit tests on multiple python versions](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
 [![Unit tests on multiple operating systems](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
@@ -7,10 +7,10 @@
 
 ## About
 
-**Erlotinib** is an open source Python package hosted on GitHub,
+**Chi** is an open source Python package hosted on GitHub,
 which is designed for pharmacokinetic and pharmacodynamic (PKPD) modelling.
 
-The main features of erlotinib are
+The main features of chi are
 
 - Simulation of mechanistic dose response models (differential equations)
     for arbitrary dosing regimens.
@@ -28,7 +28,7 @@ All features of our software are described in detail in our
 
 ## Getting started
 ### Installation
-At the moment erlotinib is not yet distributed with PyPI. One way to use erlotinib
+At the moment erlotinib is not yet distributed with PyPI. One way to use chi
 nevertheless is to clone the repository and install it from there, i.e. 
 1. Clone the repository with
 ```bash
@@ -40,8 +40,8 @@ cd erlotinib && pip install .
 ```
 
 ### Modelling and inference with erlotinib
-Polished tutorials do currently not exist, but are on the way. In the mean time, please find examples of how erlotinib is 
-used to study the tumour growth inhibiting effect of the drug *erlotinib* in mice [here](https://github.com/DavAug/erlotinib/tree/main/analysis).
+Polished tutorials do currently not exist, but are on the way. In the mean time, please find examples of how chi is 
+used to study the tumour growth inhibiting effect of the drug erlotinib in mice [here](https://github.com/DavAug/chi/tree/main/analysis).
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
