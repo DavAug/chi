@@ -8,7 +8,7 @@
 ## About
 
 **Chi** is an open source Python package hosted on GitHub,
-which is designed for dose response modelling modelling.
+which is designed for dose response modelling.
 
 The main features of chi are
 
