@@ -63,9 +63,15 @@ class CovariateModel(object):
         """
         raise NotImplementedError
 
-    def compute_individual_parameters(self, parameters, eta, covariates):
+    def compute_individual_parameters(
+            self, parameters, eta, covariates=None):
         r"""
         Returns the individual parameters :math:`\psi`.
+
+        By default `covariates` are set to `None`, such that model
+        does not rely on covariates. Each derived :class:`CovariateModel:
+        needs to make sure that model reduces to sensible values for
+        this edge case.
 
         :param parameters: Model parameters :math:`\vartheta`.
         :type parameters: np.ndarray of length (p,)
@@ -78,11 +84,17 @@ class CovariateModel(object):
         """
         raise NotImplementedError
 
-    def compute_individual_sensitivities(self, parameters, eta, covariates):
+    def compute_individual_sensitivities(
+            self, parameters, eta, covariates=None):
         r"""
         Returns the individual parameters :math:`\psi` and their sensitivities
         with respect to the model parameters :math:`\vartheta` and the relevant
         fluctuation :math:`\eta`.
+
+        By default `covariates` are set to `None`, such that model
+        does not rely on covariates. Each derived :class:`CovariateModel:
+        needs to make sure that model reduces to sensible values for
+        this edge case.
 
         :param parameters: Model parameters :math:`\vartheta`.
         :type parameters: np.ndarray of length (p,)
@@ -126,9 +138,15 @@ class CovariateModel(object):
         """
         return self._parameter_names
 
+    def n_covariates(self):
+        """
+        Returns the number of covariates c.
+        """
+        raise NotImplementedError
+
     def n_parameters(self):
         """
-        Returns the number of model parameters.
+        Returns the number of model parameters p.
         """
         raise NotImplementedError
 
@@ -186,8 +204,9 @@ class CentredLogNormalModel(CovariateModel):
     def __init__(self):
         super(CentredLogNormalModel, self).__init__()
 
-        # Set number of parameters
+        # Set number of parameters and covariates
         self._n_parameters = 2
+        self._n_covariates = 0
 
         # Set default parameter names
         self._parameter_names = ['Mean log', 'Std. log']
@@ -293,6 +312,12 @@ class CentredLogNormalModel(CovariateModel):
         # As a result of the `centering` the population parameters for
         # eta (mean and std.) are constant.
         return (np.array([0, 1]), np.array([[0, 0]] * len(parameters)))
+
+    def n_covariates(self):
+        """
+        Returns the number of covariates c.
+        """
+        return self._n_covariates
 
     def n_parameters(self):
         """
