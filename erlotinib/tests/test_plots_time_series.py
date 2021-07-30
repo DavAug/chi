@@ -11,6 +11,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 import erlotinib as erlo
+from erlotinib.library import DataLibrary
 
 
 class TestPDPredictivePlot(unittest.TestCase):
@@ -21,7 +22,7 @@ class TestPDPredictivePlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create test datasets
-        cls.data = erlo.DataLibrary().lung_cancer_control_group()
+        cls.data = DataLibrary().lung_cancer_control_group()
         cls.prediction = cls.data.rename(
             columns={'Measurement': 'Sample'})
 
@@ -261,7 +262,7 @@ class TestPKPredictivePlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create test datasets
-        cls.data = erlo.DataLibrary().lung_cancer_low_erlotinib_dose_group()
+        cls.data = DataLibrary().lung_cancer_low_erlotinib_dose_group()
         cls.prediction = cls.data.rename(
             columns={'Measurement': 'Sample'})
 
@@ -501,7 +502,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create test dataset
-        cls.data = erlo.DataLibrary().lung_cancer_control_group()
+        cls.data = DataLibrary().lung_cancer_control_group()
 
         # Create test figure
         cls.fig = erlo.plots.PDTimeSeriesPlot()
@@ -659,7 +660,7 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create test dataset
-        cls.data = erlo.DataLibrary().lung_cancer_low_erlotinib_dose_group()
+        cls.data = DataLibrary().lung_cancer_low_erlotinib_dose_group()
 
         # Create test figure
         cls.fig = erlo.plots.PKTimeSeriesPlot()

@@ -10,6 +10,7 @@ import unittest
 import numpy as np
 
 import erlotinib as erlo
+from erlotinib.library import DataLibrary
 
 
 class TestResidualPlot(unittest.TestCase):
@@ -20,7 +21,7 @@ class TestResidualPlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create test datasets
-        cls.measurements = erlo.DataLibrary().lung_cancer_control_group()
+        cls.measurements = DataLibrary().lung_cancer_control_group()
         cls.data = cls.measurements.rename(
             columns={'Measurement': 'Sample'})
 
