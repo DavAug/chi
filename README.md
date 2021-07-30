@@ -1,7 +1,7 @@
 # Chi 𝞆
 
-[![Unit tests on multiple python versions](https://github.com/DavAug/chi/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
-[![Unit tests on multiple operating systems](https://github.com/DavAug/chi/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
+[![Unit tests on multiple python versions](https://github.com/DavAug/chi/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/chi/actions)
+[![Unit tests on multiple operating systems](https://github.com/DavAug/chi/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/chi/actions)
 [![codecov](https://codecov.io/gh/DavAug/chi/branch/main/graph/badge.svg)](https://codecov.io/gh/DavAug/chi)
 [![Documentation Status](https://readthedocs.org/projects/chi/badge/?version=latest)](https://chi.readthedocs.io/en/latest/?badge=latest)
 
@@ -20,15 +20,15 @@ The main features of chi are
 - Inference of population parameters from data (classical or Bayesian).
 - Simulation of structured populations, where inter-individual variability can
     be partly explained by covariates.
-- Inference of model parameters in a stuctured population from data
+- Inference of model parameters in a structured population from data
     (classical or Bayesian).
 
 All features of our software are described in detail in our
-[full API documentation](https://erlotinib.readthedocs.io/en/latest/).
+[full API documentation](https://chi.readthedocs.io/en/latest/).
 
 ## Getting started
 ### Installation
-At the moment erlotinib is not yet distributed with PyPI. One way to use chi
+At the moment chi is not yet distributed with PyPI. One way to use chi
 nevertheless is to clone the repository and install it from there, i.e. 
 1. Clone the repository with
 ```bash

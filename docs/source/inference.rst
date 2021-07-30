@@ -1,14 +1,14 @@
 
-.. _erlotinib: https://erlotinib.readthedocs.io/en/latest/index.html
+.. _chi: https://chi.readthedocs.io/en/latest/index.html
 .. _pints: https://pints.readthedocs.io/en/stable/
 
 *********
 Inference
 *********
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Inference in erlotinib_ heavily relies on the inference package pints_.
+Inference in chi_ heavily relies on the inference package pints_.
 
 The :class:`OptimisationController` and :class:`SamplingController` allow you
 to easily explore different optimisation or sampling settings, e.g. using different

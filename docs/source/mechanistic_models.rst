@@ -1,17 +1,17 @@
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 .. _SBML: http://sbml.org
 
 ******************
 Mechanistic Models
 ******************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Mechanistic models in erlotinib_ model the pharmacokinetics and
+Mechanistic models in chi_ model the pharmacokinetics and
 pharmacodynamics of patients based on models specified by SBML
 files (System Biology Markup Language (SBML_)).
 
-Some SBML files relevant to the modelling of erlotinib are provided
+Some SBML files relevant to the modelling of chi are provided
 in the :class:`ModelLibrary`.
 
 Functional classes

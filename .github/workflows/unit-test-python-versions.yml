@@ -29,7 +29,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libsundials-dev
-      - name: install erlotinib
+      - name: install chi
         run: |
           python --version
           python -m pip install --upgrade pip setuptools wheel

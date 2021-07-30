@@ -2,13 +2,13 @@
 Data Library
 ************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
 The data library contains a number of pharmacokinetic and
-pharamcodynamic datasets of erlotinib, kindly provided by
+pharamcodynamic datasets of chi, kindly provided by
 the authors of the referenced publications.
 
-.. currentmodule:: erlotinib.library
+.. currentmodule:: chi.library
 
 Functional classes
 ------------------

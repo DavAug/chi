@@ -2,7 +2,7 @@
 Library
 *******
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
 The library module contains a number erlotinib-specific PK, PD and PKPD models,
 as well as datasets.
@@ -10,8 +10,8 @@ as well as datasets.
 Models are specified by SBML files, so they can easily be instantiated with either
 a :class:`PharmacokineticModel` or :class:`PharmacodynamicModel`.
 
-Figure classes grouped by intended use
---------------------------------------
+Content
+-------
 
 .. toctree::
     :maxdepth: 1

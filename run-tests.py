@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -42,13 +42,13 @@ def run_copyright_checks():
     header_check = True
     checked_file_types = ['.py']
     copyright_header = """#
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #"""
 
-    for dirname, _, file_list in os.walk('erlotinib'):
+    for dirname, _, file_list in os.walk('chi'):
         for f_name in file_list:
             if any([f_name.endswith(x) for x in checked_file_types]):
                 path = os.path.join(dirname, f_name)
@@ -119,19 +119,20 @@ def doctest_rst_and_public_interface():
     print('\nChecking that all classes and methods are documented in an RST '
           'file and that public interfaces are clean.')
 
-    import erlotinib
-    import erlotinib.plots
+    import chi
+    import chi.library
+    import chi.plots
 
     # If any modules other than these are exposed it may indicate that a module
     # has been inadvertently exposed in a public context, or that a new module
     # has been added to pints and should be imported above and included in this
     # list.
-    erlo_submodules = ['erlotinib.plots']
+    chi_submodules = ['chi.library', 'chi.plots']
 
     doc_symbols = get_all_documented_symbols()
 
-    check_exposed_symbols(erlotinib, erlo_submodules, doc_symbols)
-    check_exposed_symbols(erlotinib.plots, [], doc_symbols)
+    check_exposed_symbols(chi, chi_submodules, doc_symbols)
+    check_exposed_symbols(chi.plots, [], doc_symbols)
 
     print('All classes and methods are documented in an RST file, and all '
           'public interfaces are clean.')
@@ -265,7 +266,7 @@ def run_unit_tests():
     """
     Runs unit tests.
     """
-    tests = os.path.join('erlotinib', 'tests')
+    tests = os.path.join('chi', 'tests')
     suite = unittest.defaultTestLoader.discover(tests, pattern='test_*.py')
     res = unittest.TextTestRunner(verbosity=2).run(suite)
     sys.exit(0 if res.wasSuccessful() else 1)
@@ -274,9 +275,9 @@ def run_unit_tests():
 if __name__ == '__main__':
     # Set up argument parsing
     parser = argparse.ArgumentParser(
-        description='Run tests for erlotinib.',
+        description='Run tests for chi.',
         epilog='To run individual unit tests, use e.g.'
-               ' $ erlotinib/tests/test_likelihoods.py',
+               ' $ chi/tests/test_likelihoods.py',
     )
     # Unit tests
     parser.add_argument(

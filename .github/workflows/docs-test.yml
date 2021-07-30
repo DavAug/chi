@@ -23,7 +23,7 @@ jobs:
           python-version: 3.8
           architecture: x64
 
-      - name: install erlotinib
+      - name: install chi
         run: |
           python --version
           python -m pip install --upgrade pip setuptools wheel

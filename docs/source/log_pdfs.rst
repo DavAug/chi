@@ -1,13 +1,13 @@
-.. _erlotinib: https://erlotinib.readthedocs.io/en/latest/index.html
+.. _chi: https://chi.readthedocs.io/en/latest/index.html
 .. _pints: https://pints.readthedocs.io/en/stable/
 
 ********
 Log-PDFs
 ********
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Log-PDFs in erlotinib_ extend the log-pdfs provided in pints_ for the purpose of
+Log-PDFs in chi_ extend the log-pdfs provided in pints_ for the purpose of
 PKPD modelling.
 
 Functional classes

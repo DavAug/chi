@@ -2,7 +2,7 @@
 Plots
 *****
 
-.. currentmodule:: erlotinib.plots
+.. currentmodule:: chi.plots
 
 The plots module contains a number of figure classes that allow
 you to easily visualise pharmacokinetic and pharmacodynamic (PKPD) data,

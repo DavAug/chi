@@ -1,12 +1,12 @@
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 
 ************
 Error Models
 ************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Error models in erlotinib_ model the deviations of experimentally
+Error models in chi_ model the deviations of experimentally
 observed pharmacokinetic and pharmacodynamic biomarkers and
 the predictions of a :class:`MechanisticModel`.
 

@@ -64,7 +64,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Erlotinib'
+project = u'Chi'
 copyright = u'2021, David Augustin'
 author = u'David Augustin'
 
@@ -112,12 +112,12 @@ html_theme = 'furo'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-html_logo = "_static/logo.png"
+html_logo = "_static/logo_social_media.png"
 
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Erlotinibdoc'
+htmlhelp_basename = 'Chidoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -144,7 +144,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Erlotinib.tex', u'Erlotinib Documentation',
+    (master_doc, 'Chi.tex', u'Chi Documentation',
      u'David Augustin', 'manual'),
 ]
 
@@ -154,7 +154,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'erlotinib', u'Erlotinib Documentation',
+    (master_doc, 'chi', u'Chi Documentation',
      [author], 1)
 ]
 
@@ -165,7 +165,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Erlotinib', u'Erlotinib Documentation',
-     author, 'Erlotinib', 'One line description of project.',
+    (master_doc, 'Chi', u'Chi Documentation',
+     author, 'Chi', 'One line description of project.',
      'Miscellaneous'),
 ]

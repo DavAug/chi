@@ -1,17 +1,17 @@
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 
 ****************
 Prediction Plots
 ****************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Prediction plots in erlotinib_ are intended for the illustration
+Prediction plots in chi_ are intended for the illustration
 of sampling results from a :class:`PredictiveModel`. The predicted
 samples or approximate predictive distributions can then be compared
 to real measurements.
 
-.. currentmodule:: erlotinib.plots
+.. currentmodule:: chi.plots
 
 Functional classes
 ------------------

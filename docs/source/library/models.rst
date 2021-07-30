@@ -2,7 +2,7 @@
 Model Library
 *************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
 The model library contains a number of pharmacokinetic and
 pharmacodynamic models in SBML file format which have been
@@ -13,7 +13,7 @@ Those SBML models can be passed to either a
 :class:`PharmacodynamicModel` for simulation or to learn the
 model parameters from data.
 
-.. currentmodule:: erlotinib.library
+.. currentmodule:: chi.library
 
 Functional classes
 ------------------

@@ -1,14 +1,14 @@
 
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 .. _pints: https://pints.readthedocs.io/en/stable/
 
 ********
 Problems
 ********
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Inverse problems in erlotinib_ heavily rely on the inference package pints_.
+Inverse problems in chi_ heavily rely on the inference package pints_.
 
 An :class:`InverseProblem` allows you to easily convert a
 :class:`PharmacokineticModel`, :class:`PharmacodynamicModel`, or :class:`PKPDModel`
