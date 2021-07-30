@@ -1,4 +1,4 @@
-# Chi
+# Chi 𝞆
 
 [![Unit tests on multiple python versions](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
 [![Unit tests on multiple operating systems](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
