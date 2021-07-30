@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -10,10 +10,10 @@ import pandas as pd
 import plotly.colors
 import plotly.graph_objects as go
 
-import erlotinib.plots as eplt
+from chi import plots
 
 
-class PDPredictivePlot(eplt.SingleFigure):
+class PDPredictivePlot(plots.SingleFigure):
     """
     A figure class that visualises the predictions of a predictive
     pharmacodynamic model.
@@ -328,7 +328,7 @@ class PDPredictivePlot(eplt.SingleFigure):
         self._add_prediction_bulk_prob_trace(percentile_df)
 
 
-class PKPredictivePlot(eplt.SingleSubplotFigure):
+class PKPredictivePlot(plots.SingleSubplotFigure):
     """
     A figure class that visualises the predictions of a predictive
     pharmacokinetic model.
@@ -785,7 +785,7 @@ class PKPredictivePlot(eplt.SingleSubplotFigure):
         self._fig.update_yaxes(title=biom_label, row=2)
 
 
-class PDTimeSeriesPlot(eplt.SingleFigure):
+class PDTimeSeriesPlot(plots.SingleFigure):
     """
     A figure class that visualises measurements of a pharmacodynamic biomarker
     across multiple individuals.
@@ -945,7 +945,7 @@ class PDTimeSeriesPlot(eplt.SingleFigure):
         self._add_simulation_trace(times, biomarker)
 
 
-class PKTimeSeriesPlot(eplt.SingleSubplotFigure):
+class PKTimeSeriesPlot(plots.SingleSubplotFigure):
     """
     A figure class that visualises measurements of a pharmacokinetic biomarker
     across multiple individuals.

@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -12,10 +12,10 @@ import plotly.colors
 import plotly.graph_objects as go
 import xarray as xr
 
-import erlotinib.plots as eplt
+from chi import plots
 
 
-class MarginalPosteriorPlot(eplt.MultiSubplotFigure):
+class MarginalPosteriorPlot(plots.MultiSubplotFigure):
     """
     A figure class that visualises the marginal posterior probability for each
     parameter across individuals.

@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -10,10 +10,10 @@ import pandas as pd
 import plotly.colors
 import plotly.graph_objects as go
 
-import erlotinib.plots as eplt
+from chi import plots
 
 
-class ResidualPlot(eplt.SingleFigure):
+class ResidualPlot(plots.SingleFigure):
     """
     A figure class that visualises the residual error between the predictions
     of a predictive model and measured observations.
