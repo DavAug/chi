@@ -10,12 +10,11 @@
     :maxdepth: 1
 
     covariate_models
-    data_library
     error_models
     inference
+    library/index
     log_pdfs
     mechanistic_models
-    model_library
     plots/index
     population_models
     predictive_models
@@ -29,16 +28,12 @@ which is designed for pharmacokinetic and pharmacodynamic (PKPD) modelling.
 
 The main features of erlotinib are
 
-- Simulation of mechanistic dose response models (differential equations)
-    for arbitrary dosing regimens.
+- Simulation of mechanistic dose response models (differential equations) for arbitrary dosing regimens.
 - Inference of mechanistic model parameters from data (classical or Bayesian).
-- Simulation of the dose response variability in a population
-    (hierarchical models/non-linear mixed effects models).
+- Simulation of the dose response variability in a population (hierarchical models/non-linear mixed effects models).
 - Inference of population parameters from data (classical or Bayesian).
-- Simulation of structured populations, where inter-individual variability can
-    be partly explained by covariates.
-- Inference of model parameters in a strcutured population from data
-    (classical or Bayesian).
+- Simulation of structured populations, where inter-individual variability can be partly explained by covariates.
+- Inference of model parameters in a structured population from data (classical or Bayesian).
 
 This page provides the API, or developer documentation for
 erlotinib.

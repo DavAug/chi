@@ -11,6 +11,7 @@ import myokit
 import numpy as np
 
 import erlotinib as erlo
+from erlotinib.library import ModelLibrary
 
 
 class TestMechanisticModel(unittest.TestCase):
@@ -19,7 +20,7 @@ class TestMechanisticModel(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.MechanisticModel(path)
 
     def test_copy(self):
@@ -268,7 +269,7 @@ class TestPharmacodynamicModel(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.model = erlo.PharmacodynamicModel(path)
 
     def test_n_outputs(self):
@@ -379,11 +380,11 @@ class TestPharmacokineticModel(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         cls.model = erlo.PharmacokineticModel(path)
 
     def test_administration(self):
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
 
         # Test default
@@ -408,7 +409,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertFalse(admin['direct'])
 
     def test_enable_sensitivities(self):
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
 
         # Disable sensitivities before setting administration
@@ -467,7 +468,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(pd_output, 'central.drug_concentration')
 
     def test_set_administration(self):
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
 
         # Administer dose directly to central compartment
@@ -508,7 +509,7 @@ class TestPharmacokineticModel(unittest.TestCase):
                 compartment='central', amount_var='drug_concentration')
 
     def test_set_dosing_regimen(self):
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
 
         # Administer dose directly to central compartment
@@ -590,7 +591,7 @@ class TestPharmacokineticModel(unittest.TestCase):
     def test_set_dosing_regimen_bad_input(self):
         # Not setting an administration prior to setting a dosing regimen
         # should raise an error
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
 
         with self.assertRaisesRegex(ValueError, 'The route of administration'):
@@ -717,7 +718,7 @@ class TestReducedMechanisticModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Set up model
-        lib = erlo.ModelLibrary()
+        lib = ModelLibrary()
         path = lib.tumour_growth_inhibition_model_koch()
         model = erlo.PharmacodynamicModel(path)
         cls.pd_model = erlo.ReducedMechanisticModel(model)

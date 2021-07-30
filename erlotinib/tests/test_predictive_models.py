@@ -13,6 +13,7 @@ import pints
 import xarray as xr
 
 import erlotinib as erlo
+from erlotinib.library import ModelLibrary
 
 
 class TestGenerativeModel(unittest.TestCase):
@@ -25,7 +26,7 @@ class TestGenerativeModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
 
         # Define error models
@@ -81,7 +82,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
     def setUpClass(cls):
         # Test model I: Individual predictive model
         # Create predictive model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
         cls.pred_model = erlo.PredictiveModel(
@@ -294,7 +295,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
         mechanistic_model.set_administration('central', direct=False)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -470,7 +471,7 @@ class TestPredictiveModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         cls.mechanistic_model = erlo.PharmacodynamicModel(path)
 
         # Define error models
@@ -585,7 +586,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(names[6], 'Sigma rel.')
 
         # Test case II: Multi-output problem
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
@@ -616,7 +617,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertIsNone(self.model.get_dosing_regimen())
 
         # Test case II: Mechanistic model supports dosing regimens
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
         mechanistic_model.set_administration('central')
         model = erlo.PredictiveModel(
@@ -1003,7 +1004,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertAlmostEqual(values[4], -1.4664469447762758)
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
         mechanistic_model.set_administration('central')
         model = erlo.PredictiveModel(
@@ -1155,7 +1156,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get mechanistic and error model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
 
@@ -1180,7 +1181,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
     def test_instantiation(self):
         # Define order of population model with params
         # Get mechanistic and error model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
 
@@ -1352,7 +1353,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(names[7], 'Pooled Sigma rel.')
 
         # Test case II: Multi-output problem
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         model = erlo.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
@@ -1579,7 +1580,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
         mechanistic_model.set_administration('central', direct=False)
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -1727,7 +1728,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
 
         # Define error models
@@ -1874,7 +1875,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
-        path = erlo.ModelLibrary().one_compartment_pk_model()
+        path = ModelLibrary().one_compartment_pk_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
         mechanistic_model.set_administration('central')
         error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -1974,7 +1975,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
     def setUpClass(cls):
         # Test model I: Individual predictive model
         # Create predictive model
-        path = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
+        path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = erlo.PharmacodynamicModel(path)
         error_models = [erlo.GaussianErrorModel()]
         pred_model = erlo.PredictiveModel(
@@ -2002,7 +2003,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
 
         # Test model II: Erlotinib PKPD model
         # Create predictive model
-        path = erlo.ModelLibrary().erlotinib_tumour_growth_inhibition_model()
+        path = ModelLibrary().erlotinib_tumour_growth_inhibition_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
         mechanistic_model.set_administration('central', direct=True)
         mechanistic_model.set_outputs(['myokit.tumour_volume'])
@@ -2044,7 +2045,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
                 models, self.weights)
 
         # The models have a different number of outputs
-        path = erlo.ModelLibrary().erlotinib_tumour_growth_inhibition_model()
+        path = ModelLibrary().erlotinib_tumour_growth_inhibition_model()
         mechanistic_model = erlo.PharmacokineticModel(path)
         mechanistic_model.set_outputs(
             ['central.drug_concentration', 'myokit.tumour_volume'])

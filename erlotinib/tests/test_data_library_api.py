@@ -9,7 +9,7 @@ import unittest
 
 import pandas as pd
 
-import erlotinib as erlo
+from erlotinib.library import DataLibrary
 
 
 class TestDataLibrary(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestDataLibrary(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.data_library = erlo.DataLibrary()
+        cls.data_library = DataLibrary()
 
     def test_existence_lung_cancer_control_group(self):
         data = self.data_library.lung_cancer_control_group()
@@ -54,7 +54,7 @@ class TestLungCancerControlGroup(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.DataLibrary()
+        lib = DataLibrary()
         cls.data = lib.lung_cancer_control_group()
 
     def test_column_keys(self):
@@ -94,7 +94,7 @@ class TestLungCancerHighErlotinibDoseGroup(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.DataLibrary()
+        lib = DataLibrary()
         cls.data = lib.lung_cancer_high_erlotinib_dose_group()
 
     def test_column_keys(self):
@@ -135,7 +135,7 @@ class TestLungCancerLowErlotinibDoseGroup(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.DataLibrary()
+        lib = DataLibrary()
         cls.data = lib.lung_cancer_low_erlotinib_dose_group()
 
     def test_column_keys(self):
@@ -178,7 +178,7 @@ class TestLungCancerMediumErlotinibDoseGroup(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.DataLibrary()
+        lib = DataLibrary()
         cls.data = lib.lung_cancer_medium_erlotinib_dose_group()
 
     def test_column_keys(self):
@@ -221,7 +221,7 @@ class TestLungCancerSingleErlotinibDoseGroup(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        lib = erlo.DataLibrary()
+        lib = DataLibrary()
         cls.data = lib.lung_cancer_single_erlotinib_dose_group()
 
     def test_column_keys(self):

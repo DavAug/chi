@@ -9,7 +9,8 @@ import unittest
 
 import numpy as np
 
-import erlotinib as erlo
+from erlotinib import plots
+from erlotinib.library import DataLibrary
 
 
 class TestResidualPlot(unittest.TestCase):
@@ -20,34 +21,34 @@ class TestResidualPlot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create test datasets
-        cls.measurements = erlo.DataLibrary().lung_cancer_control_group()
+        cls.measurements = DataLibrary().lung_cancer_control_group()
         cls.data = cls.measurements.rename(
             columns={'Measurement': 'Sample'})
 
         # Create test figure
-        cls.fig = erlo.plots.ResidualPlot(cls.measurements)
+        cls.fig = plots.ResidualPlot(cls.measurements)
 
     def test_bad_instantiation(self):
         # Create data of wrong type
         measurements = np.ones(shape=(10, 4))
         with self.assertRaisesRegex(TypeError, 'Measurements has to be'):
-            erlo.plots.ResidualPlot(measurements)
+            plots.ResidualPlot(measurements)
 
         # Wrong ID key
         with self.assertRaisesRegex(ValueError, 'Measurements does not have'):
-            erlo.plots.ResidualPlot(self.measurements, id_key='Wrong')
+            plots.ResidualPlot(self.measurements, id_key='Wrong')
 
         # Wrong time key
         with self.assertRaisesRegex(ValueError, 'Measurements does not have'):
-            erlo.plots.ResidualPlot(self.measurements, time_key='Wrong')
+            plots.ResidualPlot(self.measurements, time_key='Wrong')
 
         # Wrong biomarker key
         with self.assertRaisesRegex(ValueError, 'Measurements does not have'):
-            erlo.plots.ResidualPlot(self.measurements, biom_key='Wrong')
+            plots.ResidualPlot(self.measurements, biom_key='Wrong')
 
         # Wrong measurement key
         with self.assertRaisesRegex(ValueError, 'Measurements does not have'):
-            erlo.plots.ResidualPlot(self.measurements, meas_key='Wrong')
+            plots.ResidualPlot(self.measurements, meas_key='Wrong')
 
     def test_add_data_wrong_data_type(self):
         # Create data of wrong type

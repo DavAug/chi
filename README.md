@@ -20,7 +20,7 @@ The main features of erlotinib are
 - Inference of population parameters from data (classical or Bayesian).
 - Simulation of structured populations, where inter-individual variability can
     be partly explained by covariates.
-- Inference of model parameters in a strcutured population from data
+- Inference of model parameters in a stuctured population from data
     (classical or Bayesian).
 
 All features of our software are described in detail in our
