@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 import xarray as xr
 
-import erlotinib as erlo
+from erlotinib import plots
 
 
 class TestParameterEstimatePlot(unittest.TestCase):
@@ -73,7 +73,7 @@ class TestParameterEstimatePlot(unittest.TestCase):
             'Param 2': pop_samples})
 
         # Create figure
-        cls.fig = erlo.plots.MarginalPosteriorPlot()
+        cls.fig = plots.MarginalPosteriorPlot()
 
     def test_add_data(self):
         # Test case I: Add data for individual posteriors

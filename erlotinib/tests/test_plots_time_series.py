@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 import plotly.graph_objects as go
 
-import erlotinib as erlo
+from erlotinib import plots
 from erlotinib.library import DataLibrary
 
 
@@ -27,7 +27,7 @@ class TestPDPredictivePlot(unittest.TestCase):
             columns={'Measurement': 'Sample'})
 
         # Create test figure
-        cls.fig = erlo.plots.PDPredictivePlot()
+        cls.fig = plots.PDPredictivePlot()
 
     def test_add_data_wrong_data_type(self):
         # Create data of wrong type
@@ -267,7 +267,7 @@ class TestPKPredictivePlot(unittest.TestCase):
             columns={'Measurement': 'Sample'})
 
         # Create test figure
-        cls.fig = erlo.plots.PKPredictivePlot()
+        cls.fig = plots.PKPredictivePlot()
 
     def test_add_data_wrong_data_type(self):
         # Create data of wrong type
@@ -505,7 +505,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
         cls.data = DataLibrary().lung_cancer_control_group()
 
         # Create test figure
-        cls.fig = erlo.plots.PDTimeSeriesPlot()
+        cls.fig = plots.PDTimeSeriesPlot()
 
     def test_add_data_wrong_data_type(self):
         # Create data of wrong type
@@ -663,7 +663,7 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
         cls.data = DataLibrary().lung_cancer_low_erlotinib_dose_group()
 
         # Create test figure
-        cls.fig = erlo.plots.PKTimeSeriesPlot()
+        cls.fig = plots.PKTimeSeriesPlot()
 
     def test_add_data_wrong_data_type(self):
         # Create data of wrong type

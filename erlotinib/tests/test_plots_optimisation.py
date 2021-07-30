@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-import erlotinib as erlo
+from erlotinib import plots
 
 
 class TestParameterEstimatePlot(unittest.TestCase):
@@ -53,7 +53,7 @@ class TestParameterEstimatePlot(unittest.TestCase):
         }))
 
         # Create test figure
-        cls.fig = erlo.plots.ParameterEstimatePlot()
+        cls.fig = plots.ParameterEstimatePlot()
 
     def test_wrong_data_type(self):
         # Create data of wrong type
