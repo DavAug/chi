@@ -1,9 +1,9 @@
 # Chi 𝞆
 
-[![Unit tests on multiple python versions](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
-[![Unit tests on multiple operating systems](https://github.com/DavAug/erlotinib/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
-[![codecov](https://codecov.io/gh/DavAug/erlotinib/branch/main/graph/badge.svg)](https://codecov.io/gh/DavAug/erlotinib)
-[![Documentation Status](https://readthedocs.org/projects/erlotinib/badge/?version=latest)](https://erlotinib.readthedocs.io/en/latest/?badge=latest)
+[![Unit tests on multiple python versions](https://github.com/DavAug/chi/workflows/Unit%20tests%20(python%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
+[![Unit tests on multiple operating systems](https://github.com/DavAug/chi/workflows/Unit%20tests%20(OS%20versions)/badge.svg)](https://github.com/DavAug/erlotinib/actions)
+[![codecov](https://codecov.io/gh/DavAug/chi/branch/main/graph/badge.svg)](https://codecov.io/gh/DavAug/chi)
+[![Documentation Status](https://readthedocs.org/projects/chi/badge/?version=latest)](https://chi.readthedocs.io/en/latest/?badge=latest)
 
 ## About
 
@@ -32,14 +32,14 @@ At the moment erlotinib is not yet distributed with PyPI. One way to use chi
 nevertheless is to clone the repository and install it from there, i.e. 
 1. Clone the repository with
 ```bash
-git clone https://github.com/DavAug/erlotinib.git
+git clone https://github.com/DavAug/chi.git
 ```
-2. Install erlotinib by moving into the repository and executing a pip install
+2. Install chi by moving into the repository and executing a pip install
 ```bash
-cd erlotinib && pip install .
+cd chi && pip install .
 ```
 
-### Modelling and inference with erlotinib
+### Modelling and inference with chi
 Polished tutorials do currently not exist, but are on the way. In the mean time, please find examples of how chi is 
 used to study the tumour growth inhibiting effect of the drug erlotinib in mice [here](https://github.com/DavAug/chi/tree/main/analysis).
 
