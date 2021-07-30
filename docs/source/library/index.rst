@@ -10,8 +10,8 @@ as well as datasets.
 Models are specified by SBML files, so they can easily be instantiated with either
 a :class:`PharmacokineticModel` or :class:`PharmacodynamicModel`.
 
-Figure classes grouped by intended use
---------------------------------------
+Content
+-------
 
 .. toctree::
     :maxdepth: 1
