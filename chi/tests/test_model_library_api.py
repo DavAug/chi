@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -10,12 +10,12 @@ import unittest
 
 import myokit.formats.sbml as sbml
 
-from erlotinib.library import ModelLibrary
+from chi.library import ModelLibrary
 
 
 class TestModelLibrary(unittest.TestCase):
     """
-    Tests the erlotinib.ModelLibrary class.
+    Tests the chi.ModelLibrary class.
     """
 
     @classmethod
@@ -47,7 +47,7 @@ class TestModelLibrary(unittest.TestCase):
 
 class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
     """
-    Tests the erlotinib.modelLibrary.erlotinib_tumour_growth_inhibition_model
+    Tests the chi.modelLibrary.erlotinib_tumour_growth_inhibition_model
     method.
     """
 
@@ -92,7 +92,7 @@ class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
 
 class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
     """
-    Tests the erlotinib.modelLibrary.tumour_growth_inhibition_model_koch
+    Tests the chi.modelLibrary.tumour_growth_inhibition_model_koch
     method.
     """
 
@@ -136,7 +136,7 @@ class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
 class TestTumourGrowthInhibitionModelKochReparametrised(unittest.TestCase):
     """
     Tests the
-    erlotinib.modelLibrary.tumour_growth_inhibition_model_koch_reparametrised
+    chi.modelLibrary.tumour_growth_inhibition_model_koch_reparametrised
     method.
     """
 
@@ -179,7 +179,7 @@ class TestTumourGrowthInhibitionModelKochReparametrised(unittest.TestCase):
 
 class TestOneCompartmentPKModel(unittest.TestCase):
     """
-    Tests the erlotinib.modelLibrary.one_compartment_pk_model method.
+    Tests the chi.modelLibrary.one_compartment_pk_model method.
     """
 
     @classmethod

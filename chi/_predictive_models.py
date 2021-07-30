@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -12,7 +12,7 @@ import pandas as pd
 import pints
 import xarray as xr
 
-import erlotinib as erlo
+import chi
 
 
 class GenerativeModel(object):
@@ -25,10 +25,10 @@ class GenerativeModel(object):
         super(GenerativeModel, self).__init__()
 
         # Check inputs
-        if not isinstance(predictive_model, erlo.PredictiveModel):
+        if not isinstance(predictive_model, chi.PredictiveModel):
             raise ValueError(
                 'The provided predictive model has to be an instance of a '
-                'erlotinib.PredictiveModel.')
+                'chi.PredictiveModel.')
 
         self._predictive_model = predictive_model
 
@@ -261,13 +261,13 @@ class PosteriorPredictiveModel(GenerativeModel):
         n_samples = int(n_samples)
 
         # Check individual for population model
-        if isinstance(self._predictive_model, erlo.PredictivePopulationModel):
+        if isinstance(self._predictive_model, chi.PredictivePopulationModel):
             if individual is not None:
                 raise ValueError(
                     "Individual ID's cannot be selected for a "
-                    "erlotinib.PredictivePopulationModel. To model an "
-                    "individual create a erlotinib.PosteriorPredictiveModel "
-                    "with a erlotinib.PredictiveModel.")
+                    "chi.PredictivePopulationModel. To model an "
+                    "individual create a chi.PosteriorPredictiveModel "
+                    "with a chi.PredictiveModel.")
 
         # Check individual for individual predictive model
         else:
@@ -385,17 +385,17 @@ class PredictiveModel(object):
         # Check inputs
         if not isinstance(
                 mechanistic_model,
-                (erlo.MechanisticModel, erlo.ReducedMechanisticModel)):
+                (chi.MechanisticModel, chi.ReducedMechanisticModel)):
             raise TypeError(
                 'The mechanistic model has to be an instance of a '
-                'erlotinib.MechanisticModel.')
+                'chi.MechanisticModel.')
 
         for error_model in error_models:
             if not isinstance(
-                    error_model, (erlo.ErrorModel, erlo.ReducedErrorModel)):
+                    error_model, (chi.ErrorModel, chi.ReducedErrorModel)):
                 raise TypeError(
                     'All error models have to be instances of a '
-                    'erlotinib.ErrorModel.')
+                    'chi.ErrorModel.')
 
         # Copy mechanistic model
         mechanistic_model = mechanistic_model.copy()
@@ -490,11 +490,11 @@ class PredictiveModel(object):
         error_models = self._error_models
 
         # Convert models to reduced models
-        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
-            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        if not isinstance(mechanistic_model, chi.ReducedMechanisticModel):
+            mechanistic_model = chi.ReducedMechanisticModel(mechanistic_model)
         for model_id, error_model in enumerate(error_models):
-            if not isinstance(error_model, erlo.ReducedErrorModel):
-                error_models[model_id] = erlo.ReducedErrorModel(error_model)
+            if not isinstance(error_model, chi.ReducedErrorModel):
+                error_models[model_id] = chi.ReducedErrorModel(error_model)
 
         # Fix model parameters
         mechanistic_model.fix_parameters(name_value_dict)
@@ -641,13 +641,13 @@ class PredictiveModel(object):
         """
         # Get original submodels
         mechanistic_model = self._mechanistic_model
-        if isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+        if isinstance(mechanistic_model, chi.ReducedMechanisticModel):
             mechanistic_model = mechanistic_model.mechanistic_model()
 
         error_models = []
         for error_model in self._error_models:
             # Get original error model
-            if isinstance(error_model, erlo.ReducedErrorModel):
+            if isinstance(error_model, chi.ReducedErrorModel):
                 error_model = error_model.get_error_model()
 
             error_models.append(error_model)
@@ -816,8 +816,8 @@ class PredictiveModel(object):
             raise AttributeError(
                 'The mechanistic model does not support to set dosing '
                 'regimens. This may be because the underlying '
-                'erlotinib.MechanisticModel is a '
-                'erlotinib.PharmacodynamicModel.')
+                'chi.MechanisticModel is a '
+                'chi.PharmacodynamicModel.')
 
 
 class PredictivePopulationModel(PredictiveModel):
@@ -860,16 +860,16 @@ class PredictivePopulationModel(PredictiveModel):
 
     def __init__(self, predictive_model, population_models, params=None):
         # Check inputs
-        if not isinstance(predictive_model, erlo.PredictiveModel):
+        if not isinstance(predictive_model, chi.PredictiveModel):
             raise TypeError(
                 'The predictive model has to be an instance of a '
-                'erlotinib.PredictiveModel.')
+                'chi.PredictiveModel.')
 
         for pop_model in population_models:
-            if not isinstance(pop_model, erlo.PopulationModel):
+            if not isinstance(pop_model, chi.PopulationModel):
                 raise TypeError(
                     'All population models have to be instances of a '
-                    'erlotinib.PopulationModel.')
+                    'chi.PopulationModel.')
 
         # Get number and names of non-population predictive model
         n_parameters = predictive_model.n_parameters()
@@ -918,7 +918,7 @@ class PredictivePopulationModel(PredictiveModel):
         """
         Sets the names of the population model parameters.
 
-        For erlotinib.HeterogeneousModel the bottom-level parameter is used
+        For chi.HeterogeneousModel the bottom-level parameter is used
         as model parameter name.
         """
         # Get predictive model parameters
@@ -988,8 +988,8 @@ class PredictivePopulationModel(PredictiveModel):
 
         # Convert models to reduced models
         for model_id, pop_model in enumerate(pop_models):
-            if not isinstance(pop_model, erlo.ReducedPopulationModel):
-                pop_models[model_id] = erlo.ReducedPopulationModel(pop_model)
+            if not isinstance(pop_model, chi.ReducedPopulationModel):
+                pop_models[model_id] = chi.ReducedPopulationModel(pop_model)
 
         # Fix model parameters
         for pop_model in pop_models:
@@ -1066,7 +1066,7 @@ class PredictivePopulationModel(PredictiveModel):
         pop_models = []
         for pop_model in self._population_models:
             # Get original population model
-            if isinstance(pop_model, erlo.ReducedPopulationModel):
+            if isinstance(pop_model, chi.ReducedPopulationModel):
                 pop_model = pop_model.get_population_model()
 
             pop_models.append(pop_model)
@@ -1145,7 +1145,7 @@ class PredictivePopulationModel(PredictiveModel):
         start = 0
         for param_id, pop_model in enumerate(self._population_models):
             # If heterogenous model, use input parameter for all patients
-            if isinstance(pop_model, erlo.HeterogeneousModel):
+            if isinstance(pop_model, chi.HeterogeneousModel):
                 patients[:, param_id] = parameters[start]
 
                 # Increment population parameter counter and continue to next
@@ -1394,7 +1394,7 @@ class StackedPredictiveModel(GenerativeModel):
             if not isinstance(predictive_model, PosteriorPredictiveModel):
                 raise TypeError(
                     'The predictive models must be instances of '
-                    'erlotinib.PosteriorPredictiveModel.')
+                    'chi.PosteriorPredictiveModel.')
 
         predictive_model = predictive_models[0].get_predictive_model()
         super(StackedPredictiveModel, self).__init__(predictive_model)
@@ -1428,7 +1428,7 @@ class StackedPredictiveModel(GenerativeModel):
     def get_predictive_model(self):
         """
         Returns a list of the
-        :class:`erlotinib.PosteriorPredictiveModel` instances.
+        :class:`chi.PosteriorPredictiveModel` instances.
         """
         return self._predictive_models
 

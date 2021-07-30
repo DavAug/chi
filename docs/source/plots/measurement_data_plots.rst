@@ -1,12 +1,12 @@
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 
 **********************
 Measurement Data Plots
 **********************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Measurement data plots in erlotinib_ are primarily intended to
+Measurement data plots in chi_ are primarily intended to
 illustrate measurements of pharmacokinetic or pharmacodynamic
 biomarkers from different individuals or patients over time.
 
@@ -15,7 +15,7 @@ be added to the figure. This is ideally suited to explore the
 dynamic properties of a given model for a number of parameter values
 and compare them to preclinical or clinical data.
 
-.. currentmodule:: erlotinib.plots
+.. currentmodule:: chi.plots
 
 Functional classes
 ------------------

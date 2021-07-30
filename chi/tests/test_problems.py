@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -12,13 +12,13 @@ import numpy as np
 import pandas as pd
 import pints
 
-import erlotinib as erlo
-from erlotinib.library import ModelLibrary
+import chi
+from chi.library import ModelLibrary
 
 
 class TestProblemModellingControllerPDProblem(unittest.TestCase):
     """
-    Tests the erlotinib.ProblemModellingController class on a PD modelling
+    Tests the chi.ProblemModellingController class on a PD modelling
     problem.
     """
     @classmethod
@@ -46,22 +46,22 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case I: create PD modelling problem
         lib = ModelLibrary()
         path = lib.tumour_growth_inhibition_model_koch()
-        cls.pd_model = erlo.PharmacodynamicModel(path)
-        cls.error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
-        cls.pd_problem = erlo.ProblemModellingController(
+        cls.pd_model = chi.PharmacodynamicModel(path)
+        cls.error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.pd_problem = chi.ProblemModellingController(
             cls.pd_model, cls.error_model)
 
         # Test case II: create PKPD modelling problem
         lib = ModelLibrary()
         path = lib.erlotinib_tumour_growth_inhibition_model()
-        cls.pkpd_model = erlo.PharmacokineticModel(path)
+        cls.pkpd_model = chi.PharmacokineticModel(path)
         cls.pkpd_model.set_outputs([
             'central.drug_concentration',
             'myokit.tumour_volume'])
         cls.error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel(),
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        cls.pkpd_problem = erlo.ProblemModellingController(
+            chi.ConstantAndMultiplicativeGaussianErrorModel(),
+            chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        cls.pkpd_problem = chi.ProblemModellingController(
             cls.pkpd_model, cls.error_models,
             outputs=[
                 'central.drug_concentration',
@@ -71,31 +71,31 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Mechanistic model has wrong type
         mechanistic_model = 'wrong type'
         with self.assertRaisesRegex(TypeError, 'The mechanistic model'):
-            erlo.ProblemModellingController(
+            chi.ProblemModellingController(
                 mechanistic_model, self.error_model)
 
         # Error model has wrong type
         error_model = 'wrong type'
         with self.assertRaisesRegex(TypeError, 'Error models have to be'):
-            erlo.ProblemModellingController(
+            chi.ProblemModellingController(
                 self.pd_model, error_model)
 
         error_models = ['wrong', 'type']
         with self.assertRaisesRegex(TypeError, 'Error models have to be'):
-            erlo.ProblemModellingController(
+            chi.ProblemModellingController(
                 self.pd_model, error_models)
 
         # Wrong number of error models
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
         with self.assertRaisesRegex(ValueError, 'Wrong number of error'):
-            erlo.ProblemModellingController(
+            chi.ProblemModellingController(
                 self.pkpd_model, error_model)
 
         error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel(),
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+            chi.ConstantAndMultiplicativeGaussianErrorModel(),
+            chi.ConstantAndMultiplicativeGaussianErrorModel()]
         with self.assertRaisesRegex(ValueError, 'Wrong number of error'):
-            erlo.ProblemModellingController(
+            chi.ProblemModellingController(
                 self.pd_model, error_models)
 
     def test_fix_parameters(self):
@@ -157,9 +157,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         problem.fix_parameters(name_value_dict)
         problem.set_population_model(
             pop_models=[
-                erlo.HeterogeneousModel(),
-                erlo.PooledModel(),
-                erlo.LogNormalModel()])
+                chi.HeterogeneousModel(),
+                chi.PooledModel(),
+                chi.LogNormalModel()])
         problem.set_data(
             self.data,
             output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
@@ -353,7 +353,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Get only one posterior
         posterior = problem.get_log_posterior(individual='0')
 
-        self.assertIsInstance(posterior, erlo.LogPosterior)
+        self.assertIsInstance(posterior, chi.LogPosterior)
         self.assertEqual(posterior.n_parameters(), 7)
         self.assertEqual(posterior.get_id(), 'ID 0')
 
@@ -379,23 +379,23 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Get only one posterior
         posterior = problem.get_log_posterior(individual='1')
 
-        self.assertIsInstance(posterior, erlo.LogPosterior)
+        self.assertIsInstance(posterior, chi.LogPosterior)
         self.assertEqual(posterior.n_parameters(), 5)
         self.assertEqual(posterior.get_id(), 'ID 1')
 
         # Set a population model
         pop_models = [
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel()]
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel()]
         problem.set_population_model(pop_models)
         problem.set_log_prior([
             pints.HalfCauchyLogPrior(0, 1)]*8)
         posterior = problem.get_log_posterior()
 
-        self.assertIsInstance(posterior, erlo.HierarchicalLogPosterior)
+        self.assertIsInstance(posterior, chi.HierarchicalLogPosterior)
         self.assertEqual(posterior.n_parameters(), 11)
 
         names = posterior.get_parameter_names()
@@ -430,7 +430,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # models
         posterior = problem.get_log_posterior(individual='some individual')
 
-        self.assertIsInstance(posterior, erlo.HierarchicalLogPosterior)
+        self.assertIsInstance(posterior, chi.HierarchicalLogPosterior)
         self.assertEqual(posterior.n_parameters(), 11)
 
         names = posterior.get_parameter_names()
@@ -497,13 +497,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test case I.2: Population model
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.LogNormalModel()]
         problem.set_population_model(pop_models)
         n_parameters = problem.get_n_parameters()
         self.assertEqual(n_parameters, 8)
@@ -548,17 +548,17 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test case II.2: Population model
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
         problem.set_population_model(pop_models)
         n_parameters = problem.get_n_parameters()
         self.assertEqual(n_parameters, 12)
@@ -628,13 +628,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test case I.2: Population model
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.LogNormalModel()]
         problem.set_population_model(pop_models)
         param_names = problem.get_parameter_names()
         self.assertEqual(len(param_names), 8)
@@ -777,17 +777,17 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test case II.2: Population model
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
         problem.set_population_model(pop_models)
         param_names = problem.get_parameter_names()
         self.assertEqual(len(param_names), 12)
@@ -925,68 +925,68 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test case I.1: No population model
         predictive_model = problem.get_predictive_model()
-        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
+        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Exclude population model
         predictive_model = problem.get_predictive_model(
             exclude_pop_model=True)
-        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
+        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Test case I.2: Population model
         problem.set_population_model([
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel()])
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.LogNormalModel()])
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(
-            predictive_model, erlo.PredictivePopulationModel)
+            predictive_model, chi.PredictivePopulationModel)
 
         # Exclude population model
         predictive_model = problem.get_predictive_model(
             exclude_pop_model=True)
         self.assertNotIsInstance(
-            predictive_model, erlo.PredictivePopulationModel)
-        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
+            predictive_model, chi.PredictivePopulationModel)
+        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Test case II: PKPD model
         problem = copy.deepcopy(self.pkpd_problem)
 
         # Test case II.1: No population model
         predictive_model = problem.get_predictive_model()
-        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
+        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Exclude population model
         predictive_model = problem.get_predictive_model(
             exclude_pop_model=True)
-        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
+        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Test case II.2: Population model
         problem.set_population_model([
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()])
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()])
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(
-            predictive_model, erlo.PredictivePopulationModel)
+            predictive_model, chi.PredictivePopulationModel)
 
         # Exclude population model
         predictive_model = problem.get_predictive_model(
             exclude_pop_model=True)
         self.assertNotIsInstance(
-            predictive_model, erlo.PredictivePopulationModel)
-        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
+            predictive_model, chi.PredictivePopulationModel)
+        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
     def test_set_data(self):
         # Set data with explicit output-biomarker map
@@ -1113,13 +1113,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         problem = copy.deepcopy(self.pd_problem)
         problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel()]
 
         # Test case I.1: Don't specify order
         problem.set_population_model(pop_models)
@@ -1177,17 +1177,17 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
                 'central.drug_concentration': 'IL 6',
                 'myokit.tumour_volume': 'Tumour volume'})
         pop_models = [
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel()]
+            chi.LogNormalModel(),
+            chi.LogNormalModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel()]
 
         # Test case I.1: Don't specify order
         problem.set_population_model(pop_models)
@@ -1248,12 +1248,12 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             self.pd_problem.set_population_model(pop_models)
 
         # Number of population models is not correct
-        pop_models = [erlo.PooledModel()]
+        pop_models = [chi.PooledModel()]
         with self.assertRaisesRegex(ValueError, 'The number of population'):
             self.pd_problem.set_population_model(pop_models)
 
         # Specified parameter names do not coincide with model
-        pop_models = [erlo.PooledModel()] * 7
+        pop_models = [chi.PooledModel()] * 7
         parameter_names = ['wrong names'] * 7
         with self.assertRaisesRegex(ValueError, 'The parameter names'):
             self.pd_problem.set_population_model(pop_models, parameter_names)
@@ -1261,7 +1261,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
 class TestInverseProblem(unittest.TestCase):
     """
-    Tests the erlotinib.InverseProblem class.
+    Tests the chi.InverseProblem class.
     """
 
     @classmethod
@@ -1272,32 +1272,32 @@ class TestInverseProblem(unittest.TestCase):
 
         # Set up inverse problem
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = erlo.PharmacodynamicModel(path)
-        cls.problem = erlo.InverseProblem(cls.model, cls.times, cls.values)
+        cls.model = chi.PharmacodynamicModel(path)
+        cls.problem = chi.InverseProblem(cls.model, cls.times, cls.values)
 
     def test_bad_model_input(self):
         model = 'bad model'
 
         with self.assertRaisesRegex(ValueError, 'Model has to be an instance'):
-            erlo.InverseProblem(model, self.times, self.values)
+            chi.InverseProblem(model, self.times, self.values)
 
     def test_bad_times_input(self):
         times = [-1, 2, 3, 4, 5]
         with self.assertRaisesRegex(ValueError, 'Times cannot be negative.'):
-            erlo.InverseProblem(self.model, times, self.values)
+            chi.InverseProblem(self.model, times, self.values)
 
         times = [5, 4, 3, 2, 1]
         with self.assertRaisesRegex(ValueError, 'Times must be increasing.'):
-            erlo.InverseProblem(self.model, times, self.values)
+            chi.InverseProblem(self.model, times, self.values)
 
     def test_bad_values_input(self):
         values = [1, 2, 3, 4, 5, 6, 7]
         with self.assertRaisesRegex(ValueError, 'Values array must have'):
-            erlo.InverseProblem(self.model, self.times, values)
+            chi.InverseProblem(self.model, self.times, values)
 
         values = [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]]
         with self.assertRaisesRegex(ValueError, 'Values array must have'):
-            erlo.InverseProblem(self.model, self.times, values)
+            chi.InverseProblem(self.model, self.times, values)
 
     def test_evaluate(self):
         parameters = [0.1, 1, 1, 1, 1]

@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -14,7 +14,7 @@ import pints
 from tqdm.notebook import tqdm
 import xarray as xr
 
-import erlotinib as erlo
+import chi
 
 
 def _compute_hierarchical_pointwise_log_likelihood(
@@ -307,11 +307,11 @@ def compute_pointwise_loglikelihood(
     # Check inputs
     if not isinstance(
             log_likelihood,
-            (erlo.LogLikelihood, erlo.HierarchicalLogLikelihood)):
+            (chi.LogLikelihood, chi.HierarchicalLogLikelihood)):
         raise TypeError(
             'The log-likelihood must be either an instance of a '
-            'erlotinib.LogLikelihood or a '
-            'erlotinib.HierarchicalLogLikelihood.')
+            'chi.LogLikelihood or a '
+            'chi.HierarchicalLogLikelihood.')
     if not isinstance(posterior_samples, xr.Dataset):
         raise TypeError(
             'The posterior samples must be an instance of a '
@@ -341,7 +341,7 @@ def compute_pointwise_loglikelihood(
 
     # Check whether model is hierarchical
     is_hierarchical = False
-    if isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
+    if isinstance(log_likelihood, chi.HierarchicalLogLikelihood):
         is_hierarchical = True
 
     # Check individual for population model
@@ -349,7 +349,7 @@ def compute_pointwise_loglikelihood(
         if individual is not None:
             raise ValueError(
                 "Individual IDs cannot be selected for a "
-                "erlotinib.HierarchicalLogLikelihood. To evaluate compute "
+                "chi.HierarchicalLogLikelihood. To evaluate compute "
                 "the pointwise for an individual separately, please use "
                 "construct a log-likelihood for the individual alone.")
 
@@ -375,7 +375,7 @@ def compute_pointwise_loglikelihood(
 
     # Sort parameters into numpy array for simplified iteration
     ids = log_likelihood.get_id(individual_ids=True) if isinstance(
-        log_likelihood, erlo.HierarchicalLogLikelihood) else None
+        log_likelihood, chi.HierarchicalLogLikelihood) else None
     posterior = _format_posterior(
         parameter_names, top_parameters, posterior_samples, ids)
 
@@ -431,11 +431,11 @@ class InferenceController(object):
         for log_posterior in log_posteriors:
             if not isinstance(
                     log_posterior,
-                    (erlo.LogPosterior, erlo.HierarchicalLogPosterior)):
+                    (chi.LogPosterior, chi.HierarchicalLogPosterior)):
                 raise ValueError(
                     'The log-posterior has to be an instance of a '
-                    'erlotinib.LogPosterior or a '
-                    'erlotinib.HierarchicalLogPosterior')
+                    'chi.LogPosterior or a '
+                    'chi.HierarchicalLogPosterior')
 
         # Check that the log-posteriors have the same number of parameters
         n_parameters = log_posteriors[0].n_parameters()
@@ -498,7 +498,7 @@ class InferenceController(object):
                 self._n_runs)
 
             # Sample initial population, if model is hierarchical
-            if isinstance(log_posterior, erlo.HierarchicalLogPosterior):
+            if isinstance(log_posterior, chi.HierarchicalLogPosterior):
                 self._initial_params[index] = self._sample_population(
                         index, log_posterior, mask)
 

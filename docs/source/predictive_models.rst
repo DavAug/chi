@@ -1,12 +1,12 @@
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 
 *****************
 Predictive Models
 *****************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Predictive models in erlotinib_ can be used to predict observable
+Predictive models in chi_ can be used to predict observable
 pharmacokinetic and pharmacodynamic biomarker values.
 
 Each predictive model consists of a :class:`MechanisticModel` and one

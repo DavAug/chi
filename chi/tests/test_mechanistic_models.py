@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -10,18 +10,18 @@ import unittest
 import myokit
 import numpy as np
 
-import erlotinib as erlo
-from erlotinib.library import ModelLibrary
+import chi
+from chi.library import ModelLibrary
 
 
 class TestMechanisticModel(unittest.TestCase):
     """
-    Tests `erlotinib.MechanisticModel`.
+    Tests `chi.MechanisticModel`.
     """
     @classmethod
     def setUpClass(cls):
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = erlo.MechanisticModel(path)
+        cls.model = chi.MechanisticModel(path)
 
     def test_copy(self):
         # Case I: Copy model and check that all public properties coincide
@@ -265,12 +265,12 @@ class TestMechanisticModel(unittest.TestCase):
 
 class TestPharmacodynamicModel(unittest.TestCase):
     """
-    Tests `erlotinib.PharmacodynamicModel`.
+    Tests `chi.PharmacodynamicModel`.
     """
     @classmethod
     def setUpClass(cls):
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = erlo.PharmacodynamicModel(path)
+        cls.model = chi.PharmacodynamicModel(path)
 
     def test_n_outputs(self):
         self.assertEqual(self.model.n_outputs(), 1)
@@ -376,16 +376,16 @@ class TestPharmacodynamicModel(unittest.TestCase):
 
 class TestPharmacokineticModel(unittest.TestCase):
     """
-    Tests `erlotinib.PharmacokineticModel`.
+    Tests `chi.PharmacokineticModel`.
     """
     @classmethod
     def setUpClass(cls):
         path = ModelLibrary().one_compartment_pk_model()
-        cls.model = erlo.PharmacokineticModel(path)
+        cls.model = chi.PharmacokineticModel(path)
 
     def test_administration(self):
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
 
         # Test default
         self.assertIsNone(model.administration())
@@ -410,7 +410,7 @@ class TestPharmacokineticModel(unittest.TestCase):
 
     def test_enable_sensitivities(self):
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
 
         # Disable sensitivities before setting administration
         model.enable_sensitivities(False)
@@ -431,7 +431,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(sens.shape, (4, 1, 5))
 
         # Enable sensitivities before setting an administration
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
         model.enable_sensitivities(True)
         self.assertTrue(model.has_sensitivities())
         times = [0, 1, 2, 3]
@@ -469,7 +469,7 @@ class TestPharmacokineticModel(unittest.TestCase):
 
     def test_set_administration(self):
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
 
         # Administer dose directly to central compartment
         model.set_administration(compartment='central')
@@ -510,7 +510,7 @@ class TestPharmacokineticModel(unittest.TestCase):
 
     def test_set_dosing_regimen(self):
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
 
         # Administer dose directly to central compartment
         model.set_administration(compartment='central')
@@ -592,7 +592,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         # Not setting an administration prior to setting a dosing regimen
         # should raise an error
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
 
         with self.assertRaisesRegex(ValueError, 'The route of administration'):
             model.set_dosing_regimen(dose=10, start=3, period=5)
@@ -712,7 +712,7 @@ class TestPharmacokineticModel(unittest.TestCase):
 
 class TestReducedMechanisticModel(unittest.TestCase):
     """
-    Tests the erlotinib.ReducedMechanisticModel class.
+    Tests the chi.ReducedMechanisticModel class.
     """
 
     @classmethod
@@ -720,18 +720,18 @@ class TestReducedMechanisticModel(unittest.TestCase):
         # Set up model
         lib = ModelLibrary()
         path = lib.tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        cls.pd_model = erlo.ReducedMechanisticModel(model)
+        model = chi.PharmacodynamicModel(path)
+        cls.pd_model = chi.ReducedMechanisticModel(model)
 
         path = lib.one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
         model.set_administration('central')
-        cls.pk_model = erlo.ReducedMechanisticModel(model)
+        cls.pk_model = chi.ReducedMechanisticModel(model)
 
     def test_bad_instantiation(self):
         model = 'Bad type'
         with self.assertRaisesRegex(ValueError, 'The mechanistic model'):
-            erlo.ReducedMechanisticModel(model)
+            chi.ReducedMechanisticModel(model)
 
     def test_copy(self):
         # Fix some parameters
@@ -852,7 +852,7 @@ class TestReducedMechanisticModel(unittest.TestCase):
 
     def test_mechanistic_model(self):
         self.assertIsInstance(
-            self.pd_model.mechanistic_model(), erlo.MechanisticModel)
+            self.pd_model.mechanistic_model(), chi.MechanisticModel)
 
     def test_n_fixed_parameters(self):
         # Test case I: fix some parameters

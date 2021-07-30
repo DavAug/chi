@@ -2,7 +2,7 @@
 Library
 *******
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
 The library module contains a number erlotinib-specific PK, PD and PKPD models,
 as well as datasets.

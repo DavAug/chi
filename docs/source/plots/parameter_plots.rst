@@ -1,15 +1,15 @@
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 
 ***************
 Parameter Plots
 ***************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Parameter plots in erlotinib_ are intended to illustrate parameter
+Parameter plots in chi_ are intended to illustrate parameter
 inference results derived with a :class:`InferenceController`.
 
-.. currentmodule:: erlotinib.plots
+.. currentmodule:: chi.plots
 
 Functional classes
 ------------------

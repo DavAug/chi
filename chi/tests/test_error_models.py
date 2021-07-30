@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -9,16 +9,16 @@ import unittest
 
 import numpy as np
 
-import erlotinib as erlo
+import chi
 
 
 class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
     """
-    Tests the erlo.ConstantAndMultiplicativeGaussianErrorModel class.
+    Tests the chi.ConstantAndMultiplicativeGaussianErrorModel class.
     """
     @classmethod
     def setUpClass(cls):
-        cls.error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
 
     def test_compute_log_likelihood(self):
         # Tests :meth:`compute_log_likelihood` and
@@ -350,12 +350,12 @@ class TestConstantAndMultiplicativeGaussianErrorModel(unittest.TestCase):
 
 class TestErrorModel(unittest.TestCase):
     """
-    Tests the erlo.ErrorModel class.
+    Tests the chi.ErrorModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.error_model = erlo.ErrorModel()
+        cls.error_model = chi.ErrorModel()
 
     def test_compute_log_likelihood(self):
         parameters = 'some parameters'
@@ -402,11 +402,11 @@ class TestErrorModel(unittest.TestCase):
 
 class TestGaussianErrorModel(unittest.TestCase):
     """
-    Tests the erlo.GaussianErrorModel class.
+    Tests the chi.GaussianErrorModel class.
     """
     @classmethod
     def setUpClass(cls):
-        cls.error_model = erlo.GaussianErrorModel()
+        cls.error_model = chi.GaussianErrorModel()
 
     def test_compute_log_likelihood(self):
         # Tests :meth:`compute_log_likelihood` and
@@ -680,11 +680,11 @@ class TestGaussianErrorModel(unittest.TestCase):
 
 class TestLogNormalErrorModel(unittest.TestCase):
     """
-    Tests the erlo.LogNormalErrorModel class.
+    Tests the chi.LogNormalErrorModel class.
     """
     @classmethod
     def setUpClass(cls):
-        cls.error_model = erlo.LogNormalErrorModel()
+        cls.error_model = chi.LogNormalErrorModel()
 
     def test_compute_log_likelihood(self):
         # Tests :meth:`compute_log_likelihood` and
@@ -996,7 +996,7 @@ class TestMultiplicativeGaussianErrorModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.error_model = erlo.MultiplicativeGaussianErrorModel()
+        cls.error_model = chi.MultiplicativeGaussianErrorModel()
 
     def test_compute_log_likelihood(self):
         # Tests :meth:`compute_log_likelihood` and
@@ -1292,13 +1292,13 @@ class TestReducedErrorModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
-        cls.error_model = erlo.ReducedErrorModel(error_model)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.error_model = chi.ReducedErrorModel(error_model)
 
     def test_bad_instantiation(self):
         model = 'Bad type'
         with self.assertRaisesRegex(ValueError, 'The error model'):
-            erlo.ReducedErrorModel(model)
+            chi.ReducedErrorModel(model)
 
     def test_compute_log_likelihood(self):
         # Tests :meth:`compute_log_likelihood` and
@@ -1417,7 +1417,7 @@ class TestReducedErrorModel(unittest.TestCase):
 
     def test_get_error_model(self):
         error_model = self.error_model.get_error_model()
-        self.assertIsInstance(error_model, erlo.ErrorModel)
+        self.assertIsInstance(error_model, chi.ErrorModel)
 
     def test_n_fixed_parameters(self):
         # Test case I: fix some parameters

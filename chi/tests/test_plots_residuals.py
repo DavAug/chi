@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -9,13 +9,13 @@ import unittest
 
 import numpy as np
 
-from erlotinib import plots
-from erlotinib.library import DataLibrary
+from chi import plots
+from chi.library import DataLibrary
 
 
 class TestResidualPlot(unittest.TestCase):
     """
-    Tests the erlotinib.plots.ResidualPlot class.
+    Tests the chi.plots.ResidualPlot class.
     """
 
     @classmethod

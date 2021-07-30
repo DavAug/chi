@@ -1,9 +1,9 @@
 
 .. Root of all pints docs
 
-.. _GitHub: https://github.com/DavAug/erlotinib
+.. _GitHub: https://github.com/DavAug/chi
 
-.. module:: erlotinib
+.. module:: chi
 
 .. toctree::
     :hidden:
@@ -20,13 +20,13 @@
     predictive_models
     problems
 
-Welcome to Erlotinib's documentation!
+Welcome to Chi's documentation!
 =====================================
 
-**Erlotinib** is an open source Python package hosted on GitHub_,
+**Chi** is an open source Python package hosted on GitHub_,
 which is designed for pharmacokinetic and pharmacodynamic (PKPD) modelling.
 
-The main features of erlotinib are
+The main features of chi are
 
 - Simulation of mechanistic dose response models (differential equations) for arbitrary dosing regimens.
 - Inference of mechanistic model parameters from data (classical or Bayesian).
@@ -36,7 +36,7 @@ The main features of erlotinib are
 - Inference of model parameters in a structured population from data (classical or Bayesian).
 
 This page provides the API, or developer documentation for
-erlotinib.
+chi.
 
 .. note::
     This package is still in its infancy and is continuously being developed.

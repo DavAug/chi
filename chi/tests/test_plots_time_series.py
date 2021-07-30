@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -10,13 +10,13 @@ import unittest
 import numpy as np
 import plotly.graph_objects as go
 
-from erlotinib import plots
-from erlotinib.library import DataLibrary
+from chi import plots
+from chi.library import DataLibrary
 
 
 class TestPDPredictivePlot(unittest.TestCase):
     """
-    Tests the erlotinib.plots.PDPredictivePlot class.
+    Tests the chi.plots.PDPredictivePlot class.
     """
 
     @classmethod
@@ -256,7 +256,7 @@ class TestPDPredictivePlot(unittest.TestCase):
 
 class TestPKPredictivePlot(unittest.TestCase):
     """
-    Tests the erlotinib.plots.PKPredictivePlot class.
+    Tests the chi.plots.PKPredictivePlot class.
     """
 
     @classmethod
@@ -496,7 +496,7 @@ class TestPKPredictivePlot(unittest.TestCase):
 
 class TestPDTimeSeriesPlot(unittest.TestCase):
     """
-    Tests the erlotinib.plots.PDTimeSeriesPlot class.
+    Tests the chi.plots.PDTimeSeriesPlot class.
     """
 
     @classmethod
@@ -654,7 +654,7 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
 
 class TestPKTimeSeriesPlot(unittest.TestCase):
     """
-    Tests the erlotinib.plots.PKTimeSeriesPlot class.
+    Tests the chi.plots.PKTimeSeriesPlot class.
     """
 
     @classmethod

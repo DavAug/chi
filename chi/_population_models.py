@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -1101,7 +1101,7 @@ class ReducedPopulationModel(object):
         if not isinstance(population_model, PopulationModel):
             raise TypeError(
                 'The population model has to be an instance of a '
-                'erlotinib.PopulationModel.')
+                'chi.PopulationModel.')
 
         self._population_model = population_model
 

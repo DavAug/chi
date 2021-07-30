@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -9,7 +9,7 @@ from warnings import warn
 
 import numpy as np
 
-import erlotinib as erlo
+import chi
 
 
 class CovariateModel(object):
@@ -205,7 +205,7 @@ class CentredLogNormalModel(CovariateModel):
         :param population_model: A population model for :math:`\eta`.
         :type population_model: PopulationModel
         """
-        if not isinstance(population_model, erlo.GaussianModel):
+        if not isinstance(population_model, chi.GaussianModel):
             warn(
                 'This CovariateModel is only intended for the use with a '
                 'GaussianModel.', UserWarning)

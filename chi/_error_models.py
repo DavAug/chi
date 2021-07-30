@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -1617,7 +1617,7 @@ class ReducedErrorModel(object):
         if not isinstance(error_model, ErrorModel):
             raise ValueError(
                 'The error model has to be an instance of a '
-                'erlotinib.ErrorModel')
+                'chi.ErrorModel')
 
         self._error_model = error_model
 

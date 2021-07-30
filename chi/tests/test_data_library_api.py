@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -9,12 +9,12 @@ import unittest
 
 import pandas as pd
 
-from erlotinib.library import DataLibrary
+from chi.library import DataLibrary
 
 
 class TestDataLibrary(unittest.TestCase):
     """
-    Tests the erlotinib.DataLibrary class.
+    Tests the chi.DataLibrary class.
     """
 
     @classmethod
@@ -49,7 +49,7 @@ class TestDataLibrary(unittest.TestCase):
 
 class TestLungCancerControlGroup(unittest.TestCase):
     """
-    Tests the erlotinib.DataLibrary.lung_cancer_control_group method.
+    Tests the chi.DataLibrary.lung_cancer_control_group method.
     """
 
     @classmethod
@@ -88,7 +88,7 @@ class TestLungCancerControlGroup(unittest.TestCase):
 
 class TestLungCancerHighErlotinibDoseGroup(unittest.TestCase):
     """
-    Tests the erlotinib.DataLibrary.lung_cancer_high_erlotinib_dose_group
+    Tests the chi.DataLibrary.lung_cancer_high_erlotinib_dose_group
     method.
     """
 
@@ -129,7 +129,7 @@ class TestLungCancerHighErlotinibDoseGroup(unittest.TestCase):
 
 class TestLungCancerLowErlotinibDoseGroup(unittest.TestCase):
     """
-    Tests the erlotinib.DataLibrary.lung_cancer_low_erlotinib_dose_group
+    Tests the chi.DataLibrary.lung_cancer_low_erlotinib_dose_group
     method.
     """
 
@@ -172,7 +172,7 @@ class TestLungCancerLowErlotinibDoseGroup(unittest.TestCase):
 
 class TestLungCancerMediumErlotinibDoseGroup(unittest.TestCase):
     """
-    Tests the erlotinib.DataLibrary.lung_cancer_medium_erlotinib_dose_group
+    Tests the chi.DataLibrary.lung_cancer_medium_erlotinib_dose_group
     method.
     """
 
@@ -215,7 +215,7 @@ class TestLungCancerMediumErlotinibDoseGroup(unittest.TestCase):
 
 class TestLungCancerSingleErlotinibDoseGroup(unittest.TestCase):
     """
-    Tests the erlotinib.DataLibrary.lung_cancer_single_erlotinib_dose_group
+    Tests the chi.DataLibrary.lung_cancer_single_erlotinib_dose_group
     method.
     """
 

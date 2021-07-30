@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -749,7 +749,7 @@ class PharmacokineticModel(MechanisticModel):
         central compartment.
 
         This variable is mapped to the
-        :meth:`erlotinib.PharmacodynamicModel.pk_input` variable when a
+        :meth:`chi.PharmacodynamicModel.pk_input` variable when a
         :class:`PKPDModel` is instantiated.
 
         Defaults to ``None`` or ``central.drug_concentration`` if the latter is
@@ -766,7 +766,7 @@ class PharmacokineticModel(MechanisticModel):
         The name has to match a parameter of the model.
 
         This variable is mapped to the
-        :meth:`erlotinib.PharmacodynamicModel.pk_input` variable when a
+        :meth:`chi.PharmacodynamicModel.pk_input` variable when a
         :class:`PKPDModel` is instantiated.
         """
         # Get intermediate variable names
@@ -802,7 +802,7 @@ class ReducedMechanisticModel(object):
         if not isinstance(mechanistic_model, MechanisticModel):
             raise ValueError(
                 'The mechanistic model has to be an instance of a '
-                'erlotinib.MechanisticModel')
+                'chi.MechanisticModel')
 
         self._mechanistic_model = mechanistic_model
         self.simulator = mechanistic_model.simulator
@@ -990,7 +990,7 @@ class ReducedMechanisticModel(object):
         central compartment.
 
         This variable is mapped to the
-        :meth:`erlotinib.PharmacodynamicModel.pk_input` variable when a
+        :meth:`chi.PharmacodynamicModel.pk_input` variable when a
         :class:`PKPDModel` is instantiated.
 
         Defaults to ``None`` or ``central.drug_concentration`` if the latter is

@@ -1,6 +1,6 @@
 [run]
-source = erlotinib
+source = chi
 omit =
-    erlotinib/apps/*
-    erlotinib/plots/_base.py
-    erlotinib/tests/*
+    chi/apps/*
+    chi/plots/_base.py
+    chi/tests/*

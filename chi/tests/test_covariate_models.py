@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -9,17 +9,17 @@ import unittest
 
 import numpy as np
 
-import erlotinib as erlo
+import chi
 
 
 class TestCovariateModel(unittest.TestCase):
     """
-    Tests the erlotinib.CovariateModel class.
+    Tests the chi.CovariateModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.cov_model = erlo.CovariateModel()
+        cls.cov_model = chi.CovariateModel()
 
     def test_check_compatibility(self):
         pop_model = 'some model'
@@ -72,24 +72,24 @@ class TestCovariateModel(unittest.TestCase):
 
 class TestCentredLogNormalModel(unittest.TestCase):
     """
-    Tests the erlotinib.CentredLogNormalModel class.
+    Tests the chi.CentredLogNormalModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.cov_model = erlo.CentredLogNormalModel()
+        cls.cov_model = chi.CentredLogNormalModel()
 
     def test_check_compatibility_fail(self):
         # Check that warning is raised with a population model
         # that is not a GaussianModel
-        pop_model = erlo.LogNormalModel()
+        pop_model = chi.LogNormalModel()
         with self.assertWarns(UserWarning):
             self.cov_model.check_compatibility(pop_model)
 
     @unittest.expectedFailure
     def test_check_compatibility_pass(self):
         # Check that warning is not raised with a GaussianModel
-        pop_model = erlo.GaussianModel()
+        pop_model = chi.GaussianModel()
         with self.assertWarns(UserWarning):
             self.cov_model.check_compatibility(pop_model)
 

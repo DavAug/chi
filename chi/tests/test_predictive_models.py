@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -12,32 +12,32 @@ import pandas as pd
 import pints
 import xarray as xr
 
-import erlotinib as erlo
-from erlotinib.library import ModelLibrary
+import chi
+from chi.library import ModelLibrary
 
 
 class TestGenerativeModel(unittest.TestCase):
     """
-    Tests the erlo.GenerativeModel class.
+    Tests the chi.GenerativeModel class.
 
     Since most methods only call methods from the
-    erlo.PredictiveModel the methods are tested rather superficially.
+    chi.PredictiveModel the methods are tested rather superficially.
     """
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
+        mechanistic_model = chi.PharmacodynamicModel(path)
 
         # Define error models
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
         # Create predictive model
-        predictive_model = erlo.PredictiveModel(
+        predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Create data driven predictive model
-        cls.model = erlo.GenerativeModel(
+        cls.model = chi.GenerativeModel(
             predictive_model)
 
     def test_get_dosing_regimen(self):
@@ -62,7 +62,7 @@ class TestGenerativeModel(unittest.TestCase):
     def test_get_predictive_model(self):
         predictive_model = self.model.get_predictive_model()
 
-        self.assertIsInstance(predictive_model, erlo.PredictiveModel)
+        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
     def test_sample(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
@@ -75,7 +75,7 @@ class TestGenerativeModel(unittest.TestCase):
 
 class TestPosteriorPredictiveModel(unittest.TestCase):
     """
-    Tests the erlotinib.PosteriorPredictiveModel class.
+    Tests the chi.PosteriorPredictiveModel class.
     """
 
     @classmethod
@@ -83,9 +83,9 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         # Test model I: Individual predictive model
         # Create predictive model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        cls.pred_model = erlo.PredictiveModel(
+        mechanistic_model = chi.PharmacodynamicModel(path)
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        cls.pred_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Create a posterior samples
@@ -105,19 +105,19 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             in cls.pred_model.get_parameter_names()})
 
         # Create posterior predictive model
-        cls.model = erlo.PosteriorPredictiveModel(
+        cls.model = chi.PosteriorPredictiveModel(
             cls.pred_model, cls.posterior_samples)
 
         # Test model II: PredictivePopulation model
         pop_models = [
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel()]
-        cls.pred_pop_model = erlo.PredictivePopulationModel(
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel()]
+        cls.pred_pop_model = chi.PredictivePopulationModel(
             cls.pred_model, pop_models)
 
         # Create a posterior samples
@@ -149,14 +149,14 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'Mean log Sigma rel.': pop_samples,
             'Std. log Sigma rel.': pop_samples})
 
-        cls.pop_model = erlo.PosteriorPredictiveModel(
+        cls.pop_model = chi.PosteriorPredictiveModel(
             cls.pred_pop_model, cls.pop_post_samples)
 
     def test_bad_instantiation(self):
         # Posterior samples have the wrong type
         posterior_samples = 'Bad type'
         with self.assertRaisesRegex(TypeError, 'The posterior samples'):
-            erlo.PosteriorPredictiveModel(
+            chi.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
         # The dimensions have the wrong names (3 dimensions)
@@ -164,25 +164,25 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         posterior_samples = posterior_samples.rename(
             {'chain': 'wrong name'})
         with self.assertRaisesRegex(ValueError, 'The posterior samples'):
-            erlo.PosteriorPredictiveModel(
+            chi.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
         # The dimensions have the wrong names (2 dimensions)
         posterior_samples = posterior_samples.drop_dims('individual')
         with self.assertRaisesRegex(ValueError, 'The posterior samples'):
-            erlo.PosteriorPredictiveModel(
+            chi.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
         # The dimensions are just generally wrong
         samples = posterior_samples.drop_dims('draw')
         with self.assertRaisesRegex(ValueError, 'The posterior samples'):
-            erlo.PosteriorPredictiveModel(
+            chi.PosteriorPredictiveModel(
                 self.pred_model, samples)
 
         # Bad parameter map type
         param_map = 'Bad type'
         with self.assertRaisesRegex(ValueError, 'The parameter map'):
-            erlo.PosteriorPredictiveModel(
+            chi.PosteriorPredictiveModel(
                 self.pred_model, self.posterior_samples, param_map=param_map)
 
         # The posterior does not have samples for all parameters
@@ -190,7 +190,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         posterior_samples = posterior_samples.rename(
             {'wrong name': 'chain'})
         with self.assertRaisesRegex(ValueError, 'The parameter <myokit.'):
-            erlo.PosteriorPredictiveModel(
+            chi.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
     def test_sample(self):
@@ -296,10 +296,10 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         # Test case III.2: PK model, regimen not set
         path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model = chi.PharmacokineticModel(path)
         mechanistic_model.set_administration('central', direct=False)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        predictive_model = erlo.PredictiveModel(
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Define a map between the parameters to recycle posterior samples
@@ -309,7 +309,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'myokit.elimination_rate': 'myokit.lambda_1',
             'central.drug_amount': 'myokit.drug_concentration',
             'dose.drug_amount': 'myokit.kappa'}
-        model = erlo.PosteriorPredictiveModel(
+        model = chi.PosteriorPredictiveModel(
             predictive_model, self.posterior_samples, param_map=param_map)
 
         # Sample
@@ -409,16 +409,16 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'Pooled Sigma rel.': pop_samples})
 
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
-        pred_pop_model = erlo.PredictivePopulationModel(
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
+        pred_pop_model = chi.PredictivePopulationModel(
             self.pred_model, pop_models)
-        pop_model = erlo.PosteriorPredictiveModel(
+        pop_model = chi.PosteriorPredictiveModel(
             pred_pop_model, pop_post_samples)
 
         samples = pop_model.sample(times, include_regimen=True)
@@ -465,20 +465,20 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
 class TestPredictiveModel(unittest.TestCase):
     """
-    Tests the erlo.PredictiveModel class.
+    Tests the chi.PredictiveModel class.
     """
 
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.mechanistic_model = erlo.PharmacodynamicModel(path)
+        cls.mechanistic_model = chi.PharmacodynamicModel(path)
 
         # Define error models
-        cls.error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        cls.error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
         # Create predictive model
-        cls.model = erlo.PredictiveModel(
+        cls.model = chi.PredictiveModel(
             cls.mechanistic_model, cls.error_models)
 
     def test_bad_instantiation(self):
@@ -486,26 +486,26 @@ class TestPredictiveModel(unittest.TestCase):
         mechanistic_model = 'wrong type'
 
         with self.assertRaisesRegex(TypeError, 'The mechanistic model'):
-            erlo.PredictiveModel(mechanistic_model, self.error_models)
+            chi.PredictiveModel(mechanistic_model, self.error_models)
 
         # Error model has wrong type
         error_models = ['wrong type']
 
         with self.assertRaisesRegex(TypeError, 'All error models'):
-            erlo.PredictiveModel(self.mechanistic_model, error_models)
+            chi.PredictiveModel(self.mechanistic_model, error_models)
 
         # Non-existent outputs
         outputs = ['Not', 'existent']
 
         with self.assertRaisesRegex(KeyError, 'The variable <Not> does not'):
-            erlo.PredictiveModel(
+            chi.PredictiveModel(
                 self.mechanistic_model, self.error_models, outputs)
 
         # Wrong number of error models
-        error_models = [erlo.ErrorModel(), erlo.ErrorModel()]
+        error_models = [chi.ErrorModel(), chi.ErrorModel()]
 
         with self.assertRaisesRegex(ValueError, 'Wrong number of error'):
-            erlo.PredictiveModel(self.mechanistic_model, error_models)
+            chi.PredictiveModel(self.mechanistic_model, error_models)
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
@@ -587,13 +587,13 @@ class TestPredictiveModel(unittest.TestCase):
 
         # Test case II: Multi-output problem
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel(),
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        model = erlo.PredictiveModel(model, error_models)
+            chi.ConstantAndMultiplicativeGaussianErrorModel(),
+            chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        model = chi.PredictiveModel(model, error_models)
 
         names = model.get_parameter_names()
 
@@ -618,9 +618,9 @@ class TestPredictiveModel(unittest.TestCase):
 
         # Test case II: Mechanistic model supports dosing regimens
         path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model = chi.PharmacokineticModel(path)
         mechanistic_model.set_administration('central')
-        model = erlo.PredictiveModel(
+        model = chi.PredictiveModel(
             mechanistic_model, self.error_models)
 
         # Test case II.1: Dosing regimen not set
@@ -789,11 +789,11 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(keys[1], 'Error models')
 
         mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+        self.assertIsInstance(mechanistic_model, chi.MechanisticModel)
 
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 1)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[0], chi.ErrorModel)
 
         # Test case II: some fixed parameters
         self.model.fix_parameters({
@@ -807,11 +807,11 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(keys[1], 'Error models')
 
         mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+        self.assertIsInstance(mechanistic_model, chi.MechanisticModel)
 
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 1)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[0], chi.ErrorModel)
 
         # Unfix parameter
         self.model.fix_parameters({
@@ -1005,9 +1005,9 @@ class TestPredictiveModel(unittest.TestCase):
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
         path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model = chi.PharmacokineticModel(path)
         mechanistic_model.set_administration('central')
-        model = erlo.PredictiveModel(
+        model = chi.PredictiveModel(
             mechanistic_model, self.error_models)
 
         # Sample
@@ -1150,54 +1150,54 @@ class TestPredictiveModel(unittest.TestCase):
 
 class TestPredictivePopulationModel(unittest.TestCase):
     """
-    Tests the erlo.PredictivePopulationModel class.
+    Tests the chi.PredictivePopulationModel class.
     """
 
     @classmethod
     def setUpClass(cls):
         # Get mechanistic and error model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        mechanistic_model = chi.PharmacodynamicModel(path)
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
         # Create predictive model
-        cls.predictive_model = erlo.PredictiveModel(
+        cls.predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Create population model
         cls.population_models = [
-            erlo.HeterogeneousModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.HeterogeneousModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
 
         # Create predictive population model
-        cls.model = erlo.PredictivePopulationModel(
+        cls.model = chi.PredictivePopulationModel(
             cls.predictive_model, cls.population_models)
 
     def test_instantiation(self):
         # Define order of population model with params
         # Get mechanistic and error model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        mechanistic_model = chi.PharmacodynamicModel(path)
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
         # Create predictive model
-        predictive_model = erlo.PredictiveModel(
+        predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Create population model
         population_models = [
-            erlo.HeterogeneousModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.HeterogeneousModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
 
         params = [
             'Sigma base',
@@ -1209,7 +1209,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
             'Sigma rel.']
 
         # Create predictive population model
-        model = erlo.PredictivePopulationModel(
+        model = chi.PredictivePopulationModel(
             predictive_model, population_models, params)
 
         parameter_names = model.get_parameter_names()
@@ -1229,35 +1229,35 @@ class TestPredictivePopulationModel(unittest.TestCase):
         predictive_model = 'wrong type'
 
         with self.assertRaisesRegex(TypeError, 'The predictive model'):
-            erlo.PredictivePopulationModel(
+            chi.PredictivePopulationModel(
                 predictive_model, self.population_models)
 
         # Population model has wrong type
         pop_models = ['wrong type']
 
         with self.assertRaisesRegex(TypeError, 'All population models'):
-            erlo.PredictivePopulationModel(
+            chi.PredictivePopulationModel(
                 self.predictive_model, pop_models)
 
         # Wrong number of population models
-        pop_models = [erlo.HeterogeneousModel()] * 3
+        pop_models = [chi.HeterogeneousModel()] * 3
 
         with self.assertRaisesRegex(ValueError, 'One population model'):
-            erlo.PredictivePopulationModel(
+            chi.PredictivePopulationModel(
                 self.predictive_model, pop_models)
 
         # Wrong number of parameters are specfied
         params = ['Too', 'few']
 
         with self.assertRaisesRegex(ValueError, 'Params does not have'):
-            erlo.PredictivePopulationModel(
+            chi.PredictivePopulationModel(
                 self.predictive_model, self.population_models, params)
 
         # Params does not list existing parameters
         params = ['Do', 'not', 'exist', '!', '!', '!', '!']
 
         with self.assertRaisesRegex(ValueError, 'The parameter names in'):
-            erlo.PredictivePopulationModel(
+            chi.PredictivePopulationModel(
                 self.predictive_model, self.population_models, params)
 
     def test_fix_parameters(self):
@@ -1354,15 +1354,15 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         # Test case II: Multi-output problem
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel(),
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        model = erlo.PredictiveModel(model, error_models)
-        pop_models = self.population_models + [erlo.PooledModel()] * 2
-        model = erlo.PredictivePopulationModel(model, pop_models)
+            chi.ConstantAndMultiplicativeGaussianErrorModel(),
+            chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        model = chi.PredictiveModel(model, error_models)
+        pop_models = self.population_models + [chi.PooledModel()] * 2
+        model = chi.PredictivePopulationModel(model, pop_models)
 
         names = model.get_parameter_names()
 
@@ -1399,21 +1399,21 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(keys[2], 'Population models')
 
         mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+        self.assertIsInstance(mechanistic_model, chi.MechanisticModel)
 
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 1)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[0], chi.ErrorModel)
 
         pop_models = submodels['Population models']
         self.assertEqual(len(pop_models), 7)
-        self.assertIsInstance(pop_models[0], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[1], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[2], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[3], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[4], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[5], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[6], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[0], chi.PopulationModel)
+        self.assertIsInstance(pop_models[1], chi.PopulationModel)
+        self.assertIsInstance(pop_models[2], chi.PopulationModel)
+        self.assertIsInstance(pop_models[3], chi.PopulationModel)
+        self.assertIsInstance(pop_models[4], chi.PopulationModel)
+        self.assertIsInstance(pop_models[5], chi.PopulationModel)
+        self.assertIsInstance(pop_models[6], chi.PopulationModel)
 
         # Test case II: some fixed parameters
         self.model.fix_parameters({
@@ -1428,21 +1428,21 @@ class TestPredictivePopulationModel(unittest.TestCase):
         self.assertEqual(keys[2], 'Population models')
 
         mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+        self.assertIsInstance(mechanistic_model, chi.MechanisticModel)
 
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 1)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
+        self.assertIsInstance(error_models[0], chi.ErrorModel)
 
         pop_models = submodels['Population models']
         self.assertEqual(len(pop_models), 7)
-        self.assertIsInstance(pop_models[0], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[1], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[2], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[3], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[4], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[5], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[6], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[0], chi.PopulationModel)
+        self.assertIsInstance(pop_models[1], chi.PopulationModel)
+        self.assertIsInstance(pop_models[2], chi.PopulationModel)
+        self.assertIsInstance(pop_models[3], chi.PopulationModel)
+        self.assertIsInstance(pop_models[4], chi.PopulationModel)
+        self.assertIsInstance(pop_models[5], chi.PopulationModel)
+        self.assertIsInstance(pop_models[6], chi.PopulationModel)
 
         # Unfix parameter
         self.model.fix_parameters({
@@ -1581,12 +1581,12 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
         path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model = chi.PharmacokineticModel(path)
         mechanistic_model.set_administration('central', direct=False)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        predictive_model = erlo.PredictiveModel(
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
-        model = erlo.PredictivePopulationModel(
+        model = chi.PredictivePopulationModel(
             predictive_model, self.population_models)
 
         # Sample
@@ -1722,20 +1722,20 @@ class TestPredictivePopulationModel(unittest.TestCase):
 
 class TestPriorPredictiveModel(unittest.TestCase):
     """
-    Tests the erlo.PriorPredictiveModel class.
+    Tests the chi.PriorPredictiveModel class.
     """
 
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
+        mechanistic_model = chi.PharmacodynamicModel(path)
 
         # Define error models
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
         # Create predictive model
-        cls.predictive_model = erlo.PredictiveModel(
+        cls.predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Create prior
@@ -1749,7 +1749,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
             pints.UniformLogPrior(6, 7))
 
         # Create prior predictive model
-        cls.model = erlo.PriorPredictiveModel(
+        cls.model = chi.PriorPredictiveModel(
             cls.predictive_model, cls.log_prior)
 
     def test_bad_instantiation(self):
@@ -1757,19 +1757,19 @@ class TestPriorPredictiveModel(unittest.TestCase):
         predictive_model = 'wrong type'
 
         with self.assertRaisesRegex(ValueError, 'The provided predictive'):
-            erlo.PriorPredictiveModel(predictive_model, self.log_prior)
+            chi.PriorPredictiveModel(predictive_model, self.log_prior)
 
         # Prior has woring type
         log_prior = 'wrong type'
 
         with self.assertRaisesRegex(ValueError, 'The provided log-prior'):
-            erlo.PriorPredictiveModel(self.predictive_model, log_prior)
+            chi.PriorPredictiveModel(self.predictive_model, log_prior)
 
         # Dimension of predictive model and log-prior don't match
         log_prior = pints.UniformLogPrior(0, 1)  # dim 1, but 7 params
 
         with self.assertRaisesRegex(ValueError, 'The dimension of the'):
-            erlo.PriorPredictiveModel(self.predictive_model, log_prior)
+            chi.PriorPredictiveModel(self.predictive_model, log_prior)
 
     def test_sample(self):
         # Test case I: Just one sample
@@ -1876,10 +1876,10 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         # Test case III.2: PK model, regimen not set
         path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model = chi.PharmacokineticModel(path)
         mechanistic_model.set_administration('central')
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        predictive_model = erlo.PredictiveModel(
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
         log_prior = pints.ComposedLogPrior(
             pints.UniformLogPrior(0, 1),
@@ -1887,7 +1887,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
             pints.UniformLogPrior(2, 3),
             pints.UniformLogPrior(3, 4),
             pints.UniformLogPrior(4, 5))
-        model = erlo.PriorPredictiveModel(predictive_model, log_prior)
+        model = chi.PriorPredictiveModel(predictive_model, log_prior)
 
         # Sample
         samples = model.sample(times, seed=seed, include_regimen=True)
@@ -1968,7 +1968,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
 class TestStackedPredictiveModel(unittest.TestCase):
     """
-    Tests the erlotinib.StackedPredictiveModel class.
+    Tests the chi.StackedPredictiveModel class.
     """
 
     @classmethod
@@ -1976,9 +1976,9 @@ class TestStackedPredictiveModel(unittest.TestCase):
         # Test model I: Individual predictive model
         # Create predictive model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
-        error_models = [erlo.GaussianErrorModel()]
-        pred_model = erlo.PredictiveModel(
+        mechanistic_model = chi.PharmacodynamicModel(path)
+        error_models = [chi.GaussianErrorModel()]
+        pred_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Create a posterior samples
@@ -1998,17 +1998,17 @@ class TestStackedPredictiveModel(unittest.TestCase):
             in pred_model.get_parameter_names()})
 
         # Create posterior predictive model
-        cls.model_1 = erlo.PosteriorPredictiveModel(
+        cls.model_1 = chi.PosteriorPredictiveModel(
             pred_model, posterior_samples)
 
         # Test model II: Erlotinib PKPD model
         # Create predictive model
         path = ModelLibrary().erlotinib_tumour_growth_inhibition_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model = chi.PharmacokineticModel(path)
         mechanistic_model.set_administration('central', direct=True)
         mechanistic_model.set_outputs(['myokit.tumour_volume'])
-        error_models = [erlo.GaussianErrorModel()]
-        pred_model = erlo.PredictiveModel(
+        error_models = [chi.GaussianErrorModel()]
+        pred_model = chi.PredictiveModel(
             mechanistic_model, error_models)
 
         # Create a posterior samples
@@ -2028,12 +2028,12 @@ class TestStackedPredictiveModel(unittest.TestCase):
             in pred_model.get_parameter_names()})
 
         # Create posterior predictive model
-        cls.model_2 = erlo.PosteriorPredictiveModel(
+        cls.model_2 = chi.PosteriorPredictiveModel(
             pred_model, posterior_samples)
 
         # Define stacked model
         cls.weights = [2, 1]
-        cls.stacked_model = erlo.StackedPredictiveModel(
+        cls.stacked_model = chi.StackedPredictiveModel(
             predictive_models=[cls.model_1, cls.model_2],
             weights=cls.weights)
 
@@ -2041,16 +2041,16 @@ class TestStackedPredictiveModel(unittest.TestCase):
         # Models have the wrong type
         models = ['wrong', 'type']
         with self.assertRaisesRegex(TypeError, 'The predictive models'):
-            erlo.StackedPredictiveModel(
+            chi.StackedPredictiveModel(
                 models, self.weights)
 
         # The models have a different number of outputs
         path = ModelLibrary().erlotinib_tumour_growth_inhibition_model()
-        mechanistic_model = erlo.PharmacokineticModel(path)
+        mechanistic_model = chi.PharmacokineticModel(path)
         mechanistic_model.set_outputs(
             ['central.drug_concentration', 'myokit.tumour_volume'])
-        error_models = [erlo.GaussianErrorModel()] * 2
-        pred_model = erlo.PredictiveModel(
+        error_models = [chi.GaussianErrorModel()] * 2
+        pred_model = chi.PredictiveModel(
             mechanistic_model, error_models)
         samples = np.ones(shape=(2, 3, 1))
         samples = xr.DataArray(
@@ -2063,16 +2063,16 @@ class TestStackedPredictiveModel(unittest.TestCase):
         posterior_samples = xr.Dataset({
             param: samples for param
             in pred_model.get_parameter_names()})
-        model_2 = erlo.PosteriorPredictiveModel(
+        model_2 = chi.PosteriorPredictiveModel(
             pred_model, posterior_samples)
         with self.assertRaisesRegex(ValueError, 'All predictive models'):
-            erlo.StackedPredictiveModel(
+            chi.StackedPredictiveModel(
                 [self.model_1, model_2], self.weights)
 
         # The models' ouptuts have different names
         mechanistic_model.set_outputs(['central.drug_concentration'])
-        error_models = [erlo.GaussianErrorModel()]
-        pred_model = erlo.PredictiveModel(
+        error_models = [chi.GaussianErrorModel()]
+        pred_model = chi.PredictiveModel(
             mechanistic_model, error_models)
         samples = np.ones(shape=(2, 3, 1))
         samples = xr.DataArray(
@@ -2085,17 +2085,17 @@ class TestStackedPredictiveModel(unittest.TestCase):
         posterior_samples = xr.Dataset({
             param: samples for param
             in pred_model.get_parameter_names()})
-        model_2 = erlo.PosteriorPredictiveModel(
+        model_2 = chi.PosteriorPredictiveModel(
             pred_model, posterior_samples)
         with self.assertRaisesRegex(Warning, 'The predictive models appear'):
-            erlo.StackedPredictiveModel(
+            chi.StackedPredictiveModel(
                 [self.model_1, model_2], self.weights)
 
         # The number of models and the number of weights do not
         # coincide
         weights = ['too', 'many', 'weights']
         with self.assertRaisesRegex(ValueError, 'The model weights must be'):
-            erlo.StackedPredictiveModel(
+            chi.StackedPredictiveModel(
                 [self.model_1, self.model_2], weights)
 
     def test_get_predictive_model(self):
@@ -2103,9 +2103,9 @@ class TestStackedPredictiveModel(unittest.TestCase):
 
         self.assertEqual(len(predictive_models), 2)
         self.assertIsInstance(
-            predictive_models[0], erlo.PosteriorPredictiveModel)
+            predictive_models[0], chi.PosteriorPredictiveModel)
         self.assertIsInstance(
-            predictive_models[1], erlo.PosteriorPredictiveModel)
+            predictive_models[1], chi.PosteriorPredictiveModel)
 
     def test_get_weights(self):
         weights = self.stacked_model.get_weights()
@@ -2218,7 +2218,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
-        model = erlo.StackedPredictiveModel(
+        model = chi.StackedPredictiveModel(
             [self.model_2, self.model_2], weights=self.weights)
 
         # Sample

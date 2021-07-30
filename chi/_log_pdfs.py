@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -12,7 +12,7 @@ import myokit
 import numpy as np
 import pints
 
-import erlotinib as erlo
+import chi
 
 
 class HierarchicalLogLikelihood(object):
@@ -82,12 +82,12 @@ class HierarchicalLogLikelihood(object):
 
     ::
 
-        import erlotinib as erlo
+        import chi
 
         # Define mechanistic and error model
-        sbml_file = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(sbml_file)
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        sbml_file = chi.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = chi.PharmacodynamicModel(sbml_file)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
 
         # Define observations
         observations_1 = [1, 2, 3, 4]
@@ -95,12 +95,12 @@ class HierarchicalLogLikelihood(object):
         times = [0, 0.5, 1, 2]
 
         # Define log-likelihoods
-        log_likelihood_1 = erlo.LogLikelihood(
+        log_likelihood_1 = chi.LogLikelihood(
             mechanistic_model,
             error_model,
             observations_1,
             times)
-        log_likelihood_2 = erlo.LogLikelihood(
+        log_likelihood_2 = chi.LogLikelihood(
             mechanistic_model,
             error_model,
             observations_2,
@@ -108,16 +108,16 @@ class HierarchicalLogLikelihood(object):
 
         # Define population models
         population_models = [
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
 
         # Create hierarchical log-likelihood
-        hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+        hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods=[log_likelihood_1, log_likelihood_2],
             population_models=population_models)
 
@@ -132,7 +132,7 @@ class HierarchicalLogLikelihood(object):
             if not isinstance(log_likelihood, LogLikelihood):
                 raise ValueError(
                     'The log-likelihoods have to be instances of a '
-                    'erlotinib.LogLikelihood.')
+                    'chi.LogLikelihood.')
 
         n_parameters = log_likelihoods[0].n_parameters()
         for log_likelihood in log_likelihoods:
@@ -156,10 +156,10 @@ class HierarchicalLogLikelihood(object):
                 'to be provided for each model parameters.')
 
         for pop_model in population_models:
-            if not isinstance(pop_model, erlo.PopulationModel):
+            if not isinstance(pop_model, chi.PopulationModel):
                 raise ValueError(
                     'The population models have to be instances of '
-                    'erlotinib.PopulationModel')
+                    'chi.PopulationModel')
 
         # Remember models and number of individuals
         self._log_likelihoods = log_likelihoods
@@ -227,7 +227,7 @@ class HierarchicalLogLikelihood(object):
             # Get number of hierarchical parameters
             n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
 
-            if isinstance(pop_model, erlo.HeterogeneousModel):
+            if isinstance(pop_model, chi.HeterogeneousModel):
                 # For heterogeneous models the individual parameters are the
                 # top-level parameters
                 end = start + n_indiv
@@ -630,13 +630,13 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
     ::
 
-        import erlotinib as erlo
+        import chi
         import pints
 
         # Define mechanistic and error model
-        sbml_file = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(sbml_file)
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        sbml_file = chi.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = chi.PharmacodynamicModel(sbml_file)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
 
         # Define observations
         observations_1 = [1, 2, 3, 4]
@@ -644,12 +644,12 @@ class HierarchicalLogPosterior(pints.LogPDF):
         times = [0, 0.5, 1, 2]
 
         # Define log-likelihoods
-        log_likelihood_1 = erlo.LogLikelihood(
+        log_likelihood_1 = chi.LogLikelihood(
             mechanistic_model,
             error_model,
             observations_1,
             times)
-        log_likelihood_2 = erlo.LogLikelihood(
+        log_likelihood_2 = chi.LogLikelihood(
             mechanistic_model,
             error_model,
             observations_2,
@@ -657,16 +657,16 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
         # Define population models
         population_models = [
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
 
         # Create hierarchical log-likelihood
-        hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+        hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods=[log_likelihood_1, log_likelihood_2],
             population_models=population_models)
 
@@ -683,7 +683,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
             pints.HalfCauchyLogPrior(0, 1))
 
         # Create hierarchical log-posterior
-        log_posterior = erlo.HierarchicalLogPosterior(
+        log_posterior = chi.HierarchicalLogPosterior(
             log_likelihood=hierarch_log_likelihood,
             log_prior=log_prior)
 
@@ -699,7 +699,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
         if not isinstance(log_likelihood, HierarchicalLogLikelihood):
             raise TypeError(
                 'The log-likelihood has to be an instance of a '
-                'erlotinib.HierarchicalLogLikelihood.')
+                'chi.HierarchicalLogLikelihood.')
         if not isinstance(log_prior, pints.LogPrior):
             raise TypeError(
                 'The log-prior has to be an instance of a pints.LogPrior.')
@@ -749,7 +749,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
             # Get number of hierarchical parameters
             n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
 
-            if isinstance(pop_model, erlo.HeterogeneousModel):
+            if isinstance(pop_model, chi.HeterogeneousModel):
                 # For heterogeneous models the individual parameters are the
                 # top-level parameters
                 end = start + n_indiv
@@ -908,19 +908,19 @@ class LogLikelihood(pints.LogPDF):
 
     ::
 
-        import erlotinib as erlo
+        import chi
 
         # Define mechanistic and error model
-        sbml_file = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(sbml_file)
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        sbml_file = chi.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = chi.PharmacodynamicModel(sbml_file)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
 
         # Define observations
         observations = [1, 2, 3, 4]
         times = [0, 0.5, 1, 2]
 
         # Create log-likelihood
-        log_likelihood = erlo.LogLikelihood(
+        log_likelihood = chi.LogLikelihood(
             mechanistic_model,
             error_model,
             observations,
@@ -938,10 +938,10 @@ class LogLikelihood(pints.LogPDF):
         # Check inputs
         if not isinstance(
                 mechanistic_model,
-                (erlo.MechanisticModel, erlo.ReducedMechanisticModel)):
+                (chi.MechanisticModel, chi.ReducedMechanisticModel)):
             raise TypeError(
                 'The mechanistic model as to be an instance of a '
-                'erlotinib.MechanisticModel.')
+                'chi.MechanisticModel.')
 
         if not isinstance(error_model, list):
             error_model = [error_model]
@@ -961,10 +961,10 @@ class LogLikelihood(pints.LogPDF):
 
         for em in error_model:
             if not isinstance(
-                    em, (erlo.ErrorModel, erlo.ReducedErrorModel)):
+                    em, (chi.ErrorModel, chi.ReducedErrorModel)):
                 raise TypeError(
                     'The error models have to instances of a '
-                    'erlotinib.ErrorModel.')
+                    'chi.ErrorModel.')
 
         if n_outputs == 1:
             # For single-output problems the observations can be provided as a
@@ -1282,11 +1282,11 @@ class LogLikelihood(pints.LogPDF):
         error_models = self._error_models
 
         # Convert models to reduced models
-        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
-            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        if not isinstance(mechanistic_model, chi.ReducedMechanisticModel):
+            mechanistic_model = chi.ReducedMechanisticModel(mechanistic_model)
         for model_id, error_model in enumerate(error_models):
-            if not isinstance(error_model, erlo.ReducedErrorModel):
-                error_models[model_id] = erlo.ReducedErrorModel(error_model)
+            if not isinstance(error_model, chi.ReducedErrorModel):
+                error_models[model_id] = chi.ReducedErrorModel(error_model)
 
         # Fix model parameters
         mechanistic_model.fix_parameters(name_value_dict)
@@ -1335,13 +1335,13 @@ class LogLikelihood(pints.LogPDF):
         """
         # Get original submodels
         mechanistic_model = self._mechanistic_model
-        if isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
+        if isinstance(mechanistic_model, chi.ReducedMechanisticModel):
             mechanistic_model = mechanistic_model.mechanistic_model()
 
         error_models = []
         for error_model in self._error_models:
             # Get original error model
-            if isinstance(error_model, erlo.ReducedErrorModel):
+            if isinstance(error_model, chi.ReducedErrorModel):
                 error_model = error_model.get_error_model()
 
             error_models.append(error_model)
@@ -1413,20 +1413,20 @@ class LogPosterior(pints.LogPDF):
 
     ::
 
-        import erlotinib as erlo
+        import chi
         import pints
 
         # Define mechanistic and error model
-        sbml_file = erlo.ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(sbml_file)
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
+        sbml_file = chi.ModelLibrary().tumour_growth_inhibition_model_koch()
+        mechanistic_model = chi.PharmacodynamicModel(sbml_file)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
 
         # Define observations
         observations = [1, 2, 3, 4]
         times = [0, 0.5, 1, 2]
 
         # Create log-likelihood
-        log_likelihood = erlo.LogLikelihood(
+        log_likelihood = chi.LogLikelihood(
             mechanistic_model,
             error_model,
             observations,
@@ -1443,7 +1443,7 @@ class LogPosterior(pints.LogPDF):
             pints.HalfCauchyLogPrior(0, 1))
 
         # Create log-posterior
-        log_posterior = erlo.LogPosterior(log_likelihood, log_prior)
+        log_posterior = chi.LogPosterior(log_likelihood, log_prior)
 
         # Compute log-posterior score
         parameters = [1, 1, 1, 1, 1, 1, 1]
@@ -1456,7 +1456,7 @@ class LogPosterior(pints.LogPDF):
         # Check inputs
         if not isinstance(log_likelihood, LogLikelihood):
             raise TypeError(
-                'The log-likelihood has to extend erlotinib.LogLikelihood.')
+                'The log-likelihood has to extend chi.LogLikelihood.')
         if not isinstance(log_prior, pints.LogPrior):
             raise TypeError(
                 'The log-prior has to extend pints.LogPrior.')

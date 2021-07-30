@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -11,13 +11,13 @@ import numpy as np
 import pints
 import pints.toy
 
-import erlotinib as erlo
-from erlotinib.library import ModelLibrary
+import chi
+from chi.library import ModelLibrary
 
 
 class TestHierarchicalLogLikelihood(unittest.TestCase):
     """
-    Tests the erlotinib.HierarchicalLogLikelihood class.
+    Tests the chi.HierarchicalLogLikelihood class.
     """
 
     @classmethod
@@ -32,103 +32,103 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         # Set up mechanistic and error models
         path = ModelLibrary().one_compartment_pk_model()
-        cls.model = erlo.PharmacokineticModel(path)
+        cls.model = chi.PharmacokineticModel(path)
         cls.model.set_administration('central', direct=False)
         cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         cls.error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
+            chi.ConstantAndMultiplicativeGaussianErrorModel()] * 2
 
         # Create log-likelihoods
         cls.log_likelihoods = [
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 cls.model, cls.error_models, cls.observations, cls.times),
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 cls.model, cls.error_models, cls.observations, cls.times)]
 
         # Create population models
         cls.population_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
 
-        cls.hierarchical_model = erlo.HierarchicalLogLikelihood(
+        cls.hierarchical_model = chi.HierarchicalLogLikelihood(
             cls.log_likelihoods, cls.population_models)
 
         # Second (more complex) hierarchical model
         population_models = [
-            erlo.TruncatedGaussianModel(),
-            erlo.TruncatedGaussianModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.TruncatedGaussianModel(),
+            chi.TruncatedGaussianModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
 
-        cls.hierarchical_model2 = erlo.HierarchicalLogLikelihood(
+        cls.hierarchical_model2 = chi.HierarchicalLogLikelihood(
             cls.log_likelihoods, population_models)
 
     def test_bad_instantiation(self):
         # Log-likelihoods are not pints.LogPDF
         log_likelihoods = ['bad', 'type']
         with self.assertRaisesRegex(ValueError, 'The log-likelihoods have'):
-            erlo.HierarchicalLogLikelihood(
+            chi.HierarchicalLogLikelihood(
                 log_likelihoods, self.population_models)
 
         # Log-likelihoods are defined on different parameter spaces
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
+            chi.ConstantAndMultiplicativeGaussianErrorModel()]
         log_likelihoods = [
             self.log_likelihoods[0],
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 model, error_models, self.observations[0], self.times[0])]
 
         with self.assertRaisesRegex(ValueError, 'The number of parameters'):
-            erlo.HierarchicalLogLikelihood(
+            chi.HierarchicalLogLikelihood(
                 log_likelihoods, self.population_models)
 
         # The log-likelihood parameter names differ
         model.set_outputs(['central.drug_concentration', 'dose.drug_amount'])
         error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
+            chi.ConstantAndMultiplicativeGaussianErrorModel()] * 2
         log_likelihoods = [
             self.log_likelihoods[0],
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 model, error_models, self.observations, self.times)]
 
         with self.assertRaisesRegex(ValueError, 'The parameter names'):
-            erlo.HierarchicalLogLikelihood(
+            chi.HierarchicalLogLikelihood(
                 log_likelihoods, self.population_models)
 
-        # Population models are not erlotinib.PopulationModel
+        # Population models are not chi.PopulationModel
         population_models = ['bad', 'type'] + ['match dimension'] * 7
         with self.assertRaisesRegex(ValueError, 'The population models have'):
-            erlo.HierarchicalLogLikelihood(
+            chi.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
 
         # Not all parameters of the likelihoods are assigned to a pop model
         population_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.PooledModel(),
+            chi.PooledModel()]
         with self.assertRaisesRegex(ValueError, 'Wrong number of population'):
-            erlo.HierarchicalLogLikelihood(
+            chi.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
 
     def test_call(self):
         # Test case I: All parameters pooled
-        model = erlo.HierarchicalLogLikelihood(
+        model = chi.HierarchicalLogLikelihood(
             log_likelihoods=self.log_likelihoods,
-            population_models=[erlo.PooledModel()] * 9)
+            population_models=[chi.PooledModel()] * 9)
 
         # Create reference model
         pooled_log_pdf = pints.PooledLogPDF(
@@ -147,10 +147,10 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(model(parameters), score)
 
         # Test case II.1: Heterogeneous model
-        likelihood = erlo.HierarchicalLogLikelihood(
+        likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods=self.log_likelihoods,
             population_models=[
-                erlo.HeterogeneousModel()] * 9)
+                chi.HeterogeneousModel()] * 9)
 
         # Compute score from individual likelihoods
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -185,18 +185,18 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Test case III.1: Non-trivial population model
         # Reminder of population model
         # cls.population_models = [
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.LogNormalModel(),
-        #     erlo.PooledModel(),
-        #     erlo.HeterogeneousModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel()]
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.LogNormalModel(),
+        #     chi.PooledModel(),
+        #     chi.HeterogeneousModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel()]
 
         # Create reference pop model
-        ref_pop_model = erlo.LogNormalModel()
+        ref_pop_model = chi.LogNormalModel()
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
         pop_params = [0.2, 1]
@@ -229,15 +229,15 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Test case IV: Infinite log-pdf from population model
         # Reminder of population model
         # cls.population_models = [
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.LogNormalModel(),
-        #     erlo.PooledModel(),
-        #     erlo.HeterogeneousModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel()]
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.LogNormalModel(),
+        #     chi.PooledModel(),
+        #     chi.HeterogeneousModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel()]
 
         indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
@@ -262,9 +262,9 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
     def test_compute_pointwise_ll(self):
         # Test case I: All parameters pooled
-        likelihood = erlo.HierarchicalLogLikelihood(
+        likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods=self.log_likelihoods,
-            population_models=[erlo.PooledModel()] * 9)
+            population_models=[chi.PooledModel()] * 9)
 
         # Test case I.1
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -293,10 +293,10 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertAlmostEqual(np.sum(pw_scores), score)
 
         # Test case II.1: Heterogeneous model
-        likelihood = erlo.HierarchicalLogLikelihood(
+        likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods=self.log_likelihoods,
             population_models=[
-                erlo.HeterogeneousModel()] * 9)
+                chi.HeterogeneousModel()] * 9)
 
         # Compute score from individual likelihoods
         n_ids = 2
@@ -339,15 +339,15 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Test case III.1: Non-trivial population model
         # Reminder of population model
         # cls.population_models = [
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.LogNormalModel(),
-        #     erlo.PooledModel(),
-        #     erlo.HeterogeneousModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel()]
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.LogNormalModel(),
+        #     chi.PooledModel(),
+        #     chi.HeterogeneousModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel()]
 
         # Create reference pop model
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
@@ -381,9 +381,9 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
     def test_evaluateS1(self):
         # Test case I: All parameters pooled
-        model = erlo.HierarchicalLogLikelihood(
+        model = chi.HierarchicalLogLikelihood(
             log_likelihoods=self.log_likelihoods,
-            population_models=[erlo.PooledModel()] * 9)
+            population_models=[chi.PooledModel()] * 9)
 
         # Create reference model
         pooled_log_pdf = pints.PooledLogPDF(
@@ -424,10 +424,10 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(sens[8], ref_sens[8])
 
         # Test case II.1: Heterogeneous model
-        likelihood = erlo.HierarchicalLogLikelihood(
+        likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods=self.log_likelihoods,
             population_models=[
-                erlo.HeterogeneousModel()] * 9)
+                chi.HeterogeneousModel()] * 9)
 
         # Compute score from individual likelihoods
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -515,18 +515,18 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Test case III.1: Non-trivial population model
         # Reminder of population model
         # cls.population_models = [
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.LogNormalModel(),
-        #     erlo.PooledModel(),
-        #     erlo.HeterogeneousModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel()]
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.LogNormalModel(),
+        #     chi.PooledModel(),
+        #     chi.HeterogeneousModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel()]
 
         # Create reference pop model
-        ref_pop_model = erlo.LogNormalModel()
+        ref_pop_model = chi.LogNormalModel()
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
         pop_params = [0.2, 1]
@@ -594,15 +594,15 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Test case IV: More complex hierarchical model and
         # numpy gradients
         # population_models = [
-        #     erlo.TruncatedGaussianModel(),
-        #     erlo.TruncatedGaussianModel(),
-        #     erlo.LogNormalModel(),
-        #     erlo.PooledModel(),
-        #     erlo.HeterogeneousModel(),
-        #     erlo.LogNormalModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel()]
+        #     chi.TruncatedGaussianModel(),
+        #     chi.TruncatedGaussianModel(),
+        #     chi.LogNormalModel(),
+        #     chi.PooledModel(),
+        #     chi.HeterogeneousModel(),
+        #     chi.LogNormalModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel()]
         epsilon = 0.00001
         n_parameters = self.hierarchical_model2.n_parameters()
         parameters = np.full(shape=n_parameters, fill_value=0.3)
@@ -654,15 +654,15 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Test case V: Infinite log-pdf from population model
         # Reminder of population model
         # cls.population_models = [
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.LogNormalModel(),
-        #     erlo.PooledModel(),
-        #     erlo.HeterogeneousModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel(),
-        #     erlo.PooledModel()]
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.LogNormalModel(),
+        #     chi.PooledModel(),
+        #     chi.HeterogeneousModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel()]
 
         indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
@@ -728,16 +728,16 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Test case III: Get IDs for fully pooled model
         # Create population models
         population_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
-        hierarchical_model = erlo.HierarchicalLogLikelihood(
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
+        hierarchical_model = chi.HierarchicalLogLikelihood(
             self.log_likelihoods, population_models)
         ids = hierarchical_model.get_id(individual_ids=True)
 
@@ -840,15 +840,15 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
     def test_get_population_models(self):
         pop_models = self.hierarchical_model.get_population_models()
         self.assertEqual(len(pop_models), 9)
-        self.assertIsInstance(pop_models[0], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[1], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[2], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[3], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[4], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[5], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[6], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[7], erlo.PopulationModel)
-        self.assertIsInstance(pop_models[8], erlo.PopulationModel)
+        self.assertIsInstance(pop_models[0], chi.PopulationModel)
+        self.assertIsInstance(pop_models[1], chi.PopulationModel)
+        self.assertIsInstance(pop_models[2], chi.PopulationModel)
+        self.assertIsInstance(pop_models[3], chi.PopulationModel)
+        self.assertIsInstance(pop_models[4], chi.PopulationModel)
+        self.assertIsInstance(pop_models[5], chi.PopulationModel)
+        self.assertIsInstance(pop_models[6], chi.PopulationModel)
+        self.assertIsInstance(pop_models[7], chi.PopulationModel)
+        self.assertIsInstance(pop_models[8], chi.PopulationModel)
 
     def test_n_log_likelihoods(self):
         n_ids = self.hierarchical_model.n_log_likelihoods()
@@ -878,7 +878,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
 class TestHierarchicalLogPosterior(unittest.TestCase):
     """
-    Tests the erlotinib.HierarchicalLogPosterior class.
+    Tests the chi.HierarchicalLogPosterior class.
     """
 
     @classmethod
@@ -893,33 +893,33 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
 
         # Set up mechanistic and error models
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
+            chi.ConstantAndMultiplicativeGaussianErrorModel()] * 2
 
         # Create log-likelihoods
         log_likelihoods = [
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 model, error_models, observations, times),
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 model, error_models, observations, times)]
 
         # Create population models
         population_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
 
         # Create hierarchical log-likelihood
-        cls.hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+        cls.hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods, population_models)
 
         # Define log-prior
@@ -937,7 +937,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
             pints.LogNormalLogPrior(1, 1))
 
         # Create log-posterior
-        cls.log_posterior = erlo.HierarchicalLogPosterior(
+        cls.log_posterior = chi.HierarchicalLogPosterior(
             cls.hierarch_log_likelihood,
             cls.log_prior)
 
@@ -945,20 +945,20 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         # Log-likelihood has bad type
         log_likelihood = 'bad type'
         with self.assertRaisesRegex(TypeError, 'The log-likelihood has'):
-            erlo.HierarchicalLogPosterior(
+            chi.HierarchicalLogPosterior(
                 log_likelihood, self.log_prior)
 
         # Log-prior has bad type
         log_prior = 'bad type'
         with self.assertRaisesRegex(TypeError, 'The log-prior has to be'):
-            erlo.HierarchicalLogPosterior(
+            chi.HierarchicalLogPosterior(
                 self.hierarch_log_likelihood, log_prior)
 
         # The dimension of the log-prior does not match number of top-level
         # parameters
         log_prior = pints.LogNormalLogPrior(0, 1)
         with self.assertRaisesRegex(ValueError, 'The log-prior has to have'):
-            erlo.HierarchicalLogPosterior(
+            chi.HierarchicalLogPosterior(
                 self.hierarch_log_likelihood, log_prior)
 
     def test_call(self):
@@ -1025,7 +1025,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
 
     def test_get_log_likelihood(self):
         log_likelihood = self.log_posterior.get_log_likelihood()
-        self.assertIsInstance(log_likelihood, erlo.HierarchicalLogLikelihood)
+        self.assertIsInstance(log_likelihood, chi.HierarchicalLogLikelihood)
 
     def test_get_log_prior(self):
         log_prior = self.log_posterior.get_log_prior()
@@ -1158,7 +1158,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
 
 class TestLogLikelihood(unittest.TestCase):
     """
-    Tests the erlotinib.LogLikelihood class.
+    Tests the chi.LogLikelihood class.
     """
 
     @classmethod
@@ -1174,18 +1174,18 @@ class TestLogLikelihood(unittest.TestCase):
 
         # Set up mechanistic and error models
         path = ModelLibrary().one_compartment_pk_model()
-        cls.model = erlo.PharmacokineticModel(path)
+        cls.model = chi.PharmacokineticModel(path)
         cls.model.set_administration('central', direct=False)
         cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         cls.error_models = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()] * 2
+            chi.ConstantAndMultiplicativeGaussianErrorModel()] * 2
 
         # Create log-likelihood
-        cls.log_likelihood = erlo.LogLikelihood(
+        cls.log_likelihood = chi.LogLikelihood(
             cls.model, cls.error_models, cls.observations, cls.times)
 
-        error_models = [erlo.GaussianErrorModel()] * 2
-        cls.log_likelihood2 = erlo.LogLikelihood(
+        error_models = [chi.GaussianErrorModel()] * 2
+        cls.log_likelihood2 = chi.LogLikelihood(
             cls.model, error_models, cls.observations, cls.times)
 
     def test_instantiation(self):
@@ -1193,10 +1193,10 @@ class TestLogLikelihood(unittest.TestCase):
         obs = [1, 1.1, 1.2, 1.3]
         times = [1, 2, 3, 4]
         path = ModelLibrary().one_compartment_pk_model()
-        model = erlo.PharmacokineticModel(path)
+        model = chi.PharmacokineticModel(path)
         error_model = [
-            erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        log_likelihood = erlo.LogLikelihood(
+            chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        log_likelihood = chi.LogLikelihood(
             model, error_model, obs, times)
         m = log_likelihood.get_submodels()['Mechanistic model']
         self.assertEqual(model.n_parameters(), 3)
@@ -1211,53 +1211,53 @@ class TestLogLikelihood(unittest.TestCase):
         # Mechantic model has wrong type
         mechanistic_model = 'wrong type'
         with self.assertRaisesRegex(TypeError, 'The mechanistic model'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 mechanistic_model, self.error_models, self.observations,
                 self.times)
 
         # Wrong number of error models
         outputs = ['central.drug_amount']
         with self.assertRaisesRegex(ValueError, 'One error model has'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 self.model, self.error_models, self.observations, self.times,
                 outputs)
 
         # Wrong number of error models
         error_models = ['Wrong', 'type']
         with self.assertRaisesRegex(TypeError, 'The error models have to'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 self.model, error_models, self.observations, self.times)
 
         # Wrong length of observations
         observations = [['There'], ['are'], ['only two outputs']]
         with self.assertRaisesRegex(ValueError, 'The observations have'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 self.model, self.error_models, observations, self.times)
 
         # Wrong length of times
         times = [['There'], ['are'], ['only two outputs']]
         with self.assertRaisesRegex(ValueError, 'The times have the wrong'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 self.model, self.error_models, self.observations, times)
 
         # Negative times
         observations = [[1, 2], [1, 2]]
         times = [[-1, 2], [1, 2]]
         with self.assertRaisesRegex(ValueError, 'Times cannot be negative'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 self.model, self.error_models, observations, times)
 
         # Not strictly increasing times
         observations = [[1, 2], [1, 2]]
         times = [[2, 1], [1, 2]]
         with self.assertRaisesRegex(ValueError, 'Times must be increasing.'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 self.model, self.error_models, observations, times)
 
         # Observations and times don't match
         observations = [[1, 2], [1, 2]]  # Times have 4 and 3
         with self.assertRaisesRegex(ValueError, 'The observations and times'):
-            erlo.LogLikelihood(
+            chi.LogLikelihood(
                 self.model, self.error_models, observations, self.times)
 
     def test_call_and_compute_pointwise_ll(self):
@@ -1297,7 +1297,7 @@ class TestLogLikelihood(unittest.TestCase):
         observations = self.observations[0]
         self.model.set_outputs(['central.drug_amount'])
         error_model = self.error_models[0]
-        log_likelihood = erlo.LogLikelihood(
+        log_likelihood = chi.LogLikelihood(
             self.model, error_model, observations, times)
         ref_score_1 = log_likelihood(parameters[:7])
 
@@ -1305,7 +1305,7 @@ class TestLogLikelihood(unittest.TestCase):
         observations = self.observations[1]
         self.model.set_outputs(['dose.drug_amount'])
         error_model = self.error_models[1]
-        log_likelihood = erlo.LogLikelihood(
+        log_likelihood = chi.LogLikelihood(
             self.model, error_model, observations, times)
         ref_score_2 = log_likelihood(parameters[:5] + parameters[7:9])
 
@@ -1334,7 +1334,7 @@ class TestLogLikelihood(unittest.TestCase):
         # Leave observations for one outputs empty
         obs = [[], self.observations[1]]
         times = [[], self.times[1]]
-        ll = erlo.LogLikelihood(
+        ll = chi.LogLikelihood(
             self.model, self.error_models, obs, times)
 
         parameters = [9, 8, 7, 6, 5, 4, 3, 2, 1]
@@ -1567,12 +1567,12 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(keys[1], 'Error models')
 
         mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+        self.assertIsInstance(mechanistic_model, chi.MechanisticModel)
 
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 2)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
-        self.assertIsInstance(error_models[1], erlo.ErrorModel)
+        self.assertIsInstance(error_models[0], chi.ErrorModel)
+        self.assertIsInstance(error_models[1], chi.ErrorModel)
 
         # Test case II: some fixed parameters
         self.log_likelihood.fix_parameters(name_value_dict={
@@ -1586,12 +1586,12 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(keys[1], 'Error models')
 
         mechanistic_model = submodels['Mechanistic model']
-        self.assertIsInstance(mechanistic_model, erlo.MechanisticModel)
+        self.assertIsInstance(mechanistic_model, chi.MechanisticModel)
 
         error_models = submodels['Error models']
         self.assertEqual(len(error_models), 2)
-        self.assertIsInstance(error_models[0], erlo.ErrorModel)
-        self.assertIsInstance(error_models[1], erlo.ErrorModel)
+        self.assertIsInstance(error_models[0], chi.ErrorModel)
+        self.assertIsInstance(error_models[1], chi.ErrorModel)
 
         # Unfix parameter
         self.log_likelihood.fix_parameters({
@@ -1608,7 +1608,7 @@ class TestLogLikelihood(unittest.TestCase):
         observations = self.observations[0]
         self.model.set_outputs(['central.drug_amount'])
         error_model = self.error_models[0]
-        log_likelihood = erlo.LogLikelihood(
+        log_likelihood = chi.LogLikelihood(
             self.model, error_model, observations, times)
 
         n_parameters = log_likelihood.n_parameters()
@@ -1628,7 +1628,7 @@ class TestLogLikelihood(unittest.TestCase):
 
 class TestLogPosterior(unittest.TestCase):
     """
-    Tests the erlotinib.LogPosterior class.
+    Tests the chi.LogPosterior class.
     """
 
     @classmethod
@@ -1639,9 +1639,9 @@ class TestLogPosterior(unittest.TestCase):
 
         # Create test model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
-        cls.log_likelihood = erlo.LogLikelihood(
+        model = chi.PharmacodynamicModel(path)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.log_likelihood = chi.LogLikelihood(
             model, error_model, values, times)
         cls.log_likelihood.set_id('42')
         cls.log_prior = pints.ComposedLogPrior(
@@ -1652,24 +1652,24 @@ class TestLogPosterior(unittest.TestCase):
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1),
             pints.UniformLogPrior(0, 1))
-        cls.log_posterior = erlo.LogPosterior(
+        cls.log_posterior = chi.LogPosterior(
             cls.log_likelihood, cls.log_prior)
 
     def test_bad_instantiation(self):
         # Log-likelihood has bad type
         log_likelihood = 'bad type'
         with self.assertRaisesRegex(TypeError, 'The log-likelihood has to'):
-            erlo.LogPosterior(log_likelihood, self.log_prior)
+            chi.LogPosterior(log_likelihood, self.log_prior)
 
         # Log-prior has bad type
         log_prior = 'bad type'
         with self.assertRaisesRegex(TypeError, 'The log-prior has to'):
-            erlo.LogPosterior(self.log_likelihood, log_prior)
+            chi.LogPosterior(self.log_likelihood, log_prior)
 
         # The dimensionality of likelihood and prior don't match
         log_prior = pints.UniformLogPrior(0, 1)
         with self.assertRaisesRegex(ValueError, 'The log-prior and the'):
-            erlo.LogPosterior(self.log_likelihood, log_prior)
+            chi.LogPosterior(self.log_likelihood, log_prior)
 
     def test_call(self):
         parameters = [1, 2, 3, 4, 5, 6, 7]
@@ -1709,7 +1709,7 @@ class TestLogPosterior(unittest.TestCase):
 
     def test_get_log_likelihood(self):
         log_likelihood = self.log_posterior.get_log_likelihood()
-        self.assertIsInstance(log_likelihood, erlo.LogLikelihood)
+        self.assertIsInstance(log_likelihood, chi.LogLikelihood)
 
     def test_get_parameter_names(self):
         # Test case I: Non-trivial parameters
@@ -1727,7 +1727,7 @@ class TestLogPosterior(unittest.TestCase):
 
 class TestReducedLogPDF(unittest.TestCase):
     """
-    Tests the erlotinib.ReducedLogPDF class.
+    Tests the chi.ReducedLogPDF class.
     """
 
     @classmethod
@@ -1738,12 +1738,12 @@ class TestReducedLogPDF(unittest.TestCase):
 
         # Set up inverse problem
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        problem = erlo.InverseProblem(model, times, values)
+        model = chi.PharmacodynamicModel(path)
+        problem = chi.InverseProblem(model, times, values)
         cls.log_likelihood = pints.GaussianLogLikelihood(problem)
         cls.mask = [True, False, False, True, False, True]
         cls.values = [11, 12, 13]
-        cls.reduced_log_pdf = erlo.ReducedLogPDF(
+        cls.reduced_log_pdf = chi.ReducedLogPDF(
             cls.log_likelihood, cls.mask, cls.values)
 
     def test_bad_input(self):
@@ -1751,25 +1751,25 @@ class TestReducedLogPDF(unittest.TestCase):
         log_pdf = 'Bad type'
 
         with self.assertRaisesRegex(ValueError, 'The log-pdf has to'):
-            erlo.ReducedLogPDF(log_pdf, self.mask, self.values)
+            chi.ReducedLogPDF(log_pdf, self.mask, self.values)
 
         # Mask is not as long as the number of parameyers
         mask = [True, True]
 
         with self.assertRaisesRegex(ValueError, 'Length of mask has to'):
-            erlo.ReducedLogPDF(self.log_likelihood, mask, self.values)
+            chi.ReducedLogPDF(self.log_likelihood, mask, self.values)
 
         # Mask is not boolean
         mask = ['yes', 'no', 'yes', 'yes', 'yes', 'yes']
 
         with self.assertRaisesRegex(ValueError, 'Mask has to be a'):
-            erlo.ReducedLogPDF(self.log_likelihood, mask, self.values)
+            chi.ReducedLogPDF(self.log_likelihood, mask, self.values)
 
         # There are not as many input values as fixed parameters
         values = [1]
 
         with self.assertRaisesRegex(ValueError, 'There have to be'):
-            erlo.ReducedLogPDF(self.log_likelihood, self.mask, values)
+            chi.ReducedLogPDF(self.log_likelihood, self.mask, values)
 
     def test_call(self):
         parameters = np.array([11, 1, 1, 12, 1, 13])

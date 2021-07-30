@@ -1,15 +1,15 @@
-.. _erlotinib: https://github.com/DavAug/erlotinib
+.. _chi: https://github.com/DavAug/chi
 
 *****************
 Covariate Models
 *****************
 
-.. currentmodule:: erlotinib
+.. currentmodule:: chi
 
-Covariate models in erlotinib_ can be used to construct complex population
+Covariate models in chi_ can be used to construct complex population
 structures that depend on certain characteristics of subpopulations, i.e. covariates
 of the inter-individual variability. Simple population models from
-`Population Models <https://erlotinib.readthedocs.io/en/latest/population_models.html>`_
+`Population Models <https://chi.readthedocs.io/en/latest/population_models.html>`_
 are used to describe the variability in a subpopulation, while covariate models are
 used to define how those subpopulations differ based on the covariates.
 

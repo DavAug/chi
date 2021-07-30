@@ -36,7 +36,7 @@ jobs:
         run: |
           brew update-reset
           brew install sundials
-      - name: install erlotinib
+      - name: install chi
         run: |
           python --version
           python -m pip install --upgrade pip setuptools wheel

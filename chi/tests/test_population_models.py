@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -10,17 +10,17 @@ import unittest
 import numpy as np
 from scipy.stats import norm, truncnorm
 
-import erlotinib as erlo
+import chi
 
 
 class TestGaussianModel(unittest.TestCase):
     """
-    Tests the erlotinib.GaussianModel class.
+    Tests the chi.GaussianModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.pop_model = erlo.GaussianModel()
+        cls.pop_model = chi.GaussianModel()
 
     def test_compute_log_likelihood(self):
         n_ids = 10
@@ -541,12 +541,12 @@ class TestGaussianModel(unittest.TestCase):
 
 class TestHeterogeneousModel(unittest.TestCase):
     """
-    Tests the erlotinib.HeterogeneousModel class.
+    Tests the chi.HeterogeneousModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.pop_model = erlo.HeterogeneousModel()
+        cls.pop_model = chi.HeterogeneousModel()
 
     def test_compute_log_likelihood(self):
         # For efficiency the input is actually not checked, and 0 is returned
@@ -637,12 +637,12 @@ class TestHeterogeneousModel(unittest.TestCase):
 
 class TestLogNormalModel(unittest.TestCase):
     """
-    Tests the erlotinib.LogNormalModel class.
+    Tests the chi.LogNormalModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.pop_model = erlo.LogNormalModel()
+        cls.pop_model = chi.LogNormalModel()
 
     def test_compute_log_likelihood(self):
         # Hard to test exactly, but at least test some edge cases where
@@ -1298,12 +1298,12 @@ class TestLogNormalModel(unittest.TestCase):
 
 class TestPooledModel(unittest.TestCase):
     """
-    Tests the erlotinib.PooledModel class.
+    Tests the chi.PooledModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.pop_model = erlo.PooledModel()
+        cls.pop_model = chi.PooledModel()
 
     def test_compute_log_likelihood(self):
         # Test case I: observation differ from parameter
@@ -1469,12 +1469,12 @@ class TestPooledModel(unittest.TestCase):
 
 class TestPopulationModel(unittest.TestCase):
     """
-    Tests the erlotinib.PopulationModel class.
+    Tests the chi.PopulationModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.pop_model = erlo.PopulationModel()
+        cls.pop_model = chi.PopulationModel()
 
     def test_compute_log_likelihood(self):
         parameters = 'some parameters'
@@ -1518,18 +1518,18 @@ class TestPopulationModel(unittest.TestCase):
 
 class TestReducedPopulationModel(unittest.TestCase):
     """
-    Tests the erlotinib.ReducedPopulationModel class.
+    Tests the chi.ReducedPopulationModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        pop_model = erlo.LogNormalModel()
-        cls.pop_model = erlo.ReducedPopulationModel(pop_model)
+        pop_model = chi.LogNormalModel()
+        cls.pop_model = chi.ReducedPopulationModel(pop_model)
 
     def test_bad_instantiation(self):
         model = 'Bad type'
         with self.assertRaisesRegex(TypeError, 'The population model'):
-            erlo.ReducedPopulationModel(model)
+            chi.ReducedPopulationModel(model)
 
     def test_compute_log_likelihood(self):
         # Test case I: fix some parameters
@@ -1666,7 +1666,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
     def test_get_population_model(self):
         pop_model = self.pop_model.get_population_model()
-        self.assertIsInstance(pop_model, erlo.PopulationModel)
+        self.assertIsInstance(pop_model, chi.PopulationModel)
 
     def test_n_hierarchical_parameters(self):
         # Test case I: fix some parameters
@@ -1786,12 +1786,12 @@ class TestReducedPopulationModel(unittest.TestCase):
 
 class TestTruncatedGaussianModel(unittest.TestCase):
     """
-    Tests the erlotinib.TruncatedGaussianModel class.
+    Tests the chi.TruncatedGaussianModel class.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.pop_model = erlo.TruncatedGaussianModel()
+        cls.pop_model = chi.TruncatedGaussianModel()
 
     def test_compute_log_likelihood(self):
         # Hard to test exactly, but at least test some edge cases where

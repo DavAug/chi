@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import pints
 
-import erlotinib as erlo
+import chi
 
 
 class InverseProblem(object):
@@ -41,9 +41,9 @@ class InverseProblem(object):
     def __init__(self, model, times, values):
 
         # Check model
-        if not isinstance(model, erlo.MechanisticModel):
+        if not isinstance(model, chi.MechanisticModel):
             raise ValueError(
-                'Model has to be an instance of a erlotinib.Model.'
+                'Model has to be an instance of a chi.Model.'
             )
         self._model = model
 
@@ -78,7 +78,7 @@ class InverseProblem(object):
         """
         output = self._model.simulate(parameters, self._times)
 
-        # The erlotinib.Model.simulate method returns the model output as
+        # The chi.Model.simulate method returns the model output as
         # (n_outputs, n_times). We therefore need to transponse the result.
         return output.transpose()
 
@@ -157,19 +157,19 @@ class ProblemModellingController(object):
         super(ProblemModellingController, self).__init__()
 
         # Check inputs
-        if not isinstance(mechanistic_model, erlo.MechanisticModel):
+        if not isinstance(mechanistic_model, chi.MechanisticModel):
             raise TypeError(
                 'The mechanistic model has to be an instance of a '
-                'erlotinib.MechanisticModel.')
+                'chi.MechanisticModel.')
 
         if not isinstance(error_models, list):
             error_models = [error_models]
 
         for error_model in error_models:
-            if not isinstance(error_model, erlo.ErrorModel):
+            if not isinstance(error_model, chi.ErrorModel):
                 raise TypeError(
                     'Error models have to be instances of a '
-                    'erlotinib.ErrorModel.')
+                    'chi.ErrorModel.')
 
         # Copy mechanistic model
         mechanistic_model = copy.deepcopy(mechanistic_model)
@@ -282,7 +282,7 @@ class ProblemModellingController(object):
     def _create_log_likelihood(self, individual):
         """
         Gets the relevant data for the individual and returns the resulting
-        erlotinib.LogLikelihood.
+        chi.LogLikelihood.
         """
         # Get individuals data
         times = []
@@ -319,7 +319,7 @@ class ProblemModellingController(object):
             return None
 
         # Create log-likelihood and set ID to individual
-        log_likelihood = erlo.LogLikelihood(
+        log_likelihood = chi.LogLikelihood(
             self._mechanistic_model, self._error_models, observations, times)
         log_likelihood.set_id(individual)
 
@@ -428,7 +428,7 @@ class ProblemModellingController(object):
             for param_id, pop_model in enumerate(self._population_models):
                 # If heterogenous population model individuals count as
                 # top-level
-                if isinstance(pop_model, erlo.HeterogeneousModel):
+                if isinstance(pop_model, chi.HeterogeneousModel):
                     # Append names, shift start index and continue
                     parameter_names += pop_parameter_names[start:start+n_ids]
                     start += n_ids
@@ -533,8 +533,8 @@ class ProblemModellingController(object):
 
             # Convert models to reduced models
             for model_id, pop_model in enumerate(pop_models):
-                if not isinstance(pop_model, erlo.ReducedPopulationModel):
-                    pop_models[model_id] = erlo.ReducedPopulationModel(
+                if not isinstance(pop_model, chi.ReducedPopulationModel):
+                    pop_models[model_id] = chi.ReducedPopulationModel(
                         pop_model)
 
             # Fix parameters
@@ -564,11 +564,11 @@ class ProblemModellingController(object):
         error_models = self._error_models
 
         # Convert models to reduced models
-        if not isinstance(mechanistic_model, erlo.ReducedMechanisticModel):
-            mechanistic_model = erlo.ReducedMechanisticModel(mechanistic_model)
+        if not isinstance(mechanistic_model, chi.ReducedMechanisticModel):
+            mechanistic_model = chi.ReducedMechanisticModel(mechanistic_model)
         for model_id, error_model in enumerate(error_models):
-            if not isinstance(error_model, erlo.ReducedErrorModel):
-                error_models[model_id] = erlo.ReducedErrorModel(error_model)
+            if not isinstance(error_model, chi.ReducedErrorModel):
+                error_models[model_id] = chi.ReducedErrorModel(error_model)
 
         # Fix model parameters
         mechanistic_model.fix_parameters(name_value_dict)
@@ -652,20 +652,20 @@ class ProblemModellingController(object):
         log_likelihoods = self._create_log_likelihoods(_id)
         if self._population_models is not None:
             # Compose HierarchicalLogLikelihoods
-            log_likelihoods = [erlo.HierarchicalLogLikelihood(
+            log_likelihoods = [chi.HierarchicalLogLikelihood(
                 log_likelihoods, self._population_models)]
 
         # Compose the log-posteriors
         log_posteriors = []
         for log_likelihood in log_likelihoods:
             # Create individual posterior
-            if isinstance(log_likelihood, erlo.LogLikelihood):
-                log_posterior = erlo.LogPosterior(
+            if isinstance(log_likelihood, chi.LogLikelihood):
+                log_posterior = chi.LogPosterior(
                     log_likelihood, self._log_prior)
 
             # Create hierarchical posterior
-            elif isinstance(log_likelihood, erlo.HierarchicalLogLikelihood):
-                log_posterior = erlo.HierarchicalLogPosterior(
+            elif isinstance(log_likelihood, chi.HierarchicalLogLikelihood):
+                log_posterior = chi.HierarchicalLogPosterior(
                     log_likelihood, self._log_prior)
 
             # Append to list
@@ -748,7 +748,7 @@ class ProblemModellingController(object):
         :type exclude_pop_model: bool, optional
         """
         # Create predictive model
-        predictive_model = erlo.PredictiveModel(
+        predictive_model = chi.PredictiveModel(
             self._mechanistic_model, self._error_models)
 
         # Return if no population model has been set, or is excluded
@@ -756,7 +756,7 @@ class ProblemModellingController(object):
             return predictive_model
 
         # Create predictive population model
-        predictive_model = erlo.PredictivePopulationModel(
+        predictive_model = chi.PredictivePopulationModel(
             predictive_model, self._population_models)
 
         return predictive_model
@@ -814,9 +814,9 @@ class ProblemModellingController(object):
 
         # If model does not support dose administration, set dose keys to None
         mechanistic_model = self._mechanistic_model
-        if isinstance(self._mechanistic_model, erlo.ReducedMechanisticModel):
+        if isinstance(self._mechanistic_model, chi.ReducedMechanisticModel):
             mechanistic_model = self._mechanistic_model.mechanistic_model()
-        if isinstance(mechanistic_model, erlo.PharmacodynamicModel):
+        if isinstance(mechanistic_model, chi.PharmacodynamicModel):
             dose_key = None
             dose_duration_key = None
 
@@ -970,10 +970,10 @@ class ProblemModellingController(object):
         """
         # Check inputs
         for pop_model in pop_models:
-            if not isinstance(pop_model, erlo.PopulationModel):
+            if not isinstance(pop_model, chi.PopulationModel):
                 raise TypeError(
                     'The population models have to be an instance of a '
-                    'erlotinib.PopulationModel.')
+                    'chi.PopulationModel.')
 
         # Get individual parameter names
         n_parameters, param_names = self._get_number_and_parameter_names(

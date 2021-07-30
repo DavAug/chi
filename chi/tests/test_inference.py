@@ -1,6 +1,6 @@
 #
-# This file is part of the erlotinib repository
-# (https://github.com/DavAug/erlotinib/) which is released under the
+# This file is part of the chi repository
+# (https://github.com/DavAug/chi/) which is released under the
 # BSD 3-clause license. See accompanying LICENSE.md for copyright notice and
 # full license details.
 #
@@ -14,13 +14,13 @@ import pandas as pd
 import pints
 import xarray as xr
 
-import erlotinib as erlo
-from erlotinib.library import DataLibrary, ModelLibrary
+import chi
+from chi.library import DataLibrary, ModelLibrary
 
 
 class TestComputePointwiseLogLikelihood(unittest.TestCase):
     """
-    Tests the erlotinib.compute_pointwise_loglikelihood function.
+    Tests the chi.compute_pointwise_loglikelihood function.
     """
 
     @classmethod
@@ -36,9 +36,9 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         observed_volumes = data[mask]['Measurement'].to_numpy()
 
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
-        cls.log_likelihood = erlo.LogLikelihood(
+        mechanistic_model = chi.PharmacodynamicModel(path)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.log_likelihood = chi.LogLikelihood(
             mechanistic_model, error_model, observed_volumes, times)
         cls.log_likelihood.set_id(individual)
 
@@ -59,18 +59,18 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
             in cls.log_likelihood.get_parameter_names()})
 
         # Test case II: Hierarchical Log-likelihood
-        cls.log_likelihood_2 = erlo.LogLikelihood(
+        cls.log_likelihood_2 = chi.LogLikelihood(
             mechanistic_model, error_model, observed_volumes, times)
         cls.log_likelihood_2.set_id(56)
         pop_models = [
-            erlo.PooledModel(),
-            erlo.LogNormalModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel()]
-        cls.hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+            chi.PooledModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel()]
+        cls.hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
             log_likelihoods=[cls.log_likelihood, cls.log_likelihood_2],
             population_models=pop_models)
 
@@ -108,7 +108,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
     def test_call(self):
         # Test case I: Non-hierarchical log-likelihood
         # Test call with defaults
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.log_likelihood, self.posterior_samples)
 
         dimensions = list(pw_ll.dims)
@@ -156,7 +156,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         posterior_samples = xr.Dataset({
             param: samples for param
             in self.log_likelihood.get_parameter_names()})
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.log_likelihood, posterior_samples)
 
         dimensions = list(pw_ll.dims)
@@ -190,7 +190,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         self.assertEqual(draws.loc[2], 2)
 
         # Select individual
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.log_likelihood, self.posterior_samples, individual='ID 1')
 
         dimensions = list(pw_ll.dims)
@@ -225,7 +225,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
 
         # Map parameters
         param_map = {'myokit.tumour_volume': 'myokit.tumour_volume'}
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.log_likelihood, self.posterior_samples,
             param_map=param_map)
 
@@ -260,7 +260,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         self.assertEqual(draws.loc[2], 2)
 
         # Return arviz.DataInference
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.log_likelihood, self.posterior_samples,
             return_inference_data=True)
 
@@ -268,7 +268,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
 
         # Test case II: Hierarchical log-likelihood
         # Test call with defaults
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.hierarch_log_likelihood,
             self.hierarch_posterior_samples)
 
@@ -295,7 +295,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         self.assertEqual(draws.loc[2], 2)
 
         # Test call per observation
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.hierarch_log_likelihood,
             self.hierarch_posterior_samples,
             per_individual=False)
@@ -370,7 +370,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
             parameter_names[8]: top_samples,
             parameter_names[9]: top_samples,
             parameter_names[10]: top_samples})
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.hierarch_log_likelihood, hierarch_posterior_samples)
 
         dimensions = list(pw_ll.dims)
@@ -398,7 +398,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         # Map parameters
         param_map = {
             'Pooled myokit.tumour_volume': 'Pooled myokit.tumour_volume'}
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.hierarch_log_likelihood,
             self.hierarch_posterior_samples,
             param_map=param_map)
@@ -426,7 +426,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         self.assertEqual(draws.loc[2], 2)
 
         # Return arviz.DataInference
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             self.hierarch_log_likelihood,
             self.hierarch_posterior_samples,
             return_inference_data=True)
@@ -434,8 +434,8 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         self.assertIsInstance(pw_ll, az.InferenceData)
 
         # Test case III: Fully pooled model
-        pop_models = [erlo.PooledModel()] * 7
-        hierarch_log_likelihood = erlo.HierarchicalLogLikelihood(
+        pop_models = [chi.PooledModel()] * 7
+        hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
             [self.log_likelihood, self.log_likelihood_2],
             pop_models)
         n_chains = 2
@@ -456,7 +456,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
             parameter_names[4]: top_samples,
             parameter_names[5]: top_samples,
             parameter_names[6]: top_samples})
-        pw_ll = erlo.compute_pointwise_loglikelihood(
+        pw_ll = chi.compute_pointwise_loglikelihood(
             hierarch_log_likelihood,
             hierarch_posterior_samples)
 
@@ -486,13 +486,13 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         # Wrong log-likelihood type
         log_likelihood = 'wrong type'
         with self.assertRaisesRegex(TypeError, 'The log-likelihood must be'):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 log_likelihood, self.posterior_samples)
 
         # Wrong posterior samples type
         posterior_samples = 'wrong type'
         with self.assertRaisesRegex(TypeError, 'The posterior samples must'):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 self.log_likelihood, posterior_samples)
 
         # The posterior samples have the wrong dimension
@@ -500,34 +500,34 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         posterior_samples = posterior_samples.rename_dims(
             {'draw': 'something else'})
         with self.assertRaisesRegex(ValueError, 'The posterior samples must'):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 self.log_likelihood, posterior_samples)
 
         # Parameter map has the wrong type
         param_map = 'wrong type'
         with self.assertRaisesRegex(TypeError, 'The parameter map has'):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 self.log_likelihood, self.posterior_samples,
                 param_map=param_map)
 
         # Not all parameters of the log-likelihood can be identified
         param_map = {'myokit.tumour_volume': 'Something else'}
         with self.assertRaisesRegex(ValueError, 'The parameter <Something'):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 self.log_likelihood, self.posterior_samples,
                 param_map=param_map)
 
         # The individual is not in the posterior samples
         individual = 'Does not exist'
         with self.assertRaisesRegex(ValueError, 'The individual <Does not'):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 self.log_likelihood, self.posterior_samples,
                 individual=individual)
 
         # Select individual with hierarchical model
         individual = 'Some ID'
         with self.assertRaisesRegex(ValueError, "Individual IDs cannot be"):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 self.hierarch_log_likelihood, self.hierarch_posterior_samples,
                 individual=individual)
 
@@ -563,13 +563,13 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
             parameter_names[10]: top_samples})
 
         with self.assertRaisesRegex(ValueError, "The ID <ID 40> does not"):
-            erlo.compute_pointwise_loglikelihood(
+            chi.compute_pointwise_loglikelihood(
                 self.hierarch_log_likelihood, hierarch_posterior_samples)
 
 
 class TestInferenceController(unittest.TestCase):
     """
-    Tests the erlotinib.InferenceController base class.
+    Tests the chi.InferenceController base class.
     """
 
     @classmethod
@@ -584,9 +584,9 @@ class TestInferenceController(unittest.TestCase):
         observed_volumes = data[mask]['Measurement'].to_numpy()
 
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = erlo.PharmacodynamicModel(path)
-        error_model = erlo.ConstantAndMultiplicativeGaussianErrorModel()
-        cls.log_likelihood = erlo.LogLikelihood(
+        mechanistic_model = chi.PharmacodynamicModel(path)
+        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
+        cls.log_likelihood = chi.LogLikelihood(
             mechanistic_model, error_model, observed_volumes, times)
         cls.log_likelihood.set_id(individual)
 
@@ -606,10 +606,10 @@ class TestInferenceController(unittest.TestCase):
             log_prior_lambda_1,
             log_prior_sigma_base,
             log_prior_sigma_rel)
-        log_posterior = erlo.LogPosterior(cls.log_likelihood, cls.log_prior)
+        log_posterior = chi.LogPosterior(cls.log_likelihood, cls.log_prior)
 
         # Set up optmisation controller
-        cls.controller = erlo.InferenceController(log_posterior)
+        cls.controller = chi.InferenceController(log_posterior)
 
         cls.n_ids = 1
         cls.n_params = 7
@@ -619,17 +619,17 @@ class TestInferenceController(unittest.TestCase):
         log_posterior = 'bad log-posterior'
 
         with self.assertRaisesRegex(ValueError, 'The log-posterior has to be'):
-            erlo.InferenceController(log_posterior)
+            chi.InferenceController(log_posterior)
 
         # Log-posteriors don't have the same number of parameters
-        log_posterior_1 = erlo.LogPosterior(
+        log_posterior_1 = chi.LogPosterior(
             self.log_likelihood, self.log_prior)
-        log_posterior_2 = erlo.LogPosterior(
+        log_posterior_2 = chi.LogPosterior(
             self.log_likelihood, self.log_prior)
         log_posterior_2._n_parameters = 20
 
         with self.assertRaisesRegex(ValueError, 'All log-posteriors have to'):
-            erlo.InferenceController([log_posterior_1, log_posterior_2])
+            chi.InferenceController([log_posterior_1, log_posterior_2])
 
     def test_set_n_runs(self):
         n_runs = 5
@@ -681,7 +681,7 @@ class TestInferenceController(unittest.TestCase):
 
 class TestOptimisationController(unittest.TestCase):
     """
-    Tests the erlotinib.OptimisationController class.
+    Tests the chi.OptimisationController class.
     """
 
     @classmethod
@@ -689,9 +689,9 @@ class TestOptimisationController(unittest.TestCase):
         # Set up test problems
         # Model I: Individual with ID 40
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        cls.problem = erlo.ProblemModellingController(model, error_models)
+        model = chi.PharmacodynamicModel(path)
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        cls.problem = chi.ProblemModellingController(model, error_models)
 
         data = DataLibrary().lung_cancer_control_group()
         cls.problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
@@ -705,13 +705,13 @@ class TestOptimisationController(unittest.TestCase):
 
         # Model II: Hierarchical model across all individuals
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel()]
         problem = copy.deepcopy(cls.problem)
         problem.set_population_model(pop_models)
 
@@ -726,7 +726,7 @@ class TestOptimisationController(unittest.TestCase):
 
     def test_run(self):
         # Case I: Individual with ID 40
-        optimiser = erlo.OptimisationController(self.log_posterior_id_40)
+        optimiser = chi.OptimisationController(self.log_posterior_id_40)
 
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
@@ -766,7 +766,7 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(runs[2], 3)
 
         # Case II: Hierarchical model
-        optimiser = erlo.OptimisationController(self.hierarchical_posterior)
+        optimiser = chi.OptimisationController(self.hierarchical_posterior)
 
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
@@ -832,7 +832,7 @@ class TestOptimisationController(unittest.TestCase):
         log_posteriors = problem.get_log_posterior()
 
         # Set up optmisation controller
-        optimiser = erlo.OptimisationController(log_posteriors[0])
+        optimiser = chi.OptimisationController(log_posteriors[0])
         optimiser.set_n_runs(3)
         result = optimiser.run(n_max_iterations=10)
 
@@ -855,7 +855,7 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(runs[2], 3)
 
     def test_set_optmiser(self):
-        optimiser = erlo.OptimisationController(self.log_posterior_id_40)
+        optimiser = chi.OptimisationController(self.log_posterior_id_40)
         optimiser.set_optimiser(pints.PSO)
         self.assertEqual(optimiser._optimiser, pints.PSO)
 
@@ -863,14 +863,14 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(optimiser._optimiser, pints.CMAES)
 
     def test_set_optimiser_bad_input(self):
-        optimiser = erlo.OptimisationController(self.log_posterior_id_40)
+        optimiser = chi.OptimisationController(self.log_posterior_id_40)
         with self.assertRaisesRegex(ValueError, 'Optimiser has to be'):
             optimiser.set_optimiser(str)
 
 
 class TestSamplingController(unittest.TestCase):
     """
-    Tests the erlotinib.SamplingController class.
+    Tests the chi.SamplingController class.
     """
 
     @classmethod
@@ -878,9 +878,9 @@ class TestSamplingController(unittest.TestCase):
         # Set up test problems
         # Model I: Individual with ID 40
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        problem = erlo.ProblemModellingController(model, error_models)
+        model = chi.PharmacodynamicModel(path)
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        problem = chi.ProblemModellingController(model, error_models)
 
         data = DataLibrary().lung_cancer_control_group()
         problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
@@ -893,13 +893,13 @@ class TestSamplingController(unittest.TestCase):
 
         # Model II: Hierarchical model across all individuals
         pop_models = [
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.HeterogeneousModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.PooledModel(),
-            erlo.LogNormalModel()]
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel()]
         problem.set_population_model(pop_models)
 
         n_parameters = 1 + 1 + 8 + 1 + 1 + 1 + 2
@@ -913,7 +913,7 @@ class TestSamplingController(unittest.TestCase):
 
     def test_run(self):
         # Case I: Individual with ID 40
-        sampler = erlo.SamplingController(self.log_posterior_id_40)
+        sampler = chi.SamplingController(self.log_posterior_id_40)
 
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
@@ -956,7 +956,7 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(divergent_iters, 'false')
 
         # Case II: Hierarchical model
-        sampler = erlo.SamplingController(self.hierarchical_posterior)
+        sampler = chi.SamplingController(self.hierarchical_posterior)
 
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
@@ -1009,9 +1009,9 @@ class TestSamplingController(unittest.TestCase):
 
         # Case III: Infer multiple independent models
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = erlo.PharmacodynamicModel(path)
-        error_models = [erlo.ConstantAndMultiplicativeGaussianErrorModel()]
-        problem = erlo.ProblemModellingController(model, error_models)
+        model = chi.PharmacodynamicModel(path)
+        error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
+        problem = chi.ProblemModellingController(model, error_models)
         data = DataLibrary().lung_cancer_control_group()
         mask_id_40 = data['ID'] == 40
         mask_id_140 = data['ID'] == 140
@@ -1022,7 +1022,7 @@ class TestSamplingController(unittest.TestCase):
             pints.HalfCauchyLogPrior(location=0, scale=3)] * n_parameters
         problem.set_log_prior(log_priors)
         log_posterior = problem.get_log_posterior()
-        sampler = erlo.SamplingController(log_posterior)
+        sampler = chi.SamplingController(log_posterior)
         sampler.set_sampler(pints.HamiltonianMCMC)
 
         # Set evaluator to sequential, because otherwise codecov
@@ -1097,7 +1097,7 @@ class TestSamplingController(unittest.TestCase):
     def test_set_initial_parameters(self):
         # Test case I: Individual data
         n_runs = 10
-        sampler = erlo.SamplingController(self.log_posterior_id_40)
+        sampler = chi.SamplingController(self.log_posterior_id_40)
         sampler.set_n_runs(n_runs)
 
         # Create test data
@@ -1192,7 +1192,7 @@ class TestSamplingController(unittest.TestCase):
             new_params[0, :, 5], default_params[0, :, 5]))
 
     def test_set_initial_parameters_bad_input(self):
-        sampler = erlo.SamplingController(self.log_posterior_id_40)
+        sampler = chi.SamplingController(self.log_posterior_id_40)
 
         # Create data of wrong type
         data = np.ones(shape=(10, 4))
@@ -1251,7 +1251,7 @@ class TestSamplingController(unittest.TestCase):
             sampler.set_initial_parameters, data)
 
     def test_set_sampler(self):
-        sampler = erlo.SamplingController(self.log_posterior_id_40)
+        sampler = chi.SamplingController(self.log_posterior_id_40)
         sampler.set_sampler(pints.HamiltonianMCMC)
         self.assertEqual(sampler._sampler, pints.HamiltonianMCMC)
 
@@ -1259,7 +1259,7 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(sampler._sampler, pints.HaarioACMC)
 
     def test_set_sampler_bad_input(self):
-        sampler = erlo.SamplingController(self.log_posterior_id_40)
+        sampler = chi.SamplingController(self.log_posterior_id_40)
         with self.assertRaisesRegex(ValueError, 'Sampler has to be'):
             sampler.set_sampler(str)
 
