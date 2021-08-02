@@ -294,6 +294,15 @@ class CentredLogNormalModel(CovariateModel):
         :returns: Population parameters :math:`\theta` for :math:`\eta`.
         :rtype: np.ndarray of length (p',)
         """
+        # Check that parameters make are strictly positive, else return
+        # np.nan for the parameters
+        mu_log, std_log = parameters
+        if (mu_log <= 0) or (std_log <= 0):
+            # The mean and standard deviation of a log-normal distribution are
+            # strictly positive
+            return np.array([np.nan, np.nan])
+
+
         # As a result of the `centering` the population parameters for
         # eta (mean and std.) are constant.
         return np.array([0, 1])
