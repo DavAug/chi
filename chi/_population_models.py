@@ -150,8 +150,9 @@ class CovariatePopulationModel(PopulationModel):
     .. math::
         \psi \sim \mathbb{P}(\cdot | \vartheta, \chi).
 
-    Here, covariates can vary from one individual to the next, while the model
-    parameters :math:`\vartheta` are the same for all individuals.
+    Here, covariates identify subpopulations in the population and can vary
+    from one individual to the next, while the model parameters
+    :math:`\vartheta` are the same for all individuals.
 
     To simplify this dependence, CovariatePopulationModels make the assumption
     that the distribution :math:`\mathbb{P}(\psi | \vartheta, \chi)`
@@ -192,6 +193,9 @@ class CovariatePopulationModel(PopulationModel):
             raise TypeError(
                 'The covariate model has to be an instance of a '
                 'chi.SimplePopulationModel.')
+
+        # Check compatibility of population model with covariate model
+        covariate_model.check_compatibility(population_model)
 
         # Remember models
         self._population_model = population_model
@@ -357,10 +361,14 @@ class CovariatePopulationModel(PopulationModel):
         :rtype: np.ndarray of shape (n_samples,)
         """
         # Check that covariates has the correct dimensions
-        covariates = np.array(covariates)
-        if covariates.shape != (self._covariate_model.n_covariates(),):
-            raise ValueError(
-                'Covariates must be of shape (c,).')
+        if covariates is not None:
+            covariates = np.array(covariates)
+            if covariates.shape != (self._covariate_model.n_covariates(),):
+                raise ValueError(
+                    'Covariates must be of shape (c,).')
+
+            # Add dimension to fit shape (n, c) for later convenience
+            covariates = np.reshape(covariates, (1, len(covariates)))
 
         # Compute population parameters
         parameters = self._covariate_model.compute_population_parameters(
@@ -528,9 +536,9 @@ class GaussianModel(SimplePopulationModel):
         observations = np.asarray(observations)
         mean, std = parameters
 
-        if (mean <= 0) or (std <= 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        if std <= 0:
+            # The standard deviation of the Gaussian distribution is
+            # strictly positive
             return -np.inf
 
         return self._compute_log_likelihood(mean, std, observations)
@@ -564,9 +572,9 @@ class GaussianModel(SimplePopulationModel):
         observations = np.asarray(observations)
         mean, std = parameters
 
-        if (mean <= 0) or (std <= 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        if std <= 0:
+            # The standard deviation of the Gaussian distribution is
+            # strictly positive
             return np.full(shape=len(observations), fill_value=-np.inf)
 
         return self._compute_pointwise_ll(mean, std, observations)
@@ -587,9 +595,9 @@ class GaussianModel(SimplePopulationModel):
         observations = np.asarray(observations)
         mean, std = parameters
 
-        if (mean <= 0) or (std <= 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        if std <= 0:
+            # The standard deviation of the Gaussian distribution is
+            # strictly positive
             n_obs = len(observations)
             return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
 
