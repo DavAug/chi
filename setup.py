@@ -20,7 +20,7 @@ setup(
     # List of dependencies
     install_requires=[
         'arviz',
-        'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
+        'myokit>=1.33.0',
         'numba>=0.50',
         'numpy<1.21,>=1.17',
         'pandas>=0.24',
