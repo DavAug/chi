@@ -462,6 +462,12 @@ class GaussianModel(SimplePopulationModel):
             - np.log(2 * np.pi * std**2) / 2 \
             - (observations - mean) ** 2 / (2 * std**2)
 
+        # If score evaluates to NaN, return -infinity
+        mask = np.isnan(log_likelihood)
+        if np.any(mask):
+            log_likelihood[mask] = -np.inf
+            return log_likelihood
+
         return log_likelihood
 
     @staticmethod
@@ -895,6 +901,12 @@ class LogNormalModel(SimplePopulationModel):
             - np.log(2 * np.pi * std**2) / 2 \
             - log_psi \
             - (log_psi - mean) ** 2 / (2 * std**2)
+
+        # If score evaluates to NaN, return -infinity
+        mask = np.isnan(log_likelihood)
+        if np.any(mask):
+            log_likelihood[mask] = -np.inf
+            return log_likelihood
 
         return log_likelihood
 
@@ -1727,6 +1739,12 @@ class TruncatedGaussianModel(SimplePopulationModel):
             - np.log(2 * np.pi * std**2) / 2 \
             - (observations - mean) ** 2 / (2 * std**2) \
             - np.log(1 - math.erf(-mean/std/math.sqrt(2))) + np.log(2)
+
+        # If score evaluates to NaN, return -infinity
+        mask = np.isnan(log_likelihood)
+        if np.any(mask):
+            log_likelihood[mask] = -np.inf
+            return log_likelihood
 
         return log_likelihood
 
