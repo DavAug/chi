@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 setup(
     # Module name
     name='chi',
-    version='0.0.2',
+    version='0.0.1',
 
     # License name
     license='BSD 3-clause license',
@@ -20,7 +20,7 @@ setup(
     # List of dependencies
     install_requires=[
         'arviz',
-        'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
+        'myokit>=1.33',
         'numba>=0.50',
         'numpy<1.21,>=1.17',
         'pandas>=0.24',
@@ -30,7 +30,6 @@ setup(
         'xarray'
     ],
     dependency_links=[
-        "git+git://github.com/MichaelClerx/myokit.git#egg=myokit-latest",
         "git+git://github.com/pints-team/pints.git#egg=pints-latest",
     ],
     extras_require={
