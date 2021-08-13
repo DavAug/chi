@@ -255,6 +255,15 @@ class CovariatePopulationModel(PopulationModel):
         Returns the log-likelihood of the population parameters and its
         sensitivities w.r.t. the observations and the parameters.
 
+        The sensitivities are computed with respect to the individual
+        :math:`\eta _i` and the population parameters :math:`\vartheta`
+
+        .. math::
+            \left(
+                \partial _{\eta _i}\log p(\eta _i | \theta),
+                \sum _{i,j}\partial _{\theta _j}\log p(\eta _i | \theta_j)
+                    \frac{\partial f_j}{\partial \vartheta _k}\right) .
+
         :param parameters: Parameters of the population model.
         :type parameters: List, np.ndarray of length (p,)
         :param observations: "Observations" of the individuals. Typically
@@ -361,7 +370,8 @@ class CovariatePopulationModel(PopulationModel):
         :rtype: np.ndarray of shape (n_samples,)
         """
         # Check that covariates has the correct dimensions
-        if covariates is not None:
+        # TODO: Test when true covatiate model exists!
+        if covariates is not None:  # noqa: pragma no cover
             covariates = np.array(covariates)
             if covariates.shape != (self._covariate_model.n_covariates(),):
                 raise ValueError(

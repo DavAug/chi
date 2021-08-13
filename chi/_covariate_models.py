@@ -68,8 +68,8 @@ class CovariateModel(object):
         r"""
         Returns the individual parameters :math:`\psi`.
 
-        By default `covariates` are set to `None`, such that model
-        does not rely on covariates. Each derived :class:`CovariateModel:
+        By default ``covariates`` are set to ``None``, such that model
+        does not rely on covariates. Each derived :class:`CovariateModel`
         needs to make sure that model reduces to sensible values for
         this edge case.
 
@@ -91,8 +91,8 @@ class CovariateModel(object):
         with respect to the model parameters :math:`\vartheta` and the relevant
         fluctuation :math:`\eta`.
 
-        By default `covariates` are set to `None`, such that model
-        does not rely on covariates. Each derived :class:`CovariateModel:
+        By default ``covariates`` are set to ``None``, such that model
+        does not rely on covariates. Each derived :class:`CovariateModel`
         needs to make sure that model reduces to sensible values for
         this edge case.
 
@@ -277,10 +277,10 @@ class CentredLogNormalModel(CovariateModel):
         psi = np.exp(mu + sigma * eta)
 
         # Compute sensitivities
+        deta = sigma * psi
         dmu = psi
         dsigma = eta * psi
-        deta = sigma * psi
-        sensitivities = np.vstack((dmu, dsigma, deta))
+        sensitivities = np.vstack((deta, dmu, dsigma))
 
         return (psi, sensitivities)
 
@@ -294,14 +294,13 @@ class CentredLogNormalModel(CovariateModel):
         :returns: Population parameters :math:`\theta` for :math:`\eta`.
         :rtype: np.ndarray of length (p',)
         """
-        # Check that parameters make are strictly positive, else return
+        # Check that parameters are strictly positive, else return
         # np.nan for the parameters
-        mu_log, std_log = parameters
-        if (mu_log <= 0) or (std_log <= 0):
-            # The mean and standard deviation of a log-normal distribution are
+        _, std_log = parameters
+        if std_log <= 0:
+            # The standard deviation of a log-normal distribution is
             # strictly positive
             return np.array([np.nan, np.nan])
-
 
         # As a result of the `centering` the population parameters for
         # eta (mean and std.) are constant.
