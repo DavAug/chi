@@ -43,6 +43,29 @@ class TestCovariatePopulationModel(unittest.TestCase):
                 chi.GaussianModel(),
                 cov_model)
 
+    def test_compute_individual_parameters(self):
+        # Test case I: Model that is independent of covariates
+        # Test case I.1
+        parameters = [1, 1]
+        eta = [0.2, -0.3, 1, 5]
+
+        ref_psi = self.cov_model.compute_individual_parameters(parameters, eta)
+        psi = self.cpop_model.compute_individual_parameters(parameters, eta)
+        self.assertEqual(psi[0], ref_psi[0])
+        self.assertEqual(psi[1], ref_psi[1])
+        self.assertEqual(psi[2], ref_psi[2])
+        self.assertEqual(psi[3], ref_psi[3])
+
+        # Test case I.2
+        parameters = [0.3, 0]
+        eta = [0.2, -0.3, 1, 5]
+
+        psi = self.cpop_model.compute_individual_parameters(parameters, eta)
+        self.assertEqual(psi[0], np.exp(0.3))
+        self.assertEqual(psi[1], np.exp(0.3))
+        self.assertEqual(psi[2], np.exp(0.3))
+        self.assertEqual(psi[3], np.exp(0.3))
+
     def test_compute_log_likelihood(self):
         n_ids = 10
 
