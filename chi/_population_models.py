@@ -201,6 +201,28 @@ class CovariatePopulationModel(PopulationModel):
         self._population_model = population_model
         self._covariate_model = covariate_model
 
+    def compute_individual_parameters(
+            self, parameters, eta, covariates=None):
+        r"""
+        Returns the individual parameters :math:`\psi`.
+
+        By default ``covariates`` are set to ``None``, such that model
+        does not rely on covariates. Each derived :class:`CovariateModel`
+        needs to make sure that model reduces to sensible values for
+        this edge case.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :param eta: Inter-individual fluctuations :math:`\eta`.
+        :type eta: np.ndarray of length (n,)
+        :param covariates: Individual covariates :math:`\chi`.
+        :type covariates: np.ndarray of length (n, c)
+        :returns: Individual parameters :math:`\psi`.
+        :rtype: np.ndarray of length (n,)
+        """
+        return self._covariate_model.compute_individual_parameters(
+            parameters, eta, covariates)
+
     def compute_log_likelihood(self, parameters, observations):
         r"""
         Returns the log-likelihood of the model parameters.
