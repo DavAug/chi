@@ -344,7 +344,7 @@ class CovariatePopulationModel(PopulationModel):
             Number of individuals.
         """
         # Get number of individual parameters
-        n_ids, _ = self._population_model.n_hierarchical_parameters()
+        n_ids, _ = self._population_model.n_hierarchical_parameters(n_ids)
 
         return (n_ids, self._covariate_model.n_parameters())
 

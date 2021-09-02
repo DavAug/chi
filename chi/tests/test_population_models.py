@@ -320,7 +320,8 @@ class TestCovariatePopulationModel(unittest.TestCase):
 
     def test_n_hierarchical_parameters(self):
         n_ids = 10
-        n_hierarchical_params = self.pop_model.n_hierarchical_parameters(n_ids)
+        n_hierarchical_params = self.cpop_model.n_hierarchical_parameters(
+            n_ids)
 
         self.assertEqual(len(n_hierarchical_params), 2)
         self.assertEqual(n_hierarchical_params[0], n_ids)
