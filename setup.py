@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 # Go!
 setup(
     # Module name
-    name='chi',
-    version='0.0.2',
+    name='chidr',
+    version='0.0.1',
 
     # License name
     license='BSD 3-clause license',
@@ -19,19 +19,15 @@ setup(
 
     # List of dependencies
     install_requires=[
-        'arviz',
-        'myokit @ git+git://github.com/MichaelClerx/myokit.git#egg=myokit',
+        'arviz>=0.11',
+        'myokit>=1.33',
         'numba>=0.50',
-        'numpy<1.21,>=1.17',
+        'numpy>=1.17',
         'pandas>=0.24',
-        'pints @ git+git://github.com/pints-team/pints.git#egg=pints',
-        'plotly==4.8.1',
-        'tqdm==4.46.1',
-        'xarray'
-    ],
-    dependency_links=[
-        "git+git://github.com/MichaelClerx/myokit.git#egg=myokit-latest",
-        "git+git://github.com/pints-team/pints.git#egg=pints-latest",
+        'pints>=0.3',
+        'plotly>=4.8.1',
+        'tqdm>=4.46.1',
+        'xarray>=0.19'
     ],
     extras_require={
         'docs': [
