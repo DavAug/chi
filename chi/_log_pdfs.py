@@ -544,6 +544,8 @@ class HierarchicalLogLikelihood(object):
             scores are computed per individual or per observation.
         :type per_individual: bool, optional
         """
+        # TODO: Think again whether this pointwise log-likelihood
+        # is really meaningful, e.g. when computing LOO.
         # Transform parameters to numpy array
         parameters = np.asarray(parameters)
 
