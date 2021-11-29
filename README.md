@@ -12,8 +12,7 @@ which is designed for dose response modelling.
 
 The main features of chi are
 
-- Simulation of mechanistic dose response models (differential equations)
-    for arbitrary dosing regimens.
+- Simulation of mechanistic dose response models (differential equations) for arbitrary dosing regimens.
 - Inference of mechanistic model parameters from data (classical or Bayesian).
 - Simulation of the dose response variability in a population
     (hierarchical models/non-linear mixed effects models).
@@ -22,6 +21,8 @@ The main features of chi are
     be partly explained by covariates.
 - Inference of model parameters in a structured population from data
     (classical or Bayesian).
+    
+Internally, Chi uses [Myokit](https://github.com/MichaelClerx/myokit) as its simulation engine and [Pints](https://github.com/pints-team/pints) as its inference engine.
 
 All features of our software are described in detail in our
 [full API documentation](https://chi.readthedocs.io/en/latest/).
