@@ -21,10 +21,9 @@ setup(
     install_requires=[
         'arviz>=0.11',
         'myokit>=1.33',
-        'numba>=0.50',
         'numpy>=1.17',
         'pandas>=0.24',
-        'pints>=0.3',
+        'pints @ git+git://github.com/pints-team/pints.git#egg=pints-latest',
         'plotly>=4.8.1',
         'tqdm>=4.46.1',
         'xarray>=0.19'
