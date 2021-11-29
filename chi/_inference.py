@@ -692,7 +692,7 @@ class OptimisationController(InferenceController):
                     function=log_posterior,
                     x0=self._initial_params[posterior_id, run_id, :],
                     method=self._optimiser,
-                    transform=self._transform)
+                    transformation=self._transform)
 
                 # Configure optimisation routine
                 opt.set_log_to_screen(log_to_screen)
@@ -892,7 +892,7 @@ class SamplingController(InferenceController):
                 chains=self._n_runs,
                 x0=self._initial_params[posterior_id, ...],
                 method=self._sampler,
-                transform=self._transform)
+                transformation=self._transform)
 
             # Configure sampling routine
             sampler.set_log_to_screen(log_to_screen)

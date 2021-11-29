@@ -1325,7 +1325,7 @@ class TestReducedErrorModel(unittest.TestCase):
 
         self.assertEqual(score, ref_score)
         self.assertEqual(pw_score.shape, (4,))
-        self.assertEqual(np.sum(pw_score), ref_score)
+        self.assertAlmostEqual(np.sum(pw_score), ref_score)
 
         # Unfix model parameters
         self.error_model.fix_parameters(name_value_dict={

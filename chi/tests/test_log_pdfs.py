@@ -130,19 +130,19 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             log_likelihoods=self.log_likelihoods,
             population_models=[chi.PooledModel()] * 9)
 
-        # Create reference model
-        pooled_log_pdf = pints.PooledLogPDF(
-            self.log_likelihoods, pooled=[True]*9)
-
         # Test case I.1
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
-        score = pooled_log_pdf(parameters)
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
 
         self.assertEqual(model(parameters), score)
 
         # Test case I.2
         parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
-        score = pooled_log_pdf(parameters)
+        score = 0
+        for ll in self.log_likelihoods:
+            score += ll(parameters)
 
         self.assertEqual(model(parameters), score)
 
@@ -385,13 +385,18 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             log_likelihoods=self.log_likelihoods,
             population_models=[chi.PooledModel()] * 9)
 
-        # Create reference model
-        pooled_log_pdf = pints.PooledLogPDF(
-            self.log_likelihoods, pooled=[True]*9)
+        # # Create reference model
+        # pooled_log_pdf = pints.PooledLogPDF(
+        #     self.log_likelihoods, pooled=[True]*9)
 
         # Test case I.1
         parameters = [1, 1, 1, 1, 1, 1, 1, 1, 1]
-        ref_score, ref_sens = pooled_log_pdf.evaluateS1(parameters)
+        ref_score, ref_sens = 0, np.zeros(shape=len(parameters))
+        for ll in self.log_likelihoods:
+            s, ss = ll.evaluateS1(parameters)
+            ref_score += s
+            ref_sens += ss
+        # ref_score, ref_sens = pooled_log_pdf.evaluateS1(parameters)
         score, sens = model.evaluateS1(parameters)
 
         self.assertEqual(score, ref_score)
@@ -408,7 +413,11 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         # Test case I.2
         parameters = [10, 1, 0.1, 1, 3, 1, 1, 1, 1]
-        ref_score, ref_sens = pooled_log_pdf.evaluateS1(parameters)
+        ref_score, ref_sens = 0, np.zeros(shape=len(parameters))
+        for ll in self.log_likelihoods:
+            s, ss = ll.evaluateS1(parameters)
+            ref_score += s
+            ref_sens += ss
         score, sens = model.evaluateS1(parameters)
 
         self.assertEqual(score, ref_score)
