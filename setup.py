@@ -23,7 +23,7 @@ setup(
         'myokit>=1.33',
         'numpy>=1.17',
         'pandas>=0.24',
-        'pints @ git+git://github.com/pints-team/pints.git#egg=pints-latest',
+        'pints @ git+git://github.com/pints-team/pints.git',
         'plotly>=4.8.1',
         'tqdm>=4.46.1',
         'xarray>=0.19'
