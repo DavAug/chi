@@ -1,10 +1,19 @@
 from setuptools import setup, find_packages
 
+# Load text for description
+with open('README.md') as f:
+    readme = f.read()
+
+
 # Go!
 setup(
     # Module name
-    name='chi',
+    name='chi-drm',
     version='0.1.0',
+    description='Package to model dose response dynamics',
+    long_description=readme,
+    long_description_content_type="text/markdown",
+    url="https://chi.readthedocs.io",
 
     # License name
     license='BSD 3-clause license',
@@ -14,7 +23,9 @@ setup(
     maintainer_email='david.augustin@cs.ox.ac.uk',
 
     # Packages and data to include
-    packages=find_packages(include=('chi', 'chi.*')),
+    packages=find_packages(
+        include=('chi', 'chi.*'),
+        exclude=('chi/tests',)),
     include_package_data=True,
 
     # List of dependencies
