@@ -1,11 +1,8 @@
-import pathlib
 from setuptools import setup, find_packages
 
-# The directory containing this file
-HERE = pathlib.Path(__file__).parent
-
-# The text of the README file
-README = (HERE / "README.md").read_text()
+# Load text for description
+with open('README.md') as f:
+    readme = f.read()
 
 
 # Go!
@@ -14,7 +11,7 @@ setup(
     name='chi-drm',
     version='0.1.0',
     description='Package to model dose response dynamics',
-    long_description=README,
+    long_description=readme,
     long_description_content_type="text/markdown",
     url="https://chi.readthedocs.io",
 
