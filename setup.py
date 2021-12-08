@@ -1,10 +1,22 @@
+import pathlib
 from setuptools import setup, find_packages
+
+# The directory containing this file
+HERE = pathlib.Path(__file__).parent
+
+# The text of the README file
+README = (HERE / "README.md").read_text()
+
 
 # Go!
 setup(
     # Module name
-    name='chi',
+    name='chi-drm',
     version='0.1.0',
+    description='Package to model dose response dynamics',
+    long_description=README,
+    long_description_content_type="text/markdown",
+    url="https://chi.readthedocs.io",
 
     # License name
     license='BSD 3-clause license',
@@ -14,7 +26,9 @@ setup(
     maintainer_email='david.augustin@cs.ox.ac.uk',
 
     # Packages and data to include
-    packages=find_packages(include=('chi', 'chi.*')),
+    packages=find_packages(
+        include=('chi', 'chi.*'),
+        exclude=('chi/tests',)),
     include_package_data=True,
 
     # List of dependencies
