@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 setup(
     # Module name
     name='chi',
-    version='0.0.1',
+    version='0.1.0',
 
     # License name
     license='BSD 3-clause license',
@@ -23,7 +23,7 @@ setup(
         'myokit>=1.33',
         'numpy>=1.17',
         'pandas>=0.24',
-        'pints @ git+git://github.com/pints-team/pints.git',
+        'pints>=0.4',
         'plotly>=4.8.1',
         'tqdm>=4.46.1',
         'xarray>=0.19'
