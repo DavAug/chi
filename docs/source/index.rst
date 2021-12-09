@@ -9,16 +9,8 @@
     :hidden:
     :maxdepth: 1
 
-    covariate_models
-    error_models
-    inference
-    library/index
-    log_pdfs
-    mechanistic_models
-    plots/index
-    population_models
-    predictive_models
-    problems
+    getting_started/index.rst
+    api/index.rst
 
 Welcome to Chi's documentation!
 =====================================
