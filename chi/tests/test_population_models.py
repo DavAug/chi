@@ -1031,7 +1031,7 @@ class TestLogNormalModel(unittest.TestCase):
 
         parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
 
         # Test case I.2:
         psis = [1] * n_ids
@@ -1041,7 +1041,7 @@ class TestLogNormalModel(unittest.TestCase):
 
         parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
 
         # Test case II: psis = 1.
         # Score reduces to
@@ -1059,7 +1059,7 @@ class TestLogNormalModel(unittest.TestCase):
 
         parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
 
         # Test case II.2:
         psis = [1] * n_ids
@@ -1072,7 +1072,7 @@ class TestLogNormalModel(unittest.TestCase):
 
         parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
 
         # Test case III: psis all the same, sigma_log = 1.
         # Score reduces to
@@ -1098,7 +1098,7 @@ class TestLogNormalModel(unittest.TestCase):
 
         parameters = [mu_log] + [sigma_log]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
 
         # Test case IV: sigma_log negative or zero
 
@@ -1139,7 +1139,7 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
-        self.assertEqual(np.sum(scores), ref_score)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 10))
 
         # Test case I.2:
@@ -1152,7 +1152,7 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 6)
-        self.assertEqual(np.sum(scores), ref_score)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 6))
 
         # Test case II: psis = 1.
@@ -1188,7 +1188,7 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
-        self.assertEqual(np.sum(scores), ref_score)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 10))
 
         # Test case III: Different psis
@@ -1230,7 +1230,7 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = [mu_log] + [sigma_log]
         scores = self.pop_model.compute_pointwise_ll(parameters, psis)
         self.assertEqual(len(scores), 10)
-        self.assertEqual(np.sum(scores), ref_score)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 10))
 
         # Test case IV: mu_log or sigma_log negative or zero

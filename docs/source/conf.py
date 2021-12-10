@@ -32,6 +32,7 @@ import sphinx
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
@@ -106,7 +107,11 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'furo'
+# html_theme = 'furo'
+html_theme = 'sphinx_rtd_theme'
+html_theme_options = {
+    'style_nav_header_background': 'white',
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

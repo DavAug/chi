@@ -7,7 +7,6 @@
 
 import copy
 
-from numba import njit
 import numpy as np
 
 
@@ -238,7 +237,6 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         self._n_parameters = 2
 
     @staticmethod
-    @njit
     def _compute_log_likelihood(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -264,7 +262,6 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         return log_likelihood
 
     @staticmethod
-    @njit
     def _compute_pointwise_ll(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -292,7 +289,6 @@ class ConstantAndMultiplicativeGaussianErrorModel(ErrorModel):
         return pointwise_ll
 
     @staticmethod
-    @njit
     def _compute_sensitivities(
             parameters, model_output, model_sensitivities,
             observations):  # pragma: no cover
@@ -593,7 +589,6 @@ class GaussianErrorModel(ErrorModel):
         self._n_parameters = 1
 
     @staticmethod
-    @njit
     def _compute_log_likelihood(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -615,7 +610,6 @@ class GaussianErrorModel(ErrorModel):
         return log_likelihood
 
     @staticmethod
-    @njit
     def _compute_pointwise_ll(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -639,7 +633,6 @@ class GaussianErrorModel(ErrorModel):
         return pointwise_ll
 
     @staticmethod
-    @njit
     def _compute_sensitivities(
             parameters, model_output, model_sensitivities,
             observations):  # pragma: no cover
@@ -936,7 +929,6 @@ class LogNormalErrorModel(ErrorModel):
         self._n_parameters = 1
 
     @staticmethod
-    @njit
     def _compute_log_likelihood(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -962,7 +954,6 @@ class LogNormalErrorModel(ErrorModel):
         return log_likelihood
 
     @staticmethod
-    @njit
     def _compute_pointwise_ll(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -990,7 +981,6 @@ class LogNormalErrorModel(ErrorModel):
         return pointwise_ll
 
     @staticmethod
-    @njit
     def _compute_sensitivities(
             parameters, model_output, model_sensitivities,
             observations):  # pragma: no cover
@@ -1288,7 +1278,6 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         self._n_parameters = 1
 
     @staticmethod
-    @njit
     def _compute_log_likelihood(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -1314,7 +1303,6 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         return log_likelihood
 
     @staticmethod
-    @njit
     def _compute_pointwise_ll(
             parameters, model_output, observations):  # pragma: no cover
         """
@@ -1342,7 +1330,6 @@ class MultiplicativeGaussianErrorModel(ErrorModel):
         return pointwise_ll
 
     @staticmethod
-    @njit
     def _compute_sensitivities(
             parameters, model_output, model_sensitivities,
             observations):  # pragma: no cover
