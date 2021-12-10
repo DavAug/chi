@@ -129,16 +129,6 @@ class PopulationModel(object):
         raise NotImplementedError
 
 
-class SimplePopulationModel(PopulationModel):
-    """
-    A base class for simple population models without population structure.
-
-    Extends :class:`PopulationModel`.
-    """
-    def __init__(self):
-        super(SimplePopulationModel, self).__init__()
-
-
 class CovariatePopulationModel(PopulationModel):
     r"""
     A CovariatePopulationModel assumes that the individual parameters
@@ -175,7 +165,7 @@ class CovariatePopulationModel(PopulationModel):
     Extends :class:`PopulationModel`.
 
     :param population_model: Defines the distribution of :math:`\eta`.
-    :type population_model: SimplePopulationModel
+    :type population_model: PopulationModel
     :param covariate_model: Defines the covariate model.
     :type covariate_model: CovariateModel
     """
@@ -184,14 +174,14 @@ class CovariatePopulationModel(PopulationModel):
         super(CovariatePopulationModel, self).__init__()
 
         # Check inputs
-        if not isinstance(population_model, SimplePopulationModel):
+        if not isinstance(population_model, PopulationModel):
             raise TypeError(
                 'The population model has to be an instance of a '
-                'chi.SimplePopulationModel.')
+                'chi.PopulationModel.')
         if not isinstance(covariate_model, chi.CovariateModel):
             raise TypeError(
                 'The covariate model has to be an instance of a '
-                'chi.SimplePopulationModel.')
+                'chi.CovariateModel.')
 
         # Check compatibility of population model with covariate model
         covariate_model.check_compatibility(population_model)
@@ -391,7 +381,6 @@ class CovariatePopulationModel(PopulationModel):
         :rtype: np.ndarray of shape (n_samples,)
         """
         # Check that covariates has the correct dimensions
-        # TODO: Test when true covatiate model exists!
         if covariates is not None:  # noqa: pragma no cover
             covariates = np.array(covariates)
             if covariates.shape != (self._covariate_model.n_covariates(),):
@@ -431,7 +420,7 @@ class CovariatePopulationModel(PopulationModel):
         self._covariate_model.set_parameter_names(names)
 
 
-class GaussianModel(SimplePopulationModel):
+class GaussianModel(PopulationModel):
     r"""
     A population model which assumes that model parameters across individuals
     are distributed according to a Gaussian distribution.
@@ -452,7 +441,7 @@ class GaussianModel(SimplePopulationModel):
     Any observed individual with parameter :math:`\psi _i` is
     assumed to be a realisation of the random variable :math:`\psi`.
 
-    Extends :class:`SimplePopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):
@@ -568,9 +557,8 @@ class GaussianModel(SimplePopulationModel):
         var = std**2
 
         eps = 1E-12
-        if (mean <= 0) or (std <= 0) or (var <= eps):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        if (std <= 0) or (var <= eps):
+            # The std. of the Gaussian distribution is strictly positive
             return -np.inf
 
         return self._compute_log_likelihood(mean, var, observations)
@@ -606,9 +594,8 @@ class GaussianModel(SimplePopulationModel):
         var = std**2
 
         eps = 1E-6
-        if (mean <= 0) or (std <= 0) or (var <= eps):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        if (std <= 0) or (var <= eps):
+            # The std. of the Gaussian distribution is strictly positive
             return np.full(shape=len(observations), fill_value=-np.inf)
 
         return self._compute_pointwise_ll(mean, var, observations)
@@ -631,9 +618,8 @@ class GaussianModel(SimplePopulationModel):
         var = std**2
 
         eps = 1E-6
-        if (mean <= 0) or (std <= 0) or (var <= eps):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        if (std <= 0) or (var <= eps):
+            # The std. of the Gaussian distribution is strictly positive
             n_obs = len(observations)
             return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
 
@@ -737,7 +723,7 @@ class GaussianModel(SimplePopulationModel):
         self._parameter_names = [str(label) for label in names]
 
 
-class HeterogeneousModel(SimplePopulationModel):
+class HeterogeneousModel(PopulationModel):
     """
     A population model which imposes no relationship on the model parameters
     across individuals.
@@ -745,7 +731,7 @@ class HeterogeneousModel(SimplePopulationModel):
     A heterogeneous model assumes that the parameters across individuals are
     independent.
 
-    Extends :class:`SimplePopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):
@@ -865,7 +851,7 @@ class HeterogeneousModel(SimplePopulationModel):
         self._parameter_names = [str(label) for label in names]
 
 
-class LogNormalModel(SimplePopulationModel):
+class LogNormalModel(PopulationModel):
     r"""
     A population model which assumes that model parameters across individuals
     are log-normally distributed.
@@ -886,7 +872,7 @@ class LogNormalModel(SimplePopulationModel):
     Any observed individual with parameter :math:`\psi _i` is
     assumed to be a realisation of the random variable :math:`\psi`.
 
-    Extends :class:`SimplePopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):
@@ -1207,14 +1193,14 @@ class LogNormalModel(SimplePopulationModel):
         self._parameter_names = [str(label) for label in names]
 
 
-class PooledModel(SimplePopulationModel):
+class PooledModel(PopulationModel):
     """
     A population model which pools the model parameters across individuals.
 
     A pooled model assumes that the parameters across individuals do not vary.
     As a result, all individual parameters are set to the same value.
 
-    Extends :class:`SimplePopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):
@@ -1693,7 +1679,7 @@ class ReducedPopulationModel(object):
         self._parameter_names = self._population_model.get_parameter_names()
 
 
-class TruncatedGaussianModel(SimplePopulationModel):
+class TruncatedGaussianModel(PopulationModel):
     r"""
     A population model which assumes that model parameters across individuals
     are distributed according to a Gaussian distribution which is truncated at
@@ -1719,7 +1705,7 @@ class TruncatedGaussianModel(SimplePopulationModel):
     Any observed individual with parameter :math:`\psi _i` is
     assumed to be a realisation of the random variable :math:`\psi`.
 
-    Extends :class:`SimplePopulationModel`.
+    Extends :class:`PopulationModel`.
     """
 
     def __init__(self):

@@ -48,7 +48,6 @@ from ._population_models import (  # noqa
     LogNormalModel,
     PooledModel,
     PopulationModel,
-    SimplePopulationModel,
     ReducedPopulationModel,
     TruncatedGaussianModel
 )

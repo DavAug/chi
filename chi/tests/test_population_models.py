@@ -27,9 +27,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
 
     def test_bad_instantiation(self):
         # Population model is not a SimplePopulationModel
-        pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.CentredLogNormalModel())
+        pop_model = 'bad type'
 
         with self.assertRaisesRegex(TypeError, 'The population model'):
             chi.CovariatePopulationModel(
@@ -76,8 +74,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         sigma_log = 10
 
         # Parameters of standard normal (mean=0, std=1)
-        ref_score = -n_ids * (
-            np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
+        ref_score = self.pop_model.compute_log_likelihood([0, 1], etas)
 
         parameters = [mu_log] + [sigma_log]
         score = self.cpop_model.compute_log_likelihood(parameters, etas)
