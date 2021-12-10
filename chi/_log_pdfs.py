@@ -366,14 +366,8 @@ class HierarchicalLogLikelihood(object):
         Creates a mask that can be used to mask for the top level
         parameters.
         """
-        # TODO: Replace boolean mask by list of indices for performance.
-
-        # Create conatainer with all False
-        # (False for not top-level)
-        top_level_mask = np.zeros(shape=self._n_parameters, dtype=bool)
-
-        # Flip entries to true if top-level parameter
         start = 0
+        top_level_mask = []
         for pop_model in self._population_models:
             # Get number of hierarchical parameters
             n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
@@ -382,13 +376,13 @@ class HierarchicalLogLikelihood(object):
                 # For heterogeneous models the individual parameters are the
                 # top-level parameters
                 end = start + n_indiv
-                top_level_mask[start: end] = ~top_level_mask[start: end]
+                top_level_mask += list(np.arange(start, end))
 
             # Add the population parameters as top-level parameters
             # (Heterogeneous model has 0 population parameters)
             start += n_indiv
             end = start + n_pop
-            top_level_mask[start: end] = ~top_level_mask[start: end]
+            top_level_mask += list(np.arange(start, end))
 
             # Shift start to end
             start = end
@@ -737,7 +731,7 @@ class HierarchicalLogLikelihood(object):
         :type exclude_bottom_level: bool, optional
         """
         if exclude_bottom_level:
-            return int(np.sum(self._top_level_mask))
+            return len(self._top_level_mask)
 
         return self._n_parameters
 
