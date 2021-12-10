@@ -18,7 +18,7 @@ import chi
 class HierarchicalLogLikelihood(object):
     r"""
     A hierarchical log-likelihood consists of structurally identical
-    log-likelihoods whose parameters are coupled by population models.
+    log-likelihoods whose parameters are related by population models.
 
     A hierarchical log-likelihood takes a list of a :class:`LogLikelihood`
     instances and one instance of a :class:`PopulationModel` for each
@@ -76,17 +76,20 @@ class HierarchicalLogLikelihood(object):
     :param population_models: A list of length :math:`p` with population
         models, one population model for each parameter of the log-likelihoods.
     :type population_models: list[PopulationModel] of length p
-    :param covariates: A array-like objecy of dimension :math:`(n, c)` with
+    :param covariates: An array-like object of dimension :math:`(n, c)` with
         :math:`c` covariates for each of the :math:`n` log-likelihoods.
-        All covariates will be assumed to be relevant for all
-        :class:`PopulationCovariateModel`, unless an explicit mapping is
-        provided with ``covariate_map``.
+        By default, all covariates inform all
+        :class:`PopulationCovariateModel`s.
+        An explicit mapping of the covariates can also beprovided with
+        ``covariate_map``.
     :type covariates: np.ndarray of shape (n, c), optional
     :param covariate_map: A list of length :math:`p'\leq p` with lists of
-        indices for each :class:`PopulationCovariateModel`. The indices define
-        which covariates in ``covariates`` are relevant for the respective
-        population model. :math:`p'\leq p` because not all population models
-        have to be :class:`PopulationCovariateModel`. Those models are skipped.
+        indices for each :class:`PopulationCovariateModel`. The indices are
+        used to mask ``covariates`` to determine which covariates are relevant
+        for the respective population model. :math:`p'\leq p` because not all
+        population models have to be :class:`PopulationCovariateModel`.
+        Those models are skipped.
+    :type covariate_map: List[List[int]] of length :math:`p'\leq p`, optional
 
     Example
     -------
@@ -169,7 +172,7 @@ class HierarchicalLogLikelihood(object):
                 'to be provided for each model parameters.')
 
         cov_models = []
-        is_cov_model = np.zeros(shape=n_parameters, dtype=bool)
+        cov_model_mask = np.zeros(shape=n_parameters, dtype=bool)
         for idp, pop_model in enumerate(population_models):
             if not isinstance(pop_model, chi.PopulationModel):
                 raise ValueError(
@@ -179,7 +182,7 @@ class HierarchicalLogLikelihood(object):
             # Remember whether model is a covariate model for later calls and
             # sensitivities
             if isinstance(pop_model, chi.CovariatePopulationModel):
-                is_cov_model[idp] = True
+                cov_model_mask[idp] = True
                 cov_models.append(pop_model)
 
         # Check whether covariates are needed
@@ -189,14 +192,14 @@ class HierarchicalLogLikelihood(object):
         n_ids = len(log_likelihoods)
         if covariates_needed is True:
             covariates, covariate_map = self._check_covariates(
-                covariates, covariate_map, n_ids, n_covs, is_cov_model)
+                covariates, covariate_map, n_ids, n_covs, cov_model_mask)
 
         # Remember models and number of individuals
         self._log_likelihoods = log_likelihoods
         self._population_models = population_models
-        self._is_cov_model = is_cov_model
+        self._is_cov_model = cov_model_mask
         self._covariates = covariates
-        self.covariate_map = covariate_map
+        self._covariate_map = covariate_map
         self._n_ids = n_ids
         self._n_obs = [np.sum(ll.n_observations()) for ll in log_likelihoods]
 
@@ -234,15 +237,18 @@ class HierarchicalLogLikelihood(object):
 
             # If CovariatePopulationModel, transform deviations to parameters
             # for log-likelihood evaluation, i.e. eta -> psi.
-            if self._is_cov_model[idp] is True:
-                # Replace eta by psi
-                parameters[start:end_indiv] = \
-                    pop_model.compute_individual_parameters(
-                        parameters=parameters[end_indiv:end_pop],
-                        eta=parameters[start:end_indiv],
-                        covariates=self._covariates[
-                            :, self._covariate_map[idp]]
-                    )
+            if self._is_cov_model[idp]:
+                # Get relevant covariates
+                covariates = \
+                    self._covariates if (self._covariates is None) \
+                    else self._covariates[:, self._covariate_map[idp]]
+
+                # Compute parameters for log-likelihood
+                psis = pop_model.compute_individual_parameters(
+                    parameters=parameters[end_indiv:end_pop],
+                    eta=parameters[start:end_indiv],
+                    covariates=covariates)
+                parameters[start:end_indiv] = psis
 
             # Shift start index
             start = end_pop
@@ -289,16 +295,17 @@ class HierarchicalLogLikelihood(object):
                 'covariates needs to be of length '
                 'len(log_likelihoods) and of dimension 2.')
 
+        # Construct identity covariate map, if no covariate map has been
+        # provided
         if covariate_map is None:
-            n_max = np.max(n_covs)
-            n_is_same = n_max == np.min(n_covs)
-            n_covs_matches = n_is_same and (n_max == c)
-            if n_covs_matches is True:
+            # Check that all population models take the same number of
+            # covariates, and that this number is equal to the provided number
+            # of covariates
+            do_n_covs_match = (np.max(n_covs) == c) and (np.min(n_covs) == c)
+            if do_n_covs_match is True:
                 # Construct identity covariate map
-                # (for simplicity we don't distingish between covariate and
-                # normal population model here. Will be filtered in call)
                 n_population_models = len(is_cov_model)
-                covariate_map = [list(range(c))] * n_population_models
+                covariate_map = [np.arange(c)] * n_population_models
                 return covariates, covariate_map
 
             raise ValueError(
@@ -306,35 +313,34 @@ class HierarchicalLogLikelihood(object):
                 'covariate population models and no covariate_map has been '
                 'provided.')
 
+        covariate_map = list(covariate_map)
         if len(covariate_map) != len(n_covs):
             raise ValueError(
                 'The covariate_map needs to be of the same length as '
                 'the number of CovariatePopulationModels.')
 
-        try:
-            for idp, cov_indices in enumerate(covariate_map):
-                # Check covariates can be accessed
-                # (choose to check first individual (arbitrary))
-                covs = covariates[0, cov_indices]
-                if len(covs) != n_covs[idp]:
-                    raise ValueError(
-                        'The covariate_map does not map the covariates '
-                        'successfully to the population models. For at least '
-                        'population model, the number of indices in the map '
-                        'does not match the number of required covariates.')
-        except IndexError as e:
+        # Make sure that provided covariate map is compatible with population
+        # models
+        if np.max(covariate_map) >= c:
             raise IndexError(
-                'The covariate_map provides invalid indices.', e)
-
-        # Insert empty lists for non-covariate population models, so indexing
-        # becomes easier in call
+                'Index in covariate map exceeds the number of provided '
+                'covariates.')
         for idp, is_cov in enumerate(is_cov_model):
             if is_cov is True:
-                # Is already accounted for in the covariate map
-                continue
+                # Check that number of indices matches model's expected number
+                # of covariates
+                if len(covariate_map[idp]) == n_covs[idp]:
+                    continue
 
-            # Insert empty list for non-covariate model
-            covariate_map.insert(idp, [])
+                raise ValueError(
+                    'The covariate_map does not map the covariates '
+                    'successfully to the population models. For at least '
+                    'one population model, the number of indices in the map '
+                    'does not match the number of required covariates.')
+
+            else:
+                # Insert empty list for non-covariate model
+                covariate_map.insert(idp, [])
 
         return covariates, covariate_map
 

@@ -299,41 +299,61 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             chi.GaussianModel(), chi.CentredLogNormalModel())
         etas_1 = np.array([0.1, 0.2])
         etas_2 = np.array([1, 10])
-        pop_params = [0.2, 1, 1, 0]
-        psis_1 = np.exp(0.2 + 1 * etas_1)
-        psis_2 = np.exp(1 + 0 * etas_2)
-        indiv_parameters_1 = [10, psis_1[0], 1, 1, 1, 1, 2, 1.2, psis_2[0]]
-        indiv_parameters_2 = [10, psis_1[1], 1, 1, 1, 1, 2, 1.2, psis_2[1]]
+        pop_params_1 = [0.2, 1]
+        pop_params_2 = [1, 0.1]
+        psis_1 = np.exp(pop_params_1[0] + pop_params_1[1] * etas_1)
+        psis_2 = np.exp(pop_params_2[0] + pop_params_2[1] * etas_2)
+        pooled_params = [10, 1, 1, 1, 1, 2, 1.2]
+        indiv_parameters_1 = [
+            pooled_params[0],
+            psis_1[0],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            psis_2[0]]
+        indiv_parameters_2 = [
+            pooled_params[0],
+            psis_1[1],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            psis_2[1]]
 
         parameters = [
-            indiv_parameters_1[0],
-            indiv_parameters_1[1],
-            indiv_parameters_2[1],
-            pop_params[0],
-            pop_params[1],
-            indiv_parameters_1[2],
-            indiv_parameters_1[3],
-            indiv_parameters_1[4],
-            indiv_parameters_1[5],
-            indiv_parameters_1[6],
-            indiv_parameters_1[7],
-            indiv_parameters_1[8],
-            indiv_parameters_2[8],
-            pop_params[2],
-            pop_params[3]]
+            pooled_params[0],
+            etas_1[0],
+            etas_1[1],
+            pop_params_1[0],
+            pop_params_1[1],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            etas_2[0],
+            etas_2[1],
+            pop_params_2[0],
+            pop_params_2[1]]
 
-        score = \
+        ref_score = \
             ref_pop_model.compute_log_likelihood(
-                parameters=pop_params[:2],
-                eta=[0.1, 0.2]) + \
+                parameters=pop_params_1,
+                observations=etas_1) + \
             ref_pop_model.compute_log_likelihood(
-                parameters=pop_params[2:],
-                eta=[1, 10]) + \
+                parameters=pop_params_2,
+                observations=etas_2) + \
             self.log_likelihoods[0](indiv_parameters_1) + \
             self.log_likelihoods[1](indiv_parameters_2)
 
-        self.assertNotEqual(score, -np.inf)
-        self.assertAlmostEqual(self.hierarchical_model(parameters), score)
+        self.assertNotEqual(ref_score, -np.inf)
+        self.assertAlmostEqual(self.hierarchical_model3(parameters), ref_score)
 
     def test_compute_pointwise_ll(self):
         # Test case I: All parameters pooled
