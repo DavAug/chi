@@ -16,10 +16,10 @@ All features of our software are described in detail in our
 ## Getting started
 ### Installation
 
-1. Install CVODES
+1. Install sundials
 
 Chi uses the open-source package Myokit to solve mechanistic models
-and compute their sensitivities efficiently. Myokit does this using CVODESS,
+and compute their sensitivities efficiently. Myokit does this using sundials' CVODESS,
 which need to be installed with:
 
 - On Ubuntu:
@@ -32,7 +32,7 @@ apt-get install libsundials-dev
 brew install sundials
 ```
 
-- On Windows: No action required. Myokit will install CVODESS automatically.
+- On Windows: No action required. Myokit will install sundial automatically.
 
 2. Install chi
 ```bash
