@@ -474,6 +474,10 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(len(pw_scores), 14)
         self.assertAlmostEqual(np.sum(pw_scores), score)
 
+        # Test case V: CovariatePopulationModel
+        with self.assertRaisesRegex(NotImplementedError, 'This method is not'):
+            self.hierarchical_model3.compute_pointwise_ll('some params')
+
     def test_evaluateS1(self):
         # Test case I: All parameters pooled
         model = chi.HierarchicalLogLikelihood(
@@ -802,6 +806,128 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(sens[10], np.inf)
         self.assertEqual(sens[11], np.inf)
         self.assertEqual(sens[12], np.inf)
+
+        # Test case VI.1: Covariate population model
+        # TODO: Test with proper covariate population model.
+        # Reminder of population model
+        # cpop_model = chi.CovariatePopulationModel(
+        #     chi.GaussianModel(), chi.CentredLogNormalModel())
+        # population_models = [
+        #     chi.PooledModel(),
+        #     cpop_model,
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     chi.PooledModel(),
+        #     cpop_model]
+
+        # Create reference pop model
+        ref_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.CentredLogNormalModel())
+        etas_1 = np.array([0.1, 0.2])
+        etas_2 = np.array([1, 10])
+        pop_params_1 = [0.2, 1]
+        pop_params_2 = [1, 0.1]
+        psis_1 = np.exp(pop_params_1[0] + pop_params_1[1] * etas_1)
+        psis_2 = np.exp(pop_params_2[0] + pop_params_2[1] * etas_2)
+        pooled_params = [10, 1, 1, 1, 1, 2, 1.2]
+        indiv_parameters_1 = [
+            pooled_params[0],
+            psis_1[0],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            psis_2[0]]
+        indiv_parameters_2 = [
+            pooled_params[0],
+            psis_1[1],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            psis_2[1]]
+
+        parameters = [
+            pooled_params[0],
+            etas_1[0],
+            etas_1[1],
+            pop_params_1[0],
+            pop_params_1[1],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            etas_2[0],
+            etas_2[1],
+            pop_params_2[0],
+            pop_params_2[1]]
+
+        ref_score_1, ref_sens_1 = ref_pop_model.compute_sensitivities(
+            parameters=pop_params_1, observations=etas_1)
+        ref_score_2, ref_sens_2 = ref_pop_model.compute_sensitivities(
+            parameters=pop_params_2, observations=etas_2)
+        ref_score_3, ref_sens_3 = self.log_likelihoods[0].evaluateS1(
+            indiv_parameters_1)
+        ref_score_4, ref_sens_4 = self.log_likelihoods[1].evaluateS1(
+            indiv_parameters_2)
+        ref_score = ref_score_1 + ref_score_2 + ref_score_3 + ref_score_4
+
+        _, dpsi_1 = ref_pop_model.compute_individual_sensitivities(
+            parameters=pop_params_1, eta=etas_1)
+        _, dpsi_2 = ref_pop_model.compute_individual_sensitivities(
+            parameters=pop_params_2, eta=etas_2)
+
+        ref_sens = [
+            ref_sens_3[0] + ref_sens_4[0],
+            ref_sens_1[0] + ref_sens_3[1] * dpsi_1[0, 0],
+            ref_sens_1[1] + ref_sens_4[1] * dpsi_1[0, 1],
+            ref_sens_1[2] +
+            ref_sens_3[1] * dpsi_1[1, 0] + ref_sens_4[1] * dpsi_1[1, 1],
+            ref_sens_1[3] +
+            ref_sens_3[1] * dpsi_1[2, 0] + ref_sens_4[1] * dpsi_1[2, 1],
+            ref_sens_3[2] + ref_sens_4[2],
+            ref_sens_3[3] + ref_sens_4[3],
+            ref_sens_3[4] + ref_sens_4[4],
+            ref_sens_3[5] + ref_sens_4[5],
+            ref_sens_3[6] + ref_sens_4[6],
+            ref_sens_3[7] + ref_sens_4[7],
+            ref_sens_2[0] + ref_sens_3[8] * dpsi_2[0, 0],
+            ref_sens_2[1] + ref_sens_4[8] * dpsi_2[0, 1],
+            ref_sens_2[2] +
+            ref_sens_3[8] * dpsi_2[1, 0] + ref_sens_4[8] * dpsi_2[1, 1],
+            ref_sens_2[3] +
+            ref_sens_3[8] * dpsi_2[2, 0] + ref_sens_4[8] * dpsi_2[2, 1]]
+
+        score, sens = self.hierarchical_model3.evaluateS1(parameters)
+
+        self.assertNotEqual(ref_score, -np.inf)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 15)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[4])
+        self.assertEqual(sens[5], ref_sens[5])
+        self.assertEqual(sens[6], ref_sens[6])
+        self.assertEqual(sens[7], ref_sens[7])
+        self.assertEqual(sens[8], ref_sens[8])
+        self.assertEqual(sens[9], ref_sens[9])
+        self.assertEqual(sens[10], ref_sens[10])
+        self.assertEqual(sens[11], ref_sens[11])
+        self.assertEqual(sens[12], ref_sens[12])
+        self.assertEqual(sens[13], ref_sens[13])
+        self.assertEqual(sens[14], ref_sens[14])
 
     def test_get_id(self):
         # Test case I: Get parameter IDs

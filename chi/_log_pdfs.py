@@ -361,6 +361,85 @@ class HierarchicalLogLikelihood(object):
         covariates_needed = np.max(n_covs) > 0
         return covariates_needed, n_covs
 
+    def _compute_dvartheta(self, sens, dpsidvartheta, likelihood_id):
+        """
+        Returns dL/dpsi * dpsi/dvartheta.
+
+        sens has shape (n_population_models).
+        Each element in dpsi/dvartheta has shape
+        (n_pop_parameters, n_ids), where n_pop_parameters
+        changes between entries.
+        The likelihood ID indicates to which individual likelihood the
+        sensitivies belong.
+
+        Returns:
+            dvartheta (np.ndarray of shape (n_top_parameters,))
+        """
+        dvartheta = []
+        for idp, dpsi in enumerate(sens):
+            if self._is_cov_model[idp]:
+                dpop = dpsi * dpsidvartheta[idp][:, likelihood_id]
+            else:
+                dpop = [0] * self._population_models[idp].n_parameters()
+            dvartheta.append(dpop)
+
+        return np.hstack(dvartheta)
+
+    def _compute_psi_and_sensitivities(self, parameters):
+        """
+        Returns parameters where eta is replaced by psi, dpsi/deta and
+        dpsi/dvartheta.
+
+        Note that each psi depends only on one eta.
+
+        Returns:
+            parameters (np.ndarray of shape (n_parameters,))
+            dpsideta (np.ndarray of shape (n_ids, n_pop_models))
+            dpsidvartheta (List of length n_population_models, each index is
+                a np.ndarray of shape (n_pop_parameters,)) or None, if
+                population model is not a covariate model
+        """
+        n_ids = self.n_log_likelihoods()
+        n_population_models = len(self._population_models)
+        dpsideta = np.ones(shape=(n_ids, n_population_models))
+        dpsidvartheta = []
+
+        # Compute population model likelihood and sensitivities
+        start = 0
+        for idp, pop_model in enumerate(self._population_models):
+            # Get start and end index of individual parameters and population
+            # parameters
+            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+            end_indiv = start + n_indiv
+            end_pop = end_indiv + n_pop
+
+            if not self._is_cov_model[idp]:
+                # Add dummy place holder (is filtered later)
+                dpsidvartheta.append(None)
+
+                # Shift start index and population parameter counter
+                start = end_pop
+                continue
+
+            # Get relevant covariates
+            covariates = \
+                self._covariates if (self._covariates is None) \
+                else self._covariates[:, self._covariate_map[idp]]
+
+            # Compute parameters for log-likelihood and sensitivities
+            psis, sens = pop_model.compute_individual_sensitivities(
+                parameters=parameters[end_indiv:end_pop],
+                eta=parameters[start:end_indiv],
+                covariates=covariates)
+            parameters[start:end_indiv] = psis
+            dpsideta[:, idp] = sens[0]
+            dpsidvartheta.append(sens[1:])
+
+            # Shift start index and population parameter counter
+            start = end_pop
+
+        return parameters, dpsideta, dpsidvartheta
+
     def _create_top_level_mask(self):
         """
         Creates a mask that can be used to mask for the top level
@@ -544,8 +623,14 @@ class HierarchicalLogLikelihood(object):
             scores are computed per individual or per observation.
         :type per_individual: bool, optional
         """
+        # TODO: Implement for covariate model
         # TODO: Think again whether this pointwise log-likelihood
         # is really meaningful, e.g. when computing LOO.
+        if np.any(self._is_cov_model):
+            raise NotImplementedError(
+                'This method is not implemented for CovariatePopulationModels.'
+            )
+
         # Transform parameters to numpy array
         parameters = np.asarray(parameters)
 
@@ -623,19 +708,33 @@ class HierarchicalLogLikelihood(object):
             ll_score += score
             sensitivities[start:end_pop] += sens
 
-            # Shift start index
+            # Shift start index and population parameter counter
             start = end_pop
 
         # Return if values already lead to a rejection
         if np.isinf(ll_score):
             return ll_score, np.full(shape=len(parameters), fill_value=np.inf)
 
+        # If covariate models are used, transform for eta to psi
+        if np.any(self._is_cov_model):
+            parameters, dpsideta, dpsidvartheta = \
+                self._compute_psi_and_sensitivities(parameters)
+
         # Evaluate individual likelihoods and sensitivities
         for index, log_likelihood in enumerate(self._log_likelihoods):
             indices = self._indiv_params[index]
             score, sens = log_likelihood.evaluateS1(parameters[indices])
             ll_score += score
-            sensitivities[indices] += sens
+
+            if not np.any(self._is_cov_model):
+                sensitivities[indices] += sens
+            else:
+                # Add dL/dpsi * dpsi/deta
+                sensitivities[indices] += sens * dpsideta[index]
+
+                # Add dL/dpsi * dpsi/dvartheta
+                sens = self._compute_dvartheta(sens, dpsidvartheta, index)
+                sensitivities[self._top_level_mask] += sens
 
         return ll_score, sensitivities
 
