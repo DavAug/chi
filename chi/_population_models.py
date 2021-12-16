@@ -212,6 +212,25 @@ class CovariatePopulationModel(PopulationModel):
         return self._covariate_model.compute_individual_parameters(
             parameters, eta, covariates)
 
+    def compute_individual_sensitivities(
+            self, parameters, eta, covariates=None):
+        r"""
+        Returns the individual parameters :math:`\psi` and their sensitivities
+        with respect to the model parameters :math:`\vartheta` and the relevant
+        fluctuation :math:`\eta`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (p,)
+        :param eta: Inter-individual fluctuations :math:`\eta`.
+        :type eta: np.ndarray of length (n,)
+        :param covariates: Individual covariates :math:`\chi`.
+        :type covariates: np.ndarray of length (n, c)
+        :returns: Individual parameters and sensitivities of shape (p + 1, n).
+        :rtype: Tuple[np.ndarray, np.ndarray]
+        """
+        return self._covariate_model.compute_individual_sensitivities(
+            parameters, eta, covariates)
+
     def compute_log_likelihood(self, parameters, observations):
         r"""
         Returns the log-likelihood of the model parameters.

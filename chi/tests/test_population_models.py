@@ -64,6 +64,47 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertEqual(psi[2], np.exp(0.3))
         self.assertEqual(psi[3], np.exp(0.3))
 
+    def test_compute_individual_sensitivities(self):
+        n_ids = 5
+
+        # Test case I: mu != 0, sigma != 0
+        # Then psi = np.exp(mu)
+
+        # Test case I.1
+        parameters = [-1, 1]
+        eta = np.linspace(0.5, 1.5, n_ids)
+        covariates = 'some covariates'
+
+        # Compute psis and sensitivities
+        psis, sens = self.cpop_model.compute_individual_sensitivities(
+            parameters, eta, covariates)
+        ref_psis, ref_sens = self.cov_model.compute_individual_sensitivities(
+            parameters, eta, covariates)
+
+        self.assertEqual(len(psis), n_ids)
+        self.assertEqual(psis[0], ref_psis[0])
+        self.assertEqual(psis[1], ref_psis[1])
+        self.assertEqual(psis[2], ref_psis[2])
+        self.assertEqual(psis[3], ref_psis[3])
+        self.assertEqual(psis[4], ref_psis[4])
+
+        self.assertEqual(sens.shape, (3, n_ids))
+        self.assertEqual(sens[0, 0], ref_sens[0, 0])
+        self.assertEqual(sens[0, 1], ref_sens[0, 1])
+        self.assertEqual(sens[0, 2], ref_sens[0, 2])
+        self.assertEqual(sens[0, 3], ref_sens[0, 3])
+        self.assertEqual(sens[0, 4], ref_sens[0, 4])
+        self.assertEqual(sens[1, 0], ref_sens[1, 0])
+        self.assertEqual(sens[1, 1], ref_sens[1, 1])
+        self.assertEqual(sens[1, 2], ref_sens[1, 2])
+        self.assertEqual(sens[1, 3], ref_sens[1, 3])
+        self.assertEqual(sens[1, 4], ref_sens[1, 4])
+        self.assertEqual(sens[2, 0], ref_sens[2, 0])
+        self.assertEqual(sens[2, 1], ref_sens[2, 1])
+        self.assertEqual(sens[2, 2], ref_sens[2, 2])
+        self.assertEqual(sens[2, 3], ref_sens[2, 3])
+        self.assertEqual(sens[2, 4], ref_sens[2, 4])
+
     def test_compute_log_likelihood(self):
         n_ids = 10
 
