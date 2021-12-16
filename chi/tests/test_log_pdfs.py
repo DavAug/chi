@@ -1067,6 +1067,39 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(
             parameter_names[10], 'Pooled dose.drug_amount Sigma rel.')
 
+        # Test case V: with covariate model
+        parameter_names = self.hierarchical_model3.get_parameter_names(
+            include_ids=True)
+
+        self.assertEqual(len(parameter_names), 15)
+        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
+        self.assertEqual(
+            parameter_names[1], 'automatic-id-1 dose.drug_amount Eta')
+        self.assertEqual(
+            parameter_names[2], 'automatic-id-2 dose.drug_amount Eta')
+        self.assertEqual(parameter_names[3], 'Mean log dose.drug_amount')
+        self.assertEqual(parameter_names[4], 'Std. log dose.drug_amount')
+        self.assertEqual(parameter_names[5], 'Pooled central.size')
+        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
+        self.assertEqual(
+            parameter_names[7], 'Pooled myokit.elimination_rate')
+        self.assertEqual(
+            parameter_names[8], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[9], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[10], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(
+            parameter_names[11],
+            'automatic-id-1 dose.drug_amount Sigma rel. Eta')
+        self.assertEqual(
+            parameter_names[12],
+            'automatic-id-2 dose.drug_amount Sigma rel. Eta')
+        self.assertEqual(
+            parameter_names[13], 'Mean log dose.drug_amount Sigma rel.')
+        self.assertEqual(
+            parameter_names[14], 'Std. log dose.drug_amount Sigma rel.')
+
     def test_get_population_models(self):
         pop_models = self.hierarchical_model.get_population_models()
         self.assertEqual(len(pop_models), 9)

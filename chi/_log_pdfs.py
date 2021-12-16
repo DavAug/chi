@@ -561,7 +561,10 @@ class HierarchicalLogLikelihood(object):
 
             # Add a copy of the parameter name for each individual parameter
             name = indiv_names[param_id]
-            parameter_names += [name] * n_indiv
+            if self._is_cov_model[param_id]:
+                parameter_names += [name + ' Eta'] * n_indiv
+            else:
+                parameter_names += [name] * n_indiv
 
             # Add the population parameter name, composed of the population
             # name and the parameter name
