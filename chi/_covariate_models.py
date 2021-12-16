@@ -266,7 +266,8 @@ class CentredLogNormalModel(CovariateModel):
         :param covariates: Individual covariates :math:`\chi`. In this model
             the covariates do not influence the output.
         :type covariates: np.ndarray of length (n, c)
-        :returns: Individual parameters and sensitivities of shape (p + 1, n).
+        :returns: Individual parameters of shape (n,) and sensitivities of
+            shape (p + 1, n).
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
         # Unpack parameters
