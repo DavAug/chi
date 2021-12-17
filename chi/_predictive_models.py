@@ -6,7 +6,6 @@
 #
 
 import copy
-from typing import Type
 
 import numpy as np
 import pandas as pd
@@ -229,8 +228,8 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
         return model_names
 
     def sample(
-            self, times, n_samples=None, individual=None, seed=None,
-            include_regimen=False):
+            self, times, n_samples=None, individual=None, covariates=None,
+            seed=None, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the posterior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -248,6 +247,12 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
         :param individual: The ID of the modelled individual. If
             ``None``, either the first ID or the population is simulated.
         :type individual: str, optional
+        :param covariates: Covariates of predictive model. Only used when
+            PopulationPredictiveModel has a CovariatePopulationModel.
+            Expects a list of length n_population_models, where each entry is
+            a np.ndarray with the covariates. If a population model is not a
+            covariate population model, the entry is skipped.
+        :type covariates: List[np.ndarray], optional
         :param seed: A seed for the pseudo-random number generator.
         :type seed: int
         :param include_regimen: A boolean flag which determines whether the
@@ -260,11 +265,13 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
         n_samples = int(n_samples)
 
         # Check individual for population model
-        if isinstance(self._predictive_model, chi.PredictivePopulationModel):
+        is_population_pred_model = isinstance(
+            self._predictive_model, chi.PopulationPredictiveModel)
+        if is_population_pred_model:
             if individual is not None:
                 raise ValueError(
                     "Individual ID's cannot be selected for a "
-                    "chi.PredictivePopulationModel. To model an "
+                    "chi.PopulationPredictiveModel. To model an "
                     "individual create a chi.PosteriorPredictiveModel "
                     "with a chi.PredictiveModel.")
 
@@ -322,8 +329,13 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             parameters = rng.choice(posterior)
 
             # Sample from predictive model
-            sample = self._predictive_model.sample(
-                parameters, times, n_samples, rng, return_df=False)
+            if is_population_pred_model:
+                sample = self._predictive_model.sample(
+                    parameters, times, covariates, n_samples, rng,
+                    return_df=False)
+            else:
+                sample = self._predictive_model.sample(
+                    parameters, times, n_samples, rng, return_df=False)
 
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):
@@ -1310,7 +1322,9 @@ class PriorPredictiveModel(AveragedPredictiveModel):
 
         self._log_prior = log_prior
 
-    def sample(self, times, n_samples=None, seed=None, include_regimen=False):
+    def sample(
+            self, times, n_samples=None, covariates=None, seed=None,
+            include_regimen=False):
         """
         Samples "measurements" of the biomarkers from the prior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -1319,20 +1333,24 @@ class PriorPredictiveModel(AveragedPredictiveModel):
         log-prior. These paramaters are then used to sample from the predictive
         model.
 
-        Parameters
-        ----------
-        times
-            An array-like object with times at which the virtual "measurements"
-            are performed.
-        n_samples
-            The number of virtual "measurements" that are performed at each
-            time point. If ``None`` the biomarkers are measured only once
-            at each time point.
-        seed
-            A seed for the pseudo-random number generator.
-        include_regimen
-            A boolean flag which determines whether the information about the
-            dosing regimen is included.
+        :param times: An array-like object with times at which the virtual
+            "measurements" are performed.
+        :type times: List or np.ndarray.
+        :param n_samples: The number of virtual "measurements" that are
+            performed at each time point. If ``None`` the biomarkers are
+            measured only once at each time point.
+        :type n_samples: int, optional
+        :param covariates: Covariates of predictive model. Only used when
+            PopulationPredictiveModel has a CovariatePopulationModel.
+            Expects a list of length n_population_models, where each entry is
+            a np.ndarray with the covariates. If a population model is not a
+            covariate population model, the entry is skipped.
+        :type covariates: List[np.ndarray], optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
+        :param include_regimen: A boolean flag which determines whether the
+            information about the dosing regimen is included.
+        type include_regimen: bool, optional
         """
         # Make sure n_samples is an integer
         if n_samples is None:
@@ -1371,8 +1389,15 @@ class PriorPredictiveModel(AveragedPredictiveModel):
                 seed = base_seed + sample_id
 
             # Sample from predictive model
-            sample = self._predictive_model.sample(
-                parameters, times, n_samples, seed, return_df=False)
+            is_pop_pred_model = isinstance(
+                self._predictive_model, chi.PopulationPredictiveModel)
+            if is_pop_pred_model:
+                sample = self._predictive_model.sample(
+                    parameters, times, covariates, n_samples, seed,
+                    return_df=False)
+            else:
+                sample = self._predictive_model.sample(
+                    parameters, times, n_samples, seed, return_df=False)
 
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):

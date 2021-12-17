@@ -109,6 +109,8 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             cls.pred_model, cls.posterior_samples)
 
         # Test model II: PopulationPredictive model
+        covariate_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.CentredLogNormalModel())
         pop_models = [
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -116,7 +118,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            chi.LogNormalModel()]
+            covariate_pop_model]
         cls.pred_pop_model = chi.PopulationPredictiveModel(
             cls.pred_model, pop_models)
 
@@ -1741,6 +1743,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         # Define error models
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
+        # Test case I:
         # Create predictive model
         cls.predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
@@ -1758,6 +1761,39 @@ class TestPriorPredictiveModel(unittest.TestCase):
         # Create prior predictive model
         cls.model = chi.PriorPredictiveModel(
             cls.predictive_model, cls.log_prior)
+
+        # Test case II:
+        # Create population model
+        covariate_population_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.CentredLogNormalModel())
+        cls.population_models = [
+            chi.HeterogeneousModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            covariate_population_model,
+            chi.PooledModel(),
+            chi.PooledModel()]
+
+        # Create predictive population model
+        cls.pop_predictive_model = chi.PopulationPredictiveModel(
+            cls.predictive_model, cls.population_models)
+
+        # Create prior
+        cls.pop_log_prior = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(1, 2),
+            pints.UniformLogPrior(2, 3),
+            pints.UniformLogPrior(3, 4),
+            pints.UniformLogPrior(4, 5),
+            pints.UniformLogPrior(5, 6),
+            pints.UniformLogPrior(6, 7),
+            pints.UniformLogPrior(7, 8),
+            pints.UniformLogPrior(8, 9),)
+
+        # Create prior predictive model
+        cls.prior_pop_pred_model = chi.PriorPredictiveModel(
+            cls.pop_predictive_model, cls.pop_log_prior)
 
     def test_bad_instantiation(self):
         # Predictive model has wrong type
@@ -1971,6 +2007,39 @@ class TestPriorPredictiveModel(unittest.TestCase):
         durations = samples['Duration'].dropna().unique()
         self.assertEqual(len(durations), 1)
         self.assertAlmostEqual(durations[0], 2)
+
+        # Test case IV: Population model
+        times = [1, 2, 3, 4, 5]
+        seed = 42
+        samples = self.prior_pop_pred_model.sample(times, seed=seed)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[3], 'Sample')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Biomarker'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Sample'].unique()
+        self.assertEqual(len(values), 5)
 
 
 class TestStackedPredictiveModel(unittest.TestCase):
