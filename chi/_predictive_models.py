@@ -1417,21 +1417,26 @@ class PriorPredictiveModel(AveragedPredictiveModel):
         return container
 
 
-class StackedPredictiveModel(AveragedPredictiveModel):
+class PAMPredictiveModel(AveragedPredictiveModel):
     r"""
-    A generative model that is defined by the weighted average of different
+    A model that is defined by the probabilistic average of
     posterior predictive models.
 
-    A stacked predictive model accepts a list of
-    :class:`PosteriorPredictiveModel` instances and a list of relative
-    weights of the models. The resulting predictive model is then determined
-    by the weighted average of the individual models
+    Probabilistic averging of models is the weighted average of the predictive
+    distributions of individual models
 
     .. math::
         p(x | x^{\mathrm{obs}}) = \sum _m w_m\, p_m(x | x^{\mathrm{obs}}),
 
     where the sum runs over the individual models and :math:`w_m` is the weight
     of model :math:`m`.
+
+    :param predictive_models: A list of predictive models.
+    :type predictive_models: List[PosteriorPredictiveModel] of length
+        `n_models`.
+    :param weights: The weights of candidate models. Weights are normalised
+        automatically.
+    :type weights: List np.ndarray of length `n_models`.
     """
     def __init__(self, predictive_models, weights):
         # Check inputs
@@ -1441,8 +1446,18 @@ class StackedPredictiveModel(AveragedPredictiveModel):
                     'The predictive models must be instances of '
                     'chi.PosteriorPredictiveModel.')
 
+            # TODO: Currently not supported for CovariatePopulationModels
+            if isinstance(predictive_model, chi.PopulationPredictiveModel):  # pragma: no cover
+                pop_models = predictive_model.get_submodels()[
+                    'Population models']
+                for pop_model in pop_models:
+                    if isinstance(pop_model, chi.CovariatePopulationModel):
+                        raise NotImplementedError(
+                            'CovariatePopulationModels are currently not '
+                            'supported.')
+
         predictive_model = predictive_models[0].get_predictive_model()
-        super(StackedPredictiveModel, self).__init__(predictive_model)
+        super(PAMPredictiveModel, self).__init__(predictive_model)
 
         n_outputs = self._predictive_model.get_n_outputs()
         for predictive_model in predictive_models:

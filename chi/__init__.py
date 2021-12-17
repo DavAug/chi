@@ -58,7 +58,7 @@ from ._predictive_models import (  # noqa
     PredictiveModel,
     PopulationPredictiveModel,
     PriorPredictiveModel,
-    StackedPredictiveModel
+    PAMPredictiveModel
 )
 
 from ._problems import (  # noqa

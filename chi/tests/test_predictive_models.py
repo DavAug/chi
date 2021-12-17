@@ -2042,9 +2042,9 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
 
-class TestStackedPredictiveModel(unittest.TestCase):
+class TestPAMPredictiveModel(unittest.TestCase):
     """
-    Tests the chi.StackedPredictiveModel class.
+    Tests the chi.PAMPredictiveModel class.
     """
 
     @classmethod
@@ -2109,7 +2109,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
 
         # Define stacked model
         cls.weights = [2, 1]
-        cls.stacked_model = chi.StackedPredictiveModel(
+        cls.stacked_model = chi.PAMPredictiveModel(
             predictive_models=[cls.model_1, cls.model_2],
             weights=cls.weights)
 
@@ -2117,7 +2117,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
         # Models have the wrong type
         models = ['wrong', 'type']
         with self.assertRaisesRegex(TypeError, 'The predictive models'):
-            chi.StackedPredictiveModel(
+            chi.PAMPredictiveModel(
                 models, self.weights)
 
         # The models have a different number of outputs
@@ -2142,7 +2142,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
         model_2 = chi.PosteriorPredictiveModel(
             pred_model, posterior_samples)
         with self.assertRaisesRegex(ValueError, 'All predictive models'):
-            chi.StackedPredictiveModel(
+            chi.PAMPredictiveModel(
                 [self.model_1, model_2], self.weights)
 
         # The models' ouptuts have different names
@@ -2164,14 +2164,14 @@ class TestStackedPredictiveModel(unittest.TestCase):
         model_2 = chi.PosteriorPredictiveModel(
             pred_model, posterior_samples)
         with self.assertRaisesRegex(Warning, 'The predictive models appear'):
-            chi.StackedPredictiveModel(
+            chi.PAMPredictiveModel(
                 [self.model_1, model_2], self.weights)
 
         # The number of models and the number of weights do not
         # coincide
         weights = ['too', 'many', 'weights']
         with self.assertRaisesRegex(ValueError, 'The model weights must be'):
-            chi.StackedPredictiveModel(
+            chi.PAMPredictiveModel(
                 [self.model_1, self.model_2], weights)
 
     def test_get_predictive_model(self):
@@ -2294,7 +2294,7 @@ class TestStackedPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
-        model = chi.StackedPredictiveModel(
+        model = chi.PAMPredictiveModel(
             [self.model_2, self.model_2], weights=self.weights)
 
         # Sample
