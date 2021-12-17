@@ -53,10 +53,10 @@ from ._population_models import (  # noqa
 )
 
 from ._predictive_models import (  # noqa
-    GenerativeModel,
+    AveragedPredictiveModel,
     PosteriorPredictiveModel,
     PredictiveModel,
-    PredictivePopulationModel,
+    PopulationPredictiveModel,
     PriorPredictiveModel,
     StackedPredictiveModel
 )
