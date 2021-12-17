@@ -16,9 +16,9 @@ import chi
 from chi.library import ModelLibrary
 
 
-class TestGenerativeModel(unittest.TestCase):
+class TestAveragedPredictiveModel(unittest.TestCase):
     """
-    Tests the chi.GenerativeModel class.
+    Tests the chi.AveragedPredictiveModel class.
 
     Since most methods only call methods from the
     chi.PredictiveModel the methods are tested rather superficially.
@@ -37,7 +37,7 @@ class TestGenerativeModel(unittest.TestCase):
             mechanistic_model, error_models)
 
         # Create data driven predictive model
-        cls.model = chi.GenerativeModel(
+        cls.model = chi.AveragedPredictiveModel(
             predictive_model)
 
     def test_get_dosing_regimen(self):
@@ -108,7 +108,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         cls.model = chi.PosteriorPredictiveModel(
             cls.pred_model, cls.posterior_samples)
 
-        # Test model II: PredictivePopulation model
+        # Test model II: PopulationPredictive model
         pop_models = [
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -117,7 +117,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             chi.PooledModel(),
             chi.PooledModel(),
             chi.LogNormalModel()]
-        cls.pred_pop_model = chi.PredictivePopulationModel(
+        cls.pred_pop_model = chi.PopulationPredictiveModel(
             cls.pred_model, pop_models)
 
         # Create a posterior samples
@@ -416,7 +416,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel()]
-        pred_pop_model = chi.PredictivePopulationModel(
+        pred_pop_model = chi.PopulationPredictiveModel(
             self.pred_model, pop_models)
         pop_model = chi.PosteriorPredictiveModel(
             pred_pop_model, pop_post_samples)
@@ -1148,9 +1148,9 @@ class TestPredictiveModel(unittest.TestCase):
             self.model.sample(parameters, times)
 
 
-class TestPredictivePopulationModel(unittest.TestCase):
+class TestPopulationPredictiveModel(unittest.TestCase):
     """
-    Tests the chi.PredictivePopulationModel class.
+    Tests the chi.PopulationPredictiveModel class.
     """
 
     @classmethod
@@ -1165,17 +1165,19 @@ class TestPredictivePopulationModel(unittest.TestCase):
             mechanistic_model, error_models)
 
         # Create population model
+        covariate_population_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.CentredLogNormalModel())
         cls.population_models = [
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            chi.PooledModel(),
+            covariate_population_model,
             chi.PooledModel(),
             chi.PooledModel()]
 
         # Create predictive population model
-        cls.model = chi.PredictivePopulationModel(
+        cls.model = chi.PopulationPredictiveModel(
             cls.predictive_model, cls.population_models)
 
     def test_instantiation(self):
@@ -1209,7 +1211,7 @@ class TestPredictivePopulationModel(unittest.TestCase):
             'Sigma rel.']
 
         # Create predictive population model
-        model = chi.PredictivePopulationModel(
+        model = chi.PopulationPredictiveModel(
             predictive_model, population_models, params)
 
         parameter_names = model.get_parameter_names()
@@ -1229,35 +1231,35 @@ class TestPredictivePopulationModel(unittest.TestCase):
         predictive_model = 'wrong type'
 
         with self.assertRaisesRegex(TypeError, 'The predictive model'):
-            chi.PredictivePopulationModel(
+            chi.PopulationPredictiveModel(
                 predictive_model, self.population_models)
 
         # Population model has wrong type
         pop_models = ['wrong type']
 
         with self.assertRaisesRegex(TypeError, 'All population models'):
-            chi.PredictivePopulationModel(
+            chi.PopulationPredictiveModel(
                 self.predictive_model, pop_models)
 
         # Wrong number of population models
         pop_models = [chi.HeterogeneousModel()] * 3
 
         with self.assertRaisesRegex(ValueError, 'One population model'):
-            chi.PredictivePopulationModel(
+            chi.PopulationPredictiveModel(
                 self.predictive_model, pop_models)
 
         # Wrong number of parameters are specfied
         params = ['Too', 'few']
 
         with self.assertRaisesRegex(ValueError, 'Params does not have'):
-            chi.PredictivePopulationModel(
+            chi.PopulationPredictiveModel(
                 self.predictive_model, self.population_models, params)
 
         # Params does not list existing parameters
         params = ['Do', 'not', 'exist', '!', '!', '!', '!']
 
         with self.assertRaisesRegex(ValueError, 'The parameter names in'):
-            chi.PredictivePopulationModel(
+            chi.PopulationPredictiveModel(
                 self.predictive_model, self.population_models, params)
 
     def test_fix_parameters(self):
@@ -1269,18 +1271,19 @@ class TestPredictivePopulationModel(unittest.TestCase):
             'Pooled myokit.kappa': 1})
 
         n_parameters = self.model.n_parameters()
-        self.assertEqual(n_parameters, 6)
+        self.assertEqual(n_parameters, 7)
 
         parameter_names = self.model.get_parameter_names()
-        self.assertEqual(len(parameter_names), 6)
+        self.assertEqual(len(parameter_names), 7)
         self.assertEqual(
             parameter_names[0], 'myokit.tumour_volume')
         self.assertEqual(
             parameter_names[1], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[2], 'Pooled myokit.lambda_0')
-        self.assertEqual(parameter_names[3], 'Pooled myokit.lambda_1')
-        self.assertEqual(parameter_names[4], 'Pooled Sigma base')
-        self.assertEqual(parameter_names[5], 'Pooled Sigma rel.')
+        self.assertEqual(parameter_names[3], 'Mean log myokit.lambda_1')
+        self.assertEqual(parameter_names[4], 'Std. log myokit.lambda_1')
+        self.assertEqual(parameter_names[5], 'Pooled Sigma base')
+        self.assertEqual(parameter_names[6], 'Pooled Sigma rel.')
 
         # Test case II: fix overlapping set of parameters
         self.model.fix_parameters(name_value_dict={
@@ -1289,17 +1292,18 @@ class TestPredictivePopulationModel(unittest.TestCase):
             'Pooled Sigma rel.': 0.3})
 
         n_parameters = self.model.n_parameters()
-        self.assertEqual(n_parameters, 5)
+        self.assertEqual(n_parameters, 6)
 
         parameter_names = self.model.get_parameter_names()
-        self.assertEqual(len(parameter_names), 5)
+        self.assertEqual(len(parameter_names), 6)
         self.assertEqual(
             parameter_names[0], 'myokit.tumour_volume')
         self.assertEqual(
             parameter_names[1], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[2], 'Pooled myokit.kappa')
-        self.assertEqual(parameter_names[3], 'Pooled myokit.lambda_1')
-        self.assertEqual(parameter_names[4], 'Pooled Sigma base')
+        self.assertEqual(parameter_names[3], 'Mean log myokit.lambda_1')
+        self.assertEqual(parameter_names[4], 'Std. log myokit.lambda_1')
+        self.assertEqual(parameter_names[5], 'Pooled Sigma base')
 
         # Test case III: unfix all parameters
         self.model.fix_parameters(name_value_dict={
@@ -1308,10 +1312,10 @@ class TestPredictivePopulationModel(unittest.TestCase):
             'Pooled Sigma rel.': None})
 
         n_parameters = self.model.n_parameters()
-        self.assertEqual(n_parameters, 8)
+        self.assertEqual(n_parameters, 9)
 
         parameter_names = self.model.get_parameter_names()
-        self.assertEqual(len(parameter_names), 8)
+        self.assertEqual(len(parameter_names), 9)
         self.assertEqual(
             parameter_names[0], 'myokit.tumour_volume')
         self.assertEqual(
@@ -1320,9 +1324,10 @@ class TestPredictivePopulationModel(unittest.TestCase):
             parameter_names[2], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[3], 'Pooled myokit.kappa')
         self.assertEqual(parameter_names[4], 'Pooled myokit.lambda_0')
-        self.assertEqual(parameter_names[5], 'Pooled myokit.lambda_1')
-        self.assertEqual(parameter_names[6], 'Pooled Sigma base')
-        self.assertEqual(parameter_names[7], 'Pooled Sigma rel.')
+        self.assertEqual(parameter_names[5], 'Mean log myokit.lambda_1')
+        self.assertEqual(parameter_names[6], 'Std. log myokit.lambda_1')
+        self.assertEqual(parameter_names[7], 'Pooled Sigma base')
+        self.assertEqual(parameter_names[8], 'Pooled Sigma rel.')
 
     def test_fix_parameters_bad_input(self):
         name_value_dict = 'Bad type'
@@ -1341,16 +1346,17 @@ class TestPredictivePopulationModel(unittest.TestCase):
         # Test case I: Single output problem
         names = self.model.get_parameter_names()
 
-        self.assertEqual(len(names), 8)
+        self.assertEqual(len(names), 9)
         self.assertEqual(
             names[0], 'myokit.tumour_volume')
         self.assertEqual(names[1], 'Mean log myokit.drug_concentration')
         self.assertEqual(names[2], 'Std. log myokit.drug_concentration')
         self.assertEqual(names[3], 'Pooled myokit.kappa')
         self.assertEqual(names[4], 'Pooled myokit.lambda_0')
-        self.assertEqual(names[5], 'Pooled myokit.lambda_1')
-        self.assertEqual(names[6], 'Pooled Sigma base')
-        self.assertEqual(names[7], 'Pooled Sigma rel.')
+        self.assertEqual(names[5], 'Mean log myokit.lambda_1')
+        self.assertEqual(names[6], 'Std. log myokit.lambda_1')
+        self.assertEqual(names[7], 'Pooled Sigma base')
+        self.assertEqual(names[8], 'Pooled Sigma rel.')
 
         # Test case II: Multi-output problem
         path = ModelLibrary().one_compartment_pk_model()
@@ -1362,22 +1368,23 @@ class TestPredictivePopulationModel(unittest.TestCase):
             chi.ConstantAndMultiplicativeGaussianErrorModel()]
         model = chi.PredictiveModel(model, error_models)
         pop_models = self.population_models + [chi.PooledModel()] * 2
-        model = chi.PredictivePopulationModel(model, pop_models)
+        model = chi.PopulationPredictiveModel(model, pop_models)
 
         names = model.get_parameter_names()
 
-        self.assertEqual(len(names), 10)
+        self.assertEqual(len(names), 11)
         self.assertEqual(
             names[0], 'central.drug_amount')
         self.assertEqual(names[1], 'Mean log dose.drug_amount')
         self.assertEqual(names[2], 'Std. log dose.drug_amount')
         self.assertEqual(names[3], 'Pooled central.size')
         self.assertEqual(names[4], 'Pooled dose.absorption_rate')
-        self.assertEqual(names[5], 'Pooled myokit.elimination_rate')
-        self.assertEqual(names[6], 'Pooled central.drug_amount Sigma base')
-        self.assertEqual(names[7], 'Pooled central.drug_amount Sigma rel.')
-        self.assertEqual(names[8], 'Pooled dose.drug_amount Sigma base')
-        self.assertEqual(names[9], 'Pooled dose.drug_amount Sigma rel.')
+        self.assertEqual(names[5], 'Mean log myokit.elimination_rate')
+        self.assertEqual(names[6], 'Std. log myokit.elimination_rate')
+        self.assertEqual(names[7], 'Pooled central.drug_amount Sigma base')
+        self.assertEqual(names[8], 'Pooled central.drug_amount Sigma rel.')
+        self.assertEqual(names[9], 'Pooled dose.drug_amount Sigma base')
+        self.assertEqual(names[10], 'Pooled dose.drug_amount Sigma rel.')
 
     def test_get_set_dosing_regimen(self):
         # This just wraps the method from the PredictiveModel. So shallow
@@ -1450,11 +1457,11 @@ class TestPredictivePopulationModel(unittest.TestCase):
             'Pooled Sigma rel.': None})
 
     def test_n_parameters(self):
-        self.assertEqual(self.model.n_parameters(), 8)
+        self.assertEqual(self.model.n_parameters(), 9)
 
     def test_sample(self):
         # Test case I: Just one sample
-        parameters = [1, 1, 1, 1, 1, 1, 0.1, 0.1]
+        parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1]
         times = [1, 2, 3, 4, 5]
         seed = 42
 
@@ -1586,11 +1593,11 @@ class TestPredictivePopulationModel(unittest.TestCase):
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         predictive_model = chi.PredictiveModel(
             mechanistic_model, error_models)
-        model = chi.PredictivePopulationModel(
+        model = chi.PopulationPredictiveModel(
             predictive_model, self.population_models)
 
         # Sample
-        parameters = [1, 1, 1, 1, 1, 1, 0.1, 0.1]
+        parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1]
         samples = model.sample(
             parameters, times, seed=seed, include_regimen=True)
 

@@ -6,6 +6,7 @@
 #
 
 import copy
+from typing import Type
 
 import numpy as np
 import pandas as pd
@@ -15,14 +16,14 @@ import xarray as xr
 import chi
 
 
-class GenerativeModel(object):
+class AveragedPredictiveModel(object):
     """
     A base class for predictive models whose parameters are drawn from
-    a generative distribution.
+    a distribution.
     """
 
     def __init__(self, predictive_model):
-        super(GenerativeModel, self).__init__()
+        super(AveragedPredictiveModel, self).__init__()
 
         # Check inputs
         if not isinstance(predictive_model, chi.PredictiveModel):
@@ -127,7 +128,7 @@ class GenerativeModel(object):
             dose, start, duration, period, num)
 
 
-class PosteriorPredictiveModel(GenerativeModel):
+class PosteriorPredictiveModel(AveragedPredictiveModel):
     r"""
     Implements a model that predicts the change of observable biomarkers over
     time based on the inferred parameter posterior distribution.
@@ -153,8 +154,6 @@ class PosteriorPredictiveModel(GenerativeModel):
     and :math:`p(\theta | X^{\text{obs}})` is the posterior distribution of
     the model parmeters :math:`\theta` for observations
     :math:`X^{\text{obs}}`.
-
-    Extends :class:`GenerativeModel`.
 
     :param predictive_model: A predictive model which defines the distribution
         of observable biomarkers over time conditioned on parameter values.
@@ -820,7 +819,7 @@ class PredictiveModel(object):
                 'chi.PharmacodynamicModel.')
 
 
-class PredictivePopulationModel(PredictiveModel):
+class PopulationPredictiveModel(PredictiveModel):
     r"""
     Implements a model that predicts the change of observable biomarkers over
     time in a population of patients or model organisms.
@@ -1082,8 +1081,8 @@ class PredictivePopulationModel(PredictiveModel):
         return self._n_parameters
 
     def sample(
-            self, parameters, times, n_samples=None, seed=None,
-            return_df=True, include_regimen=False):
+            self, parameters, times, covariates=None, n_samples=None,
+            seed=None, return_df=True, include_regimen=False):
         """
         Samples "measurements" of the biomarkers from virtual "patients" and
         returns them in form of a :class:`pandas.DataFrame` or a
@@ -1106,6 +1105,11 @@ class PredictivePopulationModel(PredictiveModel):
         times
             An array-like object with times at which the virtual "measurements"
             are performed.
+        covariates
+            A list of length (n_population_models) with array-like objects that
+            specify the covariates of the population model. If a population
+            model is not a CovariatePopulation model, the entry in the list is
+            skipped.
         n_samples
             The number of virtual "patients" that are measured at each
             time point. If ``None`` the biomarkers are measured only for one
@@ -1157,9 +1161,27 @@ class PredictivePopulationModel(PredictiveModel):
             end = start + pop_model.n_parameters()
 
             # Sample patient parameters
-            patients[:, param_id] = pop_model.sample(
-                parameters=parameters[start:end], n_samples=n_samples,
-                seed=seed)
+            if isinstance(pop_model, chi.CovariatePopulationModel):
+                try:
+                    cov = covariates[param_id]
+                except TypeError:
+                    # TODO: Test this once proper covariate models exist
+                    if pop_model.n_covariates() > 0:  # pragma: no cover
+                        raise ValueError(
+                            'At least one CovariatePopulationModel has not '
+                            'been provided with covariates.')
+
+                    # Covariate model does not need covariates
+                    cov = None
+
+                patients[:, param_id] = pop_model.sample(
+                    parameters=parameters[start:end], n_samples=n_samples,
+                    seed=seed, covariates=cov,
+                    return_psi=True)
+            else:
+                patients[:, param_id] = pop_model.sample(
+                    parameters=parameters[start:end], n_samples=n_samples,
+                    seed=seed)
 
             # Increment population parameter counter
             start = end
@@ -1203,6 +1225,8 @@ class PredictivePopulationModel(PredictiveModel):
                 regimen['ID'] = _id
                 samples = samples.append(regimen)
 
+        # TODO: Add covariates to dataframe [Covariate type, covariate value]
+
         return samples
 
     def set_dosing_regimen(
@@ -1244,7 +1268,7 @@ class PredictivePopulationModel(PredictiveModel):
             dose, start, duration, period, num)
 
 
-class PriorPredictiveModel(GenerativeModel):
+class PriorPredictiveModel(AveragedPredictiveModel):
     """
     Implements a model that predicts the change of observable biomarkers over
     time based on the provided distribution of model parameters prior to the
@@ -1261,8 +1285,6 @@ class PriorPredictiveModel(GenerativeModel):
     "measurements" can then be predicted by first sampling parameter values
     from the log-prior distribution, and then generating "virtual" measurements
     from the predictive model with those parameters.
-
-    Extends :class:`DataDrivenPredictiveModel`.
 
     Parameters
     ----------
@@ -1370,7 +1392,7 @@ class PriorPredictiveModel(GenerativeModel):
         return container
 
 
-class StackedPredictiveModel(GenerativeModel):
+class StackedPredictiveModel(AveragedPredictiveModel):
     r"""
     A generative model that is defined by the weighted average of different
     posterior predictive models.
@@ -1385,8 +1407,6 @@ class StackedPredictiveModel(GenerativeModel):
 
     where the sum runs over the individual models and :math:`w_m` is the weight
     of model :math:`m`.
-
-    Extends :class:`GenerativeModel`.
     """
     def __init__(self, predictive_models, weights):
         # Check inputs
