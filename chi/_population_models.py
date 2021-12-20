@@ -332,6 +332,13 @@ class CovariatePopulationModel(PopulationModel):
         """
         return self._covariate_model
 
+    def get_covariate_names(self):
+        """
+        Returns the names of the covariates. If name is
+        not set, defaults are returned.
+        """
+        return self._covariate_model.get_covariate_names()
+
     def get_parameter_names(self):
         """
         Returns the names of the model parameters. If name is
@@ -424,6 +431,19 @@ class CovariatePopulationModel(PopulationModel):
             parameters, eta, covariates)
 
         return psi
+
+    def set_covariate_names(self, names=None):
+        """
+        Sets the names of the covariates.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_covariates`. If ``None``, covariate names are reset to
+            defaults.
+        """
+        self._covariate_model.set_covariate_names(names)
 
     def set_parameter_names(self, names=None):
         """

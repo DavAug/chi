@@ -55,14 +55,14 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertEqual(psi[3], ref_psi[3])
 
         # Test case I.2
-        parameters = [0.3, 0]
+        parameters = [0.3, 1E-10]
         eta = [0.2, -0.3, 1, 5]
 
         psi = self.cpop_model.compute_individual_parameters(parameters, eta)
-        self.assertEqual(psi[0], np.exp(0.3))
-        self.assertEqual(psi[1], np.exp(0.3))
-        self.assertEqual(psi[2], np.exp(0.3))
-        self.assertEqual(psi[3], np.exp(0.3))
+        self.assertAlmostEqual(psi[0], np.exp(0.3))
+        self.assertAlmostEqual(psi[1], np.exp(0.3))
+        self.assertAlmostEqual(psi[2], np.exp(0.3))
+        self.assertAlmostEqual(psi[3], np.exp(0.3))
 
     def test_compute_individual_sensitivities(self):
         n_ids = 5
@@ -148,26 +148,6 @@ class TestCovariatePopulationModel(unittest.TestCase):
         score = self.cpop_model.compute_log_likelihood(parameters, etas)
         self.assertAlmostEqual(score, ref_score)
 
-        # Test case II: sigma_log negative or zero
-
-        # Test case IV.1
-        psis = [np.exp(10)] * n_ids
-        mu = 1
-        sigma = 0
-
-        parameters = [mu] + [sigma]
-        score = self.cpop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, -np.inf)
-
-        # Test case IV.2
-        psis = [np.exp(10)] * n_ids
-        mu = 1
-        sigma = -10
-
-        parameters = [mu] + [sigma]
-        score = self.cpop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, -np.inf)
-
     def test_compute_pointwise_ll(self):
         # Hard to test exactly, but at least test some edge cases where
         # loglikelihood is straightforward to compute analytically
@@ -220,30 +200,6 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertEqual(len(scores), 10)
         self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 10))
-
-        # Test case II: sigma_log negative or zero
-
-        # Test case II.1
-        psis = [np.exp(10)] * n_ids
-        mu = 1
-        sigma = 0
-
-        parameters = [mu] + [sigma]
-        scores = self.cpop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
-
-        # Test case II.2
-        psis = [np.exp(10)] * n_ids
-        mu = 1
-        sigma = -10
-
-        parameters = [mu] + [sigma]
-        scores = self.cpop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
 
     def test_compute_sensitivities(self):
         # TODO: Need to add more tests, once more covariate models become
@@ -351,9 +307,12 @@ class TestCovariatePopulationModel(unittest.TestCase):
         cov_model = self.cpop_model.get_covariate_model()
         self.assertIsInstance(cov_model, chi.CovariateModel)
 
+    def test_get_covariate_names(self):
+        names = []
+        self.assertEqual(self.cpop_model.get_covariate_names(), names)
+
     def test_get_parameter_names(self):
         names = ['Mean log', 'Std. log']
-
         self.assertEqual(self.cpop_model.get_parameter_names(), names)
 
     def test_n_hierarchical_parameters(self):
@@ -402,6 +361,15 @@ class TestCovariatePopulationModel(unittest.TestCase):
         sample = self.cpop_model.sample(
             parameters, n_samples=n_samples, seed=seed, return_psi=True)
         self.assertEqual(sample.shape, (n_samples,))
+
+    def test_set_covariate_names(self):
+        # Test some name
+        names = ['some name']
+        self.cpop_model.set_covariate_names(names)
+
+        # This covariate model has no covariates
+        self.assertEqual(
+            self.cpop_model.get_covariate_names(), [])
 
     def test_set_parameter_names(self):
         # Test some name
