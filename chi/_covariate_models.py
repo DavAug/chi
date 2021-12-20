@@ -49,7 +49,10 @@ class CovariateModel(object):
     def __init__(self):
         super(CovariateModel, self).__init__()
 
+        self._n_parameters = None
+        self._n_covariates = None
         self._parameter_names = None
+        self._covariate_names = None
 
     def check_compatibility(self, population_model):
         r"""
@@ -132,6 +135,12 @@ class CovariateModel(object):
         """
         raise NotImplementedError
 
+    def get_covariate_names(self):
+        """
+        Returns the names of the covariates.
+        """
+        return self._covariate_names
+
     def get_parameter_names(self):
         """
         Returns the names of the model parameters.
@@ -142,11 +151,21 @@ class CovariateModel(object):
         """
         Returns the number of covariates c.
         """
-        raise NotImplementedError
+        return self._n_covariates
 
     def n_parameters(self):
         """
         Returns the number of model parameters p.
+        """
+        return self._n_parameters
+
+    def set_covariate_names(self, names=None):
+        """
+        Sets the names of the covariates.
+
+        :param names: A list of covariate names. If ``None``, covariate names
+            are reset to defaults.
+        :type names: List
         """
         raise NotImplementedError
 
@@ -208,8 +227,9 @@ class CentredLogNormalModel(CovariateModel):
         self._n_parameters = 2
         self._n_covariates = 0
 
-        # Set default parameter names
+        # Set default names
         self._parameter_names = ['Mean log', 'Std. log']
+        self._covariate_names = []
 
     def check_compatibility(self, population_model):
         r"""
@@ -245,6 +265,10 @@ class CentredLogNormalModel(CovariateModel):
         """
         # Unpack parameters
         mu, sigma = parameters
+        if sigma <= 0:
+            # The standard deviation of a log-normal distribution is
+            # strictly positive
+            return np.array([np.nan] * len(eta))
 
         # Compute individual parameters
         eta = np.array(eta)
@@ -272,6 +296,13 @@ class CentredLogNormalModel(CovariateModel):
         """
         # Unpack parameters
         mu, sigma = parameters
+        if sigma <= 0:
+            # The standard deviation of a log-normal distribution is
+            # strictly positive
+            return (
+                np.full(fill_value=np.nan, shape=len(eta)),
+                np.full(fill_value=np.nan, shape=(3, len(eta)))
+            )
 
         # Compute individual parameters
         eta = np.array(eta)
@@ -295,14 +326,6 @@ class CentredLogNormalModel(CovariateModel):
         :returns: Population parameters :math:`\theta` for :math:`\eta`.
         :rtype: np.ndarray of length (p',)
         """
-        # Check that parameters are strictly positive, else return
-        # np.nan for the parameters
-        _, std_log = parameters
-        if std_log <= 0:
-            # The standard deviation of a log-normal distribution is
-            # strictly positive
-            return np.array([np.nan, np.nan])
-
         # As a result of the `centering` the population parameters for
         # eta (mean and std.) are constant.
         return np.array([0, 1])
@@ -322,17 +345,17 @@ class CentredLogNormalModel(CovariateModel):
         # eta (mean and std.) are constant.
         return (np.array([0, 1]), np.array([[0, 0]] * len(parameters)))
 
-    def n_covariates(self):
+    def set_covariate_names(self, names=None):
         """
-        Returns the number of covariates c.
-        """
-        return self._n_covariates
+        Sets the covariate names.
 
-    def n_parameters(self):
+        Model does not have covariates, so any input will be ignored.
+
+        :param names: A list of parameter names. If ``None``, parameter names
+            are reset to defaults.
+        :type names: List
         """
-        Returns the number of model parameters.
-        """
-        return self._n_parameters
+        return None
 
     def set_parameter_names(self, names=None):
         """
