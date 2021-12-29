@@ -409,19 +409,20 @@ class CovariatePopulationModel(PopulationModel):
         # Check that covariates has the correct dimensions
         if covariates is not None:  # noqa: pragma no cover
             covariates = np.array(covariates)
-            if covariates.shape != (self._covariate_model.n_covariates(),):
+            n_covariates = self._covariate_model.n_covariates()
+            if len(covariates) != n_covariates:
                 raise ValueError(
-                    'Covariates must be of shape (c,).')
+                    'Covariates must be of length n_covariates.')
 
             # Add dimension to fit shape (n, c) for later convenience
-            covariates = np.reshape(covariates, (1, len(covariates)))
+            covariates = np.reshape(covariates, (1, n_covariates))
 
         # Compute population parameters
-        parameters = self._covariate_model.compute_population_parameters(
+        eta_dist_params = self._covariate_model.compute_population_parameters(
             parameters)
 
         # Sample eta from population model
-        eta = self._population_model.sample(parameters, n_samples, seed)
+        eta = self._population_model.sample(eta_dist_params, n_samples, seed)
 
         if not return_psi:
             return eta

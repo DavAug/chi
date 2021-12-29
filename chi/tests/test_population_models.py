@@ -20,10 +20,16 @@ class TestCovariatePopulationModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Test case I
         cls.pop_model = chi.GaussianModel()
-        cls.cov_model = chi.CentredLogNormalModel()
+        cls.cov_model = chi.LogNormalLinearCovariateModel()
         cls.cpop_model = chi.CovariatePopulationModel(
             cls.pop_model, cls.cov_model)
+
+        # Test case II
+        cls.cov_model2 = chi.LogNormalLinearCovariateModel(n_covariates=2)
+        cls.cpop_model2 = chi.CovariatePopulationModel(
+            cls.pop_model, cls.cov_model2)
 
     def test_bad_instantiation(self):
         # Population model is not a SimplePopulationModel
@@ -32,7 +38,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'The population model'):
             chi.CovariatePopulationModel(
                 pop_model,
-                chi.CentredLogNormalModel())
+                chi.LogNormalLinearCovariateModel())
 
         # Covariate model is not a CovariateModel
         cov_model = 'bad type'
@@ -63,6 +69,33 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertAlmostEqual(psi[1], np.exp(0.3))
         self.assertAlmostEqual(psi[2], np.exp(0.3))
         self.assertAlmostEqual(psi[3], np.exp(0.3))
+
+        # Test case II: Model that dependent on covariates
+        # Test case II.1
+        parameters = [1, 1, -1, 1]
+        eta = [0.2, -0.3, 1, 5]
+        covariates = np.ones(shape=(4, 2))
+
+        ref_psi = self.cov_model2.compute_individual_parameters(
+            parameters, eta, covariates)
+        psi = self.cpop_model2.compute_individual_parameters(
+            parameters, eta, covariates)
+        self.assertEqual(psi[0], ref_psi[0])
+        self.assertEqual(psi[1], ref_psi[1])
+        self.assertEqual(psi[2], ref_psi[2])
+        self.assertEqual(psi[3], ref_psi[3])
+
+        # Test case II.2
+        parameters = [0.3, 1E-20, 100, -100]
+        eta = [0.2, -0.3, 1, 5]
+        covariates = np.reshape(np.arange(8), newshape=(4, 2))
+
+        psi = self.cpop_model2.compute_individual_parameters(
+            parameters, eta, covariates)
+        self.assertAlmostEqual(psi[0], np.exp(0.3 + 100 * 0 - 100 * 1))
+        self.assertAlmostEqual(psi[1], np.exp(0.3 + 100 * 2 - 100 * 3))
+        self.assertAlmostEqual(psi[2], np.exp(0.3 + 100 * 4 - 100 * 5))
+        self.assertAlmostEqual(psi[3], np.exp(0.3 + 100 * 6 - 100 * 7))
 
     def test_compute_individual_sensitivities(self):
         n_ids = 5
@@ -202,12 +235,9 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertTrue(np.allclose(scores, ref_score / 10))
 
     def test_compute_sensitivities(self):
-        # TODO: Need to add more tests, once more covariate models become
-        # available.
-
         n_ids = 10
 
-        # Test case I: Centred Log-Normal model
+        # Test case I: Non-centered Log-Normal model
         # Sensitivities reduce to
         # deta = -eta
         # dmu_log = 0
@@ -303,19 +333,71 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertEqual(sens[10], ref_dmu)
         self.assertAlmostEqual(sens[11], ref_dsigma)
 
+        # Test case II: Linear covariate model
+        etas = np.arange(n_ids)
+        mu_log = -1
+        sigma_log = 10
+        shifts = [1, 2]
+
+        # Compute ref scores
+        # (Distribution of eta is independent of model parameters, it's always
+        # standard Gaussian. Thus sensitivities of likelihood are zero.)
+        parameters = [mu_log] + [sigma_log] + shifts
+        ref_ll = self.cpop_model2.compute_log_likelihood(
+            parameters, etas)
+        ref_detas = -1 * np.array(etas)
+        ref_dmu = 0
+        ref_dsigma = 0
+        ref_dshift0 = 0
+        ref_dshift1 = 0
+
+        # Compute log-likelihood and sensitivities
+        score, sens = self.cpop_model2.compute_sensitivities(
+            parameters, etas)
+
+        self.assertEqual(score, ref_ll)
+        self.assertEqual(len(sens), n_ids + 4)
+        self.assertEqual(sens[0], ref_detas[0])
+        self.assertEqual(sens[1], ref_detas[1])
+        self.assertEqual(sens[2], ref_detas[2])
+        self.assertEqual(sens[3], ref_detas[3])
+        self.assertEqual(sens[4], ref_detas[4])
+        self.assertEqual(sens[5], ref_detas[5])
+        self.assertEqual(sens[6], ref_detas[6])
+        self.assertEqual(sens[7], ref_detas[7])
+        self.assertEqual(sens[8], ref_detas[8])
+        self.assertEqual(sens[9], ref_detas[9])
+        self.assertEqual(sens[10], ref_dmu)
+        self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(sens[12], ref_dshift0)
+        self.assertAlmostEqual(sens[13], ref_dshift1)
+
     def test_get_covariate_model(self):
         cov_model = self.cpop_model.get_covariate_model()
         self.assertIsInstance(cov_model, chi.CovariateModel)
 
     def test_get_covariate_names(self):
+        # Test case I:
         names = []
         self.assertEqual(self.cpop_model.get_covariate_names(), names)
 
+        # Test case II:
+        names = ['Covariate 1', 'Covariate 2']
+        self.assertEqual(self.cpop_model2.get_covariate_names(), names)
+
     def test_get_parameter_names(self):
-        names = ['Mean log', 'Std. log']
+        # Test case I:
+        names = ['Base mean log', 'Std. log']
         self.assertEqual(self.cpop_model.get_parameter_names(), names)
 
+        # Test case II:
+        names = [
+            'Base mean log', 'Std. log', 'Shift Covariate 1',
+            'Shift Covariate 2']
+        self.assertEqual(self.cpop_model2.get_parameter_names(), names)
+
     def test_n_hierarchical_parameters(self):
+        # Test case I:
         n_ids = 10
         n_hierarchical_params = self.cpop_model.n_hierarchical_parameters(
             n_ids)
@@ -324,16 +406,28 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertEqual(n_hierarchical_params[0], n_ids)
         self.assertEqual(n_hierarchical_params[1], 2)
 
+        # Test case II:
+        n_ids = 10
+        n_hierarchical_params = self.cpop_model2.n_hierarchical_parameters(
+            n_ids)
+
+        self.assertEqual(len(n_hierarchical_params), 2)
+        self.assertEqual(n_hierarchical_params[0], n_ids)
+        self.assertEqual(n_hierarchical_params[1], 4)
+
     def test_n_covariates(self):
+        # Test case I:
         n_cov = self.cpop_model.n_covariates()
         self.assertEqual(n_cov, 0)
+
+        # Test case II:
+        n_cov = self.cpop_model2.n_covariates()
+        self.assertEqual(n_cov, 2)
 
     def test_n_parameters(self):
         self.assertEqual(self.cpop_model.n_parameters(), 2)
 
     def test_sample(self):
-        # TODO: Test with proper covariate models.
-
         # Test I: sample size 1
         # Test case I.1: return eta
         seed = 42
@@ -362,9 +456,25 @@ class TestCovariatePopulationModel(unittest.TestCase):
             parameters, n_samples=n_samples, seed=seed, return_psi=True)
         self.assertEqual(sample.shape, (n_samples,))
 
+        # Test III: Model with covariates
+        # Test case III.1: return eta
+        seed = 42
+        parameters = [3, 2, 10, 20]
+        covariates = [2, 4]
+        sample = self.cpop_model2.sample(
+            parameters, covariates, seed=seed)
+
+        n_samples = 1
+        self.assertEqual(sample.shape, (n_samples,))
+
+        # Test case III.2: return psi
+        sample = self.cpop_model2.sample(
+            parameters, covariates, seed=seed, return_psi=True)
+        self.assertEqual(sample.shape, (n_samples,))
+
     def test_set_covariate_names(self):
         # Test some name
-        names = ['some name']
+        names = []
         self.cpop_model.set_covariate_names(names)
 
         # This covariate model has no covariates
@@ -384,7 +494,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         names = self.cpop_model.get_parameter_names()
 
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Mean log')
+        self.assertEqual(names[0], 'Base mean log')
         self.assertEqual(names[1], 'Std. log')
 
 
