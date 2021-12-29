@@ -190,7 +190,7 @@ class HierarchicalLogLikelihood(object):
             cov_models)
 
         n_ids = len(log_likelihoods)
-        if covariates_needed is True:
+        if covariates_needed:
             covariates, covariate_map = self._check_covariates(
                 covariates, covariate_map, n_ids, n_covs, cov_model_mask)
 
@@ -289,11 +289,12 @@ class HierarchicalLogLikelihood(object):
                 'but none were provided.')
 
         covariates = np.asarray(covariates)
-        n, c = covariates.shape
-        if (covariates.ndims != 2) or (n != n_ids):
+        n = len(covariates)
+        if (covariates.ndim != 2) or (n != n_ids):
             raise ValueError(
-                'covariates needs to be of length '
+                'The list of covariates needs to be of length '
                 'len(log_likelihoods) and of dimension 2.')
+        c = covariates.shape[1]
 
         # Construct identity covariate map, if no covariate map has been
         # provided
@@ -301,8 +302,9 @@ class HierarchicalLogLikelihood(object):
             # Check that all population models take the same number of
             # covariates, and that this number is equal to the provided number
             # of covariates
-            do_n_covs_match = (np.max(n_covs) == c) and (np.min(n_covs) == c)
-            if do_n_covs_match is True:
+            n_pos = np.array(n_covs)[np.array(n_covs) > 0]
+            do_n_covs_match = (np.max(n_pos) == c) and (np.min(n_pos) == c)
+            if do_n_covs_match:
                 # Construct identity covariate map
                 n_population_models = len(is_cov_model)
                 covariate_map = [np.arange(c)] * n_population_models
@@ -319,17 +321,18 @@ class HierarchicalLogLikelihood(object):
                 'The covariate_map needs to be of the same length as '
                 'the number of CovariatePopulationModels.')
 
-        # Make sure that provided covariate map is compatible with population
-        # models
+        # Make sure that the provided covariate map is compatible with
+        # population models
         if np.max(covariate_map) >= c:
             raise IndexError(
                 'Index in covariate map exceeds the number of provided '
                 'covariates.')
         for idp, is_cov in enumerate(is_cov_model):
-            if is_cov is True:
+            if is_cov:
                 # Check that number of indices matches model's expected number
-                # of covariates
-                if len(covariate_map[idp]) == n_covs[idp]:
+                # of covariates, or covariate model does not need covariates
+                if (len(covariate_map[idp]) == n_covs[idp]) or (
+                        n_covs[idp] == 0):
                     continue
 
                 raise ValueError(

@@ -77,21 +77,25 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             cls.log_likelihoods, population_models)
 
         # Test case III: Covariate population model
-        # TODO: Include covariate models that actually use covariates
-        cpop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.CentredLogNormalModel())
+        cpop_model1 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=0))
+        cpop_model2 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
         population_models = [
             chi.PooledModel(),
-            cpop_model,
+            cpop_model1,
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            cpop_model]
+            cpop_model2]
+        covariates = np.array([[1, 2], [3, 4]])
         cls.hierarchical_model3 = chi.HierarchicalLogLikelihood(
-            cls.log_likelihoods, population_models)
+            cls.log_likelihoods, population_models, covariates)
 
     def test_bad_instantiation(self):
         # Log-likelihoods are not pints.LogPDF
@@ -141,6 +145,65 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Wrong number of population'):
             chi.HierarchicalLogLikelihood(
                 self.log_likelihoods, population_models)
+
+        # No covariates have been passed for covariate dependent population
+        # models
+        population_models = [chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
+        ] * 9
+        with self.assertRaisesRegex(ValueError, 'At least one PopulationMod'):
+            chi.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models)
+
+        # Covariates do not have shape (n, c)
+        population_models = [chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
+        ] * 9
+        covariates = np.empty(shape=(3, 2))
+        with self.assertRaisesRegex(ValueError, 'The list of covariates'):
+            chi.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models, covariates)
+        covariates = np.empty(shape=(2,))
+        with self.assertRaisesRegex(ValueError, 'The list of covariates'):
+            chi.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models, covariates)
+
+        # Covariate map cannot trivially be constructed
+        population_models = [chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
+        ] * 8
+        population_models += [chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=3))
+        ]
+        covariates = np.empty(shape=(2, 3))
+        with self.assertRaisesRegex(ValueError, 'The provided covariates'):
+            chi.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models, covariates)
+
+        # Wrong length of covariate map
+        covariate_map = [[1, 2]] * 8
+        with self.assertRaisesRegex(ValueError, 'The covariate_map needs to'):
+            chi.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models, covariates,
+                covariate_map)
+
+        # Covariate map indexes covariates that are outside of list
+        covariate_map = [[5, 6]] * 9
+        with self.assertRaisesRegex(IndexError, 'Index in covariate map'):
+            chi.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models, covariates,
+                covariate_map)
+
+        # Wrong number of covariates in list
+        covariate_map = [[1, 2]] * 9
+        with self.assertRaisesRegex(ValueError, 'The covariate_map does not'):
+            chi.HierarchicalLogLikelihood(
+                self.log_likelihoods, population_models, covariates,
+                covariate_map)
 
     def test_call(self):
         # Test case I: All parameters pooled
@@ -279,7 +342,6 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(self.hierarchical_model(parameters), -np.inf)
 
         # Test case VI.1: Covariate population model
-        # TODO: Test with proper covariate population model.
         # Reminder of population model
         # cpop_model = chi.CovariatePopulationModel(
         #     chi.GaussianModel(), chi.CentredLogNormalModel())
@@ -1077,7 +1139,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             parameter_names[1], 'automatic-id-1 dose.drug_amount Eta')
         self.assertEqual(
             parameter_names[2], 'automatic-id-2 dose.drug_amount Eta')
-        self.assertEqual(parameter_names[3], 'Mean log dose.drug_amount')
+        self.assertEqual(parameter_names[3], 'Base mean log dose.drug_amount')
         self.assertEqual(parameter_names[4], 'Std. log dose.drug_amount')
         self.assertEqual(parameter_names[5], 'Pooled central.size')
         self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
@@ -1096,7 +1158,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             parameter_names[12],
             'automatic-id-2 dose.drug_amount Sigma rel. Eta')
         self.assertEqual(
-            parameter_names[13], 'Mean log dose.drug_amount Sigma rel.')
+            parameter_names[13], 'Base mean log dose.drug_amount Sigma rel.')
         self.assertEqual(
             parameter_names[14], 'Std. log dose.drug_amount Sigma rel.')
 
