@@ -7,7 +7,8 @@
 
 from ._covariate_models import (  # noqa
     CovariateModel,
-    CentredLogNormalModel
+    CentredLogNormalModel,
+    LogNormalLinearCovariateModel
 )
 
 from ._error_models import (  # noqa
