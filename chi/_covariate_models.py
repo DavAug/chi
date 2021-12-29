@@ -474,7 +474,7 @@ class LogNormalLinearCovariateModel(CovariateModel):
         """
         # Unpack parameters
         mu_base, sigma = parameters[:2]
-        shifts = parameters[2:]
+        shifts = np.array(parameters[2:])
         if sigma <= 0:
             # The standard deviation of a log-normal distribution is
             # strictly positive
@@ -510,7 +510,7 @@ class LogNormalLinearCovariateModel(CovariateModel):
         """
         # Unpack parameters
         mu_base, sigma = parameters[:2]
-        shifts = parameters[2:]
+        shifts = np.array(parameters[2:])
         if sigma <= 0:
             # The standard deviation of a log-normal distribution is
             # strictly positive
