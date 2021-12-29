@@ -600,7 +600,7 @@ class LogNormalLinearCovariateModel(CovariateModel):
         if names is None:
             # Reset names to defaults
             self._parameter_names = ['Base mean log', 'Std. log'] + [
-                'Shift Covariate % d' % int(c + 1)
+                'Shift Covariate %d' % int(c + 1)
                 for c in range(self._n_covariates)
             ]
             return None
