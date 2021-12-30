@@ -787,6 +787,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
 
         # Test case II.2: Population model
+        cov_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1)
+        )
+        cov_pop_model.set_covariate_names(['Age'], True)
         pop_models = [
             chi.PooledModel(),
             chi.PooledModel(),
@@ -796,12 +801,12 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             chi.LogNormalModel(),
             chi.LogNormalModel(),
             chi.PooledModel(),
-            chi.PooledModel(),
+            cov_pop_model,
             chi.PooledModel(),
             chi.PooledModel()]
         problem.set_population_model(pop_models)
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 12)
+        self.assertEqual(len(param_names), 14)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'Pooled myokit.critical_volume')
@@ -813,11 +818,16 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(
             param_names[8], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
-            param_names[9], 'Pooled central.drug_concentration Sigma rel.')
+            param_names[9],
+            'Base mean log central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[10], 'Pooled myokit.tumour_volume Sigma base')
+            param_names[10], 'Std. log central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[11], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[11], 'Shift Age central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[12], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[13], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -838,7 +848,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test exclude bottom-level True
         param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 12)
+        self.assertEqual(len(param_names), 14)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'Pooled myokit.critical_volume')
@@ -850,11 +860,16 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(
             param_names[8], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
-            param_names[9], 'Pooled central.drug_concentration Sigma rel.')
+            param_names[9],
+            'Base mean log central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[10], 'Pooled myokit.tumour_volume Sigma base')
+            param_names[10], 'Std. log central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[11], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[11], 'Shift Age central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[12], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[13], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test case II.3: Set data
         problem.set_data(
@@ -863,7 +878,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'})
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 21)
+        self.assertEqual(len(param_names), 26)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'ID 0: central.size')
@@ -884,11 +899,25 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(
             param_names[17], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
-            param_names[18], 'Pooled central.drug_concentration Sigma rel.')
+            param_names[18],
+            'ID 0: central.drug_concentration Sigma rel. Eta')
         self.assertEqual(
-            param_names[19], 'Pooled myokit.tumour_volume Sigma base')
+            param_names[19],
+            'ID 1: central.drug_concentration Sigma rel. Eta')
         self.assertEqual(
-            param_names[20], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[20],
+            'ID 2: central.drug_concentration Sigma rel. Eta')
+        self.assertEqual(
+            param_names[21],
+            'Base mean log central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[22], 'Std. log central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[23], 'Shift Age central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[24], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[25], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -909,7 +938,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test exclude bottom-level True
         param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 15)
+        self.assertEqual(len(param_names), 17)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'ID 0: central.size')
@@ -924,11 +953,16 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(
             param_names[11], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
-            param_names[12], 'Pooled central.drug_concentration Sigma rel.')
+            param_names[12],
+            'Base mean log central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[13], 'Pooled myokit.tumour_volume Sigma base')
+            param_names[13], 'Std. log central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[14], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[14], 'Shift Age central.drug_concentration Sigma rel.')
+        self.assertEqual(
+            param_names[15], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[16], 'Pooled myokit.tumour_volume Sigma rel.')
 
     def test_get_predictive_model(self):
         # Test case I: PD model
@@ -1000,13 +1034,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
     def test_set_data(self):
-        # Set data with explicit output-biomarker map
+        # Set data with explicit output-observable map
         problem = copy.deepcopy(self.pd_problem)
         output_observable_dict = {'myokit.tumour_volume': 'Tumour volume'}
         problem.set_data(self.data, output_observable_dict)
 
-        # Set data with implicit output-biomarker map
-        mask = self.data['Biomarker'] == 'Tumour volume'
+        # Set data with implicit output-observable map
+        mask = self.data['Observable'] == 'Tumour volume'
         problem.set_data(self.data[mask])
 
         # Set data with explicit covariate mapping
