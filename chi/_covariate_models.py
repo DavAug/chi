@@ -568,13 +568,17 @@ class LogNormalLinearCovariateModel(CovariateModel):
         # eta (mean and std.) are constant.
         return (np.array([0, 1]), np.array([[0, 0]] * len(parameters)))
 
-    def set_covariate_names(self, names=None):
+    def set_covariate_names(self, names=None, update_param_names=False):
         """
         Sets the covariate names.
 
-        :param names: A list of parameter names. If ``None``, parameter names
+        :param names: A list of parameter names. If ``None``, covariate names
             are reset to defaults.
         :type names: List
+        :param update_param_names: Boolean flag indicating whether parameter
+            names should be updated according to new covariate names. By
+            default parameter names are not updated.
+        :type update_param_names: bool, optional
         """
         if names is None:
             # Reset names to defaults
@@ -589,6 +593,9 @@ class LogNormalLinearCovariateModel(CovariateModel):
 
         self._covariate_names = [str(label) for label in names]
 
+        if update_param_names:
+            self.set_parameter_names()
+
     def set_parameter_names(self, names=None):
         """
         Sets the names of the model parameters.
@@ -599,10 +606,9 @@ class LogNormalLinearCovariateModel(CovariateModel):
         """
         if names is None:
             # Reset names to defaults
+            covariate_names = self.get_covariate_names()
             self._parameter_names = ['Base mean log', 'Std. log'] + [
-                'Shift Covariate %d' % int(c + 1)
-                for c in range(self._n_covariates)
-            ]
+                'Shift %s' % name for name in covariate_names]
             return None
 
         if len(names) != self._n_parameters:
