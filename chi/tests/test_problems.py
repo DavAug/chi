@@ -34,14 +34,18 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         times_d = [0, np.nan, 4, 1, 3, 3]
         dose = [3.4, np.nan, 0.5, 0.5, np.nan, np.nan]
         duration = [0.01, np.nan, 0.31, np.nan, 0.5, np.nan]
+        ids_cov = [0, 1, 2]
+        times_cov = [np.nan, 1, np.nan]
+        age = [10, 14, 12]
         cls.data = pd.DataFrame({
-            'ID': ids_v + ids_c + ids_d,
-            'Time': times_v + times_c + times_d,
-            'Biomarker':
-                ['Tumour volume']*8 + ['IL 6']*4 + [np.nan]*6,
-            'Measurement': volumes + cytokines + [np.nan]*6,
-            'Dose': [np.nan]*12 + dose,
-            'Duration': [np.nan]*12 + duration})
+            'ID': ids_v + ids_c + ids_d + ids_cov,
+            'Time': times_v + times_c + times_d + times_cov,
+            'Observable':
+                ['Tumour volume'] * 8 + ['IL 6'] * 4 + [np.nan] * 6 +
+                ['Age'] * 3,
+            'Value': volumes + cytokines + [np.nan] * 6 + age,
+            'Dose': [np.nan] * 12 + dose + [np.nan] * 3,
+            'Duration': [np.nan] * 12 + duration + [np.nan] * 3})
 
         # Test case I: create PD modelling problem
         lib = ModelLibrary()
@@ -162,7 +166,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
                 chi.LogNormalModel()])
         problem.set_data(
             self.data,
-            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+            output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
 
         n_ids = 3
         self.assertEqual(problem.get_n_parameters(), 2 * n_ids + 1 + 2)
@@ -291,7 +295,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Data has been set, but duration is ignored
         problem.set_data(
             self.data,
-            output_biomarker_dict={
+            output_observable_dict={
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'},
             dose_duration_key=None)
@@ -301,7 +305,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Data has been set with duration information
         problem.set_data(
             self.data,
-            output_biomarker_dict={
+            output_observable_dict={
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'})
         regimens = problem.get_dosing_regimens()
@@ -319,7 +323,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Set data which does not provide measurements for all IDs
         problem.set_data(
             self.data,
-            output_biomarker_dict={'myokit.tumour_volume': 'IL 6'})
+            output_observable_dict={'myokit.tumour_volume': 'IL 6'})
         problem.set_log_prior([
             pints.HalfCauchyLogPrior(0, 1)]*7)
 
@@ -335,7 +339,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Set data that has measurements for all IDs
         problem.set_data(
             self.data,
-            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+            output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
         problem.set_log_prior([
             pints.HalfCauchyLogPrior(0, 1)]*7)
 
@@ -384,24 +388,29 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(posterior.get_id(), 'ID 1')
 
         # Set a population model
+        # TODO:
+        cov_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1)
+        )
         pop_models = [
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            chi.LogNormalModel()]
+            cov_pop_model]
         problem.set_population_model(pop_models)
         problem.set_log_prior([
-            pints.HalfCauchyLogPrior(0, 1)]*8)
+            pints.HalfCauchyLogPrior(0, 1)]*9)
         posterior = problem.get_log_posterior()
 
         self.assertIsInstance(posterior, chi.HierarchicalLogPosterior)
-        self.assertEqual(posterior.n_parameters(), 11)
+        self.assertEqual(posterior.n_parameters(), 12)
 
         names = posterior.get_parameter_names()
         ids = posterior.get_id()
-        self.assertEqual(len(names), 11)
-        self.assertEqual(len(ids), 11)
+        self.assertEqual(len(names), 12)
+        self.assertEqual(len(ids), 12)
 
         self.assertEqual(names[0], 'Pooled myokit.tumour_volume')
         self.assertIsNone(ids[0])
@@ -467,7 +476,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # No log-prior has been set
         problem.set_data(
             self.data,
-            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+            output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
 
         with self.assertRaisesRegex(ValueError, 'The log-prior has not'):
             problem.get_log_posterior()
@@ -519,7 +528,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case I.3: Set data
         problem.set_data(
             self.data,
-            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+            output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
         n_parameters = problem.get_n_parameters()
         self.assertEqual(n_parameters, 17)
 
@@ -574,7 +583,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case II.3: Set data
         problem.set_data(
             self.data,
-            output_biomarker_dict={
+            output_observable_dict={
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'})
         n_parameters = problem.get_n_parameters()
@@ -627,13 +636,15 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[6], 'Sigma rel.')
 
         # Test case I.2: Population model
+        cov_population_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.CentredLogNormalModel())
         pop_models = [
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            chi.LogNormalModel(),
+            cov_population_model,
             chi.LogNormalModel()]
         problem.set_population_model(pop_models)
         param_names = problem.get_parameter_names()
@@ -673,7 +684,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case I.3: Set data
         problem.set_data(
             self.data,
-            output_biomarker_dict={'myokit.tumour_volume': 'Tumour volume'})
+            output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
         param_names = problem.get_parameter_names()
         self.assertEqual(len(param_names), 17)
         self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
@@ -683,9 +694,9 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
         self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[7], 'ID 0: Sigma base')
-        self.assertEqual(param_names[8], 'ID 1: Sigma base')
-        self.assertEqual(param_names[9], 'ID 2: Sigma base')
+        self.assertEqual(param_names[7], 'ID 0: Sigma base Eta')
+        self.assertEqual(param_names[8], 'ID 1: Sigma base Eta')
+        self.assertEqual(param_names[9], 'ID 2: Sigma base Eta')
         self.assertEqual(param_names[10], 'Mean log Sigma base')
         self.assertEqual(param_names[11], 'Std. log Sigma base')
         self.assertEqual(param_names[12], 'ID 0: Sigma rel.')
@@ -848,7 +859,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case II.3: Set data
         problem.set_data(
             self.data,
-            output_biomarker_dict={
+            output_observable_dict={
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'})
         param_names = problem.get_parameter_names()
@@ -943,13 +954,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             chi.LogNormalModel()])
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(
-            predictive_model, chi.PredictivePopulationModel)
+            predictive_model, chi.PopulationPredictiveModel)
 
         # Exclude population model
         predictive_model = problem.get_predictive_model(
             exclude_pop_model=True)
         self.assertNotIsInstance(
-            predictive_model, chi.PredictivePopulationModel)
+            predictive_model, chi.PopulationPredictiveModel)
         self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Test case II: PKPD model
@@ -979,20 +990,20 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             chi.PooledModel()])
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(
-            predictive_model, chi.PredictivePopulationModel)
+            predictive_model, chi.PopulationPredictiveModel)
 
         # Exclude population model
         predictive_model = problem.get_predictive_model(
             exclude_pop_model=True)
         self.assertNotIsInstance(
-            predictive_model, chi.PredictivePopulationModel)
+            predictive_model, chi.PopulationPredictiveModel)
         self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
     def test_set_data(self):
         # Set data with explicit output-biomarker map
         problem = copy.deepcopy(self.pd_problem)
-        output_biomarker_dict = {'myokit.tumour_volume': 'Tumour volume'}
-        problem.set_data(self.data, output_biomarker_dict)
+        output_observable_dict = {'myokit.tumour_volume': 'Tumour volume'}
+        problem.set_data(self.data, output_observable_dict)
 
         # Set data with implicit output-biomarker map
         mask = self.data['Biomarker'] == 'Tumour volume'
@@ -1035,15 +1046,15 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             self.pkpd_problem.set_data(data)
 
         # The output-biomarker map does not contain a model output
-        output_biomarker_dict = {'some ouput': 'some biomarker'}
+        output_observable_dict = {'some ouput': 'some biomarker'}
         with self.assertRaisesRegex(ValueError, 'The output <central.drug'):
-            self.pkpd_problem.set_data(self.data, output_biomarker_dict)
+            self.pkpd_problem.set_data(self.data, output_observable_dict)
 
         # The output-biomarker map references a biomarker that is not in the
         # dataframe
-        output_biomarker_dict = {'myokit.tumour_volume': 'some biomarker'}
+        output_observable_dict = {'myokit.tumour_volume': 'some biomarker'}
         with self.assertRaisesRegex(ValueError, 'The biomarker <some'):
-            self.pd_problem.set_data(self.data, output_biomarker_dict)
+            self.pd_problem.set_data(self.data, output_observable_dict)
 
         # The model outputs and dataframe biomarker cannot be trivially mapped
         with self.assertRaisesRegex(ValueError, 'The biomarker <central.'):
@@ -1169,11 +1180,49 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[11], 'Pooled Sigma base')
         self.assertEqual(param_names[12], 'Pooled Sigma rel.')
 
+        # Test case I.3: With covariates
+        cov_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1)
+        )
+        cov_pop_model.set_covariate_names(['Age'], True)
+        pop_models = [
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            cov_pop_model,
+            chi.PooledModel(),
+            chi.LogNormalModel()]
+        problem.set_population_model(pop_models)
+
+        self.assertEqual(problem.get_n_parameters(), 18)
+        param_names = problem.get_parameter_names()
+        self.assertEqual(len(param_names), 18)
+        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
+        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
+        self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
+        self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
+        self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
+        self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
+        self.assertEqual(param_names[6], 'ID 0: myokit.lambda_1 Eta')
+        self.assertEqual(param_names[7], 'ID 1: myokit.lambda_1 Eta')
+        self.assertEqual(param_names[8], 'ID 2: myokit.lambda_1 Eta')
+        self.assertEqual(param_names[9], 'Base mean log myokit.lambda_1')
+        self.assertEqual(param_names[10], 'Std. log myokit.lambda_1')
+        self.assertEqual(param_names[11], 'Shift Age myokit.lambda_1')
+        self.assertEqual(param_names[12], 'Pooled Sigma base')
+        self.assertEqual(param_names[13], 'ID 0: Sigma rel.')
+        self.assertEqual(param_names[14], 'ID 1: Sigma rel.')
+        self.assertEqual(param_names[15], 'ID 2: Sigma rel.')
+        self.assertEqual(param_names[16], 'Mean log Sigma rel.')
+        self.assertEqual(param_names[17], 'Std. log Sigma rel.')
+
         # Test case II: PKPD model
         problem = copy.deepcopy(self.pkpd_problem)
         problem.set_data(
             self.data,
-            output_biomarker_dict={
+            output_observable_dict={
                 'central.drug_concentration': 'IL 6',
                 'myokit.tumour_volume': 'Tumour volume'})
         pop_models = [
@@ -1257,6 +1306,21 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         parameter_names = ['wrong names'] * 7
         with self.assertRaisesRegex(ValueError, 'The parameter names'):
             self.pd_problem.set_population_model(pop_models, parameter_names)
+
+        # User is warned that data is reset as a result of unclear covariate
+        # mapping
+        self.pd_problem.set_data(
+            self.data,
+            output_observable_dict={
+                'central.drug_concentration': 'IL 6',
+                'myokit.tumour_volume': 'Tumour volume'})
+        cov_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1)
+        )
+        pop_models = [cov_pop_model] * 7
+        with self.assertWarns(UserWarning):
+            self.pd_problem.set_population_model(pop_models)
 
 
 class TestInverseProblem(unittest.TestCase):

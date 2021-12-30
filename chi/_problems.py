@@ -10,6 +10,7 @@
 #
 
 import copy
+from warnings import warn
 
 import myokit
 import numpy as np
@@ -197,6 +198,7 @@ class ProblemModellingController(object):
         self._population_models = None
         self._log_prior = None
         self._data = None
+        self._covariates = None
         self._dosing_regimens = None
 
         # Set parameter names and number of parameters
@@ -204,20 +206,108 @@ class ProblemModellingController(object):
         self._n_parameters, self._parameter_names = \
             self._get_number_and_parameter_names()
 
+    def _check_covariate_dict(
+            self, covariate_dict, covariate_names, observables):
+        """
+        Makes sure that the mechanistic model outputs are correctly mapped to
+        the observables in the dataframe.
+        """
+        # Check that model needs covariates
+        if covariate_names is None:
+            return None
+
+        # If no mapping is provided, construct default mapping
+        if covariate_dict is None:
+            # Assume trivial map
+            covariate_dict = {cov: cov for cov in covariate_names}
+
+        # Check that covariate name map is valid
+        for cov in covariate_names:
+            if cov not in list(covariate_dict.keys()):
+                raise ValueError(
+                    'The covariate <' + str(cov) + '> could not be identified '
+                    'in the covariate name map.')
+
+            mapped_name = covariate_dict[cov]
+            if mapped_name not in observables:
+                raise ValueError(
+                    'The covariate <' + str(mapped_name) + '> could not be '
+                    'identified in the dataframe.')
+
+        return covariate_dict
+
+    def _check_covariate_values(self, covariate_names):
+        """
+        Makes sure that covariates can be reshaped in to an array of shape
+        (n, c).
+
+        In other words, checks whether for each covariate_name there exists
+        exactly one non-NaN value for each ID.
+        """
+        # Check that model needs covariates
+        if covariate_names is None:
+            return None
+
+        for name in covariate_names:
+            # Mask covariate values
+            mask = self._data[self._obs_key] == self._covariate_dict[name]
+            temp = self._data[mask]
+
+            for _id in self._ids:
+                # Mask values for individual
+                mask = self._data[self._id_key] == _id
+                temp2 = temp[mask].dropna()
+
+                if len(temp2) != 1:
+                    raise ValueError(
+                        'The ID %s does not have exactly one value for ' % _id
+                        + 'covariate %s' % self._covariate_dict[name]
+                    )
+
+    def _check_output_observable_dict(
+            self, output_observable_dict, outputs, observables):
+        """
+        Makes sure that the mechanistic model outputs are correctly mapped to
+        the observables in the dataframe.
+        """
+        if output_observable_dict is None:
+            if (len(outputs) == 1) and (len(observables) == 1):
+                # Create map of single output to single observable
+                output_observable_dict = {outputs[0]: observables[0]}
+            else:
+                # Assume trivial map
+                output_observable_dict = {output: output for output in outputs}
+
+        # Check that output-observable map is valid
+        for output in outputs:
+            if output not in list(output_observable_dict.keys()):
+                raise ValueError(
+                    'The output <' + str(output) + '> could not be identified '
+                    'in the output-observable map.')
+
+            observable = output_observable_dict[output]
+            if observable not in observables:
+                raise ValueError(
+                    'The observable <' + str(observable) + '> could not be '
+                    'identified in the dataframe.')
+
+        return output_observable_dict
+
     def _clean_data(self, dose_key, dose_duration_key):
         """
         Makes sure that the data is formated properly.
 
         1. ids are strings
         2. time are numerics or NaN
-        3. biomarkers are strings
-        4. measurements are numerics or NaN
-        5. dose are numerics or NaN
-        6. duration are numerics or NaN
+        3. observables are strings
+        4. values are numerics or NaN
+        5. observable types are 'Modelled' or 'Covariate'
+        6. dose are numerics or NaN
+        7. duration are numerics or NaN
         """
         # Create container for data
         columns = [
-            self._id_key, self._time_key, self._biom_key, self._meas_key]
+            self._id_key, self._time_key, self._obs_key, self._value_key]
         if dose_key is not None:
             columns += [dose_key]
         if dose_duration_key is not None:
@@ -231,12 +321,12 @@ class ProblemModellingController(object):
         # Convert times to numerics
         data[self._time_key] = pd.to_numeric(self._data[self._time_key])
 
-        # Convert biomarkers to strings
-        data[self._biom_key] = self._data[self._biom_key].astype(
+        # Convert observables to strings
+        data[self._obs_key] = self._data[self._obs_key].astype(
             "string")
 
-        # Convert measurements to numerics
-        data[self._meas_key] = pd.to_numeric(self._data[self._meas_key])
+        # Convert values to numerics
+        data[self._value_key] = pd.to_numeric(self._data[self._value_key])
 
         # Convert dose to numerics
         if dose_key is not None:
@@ -249,6 +339,25 @@ class ProblemModellingController(object):
                 self._data[dose_duration_key])
 
         self._data = data
+
+    def _create_hierarchical_log_likelihood(self, log_likelihoods):
+        """
+        Returns an instance of a chi.HierarchicalLoglikelihood based on
+        the provided list of log-likelihoods and the population models.
+        """
+        # Get covariates from the dataset if any are needed
+        covariate_names = self.get_covariate_names(unique=False)
+        covariates = None
+        covariate_map = None
+        if covariate_names is not None:
+            covariates, covariate_map = self._extract_covariates(
+                covariate_names)
+
+        log_likelihood = chi.HierarchicalLogLikelihood(
+                log_likelihoods, self._population_models, covariates,
+                covariate_map)
+
+        return log_likelihood
 
     def _create_log_likelihoods(self, individual):
         """
@@ -289,22 +398,22 @@ class ProblemModellingController(object):
         observations = []
         mask = self._data[self._id_key] == individual
         data = self._data[mask][
-            [self._time_key, self._biom_key, self._meas_key]]
+            [self._time_key, self._obs_key, self._value_key]]
         for output in self._mechanistic_model.outputs():
-            # Mask data for biomarker
-            biomarker = self._output_biomarker_dict[output]
-            mask = data[self._biom_key] == biomarker
+            # Mask data for observable
+            observable = self._output_observable_dict[output]
+            mask = data[self._obs_key] == observable
             temp_df = data[mask]
 
             # Filter times and observations for non-NaN entries
-            mask = temp_df[self._meas_key].notnull()
-            temp_df = temp_df[[self._time_key, self._meas_key]][mask]
+            mask = temp_df[self._value_key].notnull()
+            temp_df = temp_df[[self._time_key, self._value_key]][mask]
             mask = temp_df[self._time_key].notnull()
             temp_df = temp_df[mask]
 
             # Collect data for output
             times.append(temp_df[self._time_key].to_numpy())
-            observations.append(temp_df[self._meas_key].to_numpy())
+            observations.append(temp_df[self._value_key].to_numpy())
 
         # Count outputs that were measured
         # TODO: copy mechanistic model and update model outputs.
@@ -324,6 +433,46 @@ class ProblemModellingController(object):
         log_likelihood.set_id(individual)
 
         return log_likelihood
+
+    def _extract_covariates(self, covariate_names):
+        """
+        Extracts covariates from the pandas.DataFrame and formats them
+        as a np.ndarray of shape (n, c).
+
+        The covariates are assigned to the covariate population models by a
+        nested list of indices.
+
+        Arguments:
+            covariate names: Nested list of population model covariate names.
+        """
+        # Format covariates to array of shape (n, c)
+        unique_names = np.unique(self._covariate_dict.values())
+        c = len(unique_names)
+        n = len(self._ids)
+        covariates = np.empty(shape=(n, c))
+        for idc, name in enumerate(unique_names):
+            mask = self._data[self._obs_key] == name
+            temp = self._data[mask]
+            for idn in self._ids:
+                mask = temp[self._id_key] == idn
+                covariates[idn, idc] = \
+                    self._data[mask, self._value_key].dropna().values()
+
+        # Get covariate map
+        covariate_map = []
+        for cov_names in covariate_names:
+            if cov_names is None:
+                # Population model needs no covariates
+                continue
+
+            # Find indices of relevant covariates
+            indices = []
+            for name in cov_names:
+                indices.append(
+                    np.where(unique_names == self._covariate_dict[name])[0][0])
+            covariate_map.append(indices)
+
+        return covariates, covariate_map
 
     def _extract_dosing_regimens(self, dose_key, duration_key):
         """
@@ -414,6 +563,12 @@ class ProblemModellingController(object):
                 # If individual parameters are relevant for the hierarchical
                 # model, append them
                 names = ['ID %s: %s' % (n, name) for n in self._ids]
+
+                # Mark individual parameters as fluctuations `Eta`, if
+                # covariate population model is used.
+                if isinstance(pop_model, chi.CovariatePopulationModel):
+                    names = [name + ' Eta' for name in names]
+
                 pop_parameter_names += names
 
             # Add population-level parameters
@@ -612,18 +767,19 @@ class ProblemModellingController(object):
 
     def get_log_posterior(self, individual=None):
         r"""
-        Returns the :class:`LogPosterior` defined by the observed biomarkers,
+        Returns the :class:`LogPosterior` defined by the measurements of the
+        modelled observables,
         the administered dosing regimen, the mechanistic model, the error
-        model, the log-prior, and optionally the population model and the
-        fixed model parameters.
+        model, the log-prior, and optionally the population model, covariates
+        and the fixed model parameters.
 
         If measurements of multiple individuals exist in the dataset, the
         indiviudals ID can be passed to return the log-posterior associated
         to that individual. If no ID is selected and no population model
-        has been set, a list of log-posteriors is returned correspodning to
+        has been set, a list of log-posteriors is returned corresponding to
         each of the individuals.
 
-        This method raises an error if the data or the log-prior has not been
+        This method raises an error if the data or the log-prior have not been
         set. See :meth:`set_data` and :meth:`set_log_prior`.
 
         .. note::
@@ -652,8 +808,8 @@ class ProblemModellingController(object):
         log_likelihoods = self._create_log_likelihoods(_id)
         if self._population_models is not None:
             # Compose HierarchicalLogLikelihoods
-            log_likelihoods = [chi.HierarchicalLogLikelihood(
-                log_likelihoods, self._population_models)]
+            log_likelihoods = [
+                self._create_hierarchical_log_likelihood(log_likelihoods)]
 
         # Compose the log-posteriors
         log_posteriors = []
@@ -707,6 +863,44 @@ class ProblemModellingController(object):
 
         return self._n_parameters
 
+    def get_covariate_names(self, unique=True):
+        """
+        Returns the names of the covariates.
+
+        If no covariates exist in the model, `None` is returned.
+
+        :param unique: Boolean flag indicating whether only the unique
+            covariate names should be returned, or whether a nested list
+            with the covariate names of each population model should be
+            returned.
+        :type unique: bool, optional
+        """
+        if self._population_models is None:
+            return None
+
+        covariate_names = []
+        for pop_model in self._population_models:
+            if isinstance(pop_model, chi.CovariatePopulationModel):
+                covariate_names.append(pop_model.get_covariate_names())
+            else:
+                covariate_names.append([])
+
+        if unique is False:
+            return covariate_names
+
+        # Remove duplicate names (models can use the same covariates)
+        unique_names = []
+        for model_names in covariate_names:
+            for name in model_names:
+                if name not in unique_names:
+                    unique_names.append(name)
+
+        # Return None, if no covariates exist
+        if len(unique_names) == 0:
+            return None
+
+        return unique_names
+
     def get_parameter_names(
             self, exclude_pop_model=False, exclude_bottom_level=False):
         """
@@ -756,50 +950,58 @@ class ProblemModellingController(object):
             return predictive_model
 
         # Create predictive population model
-        predictive_model = chi.PredictivePopulationModel(
+        predictive_model = chi.PopulationPredictiveModel(
             predictive_model, self._population_models)
 
         return predictive_model
 
     def set_data(
-            self, data, output_biomarker_dict=None, id_key='ID',
-            time_key='Time', biom_key='Biomarker', meas_key='Measurement',
-            dose_key='Dose', dose_duration_key='Duration'):
+            self, data, output_observable_dict=None, covariate_dict=None,
+            id_key='ID', time_key='Time', obs_key='Observable',
+            value_key='Value', dose_key='Dose', dose_duration_key='Duration'):
         """
         Sets the data of the modelling problem.
 
         The data contains information about the measurement time points, the
-        observed biomarker values, the type of biomarkers, IDs to
+        measured values of the observables, the observable name, IDs to
         identify the corresponding individuals, and optionally information
         on the administered dose amount and duration.
 
         The data is expected to be in form of a :class:`pandas.DataFrame`
-        with the columns ID | Time | Biomarker | Measurement | Dose |
-        Duration.
+        with the columns ID | Time | Observable | Value | Dose | Duration.
 
-        If no dose or duration information exists, the corresponding column
+        If no information exists, the corresponding column
         keys can be set to ``None``.
 
-        :param data: A dataframe with an ID, time, biomarker,
-            measurement and optionally a dose and duration column.
+        .. note::
+            Time-dependent covariates are currently not supported. Thus, the
+            Time column of observables that are used as covariates is ignored.
+
+        :param data: A dataframe with an ID, time, observable,
+            value and optionally an observable type, dose and duration column.
         :type data: pandas.DataFrame
-        :param output_biomarker_dict: A dictionary with mechanistic model
-            output names as keys and dataframe biomarker names as values. If
-            ``None`` the model outputs and biomarkers are assumed to have the
+        :param output_observable_dict: A dictionary with mechanistic model
+            output names as keys and dataframe observable names as values. If
+            ``None`` the model outputs and observables are assumed to have the
             same names.
-        :type output_biomarker_dict: dict, optional
+        :type output_observable_dict: dict, optional
+        :param covariate_dict: A dictionary with population model covariate
+            names as keys and dataframe covariates as values. If
+            ``None`` the model and dataframe covariates are assumed to have the
+            same names.
+        :type covariate_dict: dict, optional
         :param id_key: The key of the ID column in the
             :class:`pandas.DataFrame`. Default is `'ID'`.
         :type id_key: str, optional
         :param time_key: The key of the time column in the
             :class:`pandas.DataFrame`. Default is `'ID'`.
         :type time_key: str, optional
-        :param biom_key: The key of the biomarker column in the
-            :class:`pandas.DataFrame`. Default is `'Biomarker'`.
-        :type biom_key: str, optional
-        :param meas_key: The key of the measurement column in the
-            :class:`pandas.DataFrame`. Default is `'Measurement'`.
-        :type meas_key: str, optional
+        :param obs_key: The key of the observable column in the
+            :class:`pandas.DataFrame`. Default is `'Observable'`.
+        :type obs_key: str, optional
+        :param value_key: The key of the value column in the
+            :class:`pandas.DataFrame`. Default is `'Value'`.
+        :type value_key: str, optional
         :param dose_key: The key of the dose column in the
             :class:`pandas.DataFrame`. Default is `'Dose'`.
         :type dose_key: str, optional
@@ -820,7 +1022,7 @@ class ProblemModellingController(object):
             dose_key = None
             dose_duration_key = None
 
-        keys = [id_key, time_key, biom_key, meas_key]
+        keys = [id_key, time_key, obs_key, value_key]
         if dose_key is not None:
             keys += [dose_key]
         if dose_duration_key is not None:
@@ -831,34 +1033,22 @@ class ProblemModellingController(object):
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Get default output-biomarker map
+        # Check output observable map
         outputs = self._mechanistic_model.outputs()
-        biomarkers = data[biom_key].dropna().unique()
-        if output_biomarker_dict is None:
-            if (len(outputs) == 1) and (len(biomarkers) == 1):
-                # Create map of single output to single biomarker
-                output_biomarker_dict = {outputs[0]: biomarkers[0]}
-            else:
-                # Assume trivial map
-                output_biomarker_dict = {output: output for output in outputs}
+        observables = data[obs_key].dropna().unique()
+        output_observable_dict = self._check_output_observable_dict(
+            output_observable_dict, outputs, observables)
 
-        # Check that output-biomarker map is valid
-        for output in outputs:
-            if output not in list(output_biomarker_dict.keys()):
-                raise ValueError(
-                    'The output <' + str(output) + '> could not be identified '
-                    'in the output-biomarker map.')
+        # Check covariate name map
+        covariate_names = self.get_covariate_names()
+        covariate_dict = self._check_covariate_dict(
+            covariate_dict, covariate_names, observables)
 
-            biomarker = output_biomarker_dict[output]
-            if biomarker not in biomarkers:
-                raise ValueError(
-                    'The biomarker <' + str(biomarker) + '> could not be '
-                    'identified in the dataframe.')
-
-        self._id_key, self._time_key, self._biom_key, self._meas_key = [
-            id_key, time_key, biom_key, meas_key]
+        self._id_key, self._time_key, self._obs_key, self._value_key = [
+            id_key, time_key, obs_key, value_key]
         self._data = data[keys]
-        self._output_biomarker_dict = output_biomarker_dict
+        self._output_observable_dict = output_observable_dict
+        self._covariate_dict = covariate_dict
 
         # Make sure data is formatted correctly
         self._clean_data(dose_key, dose_duration_key)
@@ -869,6 +1059,9 @@ class ProblemModellingController(object):
         if dose_key is not None:
             self._dosing_regimens = self._extract_dosing_regimens(
                 dose_key, dose_duration_key)
+
+        # Check that covariates can be reshaped into (n, c)
+        self._check_covariate_values(covariate_names)
 
         # Update number and names of parameters
         self._n_parameters, self._parameter_names = \
@@ -1012,6 +1205,25 @@ class ProblemModellingController(object):
         self._set_population_model_parameter_names()
         self._n_parameters, self._parameter_names = \
             self._get_number_and_parameter_names()
+
+        # Check that covariates can be found, if data has already been set
+        if self._data is not None:
+            try:
+                # Get covariate names
+                covariate_names = self.get_covariate_names()
+                observables = self._data[self._obs_key].dropna().unique()
+                self._covariate_dict = self._check_covariate_dict(
+                    self._covariate_dict, covariate_names, observables)
+            except ValueError:
+                # New population model and data are not compatible, so reset
+                # data
+                self._data = None
+                warn(
+                    'The covariates of the new population model could not '
+                    'automatically matched to the observables in the dataset. '
+                    'The data was therefore reset. Please set the data again '
+                    'with the `set_data` method and specify the covariate '
+                    'mapping.', UserWarning)
 
         # Set prior to default
         self._log_prior = None
