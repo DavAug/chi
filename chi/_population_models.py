@@ -433,18 +433,19 @@ class CovariatePopulationModel(PopulationModel):
 
         return psi
 
-    def set_covariate_names(self, names=None):
+    def set_covariate_names(self, names=None, update_param_names=False):
         """
         Sets the names of the covariates.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_covariates`. If ``None``, covariate names are reset to
-            defaults.
+        :param names: A list of parameter names. If ``None``, covariate names
+            are reset to defaults.
+        :type names: List
+        :param update_param_names: Boolean flag indicating whether parameter
+            names should be updated according to new covariate names. By
+            default parameter names are not updated.
+        :type update_param_names: bool, optional
         """
-        self._covariate_model.set_covariate_names(names)
+        self._covariate_model.set_covariate_names(names, update_param_names)
 
     def set_parameter_names(self, names=None):
         """
