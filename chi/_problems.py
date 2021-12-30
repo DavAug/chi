@@ -255,13 +255,16 @@ class ProblemModellingController(object):
 
             for _id in self._ids:
                 # Mask values for individual
-                mask = self._data[self._id_key] == _id
+                mask = temp[self._id_key] == _id
                 temp2 = temp[mask].dropna()
 
                 if len(temp2) != 1:
+                    covariate = self._covariate_dict[name]
                     raise ValueError(
-                        'The ID %s does not have exactly one value for ' % _id
-                        + 'covariate %s' % self._covariate_dict[name]
+                        'There are either 0 or more than 1 value for the '
+                        'covariate %s for ID %s '
+                        'provided. Exactly one covariate value '
+                        'has to be provided for each ID.' % (covariate, _id)
                     )
 
     def _check_output_observable_dict(

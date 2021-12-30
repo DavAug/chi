@@ -1009,6 +1009,17 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         mask = self.data['Biomarker'] == 'Tumour volume'
         problem.set_data(self.data[mask])
 
+        # Set data with explicit covariate mapping
+        cov_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1)
+        )
+        cov_pop_model.set_covariate_names(['Sex'], True)
+        pop_models = [cov_pop_model] * 7
+        problem.set_population_model(pop_models)
+        covariate_dict = {'Sex': 'Age'}
+        problem.set_data(self.data, output_observable_dict, covariate_dict)
+
     def test_set_data_bad_input(self):
         # Data has the wrong type
         data = 'Wrong type'
@@ -1025,13 +1036,13 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Data does not have the'):
             self.pkpd_problem.set_data(data)
 
-        # Data has the wrong biomarker key
-        data = self.data.rename(columns={'Biomarker': 'Some key'})
+        # Data has the wrong observable key
+        data = self.data.rename(columns={'Observable': 'Some key'})
         with self.assertRaisesRegex(ValueError, 'Data does not have the'):
             self.pkpd_problem.set_data(data)
 
-        # Data has the wrong measurement key
-        data = self.data.rename(columns={'Measurement': 'Some key'})
+        # Data has the wrong value key
+        data = self.data.rename(columns={'Value': 'Some key'})
         with self.assertRaisesRegex(ValueError, 'Data does not have the'):
             self.pkpd_problem.set_data(data)
 
@@ -1045,20 +1056,72 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Data does not have the'):
             self.pkpd_problem.set_data(data)
 
-        # The output-biomarker map does not contain a model output
-        output_observable_dict = {'some ouput': 'some biomarker'}
+        # The output-observable map does not contain a model output
+        output_observable_dict = {'some output': 'some observable'}
         with self.assertRaisesRegex(ValueError, 'The output <central.drug'):
             self.pkpd_problem.set_data(self.data, output_observable_dict)
 
-        # The output-biomarker map references a biomarker that is not in the
+        # The output-observable map references a observable that is not in the
         # dataframe
-        output_observable_dict = {'myokit.tumour_volume': 'some biomarker'}
-        with self.assertRaisesRegex(ValueError, 'The biomarker <some'):
+        output_observable_dict = {'myokit.tumour_volume': 'some observable'}
+        with self.assertRaisesRegex(ValueError, 'The observable <some'):
             self.pd_problem.set_data(self.data, output_observable_dict)
 
-        # The model outputs and dataframe biomarker cannot be trivially mapped
-        with self.assertRaisesRegex(ValueError, 'The biomarker <central.'):
+        # The model outputs and dataframe observable cannot be trivially mapped
+        with self.assertRaisesRegex(ValueError, 'The observable <central.'):
             self.pkpd_problem.set_data(self.data)
+
+        # Covariate map does not contain all model covariates
+        problem = copy.deepcopy(self.pd_problem)
+        cov_pop_model1 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1)
+        )
+        cov_pop_model1.set_covariate_names(['Age'], True)
+        cov_pop_model2 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1)
+        )
+        cov_pop_model2.set_covariate_names(['Sex'], True)
+        pop_models = [cov_pop_model1] * 4 + [cov_pop_model2] * 3
+        problem.set_population_model(pop_models)
+        output_observable_dict = {'myokit.tumour_volume': 'Tumour volume'}
+        covariate_dict = {'Age': 'Age', 'Something': 'else'}
+        with self.assertRaisesRegex(ValueError, 'The covariate <Sex> could'):
+            problem.set_data(
+                self.data,
+                output_observable_dict=output_observable_dict,
+                covariate_dict=covariate_dict)
+
+        # Covariate dict maps to covariate that is not in the dataframe
+        covariate_dict = {'Age': 'Age', 'Sex': 'Does not exist'}
+        with self.assertRaisesRegex(ValueError, 'The covariate <Does not ex'):
+            problem.set_data(
+                self.data,
+                output_observable_dict=output_observable_dict,
+                covariate_dict=covariate_dict)
+
+        # There are no covariate values provided for an ID
+        data = self.data.copy()
+        mask = (data.ID == 1) | data.Observable == 'Age'
+        data[mask].Value = np.nan
+        pop_models = [cov_pop_model1] * 7
+        problem.set_population_model(pop_models)
+        with self.assertRaisesRegex(ValueError, 'There are either 0 or more'):
+            problem.set_data(
+                self.data,
+                output_observable_dict=output_observable_dict)
+
+        # There is more than one covariate value provided for an ID
+        data = self.data.copy()
+        mask = (data.ID == 1) | data.Observable == 'Age'
+        data[mask].Value = 30
+        pop_models = [cov_pop_model1] * 7
+        problem.set_population_model(pop_models)
+        with self.assertRaisesRegex(ValueError, 'There are either 0 or more'):
+            problem.set_data(
+                self.data,
+                output_observable_dict=output_observable_dict)
 
     def test_set_log_prior(self):
         # Test case I: PD model
