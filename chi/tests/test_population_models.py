@@ -5,7 +5,6 @@
 # full license details.
 #
 
-from functools import reduce
 import unittest
 
 import numpy as np
