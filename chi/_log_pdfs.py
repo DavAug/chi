@@ -179,7 +179,7 @@ class HierarchicalLogLikelihood(object):
                     'chi.PopulationModel.')
 
         # Check whether covariates are needed
-        covariates_needed, n_covs, cov_model_mask = \
+        covariates_needed, n_covs, uses_eta = \
             self._check_covariates_needed(population_models)
 
         n_ids = len(log_likelihoods)
@@ -190,7 +190,7 @@ class HierarchicalLogLikelihood(object):
         # Remember models and number of individuals
         self._log_likelihoods = log_likelihoods
         self._population_models = population_models
-        self._is_cov_model = cov_model_mask
+        self._uses_eta = uses_eta
         self._covariates = covariates
         self._covariate_map = covariate_map
         self._n_ids = n_ids
@@ -230,7 +230,7 @@ class HierarchicalLogLikelihood(object):
 
             # If CovariatePopulationModel, transform deviations to parameters
             # for log-likelihood evaluation, i.e. eta -> psi.
-            if self._is_cov_model[idp]:
+            if self._uses_eta[idp]:
                 # Get relevant covariates
                 covariates = \
                     self._covariates if (self._covariates is None) \
@@ -341,20 +341,20 @@ class HierarchicalLogLikelihood(object):
         with boolean flags, indicating whether the population model is
         a covariate model.
         """
+        uses_eta = []
         n_covariates = []
-        cov_model_mask = []
         for pop_model in population_models:
-            if isinstance(pop_model, chi.CovariatePopulationModel):
-                cov_model_mask.append(True)
+            is_using_eta = pop_model.transforms_individual_parameters()
+            uses_eta.append(is_using_eta)
+            if is_using_eta:
                 n_covariates.append(pop_model.n_covariates())
             else:
-                cov_model_mask.append(False)
                 n_covariates.append(0)
 
         # Check whether at least covariate is needed
         covariates_needed = np.max(n_covariates) > 0
 
-        return covariates_needed, n_covariates, cov_model_mask
+        return covariates_needed, n_covariates, uses_eta
 
     def _compute_dvartheta(self, sens, dpsidvartheta, likelihood_id):
         """
@@ -372,7 +372,7 @@ class HierarchicalLogLikelihood(object):
         """
         dvartheta = []
         for idp, dpsi in enumerate(sens):
-            if self._is_cov_model[idp]:
+            if self._uses_eta[idp]:
                 dpop = dpsi * dpsidvartheta[idp][:, likelihood_id]
             else:
                 dpop = [0] * self._population_models[idp].n_parameters()
@@ -408,7 +408,7 @@ class HierarchicalLogLikelihood(object):
             end_indiv = start + n_indiv
             end_pop = end_indiv + n_pop
 
-            if not self._is_cov_model[idp]:
+            if not self._uses_eta[idp]:
                 # Add dummy place holder (is filtered later)
                 dpsidvartheta.append(None)
 
@@ -556,7 +556,7 @@ class HierarchicalLogLikelihood(object):
 
             # Add a copy of the parameter name for each individual parameter
             name = indiv_names[param_id]
-            if self._is_cov_model[param_id]:
+            if self._uses_eta[param_id]:
                 parameter_names += [name + ' Eta'] * n_indiv
             else:
                 parameter_names += [name] * n_indiv
@@ -624,7 +624,7 @@ class HierarchicalLogLikelihood(object):
         # TODO: Implement for covariate model
         # TODO: Think again whether this pointwise log-likelihood
         # is really meaningful, e.g. when computing LOO.
-        if np.any(self._is_cov_model):
+        if np.any(self._uses_eta):
             raise NotImplementedError(
                 'This method is not implemented for CovariatePopulationModels.'
             )
@@ -714,7 +714,7 @@ class HierarchicalLogLikelihood(object):
             return ll_score, np.full(shape=len(parameters), fill_value=np.inf)
 
         # If covariate models are used, transform for eta to psi
-        if np.any(self._is_cov_model):
+        if np.any(self._uses_eta):
             parameters, dpsideta, dpsidvartheta = \
                 self._compute_psi_and_sensitivities(parameters)
 
@@ -724,7 +724,7 @@ class HierarchicalLogLikelihood(object):
             score, sens = log_likelihood.evaluateS1(parameters[indices])
             ll_score += score
 
-            if not np.any(self._is_cov_model):
+            if not np.any(self._uses_eta):
                 sensitivities[indices] += sens
             else:
                 # Add dL/dpsi * dpsi/deta

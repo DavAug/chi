@@ -11,7 +11,6 @@ import unittest
 import numpy as np
 import pandas as pd
 import pints
-from xarray.core.common import C
 
 import chi
 from chi.library import ModelLibrary
@@ -1202,24 +1201,24 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # There are no covariate values provided for an ID
         data = self.data.copy()
-        mask = (data.ID == 1) | data.Observable == 'Age'
-        data[mask].Value = np.nan
+        mask = (data.ID == 1) | (data.Observable == 'Age')
+        data.loc[mask, 'Value'] = np.nan
         pop_models = [cov_pop_model1] * 7
         problem.set_population_model(pop_models)
         with self.assertRaisesRegex(ValueError, 'There are either 0 or more'):
             problem.set_data(
-                self.data,
+                data,
                 output_observable_dict=output_observable_dict)
 
         # There is more than one covariate value provided for an ID
         data = self.data.copy()
-        mask = (data.ID == 1) | data.Observable == 'Age'
-        data[mask].Value = 30
+        mask = data.Observable == 'Age'
+        data.loc[mask, 'ID'] = 0
         pop_models = [cov_pop_model1] * 7
         problem.set_population_model(pop_models)
         with self.assertRaisesRegex(ValueError, 'There are either 0 or more'):
             problem.set_data(
-                self.data,
+                data,
                 output_observable_dict=output_observable_dict)
 
     def test_set_log_prior(self):

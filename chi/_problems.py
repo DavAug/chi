@@ -245,7 +245,7 @@ class ProblemModellingController(object):
         exactly one non-NaN value for each ID.
         """
         # Check that model needs covariates
-        if covariate_names is None:
+        if len(covariate_names) == 0:
             return None
 
         for name in covariate_names:
@@ -256,7 +256,7 @@ class ProblemModellingController(object):
             for _id in self._ids:
                 # Mask values for individual
                 mask = temp[self._id_key] == _id
-                temp2 = temp[mask][self._value_key].dropna()
+                temp2 = temp.loc[mask, self._value_key].dropna()
 
                 if len(temp2) != 1:
                     covariate = self._covariate_dict[name]
@@ -459,7 +459,7 @@ class ProblemModellingController(object):
             for idn, _id in enumerate(self._ids):
                 mask = temp[self._id_key] == _id
                 covariates[idn, idc] = \
-                    temp[mask][self._value_key].dropna().values
+                    temp.loc[mask, self._value_key].dropna().values
 
         # Get covariate map
         covariate_map = []
@@ -565,7 +565,7 @@ class ProblemModellingController(object):
 
                 # Mark individual parameters as fluctuations `Eta`, if
                 # covariate population model is used.
-                if isinstance(pop_model, chi.CovariatePopulationModel):
+                if pop_model.transforms_individual_parameters():
                     names = [name + ' Eta' for name in names]
 
                 pop_parameter_names += names
@@ -877,9 +877,11 @@ class ProblemModellingController(object):
 
         covariate_names = []
         for pop_model in self._population_models:
-            if isinstance(pop_model, chi.CovariatePopulationModel):
+            try:
                 covariate_names.append(pop_model.get_covariate_names())
-            else:
+            except AttributeError:
+                # Not all population models use covariates / have
+                # get_covartiate_names method
                 covariate_names.append([])
 
         if unique is False:
