@@ -11,6 +11,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import pints
+from xarray.core.common import C
 
 import chi
 from chi.library import ModelLibrary
@@ -272,6 +273,66 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
             self.pd_problem.fix_parameters(name_value_dict)
 
+    def test_get_covariate_names(self):
+        # Test case I: PD model
+        problem = copy.deepcopy(self.pd_problem)
+
+        # I.1: No population model
+        names = problem.get_covariate_names()
+        self.assertEqual(len(names), 0)
+
+        # I.2: Population model but no covariate population model
+        pop_models = [chi.PooledModel()] * 7
+        problem.set_population_model(pop_models)
+        names = problem.get_covariate_names()
+        self.assertEqual(len(names), 0)
+        names = problem.get_covariate_names(unique=False)
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], [])
+        self.assertEqual(names[1], [])
+        self.assertEqual(names[2], [])
+        self.assertEqual(names[3], [])
+        self.assertEqual(names[3], [])
+        self.assertEqual(names[3], [])
+        self.assertEqual(names[3], [])
+
+        # I.3: With covariate models
+        cov_pop_model1 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2)
+        )
+        cov_pop_model1.set_covariate_names(['Age', 'Sex'])
+        cov_pop_model2 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=3)
+        )
+        cov_pop_model2.set_covariate_names(['SNP', 'Age', 'Height'])
+        pop_models = [
+            chi.PooledModel(),
+            cov_pop_model1,
+            chi.PooledModel(),
+            cov_pop_model2,
+            cov_pop_model1,
+            chi.PooledModel(),
+            chi.PooledModel()
+        ]
+        problem.set_population_model(pop_models)
+        names = problem.get_covariate_names()
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[0], 'Age')
+        self.assertEqual(names[1], 'Sex')
+        self.assertEqual(names[2], 'SNP')
+        self.assertEqual(names[3], 'Height')
+        names = problem.get_covariate_names(unique=False)
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], [])
+        self.assertEqual(names[1], ['Age', 'Sex'])
+        self.assertEqual(names[2], [])
+        self.assertEqual(names[3], ['SNP', 'Age', 'Height'])
+        self.assertEqual(names[4], ['Age', 'Sex'])
+        self.assertEqual(names[5], [])
+        self.assertEqual(names[6], [])
+
     def test_get_dosing_regimens(self):
         # Test case I: PD problem
         problem = copy.deepcopy(self.pd_problem)
@@ -388,11 +449,11 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(posterior.get_id(), 'ID 1')
 
         # Set a population model
-        # TODO:
         cov_pop_model = chi.CovariatePopulationModel(
             chi.GaussianModel(),
             chi.LogNormalLinearCovariateModel(n_covariates=1)
         )
+        cov_pop_model.set_covariate_names(['Age'], True)
         pop_models = [
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -423,29 +484,31 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(names[4], 'Pooled myokit.lambda_1')
         self.assertIsNone(ids[4])
         self.assertEqual(names[5], 'Pooled Sigma base')
-        self.assertIsNone(ids[0])
-        self.assertEqual(names[6], 'Sigma rel.')
+        self.assertIsNone(ids[5])
+        self.assertEqual(names[6], 'Sigma rel. Eta')
         self.assertEqual(ids[6], 'ID 0')
-        self.assertEqual(names[7], 'Sigma rel.')
+        self.assertEqual(names[7], 'Sigma rel. Eta')
         self.assertEqual(ids[7], 'ID 1')
-        self.assertEqual(names[8], 'Sigma rel.')
+        self.assertEqual(names[8], 'Sigma rel. Eta')
         self.assertEqual(ids[8], 'ID 2')
-        self.assertEqual(names[9], 'Mean log Sigma rel.')
+        self.assertEqual(names[9], 'Base mean log Sigma rel.')
         self.assertIsNone(ids[9])
         self.assertEqual(names[10], 'Std. log Sigma rel.')
         self.assertIsNone(ids[10])
+        self.assertEqual(names[11], 'Shift Age Sigma rel.')
+        self.assertIsNone(ids[11])
 
         # Make sure that selecting an individual is ignored for population
         # models
         posterior = problem.get_log_posterior(individual='some individual')
 
         self.assertIsInstance(posterior, chi.HierarchicalLogPosterior)
-        self.assertEqual(posterior.n_parameters(), 11)
+        self.assertEqual(posterior.n_parameters(), 12)
 
         names = posterior.get_parameter_names()
         ids = posterior.get_id()
-        self.assertEqual(len(names), 11)
-        self.assertEqual(len(ids), 11)
+        self.assertEqual(len(names), 12)
+        self.assertEqual(len(ids), 12)
 
         self.assertEqual(names[0], 'Pooled myokit.tumour_volume')
         self.assertIsNone(ids[0])
@@ -458,17 +521,19 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(names[4], 'Pooled myokit.lambda_1')
         self.assertIsNone(ids[4])
         self.assertEqual(names[5], 'Pooled Sigma base')
-        self.assertIsNone(ids[0])
-        self.assertEqual(names[6], 'Sigma rel.')
+        self.assertIsNone(ids[5])
+        self.assertEqual(names[6], 'Sigma rel. Eta')
         self.assertEqual(ids[6], 'ID 0')
-        self.assertEqual(names[7], 'Sigma rel.')
+        self.assertEqual(names[7], 'Sigma rel. Eta')
         self.assertEqual(ids[7], 'ID 1')
-        self.assertEqual(names[8], 'Sigma rel.')
+        self.assertEqual(names[8], 'Sigma rel. Eta')
         self.assertEqual(ids[8], 'ID 2')
-        self.assertEqual(names[9], 'Mean log Sigma rel.')
+        self.assertEqual(names[9], 'Base mean log Sigma rel.')
         self.assertIsNone(ids[9])
         self.assertEqual(names[10], 'Std. log Sigma rel.')
         self.assertIsNone(ids[10])
+        self.assertEqual(names[11], 'Shift Age Sigma rel.')
+        self.assertIsNone(ids[11])
 
     def test_get_log_posteriors_bad_input(self):
         problem = copy.deepcopy(self.pd_problem)

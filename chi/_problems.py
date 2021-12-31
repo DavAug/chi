@@ -213,7 +213,7 @@ class ProblemModellingController(object):
         the observables in the dataframe.
         """
         # Check that model needs covariates
-        if covariate_names is None:
+        if len(covariate_names) == 0:
             return None
 
         # If no mapping is provided, construct default mapping
@@ -449,25 +449,21 @@ class ProblemModellingController(object):
             covariate names: Nested list of population model covariate names.
         """
         # Format covariates to array of shape (n, c)
-        unique_names = np.unique(self._covariate_dict.values())
+        unique_names = np.unique(list(self._covariate_dict.values()))
         c = len(unique_names)
         n = len(self._ids)
         covariates = np.empty(shape=(n, c))
         for idc, name in enumerate(unique_names):
             mask = self._data[self._obs_key] == name
             temp = self._data[mask]
-            for idn in self._ids:
-                mask = temp[self._id_key] == idn
+            for idn, _id in enumerate(self._ids):
+                mask = temp[self._id_key] == _id
                 covariates[idn, idc] = \
-                    self._data[mask, self._value_key].dropna().values()
+                    temp[mask][self._value_key].dropna().values
 
         # Get covariate map
         covariate_map = []
         for cov_names in covariate_names:
-            if cov_names is None:
-                # Population model needs no covariates
-                continue
-
             # Find indices of relevant covariates
             indices = []
             for name in cov_names:
@@ -870,8 +866,6 @@ class ProblemModellingController(object):
         """
         Returns the names of the covariates.
 
-        If no covariates exist in the model, `None` is returned.
-
         :param unique: Boolean flag indicating whether only the unique
             covariate names should be returned, or whether a nested list
             with the covariate names of each population model should be
@@ -879,7 +873,7 @@ class ProblemModellingController(object):
         :type unique: bool, optional
         """
         if self._population_models is None:
-            return None
+            return []
 
         covariate_names = []
         for pop_model in self._population_models:
@@ -897,10 +891,6 @@ class ProblemModellingController(object):
             for name in model_names:
                 if name not in unique_names:
                     unique_names.append(name)
-
-        # Return None, if no covariates exist
-        if len(unique_names) == 0:
-            return None
 
         return unique_names
 
