@@ -349,10 +349,10 @@ class ProblemModellingController(object):
         the provided list of log-likelihoods and the population models.
         """
         # Get covariates from the dataset if any are needed
-        covariate_names = self.get_covariate_names(unique=False)
+        covariate_names = self.get_covariate_names(unique=True)
         covariates = None
         covariate_map = None
-        if covariate_names is not None:
+        if len(covariate_names) > 0:
             covariates, covariate_map = self._extract_covariates(
                 covariate_names)
 
@@ -437,16 +437,13 @@ class ProblemModellingController(object):
 
         return log_likelihood
 
-    def _extract_covariates(self, covariate_names):
+    def _extract_covariates(self):
         """
         Extracts covariates from the pandas.DataFrame and formats them
         as a np.ndarray of shape (n, c).
 
         The covariates are assigned to the covariate population models by a
         nested list of indices.
-
-        Arguments:
-            covariate names: Nested list of population model covariate names.
         """
         # Format covariates to array of shape (n, c)
         unique_names = np.unique(list(self._covariate_dict.values()))
@@ -463,6 +460,7 @@ class ProblemModellingController(object):
 
         # Get covariate map
         covariate_map = []
+        covariate_names = self.get_covariate_names(unique=False)
         for cov_names in covariate_names:
             # Find indices of relevant covariates
             indices = []
