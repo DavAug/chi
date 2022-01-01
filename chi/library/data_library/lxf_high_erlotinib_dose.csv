@@ -1,4 +1,4 @@
-ID,Time,Time unit,Biomarker,Measurement,Biomarker unit,Dose,Dose unit,Duration
+ID,Time,Time unit,Observable,Value,Observable unit,Dose,Dose unit,Duration
 6,0.0,d,Tumour volume,0.06875,cm^3,,,
 6,2.0,d,Tumour volume,0.07542900000000001,cm^3,,,
 6,4.0,d,Tumour volume,0.115351,cm^3,,,

@@ -1,4 +1,4 @@
-ID,Time,Time unit,Biomarker,Measurement,Biomarker unit
+ID,Time,Time unit,Observable,Value,Observable unit
 40,0,d,Tumour volume,0.191808,cm^3
 94,0,d,Tumour volume,0.07724750000000001,cm^3
 95,0,d,Tumour volume,0.1862,cm^3
