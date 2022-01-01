@@ -147,7 +147,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'Pooled myokit.lambda_0': pop_samples,
             'Pooled myokit.lambda_1': pop_samples,
             'Pooled Sigma base': pop_samples,
-            'Sigma rel.': samples,
+            'Sigma rel. eta': samples,
             'Base mean log Sigma rel.': pop_samples,
             'Std. log Sigma rel.': pop_samples})
 
@@ -194,7 +194,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'Pooled myokit.lambda_0': pop_samples,
             'Pooled myokit.lambda_1': pop_samples,
             'Pooled Sigma base': pop_samples,
-            'Sigma rel.': samples,
+            'Sigma rel. eta': samples,
             'Base mean log Sigma rel.': pop_samples,
             'Std. log Sigma rel.': pop_samples,
             'Shift Covariate 1 Sigma rel.': pop_samples,
@@ -514,11 +514,10 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             self.pop_model.sample(times, individual=_id)
 
         # Covariate map does not have length n_population_models
-        # TODO:
         covariates = [1, 2]
         covariate_map = [0, 1]
         with self.assertRaisesRegex(ValueError, "The covariate map has to be"):
-            self.pop_model.sample(
+            self.pop_model2.sample(
                 times, covariates=covariates, covariate_map=covariate_map)
 
 

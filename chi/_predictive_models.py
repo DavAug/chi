@@ -294,6 +294,9 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
         # Sort times
         times = np.sort(times)
 
+        # Instantiate random number generator for sampling from the posterior
+        rng = np.random.default_rng(seed=seed)
+
         # Sort parameters into numpy array for simplified sampling
         n_chains = len(self._posterior.chain)
         n_parameters = self._predictive_model.n_parameters()
@@ -312,8 +315,16 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             except (ValueError, KeyError):
                 # If individual dimension does not exist, the parameter must
                 # be a population parameter.
-                posterior[:, param_id] = self._posterior[
+                samples = self._posterior[
                     parameter].dropna(dim='draw').values.flatten()
+                try:
+                    posterior[:, param_id] = samples
+                except ValueError:
+                    # HeterogenousModel will have n_ids times too many samples
+                    # -> Sample IDs randomly
+                    target = n_chains * n_draws
+                    now = len(samples)
+                    posterior[:, param_id] = samples[rng.choice(now, target)]
 
         # Create container for samples
         container = pd.DataFrame(
@@ -321,9 +332,6 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
 
         # Get model outputs
         outputs = self._predictive_model.get_output_names()
-
-        # Instantiate random number generator for sampling from the posterior
-        rng = np.random.default_rng(seed=seed)
 
         # Draw samples
         sample_ids = np.arange(start=1, stop=n_samples+1)
