@@ -36,7 +36,7 @@ class InverseProblem(object):
         A sequence of single- or multi-valued measurements. Must have shape
         ``(n_times, n_outputs)``, where ``n_times`` is the number of points in
         ``times`` and ``n_outputs`` is the number of outputs in the model. For
-        ``n_outputs = 1``, the data can also have shape ``(n_times, )``.
+        ``n_outputs = 1``, the data can also have shape ``(n_times,)``.
     """
 
     def __init__(self, model, times, values):
@@ -973,7 +973,7 @@ class ProblemModellingController(object):
             Time column of observables that are used as covariates is ignored.
 
         :param data: A dataframe with an ID, time, observable,
-            value and optionally an observable type, dose and duration column.
+            value and optionally a dose and duration column.
         :type data: pandas.DataFrame
         :param output_observable_dict: A dictionary with mechanistic model
             output names as keys and dataframe observable names as values. If
@@ -981,27 +981,27 @@ class ProblemModellingController(object):
             same names.
         :type output_observable_dict: dict, optional
         :param covariate_dict: A dictionary with population model covariate
-            names as keys and dataframe covariates as values. If
-            ``None`` the model and dataframe covariates are assumed to have the
-            same names.
+            names as keys and dataframe observables as values. If
+            ``None`` the model covariates and observables are assumed to have
+            the same names.
         :type covariate_dict: dict, optional
         :param id_key: The key of the ID column in the
-            :class:`pandas.DataFrame`. Default is `'ID'`.
+            :class:`pandas.DataFrame`. Default is ``'ID'``.
         :type id_key: str, optional
         :param time_key: The key of the time column in the
-            :class:`pandas.DataFrame`. Default is `'ID'`.
+            :class:`pandas.DataFrame`. Default is ``'Time'``.
         :type time_key: str, optional
         :param obs_key: The key of the observable column in the
-            :class:`pandas.DataFrame`. Default is `'Observable'`.
+            :class:`pandas.DataFrame`. Default is ``'Observable'``.
         :type obs_key: str, optional
         :param value_key: The key of the value column in the
-            :class:`pandas.DataFrame`. Default is `'Value'`.
+            :class:`pandas.DataFrame`. Default is ``'Value'``.
         :type value_key: str, optional
         :param dose_key: The key of the dose column in the
-            :class:`pandas.DataFrame`. Default is `'Dose'`.
+            :class:`pandas.DataFrame`. Default is ``'Dose'``.
         :type dose_key: str, optional
         :param dose_duration_key: The key of the duration column in the
-            :class:`pandas.DataFrame`. Default is `'Duration'`.
+            :class:`pandas.DataFrame`. Default is ``'Duration'``.
         :type dose_duration_key: str, optional
         """
         # Check input format

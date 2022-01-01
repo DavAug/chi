@@ -114,7 +114,7 @@ class PopulationModel(object):
         Other population models, in particular the
         :class:`CovariatePopulationModel`, transforms the parameters to a
         latent representation
-        :math:`\Psi \rightarrow \Eta = \{\psi _i \} _{i=1}^n`.
+        :math:`\Psi \rightarrow \{\eta _i \} _{i=1}^n`.
         Here, a transformation of the likelihood parameters is modelled and
         ``True`` is returned.
         """
@@ -167,9 +167,9 @@ class CovariatePopulationModel(PopulationModel):
 
     To simplify this dependence, CovariatePopulationModels make the assumption
     that the distribution :math:`\mathbb{P}(\psi | \vartheta, \chi)`
-    deterministically varies with the covariates, such that the problem can be
-    recast in terms of a covariate-independent distribution of inter-individual
-    fluctuations :math:`\eta`
+    deterministically varies with the covariates, such that the distribution
+    can be rewritten in terms of a covariate-independent distribution of
+    inter-individual fluctuations :math:`\eta`
 
     .. math::
         \eta \sim \mathbb{P}(\cdot | \theta)
@@ -181,8 +181,8 @@ class CovariatePopulationModel(PopulationModel):
         \theta = f(\vartheta)  \quad \mathrm{and} \quad
         \psi = g(\vartheta , \eta, \chi ).
 
-    The `population_model` input defines the distribution of :math:`\eta`
-    and `covariate_model` defines the functions :math:`f` and :math:`g`.
+    The ``population_model`` input defines the distribution of :math:`\eta`
+    and the ``covariate_model`` defines the functions :math:`f` and :math:`g`.
 
     Extends :class:`PopulationModel`.
 
@@ -242,7 +242,7 @@ class CovariatePopulationModel(PopulationModel):
         r"""
         Returns the individual parameters :math:`\psi` and their sensitivities
         with respect to the model parameters :math:`\vartheta` and the relevant
-        fluctuation :math:`\eta`.
+        fluctuations :math:`\eta`.
 
         :param parameters: Model parameters :math:`\vartheta`.
         :type parameters: np.ndarray of length (p,)
@@ -250,8 +250,11 @@ class CovariatePopulationModel(PopulationModel):
         :type eta: np.ndarray of length (n,)
         :param covariates: Individual covariates :math:`\chi`.
         :type covariates: np.ndarray of length (n, c)
-        :returns: Individual parameters and sensitivities of shape (1 + p, n).
-        :rtype: Tuple[np.ndarray, np.ndarray]
+        :returns: Individual parameters :math:`\psi` and sensitivities
+            (:math:`\partial _{\eta} \psi` ,
+            :math:`\partial _{\vartheta _1} \psi`, :math:`\ldots`,
+            :math:`\partial _{\vartheta _p} \psi`).
+        :rtype: Tuple[np.ndarray, np.ndarray] of shapes (n,) and (1 + p, n)
         """
         return self._covariate_model.compute_individual_sensitivities(
             parameters, eta, covariates)
@@ -327,7 +330,7 @@ class CovariatePopulationModel(PopulationModel):
         :type observations: List, np.ndarray of length (n,)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of length (n + p,)]
+        :rtype: Tuple[float, np.ndarray], where array is of shape (n + p,)
         """
         # Compute population parameters and sensitivities dtheta/dvartheta
         params, dvartheta = \

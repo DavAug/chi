@@ -49,16 +49,12 @@ Detailed API
 Base classes
 ------------
 - :class:`PopulationModel`
-- :class:`SimplePopulationModel`
 - :class:`ReducedPopulationModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
 .. autoclass:: PopulationModel
-    :members:
-
-.. autoclass:: SimplePopulationModel
     :members:
 
 .. autoclass:: ReducedPopulationModel

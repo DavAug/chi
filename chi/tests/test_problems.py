@@ -701,7 +701,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test case I.2: Population model
         cov_population_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.CentredLogNormalModel())
+            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         pop_models = [
             chi.PooledModel(),
             chi.PooledModel(),
@@ -717,7 +717,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
         self.assertEqual(param_names[2], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[3], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[4], 'Mean log Sigma base')
+        self.assertEqual(param_names[4], 'Base mean log Sigma base')
         self.assertEqual(param_names[5], 'Std. log Sigma base')
         self.assertEqual(param_names[6], 'Mean log Sigma rel.')
         self.assertEqual(param_names[7], 'Std. log Sigma rel.')

@@ -343,8 +343,6 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         # Test case VI.1: Covariate population model
         # Reminder of population model
-        # cpop_model = chi.CovariatePopulationModel(
-        #     chi.GaussianModel(), chi.CentredLogNormalModel())
         # population_models = [
         #     chi.PooledModel(),
         #     cpop_model1, 0 covariates
@@ -876,8 +874,6 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         # Test case VI.1: Covariate population model
         # Reminder of population model
-        # cpop_model = chi.CovariatePopulationModel(
-        #     chi.GaussianModel(), chi.CentredLogNormalModel())
         # population_models = [
         #     chi.PooledModel(),
         #     cpop_model1,
