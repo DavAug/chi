@@ -110,7 +110,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         # Test model II: PopulationPredictive model
         covariate_pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.CentredLogNormalModel())
+            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         pop_models = [
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -148,11 +148,60 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             'Pooled myokit.lambda_1': pop_samples,
             'Pooled Sigma base': pop_samples,
             'Sigma rel.': samples,
-            'Mean log Sigma rel.': pop_samples,
+            'Base mean log Sigma rel.': pop_samples,
             'Std. log Sigma rel.': pop_samples})
 
         cls.pop_model = chi.PosteriorPredictiveModel(
             cls.pred_pop_model, cls.pop_post_samples)
+
+        # Test model III: PopulationPredictive model with covariates
+        covariate_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
+        pop_models = [
+            chi.PooledModel(),
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            covariate_pop_model]
+        cls.pred_pop_model2 = chi.PopulationPredictiveModel(
+            cls.pred_model, pop_models)
+
+        # Create a posterior samples
+        n_chains = 2
+        n_draws = 3
+        n_ids = 2
+        samples = np.ones(shape=(n_chains, n_draws, n_ids))
+        samples = xr.DataArray(
+            data=samples,
+            dims=['chain', 'draw', 'individual'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws)),
+                'individual': ['ID 1', 'ID 2']})
+        pop_samples = xr.DataArray(
+            data=samples[:, :, 0],
+            dims=['chain', 'draw'],
+            coords={
+                'chain': list(range(n_chains)),
+                'draw': list(range(n_draws))})
+        cls.pop_post_samples2 = xr.Dataset({
+            'Pooled myokit.tumour_volume': pop_samples,
+            'myokit.drug_concentration': samples,
+            'Pooled myokit.kappa': pop_samples,
+            'Pooled myokit.lambda_0': pop_samples,
+            'Pooled myokit.lambda_1': pop_samples,
+            'Pooled Sigma base': pop_samples,
+            'Sigma rel.': samples,
+            'Base mean log Sigma rel.': pop_samples,
+            'Std. log Sigma rel.': pop_samples,
+            'Shift Covariate 1 Sigma rel.': pop_samples,
+            'Shift Covariate 2 Sigma rel.': pop_samples})
+
+        cls.pop_model2 = chi.PosteriorPredictiveModel(
+            cls.pred_pop_model2, cls.pop_post_samples2)
 
     def test_bad_instantiation(self):
         # Posterior samples have the wrong type
@@ -205,15 +254,15 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -225,7 +274,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case II: More than one sample
@@ -237,9 +286,9 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 4)
@@ -248,7 +297,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[2], 3)
         self.assertEqual(sample_ids[3], 4)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -260,7 +309,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 20)
 
         # Test case III: include dosing regimen
@@ -273,15 +322,15 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -293,7 +342,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
@@ -322,15 +371,15 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -342,7 +391,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.3: PK model, regimen set
@@ -356,9 +405,9 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
 
@@ -367,7 +416,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[0], 1)
         self.assertTrue(np.isnan(sample_ids[1]))
 
-        biomarkers = samples['Biomarker'].dropna().unique()
+        biomarkers = samples['Observable'].dropna().unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -379,7 +428,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].dropna().unique()
+        values = samples['Value'].dropna().unique()
         self.assertEqual(len(values), 5)
 
         doses = samples['Dose'].dropna().unique()
@@ -430,15 +479,15 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -450,10 +499,10 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
-    def test_sample_bad_individual(self):
+    def test_sample_bad_input(self):
         # Individual does not exist
         _id = 'some ID'
         times = [1, 2, 3, 4, 5]
@@ -463,6 +512,14 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         # Try to seclect individual despite having a population model
         with self.assertRaisesRegex(ValueError, "Individual ID's cannot be"):
             self.pop_model.sample(times, individual=_id)
+
+        # Covariate map does not have length n_population_models
+        # TODO:
+        covariates = [1, 2]
+        covariate_map = [0, 1]
+        with self.assertRaisesRegex(ValueError, "The covariate map has to be"):
+            self.pop_model.sample(
+                times, covariates=covariates, covariate_map=covariate_map)
 
 
 class TestPredictiveModel(unittest.TestCase):
@@ -837,15 +894,15 @@ class TestPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -857,7 +914,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
         self.assertAlmostEqual(values[0], 0.970159924388273)
         self.assertAlmostEqual(values[1], -0.3837168004345003)
@@ -891,9 +948,9 @@ class TestPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 4)
@@ -902,7 +959,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[2], 3)
         self.assertEqual(sample_ids[3], 4)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -914,7 +971,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 20)
         self.assertAlmostEqual(values[0], 1.0556423390683263)
         self.assertAlmostEqual(values[1], -0.3270113841421633)
@@ -977,15 +1034,15 @@ class TestPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -997,7 +1054,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
         self.assertAlmostEqual(values[0], 0.970159924388273)
         self.assertAlmostEqual(values[1], -0.3837168004345003)
@@ -1022,15 +1079,15 @@ class TestPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1042,7 +1099,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
         self.assertAlmostEqual(values[0], 0.19357442536989605)
         self.assertAlmostEqual(values[1], -0.8873567434686567)
@@ -1063,9 +1120,9 @@ class TestPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
 
@@ -1073,7 +1130,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].dropna().unique()
+        biomarkers = samples['Observable'].dropna().unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1085,7 +1142,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].dropna().unique()
+        values = samples['Value'].dropna().unique()
         self.assertEqual(len(values), 5)
 
         doses = samples['Dose'].dropna().unique()
@@ -1107,9 +1164,9 @@ class TestPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
 
@@ -1118,7 +1175,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[0], 1)
         self.assertEqual(sample_ids[1], 2)
 
-        biomarkers = samples['Biomarker'].dropna().unique()
+        biomarkers = samples['Observable'].dropna().unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1130,7 +1187,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].dropna().unique()
+        values = samples['Value'].dropna().unique()
         self.assertEqual(len(values), 10)
 
         doses = samples['Dose'].dropna().unique()
@@ -1157,6 +1214,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Test case I: No covariates
         # Get mechanistic and error model
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = chi.PharmacodynamicModel(path)
@@ -1168,7 +1226,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
 
         # Create population model
         covariate_population_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.CentredLogNormalModel())
+            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         cls.population_models = [
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
@@ -1181,6 +1239,24 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         # Create predictive population model
         cls.model = chi.PopulationPredictiveModel(
             cls.predictive_model, cls.population_models)
+
+        # Test case II: With covariates
+        # Create population model
+        covariate_population_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
+        population_models = [
+            chi.HeterogeneousModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            covariate_population_model,
+            chi.PooledModel(),
+            chi.PooledModel()]
+
+        # Create predictive population model
+        cls.model2 = chi.PopulationPredictiveModel(
+            cls.predictive_model, population_models)
 
     def test_instantiation(self):
         # Define order of population model with params
@@ -1282,7 +1358,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(
             parameter_names[1], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[2], 'Pooled myokit.lambda_0')
-        self.assertEqual(parameter_names[3], 'Mean log myokit.lambda_1')
+        self.assertEqual(parameter_names[3], 'Base mean log myokit.lambda_1')
         self.assertEqual(parameter_names[4], 'Std. log myokit.lambda_1')
         self.assertEqual(parameter_names[5], 'Pooled Sigma base')
         self.assertEqual(parameter_names[6], 'Pooled Sigma rel.')
@@ -1303,7 +1379,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(
             parameter_names[1], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[2], 'Pooled myokit.kappa')
-        self.assertEqual(parameter_names[3], 'Mean log myokit.lambda_1')
+        self.assertEqual(parameter_names[3], 'Base mean log myokit.lambda_1')
         self.assertEqual(parameter_names[4], 'Std. log myokit.lambda_1')
         self.assertEqual(parameter_names[5], 'Pooled Sigma base')
 
@@ -1326,7 +1402,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
             parameter_names[2], 'Std. log myokit.drug_concentration')
         self.assertEqual(parameter_names[3], 'Pooled myokit.kappa')
         self.assertEqual(parameter_names[4], 'Pooled myokit.lambda_0')
-        self.assertEqual(parameter_names[5], 'Mean log myokit.lambda_1')
+        self.assertEqual(parameter_names[5], 'Base mean log myokit.lambda_1')
         self.assertEqual(parameter_names[6], 'Std. log myokit.lambda_1')
         self.assertEqual(parameter_names[7], 'Pooled Sigma base')
         self.assertEqual(parameter_names[8], 'Pooled Sigma rel.')
@@ -1355,7 +1431,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[2], 'Std. log myokit.drug_concentration')
         self.assertEqual(names[3], 'Pooled myokit.kappa')
         self.assertEqual(names[4], 'Pooled myokit.lambda_0')
-        self.assertEqual(names[5], 'Mean log myokit.lambda_1')
+        self.assertEqual(names[5], 'Base mean log myokit.lambda_1')
         self.assertEqual(names[6], 'Std. log myokit.lambda_1')
         self.assertEqual(names[7], 'Pooled Sigma base')
         self.assertEqual(names[8], 'Pooled Sigma rel.')
@@ -1381,7 +1457,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[2], 'Std. log dose.drug_amount')
         self.assertEqual(names[3], 'Pooled central.size')
         self.assertEqual(names[4], 'Pooled dose.absorption_rate')
-        self.assertEqual(names[5], 'Mean log myokit.elimination_rate')
+        self.assertEqual(names[5], 'Base mean log myokit.elimination_rate')
         self.assertEqual(names[6], 'Std. log myokit.elimination_rate')
         self.assertEqual(names[7], 'Pooled central.drug_amount Sigma base')
         self.assertEqual(names[8], 'Pooled central.drug_amount Sigma rel.')
@@ -1475,15 +1551,15 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -1495,7 +1571,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case I.2: Return as numpy.ndarray
@@ -1519,9 +1595,9 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 4)
@@ -1530,7 +1606,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[2], 3)
         self.assertEqual(sample_ids[3], 4)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -1542,10 +1618,11 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 20)
 
         # Test case II.2: Return as numpy.ndarray
+        times = [1, 2, 3, 4, 5]
         samples = self.model.sample(
             parameters, times, n_samples=n_samples, seed=seed, return_df=False)
 
@@ -1557,6 +1634,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
 
         # Test case III.1: PDModel, dosing regimen is not returned even
         # if flag is True
+        times = [1, 2, 3, 4, 5]
         samples = self.model.sample(
             parameters, times, seed=seed, include_regimen=True)
 
@@ -1565,15 +1643,15 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -1585,7 +1663,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
@@ -1600,6 +1678,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
 
         # Sample
         parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1]
+        times = [1, 2, 3, 4, 5]
         samples = model.sample(
             parameters, times, seed=seed, include_regimen=True)
 
@@ -1608,15 +1687,15 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1628,13 +1707,14 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.3: PKmodel, dosing regimen is set
         model.set_dosing_regimen(1, 1, period=1, num=2)
 
         # Sample
+        times = [1, 2, 3, 4, 5]
         samples = model.sample(
             parameters, times, seed=seed, include_regimen=True)
 
@@ -1643,9 +1723,9 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
 
@@ -1653,7 +1733,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].dropna().unique()
+        biomarkers = samples['Observable'].dropna().unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1665,7 +1745,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].dropna().unique()
+        values = samples['Value'].dropna().unique()
         self.assertEqual(len(values), 5)
 
         doses = samples['Dose'].dropna().unique()
@@ -1678,6 +1758,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
 
         # Test case III.4: PKmodel, dosing regimen is set, 2 samples
         # Sample
+        times = [1, 2, 3, 4, 5]
         samples = model.sample(
             parameters, times, n_samples=2, seed=seed, include_regimen=True)
 
@@ -1686,9 +1767,9 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
-        self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
 
@@ -1697,7 +1778,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[0], 1)
         self.assertEqual(sample_ids[1], 2)
 
-        biomarkers = samples['Biomarker'].dropna().unique()
+        biomarkers = samples['Observable'].dropna().unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1709,7 +1790,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].dropna().unique()
+        values = samples['Value'].dropna().unique()
         self.assertEqual(len(values), 10)
 
         doses = samples['Dose'].dropna().unique()
@@ -1720,6 +1801,85 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(len(durations), 1)
         self.assertAlmostEqual(durations[0], 0.01)
 
+        # Test case V: Covariate model
+        # Test case V.1: automatic covariate map
+        times = [1, 2, 3, 4, 5]
+        parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 2, 3]
+        covariates = [1.3, 2.4]
+        samples = self.model2.sample(
+            parameters, times, seed=seed, covariates=covariates)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Observable'].unique()
+        self.assertEqual(len(biomarkers), 3)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+        self.assertEqual(biomarkers[1], 'Covariate 1')
+        self.assertEqual(biomarkers[2], 'Covariate 2')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 6)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+        self.assertTrue(np.isnan(times[5]))
+
+        values = samples['Value'].unique()
+        self.assertEqual(len(values), 7)
+
+        # Test case V.2: explicit covariate map
+        times = [1, 2, 3, 4, 5]
+        parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 2, 3]
+        covariates = [1.3, 2.4]
+        covariate_map = [[]] * 4 + [[0, 1]] + [[]] * 2
+        samples = self.model2.sample(
+            parameters, times, seed=seed, covariates=covariates,
+            covariate_map=covariate_map)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Observable'].unique()
+        self.assertEqual(len(biomarkers), 3)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+        self.assertEqual(biomarkers[1], 'Covariate 1')
+        self.assertEqual(biomarkers[2], 'Covariate 2')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 6)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+        self.assertTrue(np.isnan(times[5]))
+
+        values = samples['Value'].unique()
+        self.assertEqual(len(values), 7)
+
     def test_sample_bad_input(self):
         # Parameters are not of length n_parameters
         parameters = ['wrong', 'length']
@@ -1727,6 +1887,24 @@ class TestPopulationPredictiveModel(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, 'The length of parameters'):
             self.model.sample(parameters, times)
+
+        # Covariate map has wrong length
+        parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 1, 1]
+        covariates = [1, 2]
+        covariate_map = [[], [0, 1]]
+        with self.assertRaisesRegex(ValueError, 'The covariate map has to be'):
+            self.model2.sample(
+                parameters, times, covariates=covariates,
+                covariate_map=covariate_map)
+
+        # Covariate map exceeds length of covariates
+        parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 2, 3]
+        covariates = [1, 2]
+        covariate_map = [[]] * 6 + [[0, 10]]
+        with self.assertRaisesRegex(IndexError, 'The covariate map exceeds'):
+            self.model2.sample(
+                parameters, times, covariates=covariates,
+                covariate_map=covariate_map)
 
 
 class TestPriorPredictiveModel(unittest.TestCase):
@@ -1825,15 +2003,15 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -1845,7 +2023,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case II: More than one sample
@@ -1858,9 +2036,9 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 4)
@@ -1869,7 +2047,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[2], 3)
         self.assertEqual(sample_ids[3], 4)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -1881,7 +2059,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 20)
 
         # Test case III: include dosing regimen
@@ -1894,15 +2072,15 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -1914,7 +2092,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
@@ -1940,15 +2118,15 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1960,7 +2138,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.3: PK model, regimen set
@@ -1974,9 +2152,9 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
 
@@ -1985,7 +2163,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[0], 1)
         self.assertTrue(np.isnan(sample_ids[1]))
 
-        biomarkers = samples['Biomarker'].dropna().unique()
+        biomarkers = samples['Observable'].dropna().unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'central.drug_concentration')
 
@@ -1997,7 +2175,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].dropna().unique()
+        values = samples['Value'].dropna().unique()
         self.assertEqual(len(values), 5)
 
         doses = samples['Dose'].dropna().unique()
@@ -2018,15 +2196,15 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -2038,7 +2216,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
 
@@ -2201,15 +2379,15 @@ class TestPAMPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -2221,7 +2399,7 @@ class TestPAMPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case II: More than one sample
@@ -2235,9 +2413,9 @@ class TestPAMPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 4)
@@ -2246,7 +2424,7 @@ class TestPAMPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[2], 3)
         self.assertEqual(sample_ids[3], 4)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -2258,7 +2436,7 @@ class TestPAMPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 20)
 
         # Test case III: include dosing regimen
@@ -2270,15 +2448,15 @@ class TestPAMPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -2290,7 +2468,7 @@ class TestPAMPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
@@ -2305,15 +2483,15 @@ class TestPAMPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
         self.assertEqual(len(sample_ids), 1)
         self.assertEqual(sample_ids[0], 1)
 
-        biomarkers = samples['Biomarker'].unique()
+        biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -2325,7 +2503,7 @@ class TestPAMPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].unique()
+        values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
 
         # Test case III.3: PK model, regimen set
@@ -2339,9 +2517,9 @@ class TestPAMPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Biomarker')
+        self.assertEqual(keys[1], 'Observable')
         self.assertEqual(keys[2], 'Time')
-        self.assertEqual(keys[3], 'Sample')
+        self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
 
@@ -2350,7 +2528,7 @@ class TestPAMPredictiveModel(unittest.TestCase):
         self.assertEqual(sample_ids[0], 1)
         self.assertTrue(np.isnan(sample_ids[1]))
 
-        biomarkers = samples['Biomarker'].dropna().unique()
+        biomarkers = samples['Observable'].dropna().unique()
         self.assertEqual(len(biomarkers), 1)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
 
@@ -2362,7 +2540,7 @@ class TestPAMPredictiveModel(unittest.TestCase):
         self.assertEqual(times[3], 4)
         self.assertEqual(times[4], 5)
 
-        values = samples['Sample'].dropna().unique()
+        values = samples['Value'].dropna().unique()
         self.assertEqual(len(values), 5)
 
         doses = samples['Dose'].dropna().unique()
