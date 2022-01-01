@@ -1463,7 +1463,7 @@ class PriorPredictiveModel(AveragedPredictiveModel):
                     'ID': sample_id,
                     'Time': times,
                     'Observable': name,
-                    'Sample': sample[output_id, :, 0]}))
+                    'Value': sample[output_id, :, 0]}))
 
         # Add dosing regimen, if set
         final_time = np.max(times)

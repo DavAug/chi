@@ -1942,7 +1942,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         # Test case II:
         # Create population model
         covariate_population_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.CentredLogNormalModel())
+            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         cls.population_models = [
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
@@ -1971,6 +1971,42 @@ class TestPriorPredictiveModel(unittest.TestCase):
         # Create prior predictive model
         cls.prior_pop_pred_model = chi.PriorPredictiveModel(
             cls.pop_predictive_model, cls.pop_log_prior)
+
+        # Test case III:
+        # Create population model with covariates
+        covariate_population_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
+        population_models = [
+            chi.HeterogeneousModel(),
+            chi.LogNormalModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            covariate_population_model,
+            chi.PooledModel(),
+            chi.PooledModel()]
+
+        # Create predictive population model
+        pop_predictive_model2 = chi.PopulationPredictiveModel(
+            cls.predictive_model, population_models)
+
+        # Create prior
+        pop_log_prior2 = pints.ComposedLogPrior(
+            pints.UniformLogPrior(0, 1),
+            pints.UniformLogPrior(1, 2),
+            pints.UniformLogPrior(2, 3),
+            pints.UniformLogPrior(3, 4),
+            pints.UniformLogPrior(4, 5),
+            pints.UniformLogPrior(5, 6),
+            pints.UniformLogPrior(6, 7),
+            pints.UniformLogPrior(7, 8),
+            pints.UniformLogPrior(8, 9),
+            pints.UniformLogPrior(8, 9),
+            pints.UniformLogPrior(8, 9),)
+
+        # Create prior predictive model
+        cls.prior_pop_pred_model2 = chi.PriorPredictiveModel(
+            pop_predictive_model2, pop_log_prior2)
 
     def test_bad_instantiation(self):
         # Predictive model has wrong type
@@ -2002,8 +2038,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Observable')
-        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
         self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
@@ -2035,8 +2071,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Observable')
-        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
         self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
@@ -2071,8 +2107,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Observable')
-        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
         self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
@@ -2117,8 +2153,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Observable')
-        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
         self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
@@ -2151,8 +2187,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 6)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Observable')
-        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
         self.assertEqual(keys[3], 'Value')
         self.assertEqual(keys[4], 'Duration')
         self.assertEqual(keys[5], 'Dose')
@@ -2185,7 +2221,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(len(durations), 1)
         self.assertAlmostEqual(durations[0], 2)
 
-        # Test case IV: Population model
+        # Test case IV: Population model with covariates
         times = [1, 2, 3, 4, 5]
         seed = 42
         samples = self.prior_pop_pred_model.sample(times, seed=seed)
@@ -2195,8 +2231,43 @@ class TestPriorPredictiveModel(unittest.TestCase):
         keys = samples.keys()
         self.assertEqual(len(keys), 4)
         self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Observable')
-        self.assertEqual(keys[2], 'Time')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Observable'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Value'].unique()
+        self.assertEqual(len(values), 5)
+
+        # Test case V: Population model with covariates
+        times = [1, 2, 3, 4, 5]
+        seed = 42
+        covariates = [1, 2]
+        samples = self.prior_pop_pred_model2.sample(
+            times, seed=seed, covariates=covariates)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
         self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
