@@ -439,7 +439,7 @@ class CovariatePopulationModel(PopulationModel):
         :rtype: np.ndarray of shape (n_samples,)
         """
         # Check that covariates has the correct dimensions
-        if covariates is not None:  # noqa: pragma no cover
+        if covariates is not None:
             covariates = np.array(covariates)
             n_covariates = self._covariate_model.n_covariates()
             if len(covariates) != n_covariates:

@@ -420,6 +420,95 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertNotEqual(ref_score, -np.inf)
         self.assertAlmostEqual(self.hierarchical_model3(parameters), ref_score)
 
+        # Test case VI.2: Covariate population model
+        # Provide explicit covariate map
+        cpop_model1 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=0))
+        cpop_model2 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=2))
+        population_models = [
+            chi.PooledModel(),
+            cpop_model1,
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            chi.PooledModel(),
+            cpop_model2]
+        covariates = np.array([[1, 2], [3, 4]])
+        covariate_map = [[]] * 8 + [[0, 1]]
+        hierarchical_model3 = chi.HierarchicalLogLikelihood(
+            self.log_likelihoods, population_models, covariates=covariates,
+            covariate_map=covariate_map)
+
+        # Create reference pop model
+        ref_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
+        etas_1 = np.array([0.1, 0.2])
+        etas_2 = np.array([1, 10])
+        pop_params_1 = [0.2, 1]
+        pop_params_2 = [1, 0.1, 1, 2]
+        psis_1 = np.exp(pop_params_1[0] + pop_params_1[1] * etas_1)
+        psis_2 = np.exp(
+            pop_params_2[0] + pop_params_2[1] * etas_2 +
+            covariates @ np.array(pop_params_2[2:]))
+        pooled_params = [10, 1, 1, 1, 1, 2, 1.2]
+        indiv_parameters_1 = [
+            pooled_params[0],
+            psis_1[0],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            psis_2[0]]
+        indiv_parameters_2 = [
+            pooled_params[0],
+            psis_1[1],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            psis_2[1]]
+
+        parameters = [
+            pooled_params[0],
+            etas_1[0],
+            etas_1[1],
+            pop_params_1[0],
+            pop_params_1[1],
+            pooled_params[1],
+            pooled_params[2],
+            pooled_params[3],
+            pooled_params[4],
+            pooled_params[5],
+            pooled_params[6],
+            etas_2[0],
+            etas_2[1],
+            pop_params_2[0],
+            pop_params_2[1],
+            pop_params_2[2],
+            pop_params_2[3]]
+
+        ref_score = \
+            ref_pop_model.compute_log_likelihood(
+                parameters=pop_params_1,
+                observations=etas_1) + \
+            ref_pop_model.compute_log_likelihood(
+                parameters=pop_params_2,
+                observations=etas_2) + \
+            self.log_likelihoods[0](indiv_parameters_1) + \
+            self.log_likelihoods[1](indiv_parameters_2)
+
+        self.assertNotEqual(ref_score, -np.inf)
+        self.assertAlmostEqual(hierarchical_model3(parameters), ref_score)
+
     def test_compute_pointwise_ll(self):
         # Test case I: All parameters pooled
         likelihood = chi.HierarchicalLogLikelihood(

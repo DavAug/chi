@@ -465,7 +465,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         parameters = [3, 2, 10, 20]
         covariates = [2, 4]
         sample = self.cpop_model2.sample(
-            parameters, covariates=covariates, seed=seed)
+            parameters, covariates=covariates, seed=seed, return_psi=False)
 
         n_samples = 1
         self.assertEqual(sample.shape, (n_samples,))
@@ -474,6 +474,13 @@ class TestCovariatePopulationModel(unittest.TestCase):
         sample = self.cpop_model2.sample(
             parameters, covariates=covariates, seed=seed, return_psi=True)
         self.assertEqual(sample.shape, (n_samples,))
+
+    def test_sample_bad_input(self):
+        # Covariates do not match
+        parameters = [3, 2, 10, 20]
+        covariates = ['this', 'is', 'the', 'wrong', 'length']
+        with self.assertRaisesRegex(ValueError, 'Covariates must be of'):
+            self.cpop_model2.sample(parameters, covariates=covariates)
 
     def test_set_covariate_names(self):
         # Test some name
