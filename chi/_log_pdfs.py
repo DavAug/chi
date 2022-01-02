@@ -323,14 +323,12 @@ class HierarchicalLogLikelihood(object):
         for idp, indices in enumerate(covariate_map):
             # Check that number of indices matches model's expected number
             # of covariates, or covariate model does not need covariates
-            if (len(indices) == n_covs[idp]) or (n_covs[idp] == 0):
-                continue
-
-            raise ValueError(
-                'The covariate_map does not map the covariates '
-                'successfully to the population models. For at least '
-                'one population model, the number of indices in the map '
-                'does not match the number of required covariates.')
+            if (len(indices) != n_covs[idp]) and (n_covs[idp] > 0):
+                raise ValueError(
+                    'The covariate_map does not map the covariates '
+                    'successfully to the population models. For at least '
+                    'one population model, the number of indices in the map '
+                    'does not match the number of required covariates.')
 
         return covariates, covariate_map
 
