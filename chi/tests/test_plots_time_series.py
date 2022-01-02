@@ -678,11 +678,11 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
             TypeError, 'Data has to be pandas.DataFrame.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biomarker(self):
-        biomarker = 'Does not exist'
+    def test_add_data_wrong_observable(self):
+        observable = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
-            self.fig.add_data(self.data, biomarker)
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
+            self.fig.add_data(self.data, observable)
 
     def test_add_data_wrong_id_key(self):
         # Rename ID key
@@ -701,11 +701,12 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
             self.fig.add_data, data)
 
     def test_add_data_wrong_obs_key(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_data, data)
 
     def test_add_data_wrong_value_key(self):
@@ -750,8 +751,9 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
             self.fig.add_data(data=data, time_key='SOME WRONG KEY')
 
     def test_add_data_obs_key_mapping(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
         self.fig.add_data(data=data, obs_key='SOME NON-STANDARD KEY')
