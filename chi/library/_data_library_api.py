@@ -18,7 +18,7 @@ class DataLibrary(object):
     the corresponding dataset in form of a :class:`pandas.DataFrame`.
 
     All dataset are organised in 9 columns:
-    ID | Time | Time unit | Biomarker | Measurement | Biomarker unit | Dose |
+    ID | Time | Time unit | Observable | Value | Observable unit | Dose |
     Dose unit | Duration.
 
     References

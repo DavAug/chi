@@ -12,6 +12,7 @@ of mechanistic model parameters or error model parameters across individuals.
 Functional classes
 ------------------
 
+- :class:`CovariatePopulationModel`
 - :class:`GaussianModel`
 - :class:`HeterogeneousModel`
 - :class:`LogNormalModel`
@@ -20,6 +21,10 @@ Functional classes
 
 Detailed API
 ^^^^^^^^^^^^
+
+.. autoclass:: CovariatePopulationModel
+    :members:
+    :inherited-members:
 
 .. autoclass:: GaussianModel
     :members:

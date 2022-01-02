@@ -26,16 +26,16 @@ used to explore chi's functionality in a more structured way.
 
 .. autosummary::
 
-    chi.CentredLogNormalModel
+    chi.AveragedPredictiveModel
     chi.compute_pointwise_loglikelihood
     chi.ConstantAndMultiplicativeGaussianErrorModel
     chi.CovariateModel
     chi.ErrorModel
     chi.GaussianErrorModel
-    chi.GenerativeModel
     chi.library.DataLibrary
     chi.library.ModelLibrary
     chi.LogLikelihood
+    chi.LogNormalLinearCovariateModel
     chi.LogNormalErrorModel
     chi.LogNormalModel
     chi.LogPosterior
@@ -48,6 +48,7 @@ used to explore chi's functionality in a more structured way.
     chi.MechanisticModel
     chi.MultiplicativeGaussianErrorModel
     chi.OptimisationController
+    chi.PAMPredictiveModel
     chi.PharmacodynamicModel
     chi.PharmacokineticModel
     chi.plots.MarginalPosteriorPlot
@@ -59,15 +60,14 @@ used to explore chi's functionality in a more structured way.
     chi.plots.ResidualPlot
     chi.PooledModel
     chi.PopulationModel
+    chi.PopulationPredictiveModel
     chi.ReducedErrorModel
     chi.PosteriorPredictiveModel
     chi.PredictiveModel
-    chi.PredictivePopulationModel
     chi.PriorPredictiveModel
     chi.ProblemModellingController
     chi.ReducedLogPDF
     chi.ReducedMechanisticModel
     chi.ReducedPopulationModel
     chi.SamplingController
-    chi.StackedPredictiveModel
     chi.TruncatedGaussianModel

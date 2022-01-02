@@ -158,26 +158,26 @@ class PDPredictivePlot(plots.SingleFigure):
         return container
 
     def add_data(
-            self, data, biomarker=None, id_key='ID', time_key='Time',
-            biom_key='Biomarker', meas_key='Measurement'):
+            self, data, observable=None, id_key='ID', time_key='Time',
+            obs_key='Observable', value_key='Value'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
 
-        Expects a :class:`pandas.DataFrame` with an ID, a time, a PD
-        biomarker and a measurement column, and adds a scatter plot of the
-        measurement time series to the figure. Each individual receives a
+        Expects a :class:`pandas.DataFrame` with an ID, a time, an
+        observable and a value column, and adds a scatter plot of the
+        measured time series to the figure. Each individual receives a
         unique colour.
 
         Parameters
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
-            an ID, time, and biomarker column.
-        biomarker
-            The predicted bimoarker. This argument is used to determine the
-            relevant rows in the dataframe. If ``None``, the first biomarker
-            type in the biomarker column is selected.
+            an ID, time, and observable column.
+        observable
+            The predicted observable. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first observable
+            in the observable column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -185,34 +185,34 @@ class PDPredictivePlot(plots.SingleFigure):
         time_key
             Key label of the :class:`DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
-        meas_key
+        obs_key
+            Key label of the :class:`DataFrame` which specifies the
+            observable column. Defaults to ``'Observable'``.
+        value_key
             Key label of the :class:`DataFrame` which specifies the column of
-            the measured PD biomarker. Defaults to ``'Measurement'``.
+            the measured values. Defaults to ``'Value'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [id_key, time_key, biom_key, meas_key]:
+        for key in [id_key, time_key, obs_key, value_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].unique()
-        if biomarker is None:
-            biomarker = biom_types[0]
+        # Default to first bimoarker, if observable is not specified
+        biom_types = data[obs_key].unique()
+        if observable is None:
+            observable = biom_types[0]
 
-        if biomarker not in biom_types:
+        if observable not in biom_types:
             raise ValueError(
-                'The biomarker could not be found in the biomarker column.')
+                'The observable could not be found in the observable column.')
 
-        # Mask data for biomarker
-        mask = data[biom_key] == biomarker
+        # Mask data for observable
+        mask = data[obs_key] == observable
         data = data[mask]
 
         # Get a colour scheme
@@ -225,23 +225,22 @@ class PDPredictivePlot(plots.SingleFigure):
             # Get individual data
             mask = data[id_key] == _id
             times = data[time_key][mask]
-            measurements = data[meas_key][mask]
+            measurements = data[value_key][mask]
             color = colors[index % n_colors]
 
             # Create Scatter plot
             self._add_data_trace(_id, times, measurements, color)
 
     def add_prediction(
-            self, data, biomarker=None, bulk_probs=[0.9], time_key='Time',
-            biom_key='Biomarker', sample_key='Sample'):
+            self, data, observable=None, bulk_probs=[0.9], time_key='Time',
+            obs_key='Observable', value_key='Value'):
         r"""
-        Adds the prediction for the observable pharmacodynamic biomarker values
-        to the figure.
+        Adds the prediction to the figure.
 
-        Expects a :class:`pandas.DataFrame` with a time, a PD biomarker and a
-        sample column. The time column determines the time of the biomarker
-        measurement and the sample column the corresponding biomarker
-        measurement. The biomarker column determines the biomarker type.
+        Expects a :class:`pandas.DataFrame` with a time, an observable and a
+        value column. The time column determines the times of the
+        measurements and the value column the measured value.
+        The observable column determines the observable.
 
         A list of bulk probabilities ``bulk_probs`` can be specified, which are
         then added as area to the figure. The corresponding upper and lower
@@ -258,52 +257,52 @@ class PDPredictivePlot(plots.SingleFigure):
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
-            form of a time and biomarker column.
-        biomarker
-            The predicted bimoarker. This argument is used to determine the
-            relevant rows in the dataframe. If ``None``, the first biomarker
-            type in the biomarker column is selected.
+            form of a time and observable column.
+        observable
+            The predicted observable. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first observable
+            in the observable column is selected.
         bulk_probs
             A list of bulk probabilities that are illustrated in the
             figure. If ``None`` the samples are illustrated as a scatter plot.
         time_key
             Key label of the :class:`pandas.DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`pandas.DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
-        sample_key
+        obs_key
             Key label of the :class:`pandas.DataFrame` which specifies the
-            sample column. Defaults to ``'Sample'``.
+            observable column. Defaults to ``'Observable'``.
+        value_key
+            Key label of the :class:`pandas.DataFrame` which specifies the
+            value column. Defaults to ``'Value'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [time_key, biom_key, sample_key]:
+        for key in [time_key, obs_key, value_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].dropna().unique()
-        if biomarker is None:
-            biomarker = biom_types[0]
+        # Default to first bimoarker, if observable is not specified
+        biom_types = data[obs_key].dropna().unique()
+        if observable is None:
+            observable = biom_types[0]
 
-        if biomarker not in biom_types:
+        if observable not in biom_types:
             raise ValueError(
-                'The biomarker could not be found in the biomarker column.')
+                'The observable could not be found in the observable column.')
 
-        # Mask data for biomarker
-        mask = data[biom_key] == biomarker
+        # Mask data for observable
+        mask = data[obs_key] == observable
         data = data[mask]
 
         # Add samples as scatter plot if no bulk probabilites are provided, and
         # terminate method
         if bulk_probs is None:
             times = data[time_key]
-            samples = data[sample_key]
+            samples = data[value_key]
             self._add_prediction_scatter_trace(times, samples)
 
             return None
@@ -324,7 +323,7 @@ class PDPredictivePlot(plots.SingleFigure):
 
         # Add bulk probabilities to figure
         percentile_df = self._compute_bulk_probs(
-            data, bulk_probs, time_key, sample_key)
+            data, bulk_probs, time_key, value_key)
         self._add_prediction_bulk_prob_trace(percentile_df)
 
 
@@ -548,16 +547,16 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
         return container
 
     def add_data(
-            self, data, biomarker=None, id_key='ID', time_key='Time',
-            biom_key='Biomarker', meas_key='Measurement', dose_key='Dose',
+            self, data, observable=None, id_key='ID', time_key='Time',
+            obs_key='Observable', value_key='Value', dose_key='Dose',
             dose_duration_key='Duration'):
         """
         Adds pharmacokinetic time series data of (multiple) individuals to
         the figure.
 
-        Expects a :class:`pandas.DataFrame` with an ID, a time, a PK
-        biomarker and measurement column, and adds a scatter plot of the
-        measurement time series to the figure. The dataframe is also expected
+        Expects a :class:`pandas.DataFrame` with an ID, a time, an
+        observable and a value column, and adds a scatter plot of the
+        measuremed time series to the figure. The dataframe is also expected
         to have information about the administered dose via a dose and a
         dose duration column. Each individual receives a unique colour.
 
@@ -565,11 +564,11 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
-            an ID, time, and biomarker column.
-        biomarker
-            The measured bimoarker. This argument is used to determine the
-            relevant rows in the dataframe. If ``None``, the first biomarker
-            type in the biomarker column is selected.
+            an ID, time, and observable column.
+        observable
+            The measured observable. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first observable
+            in the observable column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -577,12 +576,12 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
         time_key
             Key label of the :class:`DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
-        meas_key
+        obs_key
+            Key label of the :class:`DataFrame` which specifies the
+            observable column. Defaults to ``'Observable'``.
+        value_key
             Key label of the :class:`DataFrame` which specifies the column of
-            the measured PD biomarker. Defaults to ``'Measurement'``.
+            the measured values. Defaults to ``'Value'``.
         dose_key
             Key label of the :class:`DataFrame` which specifies the dose
             column. Defaults to ``'Dose'``.
@@ -596,31 +595,31 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
                 'Data has to be pandas.DataFrame.')
 
         keys = [
-            id_key, time_key, biom_key, meas_key, dose_key, dose_duration_key]
+            id_key, time_key, obs_key, value_key, dose_key, dose_duration_key]
         for key in keys:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].dropna().unique()
-        if biomarker is None:
-            biomarker = biom_types[0]
+        # Default to first bimoarker, if observable is not specified
+        biom_types = data[obs_key].dropna().unique()
+        if observable is None:
+            observable = biom_types[0]
 
-        if biomarker not in biom_types:
+        if observable not in biom_types:
             raise ValueError(
-                'The biomarker could not be found in the biomarker column.')
+                'The observable could not be found in the observable column.')
 
         # Get dose information
         mask = data[dose_key].notnull()
         dose_data = data[mask][[id_key, time_key, dose_key, dose_duration_key]]
 
-        # Mask data for biomarker
-        mask = data[biom_key] == biomarker
-        data = data[mask][[id_key, time_key, meas_key]]
+        # Mask data for observable
+        mask = data[obs_key] == observable
+        data = data[mask][[id_key, time_key, value_key]]
 
         # Set axis labels to dataframe keys
-        self.set_axis_labels(time_key, biom_key, dose_key)
+        self.set_axis_labels(time_key, obs_key, dose_key)
 
         # Get a colour scheme
         colors = plotly.colors.qualitative.Plotly
@@ -635,10 +634,10 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
             doses = dose_data[dose_key][mask]
             durations = dose_data[dose_duration_key][mask]
 
-            # Get biomarker measurements
+            # Get observable measurements
             mask = data[id_key] == _id
             times = data[time_key][mask]
-            measurements = data[meas_key][mask]
+            measurements = data[value_key][mask]
 
             # Get a color for the individual
             color = colors[index % n_colors]
@@ -650,17 +649,17 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
             self._add_biom_trace(_id, times, measurements, color)
 
     def add_prediction(
-            self, data, biomarker=None, bulk_probs=[0.9], time_key='Time',
-            biom_key='Biomarker', sample_key='Sample', dose_key='Dose',
+            self, data, observable=None, bulk_probs=[0.9], time_key='Time',
+            obs_key='Observable', value_key='Value', dose_key='Dose',
             dose_duration_key='Duration'):
         r"""
-        Adds the prediction for the observable pharmacokinetic biomarker values
-        to the figure.
+        Adds the prediction for the observable pharmacokinetic observable
+        values to the figure.
 
-        Expects a :class:`pandas.DataFrame` with a time, a PD biomarker and a
-        sample column. The time column determines the time of the biomarker
-        measurement and the sample column the corresponding biomarker
-        measurement. The biomarker column determines the biomarker type. The
+        Expects a :class:`pandas.DataFrame` with a time, an observable and a
+        value column. The time column determines the time of the observable
+        measurement and the sample column the corresponding observable
+        measurement. The observable column determines the observable type. The
         dataframe is also expected to have information about the administered
         dose via a dose and a dose duration column.
 
@@ -679,23 +678,23 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
-            form of a time and biomarker column.
-        biomarker
-            The predicted bimoarker. This argument is used to determine the
-            relevant rows in the dataframe. If ``None``, the first biomarker
-            type in the biomarker column is selected.
+            form of a time and observable column.
+        observable
+            The predicted observable. This argument is used to determine the
+            relevant rows in the dataframe. If ``None``, the first observable
+            in the observable column is selected.
         bulk_probs
             A list of bulk probabilities that are illustrated in the
             figure. If ``None`` the samples are illustrated as a scatter plot.
         time_key
             Key label of the :class:`pandas.DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`pandas.DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
-        sample_key
+        obs_key
             Key label of the :class:`pandas.DataFrame` which specifies the
-            sample column. Defaults to ``'Sample'``.
+            observable column. Defaults to ``'Observable'``.
+        value_key
+            Key label of the :class:`pandas.DataFrame` which specifies the
+            value column. Defaults to ``'Value'``.
         dose_key
             Key label of the :class:`DataFrame` which specifies the dose
             column. Defaults to ``'Dose'``.
@@ -709,37 +708,37 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
                 'Data has to be pandas.DataFrame.')
 
         keys = [
-            time_key, biom_key, sample_key, dose_key, dose_duration_key]
+            time_key, obs_key, value_key, dose_key, dose_duration_key]
         for key in keys:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].dropna().unique()
-        if biomarker is None:
-            biomarker = biom_types[0]
+        # Default to first bimoarker, if observable is not specified
+        biom_types = data[obs_key].dropna().unique()
+        if observable is None:
+            observable = biom_types[0]
 
-        if biomarker not in biom_types:
+        if observable not in biom_types:
             raise ValueError(
-                'The biomarker could not be found in the biomarker column.')
+                'The observable could not be found in the observable column.')
 
         # Get dose information
         mask = data[dose_key].notnull()
         dose_data = data[mask][[time_key, dose_key, dose_duration_key]]
 
-        # Mask data for biomarker
-        mask = data[biom_key] == biomarker
-        data = data[mask][[time_key, sample_key]]
+        # Mask data for observable
+        mask = data[obs_key] == observable
+        data = data[mask][[time_key, value_key]]
 
         # Set axis labels to dataframe keys
-        self.set_axis_labels(time_key, biom_key, dose_key)
+        self.set_axis_labels(time_key, obs_key, dose_key)
 
         # Add samples as scatter plot if no bulk probabilites are provided, and
         # terminate method
         if bulk_probs is None:
             times = data[time_key]
-            samples = data[sample_key]
+            samples = data[value_key]
             self._add_prediction_scatter_trace(times, samples)
 
             return None
@@ -773,7 +772,7 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
 
         # Add bulk probabilities to figure
         percentile_df = self._compute_bulk_probs(
-            data, bulk_probs, time_key, sample_key)
+            data, bulk_probs, time_key, value_key)
         self._add_prediction_bulk_prob_trace(percentile_df, colors)
 
     def set_axis_labels(self, time_label, biom_label, dose_label):
@@ -787,10 +786,10 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
 
 class PDTimeSeriesPlot(plots.SingleFigure):
     """
-    A figure class that visualises measurements of a pharmacodynamic biomarker
-    across multiple individuals.
+    A figure class that visualises measurements of a pharmacodynamic
+    observables across multiple individuals.
 
-    Measurements of a pharmacodynamic biomarker over time are visualised as a
+    Measurements of a pharmacodynamic observables over time are visualised as a
     scatter plot.
 
     Extends :class:`SingleFigure`.
@@ -836,26 +835,26 @@ class PDTimeSeriesPlot(plots.SingleFigure):
                 line=dict(color='black')))
 
     def add_data(
-            self, data, biomarker=None, id_key='ID', time_key='Time',
-            biom_key='Biomarker', meas_key='Measurement'):
+            self, data, observable=None, id_key='ID', time_key='Time',
+            obs_key='Observable', value_key='Value'):
         """
         Adds pharmacodynamic time series data of (multiple) individuals to
         the figure.
 
-        Expects a :class:`pandas.DataFrame` with an ID, a time, a PD
-        biomarker and a measurement column, and adds a scatter plot of the
-        measurement time series to the figure. Each individual receives a
+        Expects a :class:`pandas.DataFrame` with an ID, a time, an
+        observable and a value column, and adds a scatter plot of the
+        measuremed time series to the figure. Each individual receives a
         unique colour.
 
         Parameters
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
-            an ID, time, and biomarker column.
-        biomarker
+            an ID, time, and observable column.
+        observable
             The measured bimoarker. This argument is used to determine the
-            relevant rows in the dataframe. If ``None``, the first biomarker
-            type in the biomarker column is selected.
+            relevant rows in the dataframe. If ``None``, the first observable
+            in the observable column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -863,34 +862,34 @@ class PDTimeSeriesPlot(plots.SingleFigure):
         time_key
             Key label of the :class:`DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
-        meas_key
+        obs_key
+            Key label of the :class:`DataFrame` which specifies the
+            observable column. Defaults to ``'Observable'``.
+        value_key
             Key label of the :class:`DataFrame` which specifies the column of
-            the measured PD biomarker. Defaults to ``'Measurement'``.
+            the measured values. Defaults to ``'Value'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [id_key, time_key, biom_key, meas_key]:
+        for key in [id_key, time_key, obs_key, value_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].dropna().unique()
-        if biomarker is None:
-            biomarker = biom_types[0]
+        # Default to first bimoarker, if observable is not specified
+        biom_types = data[obs_key].dropna().unique()
+        if observable is None:
+            observable = biom_types[0]
 
-        if biomarker not in biom_types:
+        if observable not in biom_types:
             raise ValueError(
-                'The biomarker could not be found in the biomarker column.')
+                'The observable could not be found in the observable column.')
 
-        # Mask data for biomarker
-        mask = data[biom_key] == biomarker
+        # Mask data for observable
+        mask = data[obs_key] == observable
         data = data[mask]
 
         # Get a colour scheme
@@ -903,54 +902,54 @@ class PDTimeSeriesPlot(plots.SingleFigure):
             # Get individual data
             mask = data[id_key] == _id
             times = data[time_key][mask]
-            measurements = data[meas_key][mask]
+            measurements = data[value_key][mask]
             color = colors[index % n_colors]
 
             # Create Scatter plot
             self._add_data_trace(_id, times, measurements, color)
 
-    def add_simulation(self, data, time_key='Time', biom_key='Biomarker'):
+    def add_simulation(self, data, time_key='Time', value_key='Value'):
         """
         Adds a pharmacodynamic time series simulation to the figure.
 
-        Expects a :class:`pandas.DataFrame` with a time and a PD biomarker
-        column, and adds a line plot of the biomarker time series to the
+        Expects a :class:`pandas.DataFrame` with a time and a value
+        column, and adds a line plot of the simulated time series to the
         figure.
 
         Parameters
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
-            form of a time and biomarker column.
+            form of a time and value column.
         time_key
             Key label of the :class:`DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
+        value_key
+            Key label of the :class:`DataFrame` which specifies the
+            value column. Defaults to ``'Value'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [time_key, biom_key]:
+        for key in [time_key, value_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
         times = data[time_key]
-        biomarker = data[biom_key]
+        values = data[value_key]
 
-        self._add_simulation_trace(times, biomarker)
+        self._add_simulation_trace(times, values)
 
 
 class PKTimeSeriesPlot(plots.SingleSubplotFigure):
     """
-    A figure class that visualises measurements of a pharmacokinetic biomarker
+    A figure class that visualises measurements of a pharmacokinetic observable
     across multiple individuals.
 
-    Measurements of a pharmacokinetic biomarker over time are visualised as a
+    Measurements of a pharmacokinetic observable over time are visualised as a
     scatter plot.
 
     Extends :class:`SingleSubplotFigure`.
@@ -1051,16 +1050,16 @@ class PKTimeSeriesPlot(plots.SingleSubplotFigure):
         )
 
     def add_data(
-            self, data, biomarker=None, id_key='ID', time_key='Time',
-            biom_key='Biomarker', meas_key='Measurement', dose_key='Dose',
+            self, data, observable=None, id_key='ID', time_key='Time',
+            obs_key='Observable', value_key='Value', dose_key='Dose',
             dose_duration_key='Duration'):
         """
         Adds pharmacokinetic time series data of (multiple) individuals to
         the figure.
 
-        Expects a :class:`pandas.DataFrame` with an ID, a time, a PK
-        biomarker and measurement column, and adds a scatter plot of the
-        measurement time series to the figure. The dataframe is also expected
+        Expects a :class:`pandas.DataFrame` with an ID, a time, an
+        observable and a value column, and adds a scatter plot of the
+        measuremed time series to the figure. The dataframe is also expected
         to have information about the administered dose via a dose and a
         dose duration column. Each individual receives a unique colour.
 
@@ -1068,11 +1067,11 @@ class PKTimeSeriesPlot(plots.SingleSubplotFigure):
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD data in form of
-            an ID, time, and biomarker column.
-        biomarker
+            an ID, time, observable and value column.
+        observable
             The measured bimoarker. This argument is used to determine the
-            relevant rows in the dataframe. If ``None``, the first biomarker
-            type in the biomarker column is selected.
+            relevant rows in the dataframe. If ``None``, the first observable
+            in the observable column is selected.
         id_key
             Key label of the :class:`DataFrame` which specifies the ID column.
             The ID refers to the identity of an individual. Defaults to
@@ -1080,12 +1079,12 @@ class PKTimeSeriesPlot(plots.SingleSubplotFigure):
         time_key
             Key label of the :class:`DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
-        meas_key
+        obs_key
+            Key label of the :class:`DataFrame` which specifies the
+            observable column. Defaults to ``'Observable'``.
+        value_key
             Key label of the :class:`DataFrame` which specifies the column of
-            the measured PD biomarker. Defaults to ``'Measurement'``.
+            the measured values. Defaults to ``'Value'``.
         dose_key
             Key label of the :class:`DataFrame` which specifies the dose
             column. Defaults to ``'Dose'``.
@@ -1099,31 +1098,31 @@ class PKTimeSeriesPlot(plots.SingleSubplotFigure):
                 'Data has to be pandas.DataFrame.')
 
         keys = [
-            id_key, time_key, biom_key, meas_key, dose_key, dose_duration_key]
+            id_key, time_key, obs_key, value_key, dose_key, dose_duration_key]
         for key in keys:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
 
-        # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].dropna().unique()
-        if biomarker is None:
-            biomarker = biom_types[0]
+        # Default to first bimoarker, if observable is not specified
+        biom_types = data[obs_key].dropna().unique()
+        if observable is None:
+            observable = biom_types[0]
 
-        if biomarker not in biom_types:
+        if observable not in biom_types:
             raise ValueError(
-                'The biomarker could not be found in the biomarker column.')
+                'The observable could not be found in the observable column.')
 
         # Get dose information
         mask = data[dose_key].notnull()
         dose_data = data[mask][[id_key, time_key, dose_key, dose_duration_key]]
 
-        # Mask data for biomarker
-        mask = data[biom_key] == biomarker
-        data = data[mask][[id_key, time_key, meas_key]]
+        # Mask data for observable
+        mask = data[obs_key] == observable
+        data = data[mask][[id_key, time_key, value_key]]
 
         # Set axis labels to dataframe keys
-        self.set_axis_labels(time_key, biom_key, dose_key)
+        self.set_axis_labels(time_key, obs_key, dose_key)
 
         # Get a colour scheme
         colors = plotly.colors.qualitative.Plotly
@@ -1138,10 +1137,10 @@ class PKTimeSeriesPlot(plots.SingleSubplotFigure):
             doses = dose_data[dose_key][mask]
             durations = dose_data[dose_duration_key][mask]
 
-            # Get biomarker measurements
+            # Get observable measurements
             mask = data[id_key] == _id
             times = data[time_key][mask]
-            measurements = data[meas_key][mask]
+            measurements = data[value_key][mask]
 
             # Get a color for the individual
             color = colors[index % n_colors]
@@ -1153,12 +1152,12 @@ class PKTimeSeriesPlot(plots.SingleSubplotFigure):
             self._add_biom_trace(_id, times, measurements, color)
 
     def add_simulation(
-            self, data, time_key='Time', biom_key='Biomarker',
+            self, data, time_key='Time', value_key='Value',
             dose_key='Dose'):
         """
         Adds a pharmacokinetic time series simulation to the figure.
 
-        Expects a :class:`pandas.DataFrame` with a time, a PK biomarker,
+        Expects a :class:`pandas.DataFrame` with a time, a value,
         and a dose column. A line plot of the biomarker time series, as well
         as the dosing regimen is added to the figure.
 
@@ -1166,13 +1165,13 @@ class PKTimeSeriesPlot(plots.SingleSubplotFigure):
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
-            form of a time and biomarker column.
+            form of a time and a value column.
         time_key
             Key label of the :class:`DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
+        value_key
+            Key label of the :class:`DataFrame` which specifies the simulated
+            values column. Defaults to ``'Value'``.
         """
         raise NotImplementedError
 

@@ -31,9 +31,9 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         individual = 40
         mask = data['ID'] == individual  # Arbitrary test id
         data = data[mask]
-        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        mask = data['Observable'] == 'Tumour volume'  # Arbitrary biomarker
         times = data[mask]['Time'].to_numpy()
-        observed_volumes = data[mask]['Measurement'].to_numpy()
+        observed_volumes = data[mask]['Value'].to_numpy()
 
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = chi.PharmacodynamicModel(path)
@@ -579,9 +579,9 @@ class TestInferenceController(unittest.TestCase):
         individual = 40
         mask = data['ID'] == individual  # Arbitrary test id
         data = data[mask]
-        mask = data['Biomarker'] == 'Tumour volume'  # Arbitrary biomarker
+        mask = data['Observable'] == 'Tumour volume'  # Arbitrary biomarker
         times = data[mask]['Time'].to_numpy()
-        observed_volumes = data[mask]['Measurement'].to_numpy()
+        observed_volumes = data[mask]['Value'].to_numpy()
 
         path = ModelLibrary().tumour_growth_inhibition_model_koch()
         mechanistic_model = chi.PharmacodynamicModel(path)

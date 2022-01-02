@@ -7,7 +7,7 @@
 
 from ._covariate_models import (  # noqa
     CovariateModel,
-    CentredLogNormalModel
+    LogNormalLinearCovariateModel
 )
 
 from ._error_models import (  # noqa
@@ -42,6 +42,7 @@ from ._inference import (  # noqa
 )
 
 from ._population_models import (  # noqa
+    CovariatePopulationModel,
     GaussianModel,
     HeterogeneousModel,
     LogNormalModel,
@@ -52,12 +53,12 @@ from ._population_models import (  # noqa
 )
 
 from ._predictive_models import (  # noqa
-    GenerativeModel,
+    AveragedPredictiveModel,
     PosteriorPredictiveModel,
     PredictiveModel,
-    PredictivePopulationModel,
+    PopulationPredictiveModel,
     PriorPredictiveModel,
-    StackedPredictiveModel
+    PAMPredictiveModel
 )
 
 from ._problems import (  # noqa

@@ -1,4 +1,4 @@
-ID,Time,Time unit,Biomarker,Measurement,Biomarker unit,Dose,Dose unit,Duration
+ID,Time,Time unit,Observable,Value,Observable unit,Dose,Dose unit,Duration
 1,0.3333333333333333,d,Plasma concentration,3.5700000000000003,ng/mL,,,
 1,0,d,Body weight,28.6,g,2.8600000000000003,mg,
 2,4,d,Body weight,32.3,g,3.23,mg,

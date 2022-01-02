@@ -23,8 +23,7 @@ class TestPDPredictivePlot(unittest.TestCase):
     def setUpClass(cls):
         # Create test datasets
         cls.data = DataLibrary().lung_cancer_control_group()
-        cls.prediction = cls.data.rename(
-            columns={'Measurement': 'Sample'})
+        cls.prediction = cls.data.copy()
 
         # Create test figure
         cls.fig = plots.PDPredictivePlot()
@@ -36,10 +35,10 @@ class TestPDPredictivePlot(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'Data has to be'):
             self.fig.add_data(data)
 
-    def test_add_data_wrong_biomarker(self):
+    def test_add_data_wrong_observable(self):
         biomarker = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
             self.fig.add_data(self.data, biomarker)
 
     def test_add_data_wrong_id_key(self):
@@ -58,21 +57,22 @@ class TestPDPredictivePlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biom_key(self):
+    def test_add_data_wrong_obs_key(self):
         # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_meas_key(self):
-        # Rename measurement key
+    def test_add_data_wrong_value_key(self):
+        # Rename Value key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Measurement>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_data, data)
 
     def test_add_data_id_key_mapping(self):
@@ -102,34 +102,35 @@ class TestPDPredictivePlot(unittest.TestCase):
             self.fig.add_data(
                 data, time_key='SOME WRONG KEY')
 
-    def test_add_data_biom_key_mapping(self):
+    def test_add_data_obs_key_mapping(self):
         # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
-
-        # Test that it works with correct mapping
-        self.fig.add_data(
-            data, biom_key='SOME NON-STANDARD KEY')
-
-        # Test that it fails with wrong mapping
-        with self.assertRaisesRegex(
-                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_data(
-                data, biom_key='SOME WRONG KEY')
-
-    def test_add_data_meas_key_mapping(self):
-        # Rename measurement key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
         self.fig.add_data(
-            data, meas_key='SOME NON-STANDARD KEY')
+            data, obs_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(
-                data, meas_key='SOME WRONG KEY')
+                data, obs_key='SOME WRONG KEY')
+
+    def test_add_data_value_key_mapping(self):
+        # Rename Value key
+        data = self.data.rename(
+            columns={'Value': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_data(
+            data, value_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_data(
+                data, value_key='SOME WRONG KEY')
 
     def test_add_prediction_wrong_data_type(self):
         # Create data of wrong type
@@ -139,11 +140,11 @@ class TestPDPredictivePlot(unittest.TestCase):
             TypeError, 'Data has to be pandas.DataFrame.',
             self.fig.add_prediction, data)
 
-    def test_add_prediction_wrong_biomarker(self):
+    def test_add_prediction_wrong_observable(self):
         # Specify biomarker that is not in the dataset
         biomarker = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
             self.fig.add_prediction(self.prediction, biomarker)
 
     def test_add_prediction_bad_bulk_probs(self):
@@ -174,38 +175,38 @@ class TestPDPredictivePlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_prediction, data)
 
-    def test_add_prediction_wrong_biom_key(self):
+    def test_add_prediction_wrong_obs_key(self):
         # Rename biomarker key
         data = self.prediction.rename(
-            columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_prediction, data)
 
-    def test_add_prediction_wrong_sample_key(self):
-        # Rename sample key
+    def test_add_prediction_wrong_value_key(self):
+        # Rename value key
         data = self.prediction.rename(
-            columns={'Sample': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Sample>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_prediction, data)
 
-    def test_add_prediction_biom_mapping(self):
+    def test_add_prediction_obs_mapping(self):
         # Rename rename biomarker
         data = self.prediction.copy()
-        data['Biomarker'] = 'SOME NON-STANDARD BIOMARKER'
+        data['Observable'] = 'SOME NON-STANDARD BIOMARKER'
 
         # Test that it works with correct mapping
         self.fig.add_prediction(
-            data=data, biomarker='SOME NON-STANDARD BIOMARKER')
+            data=data, observable='SOME NON-STANDARD BIOMARKER')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
-                ValueError, 'The biomarker could not be found'):
+                ValueError, 'The observable could not be found'):
             self.fig.add_prediction(
-                data=data, biomarker='SOME WRONG BIOMARKER')
+                data=data, observable='SOME WRONG BIOMARKER')
 
     def test_add_prediction_no_provided_bulk_prob(self):
         # Test that it works with correct mapping
@@ -227,31 +228,31 @@ class TestPDPredictivePlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_prediction(data=data, time_key='SOME WRONG KEY')
 
-    def test_add_prediction_biom_key_mapping(self):
+    def test_add_prediction_obs_key_mapping(self):
         # Rename biomarker key
         data = self.prediction.rename(
-            columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_prediction(data=data, biom_key='SOME NON-STANDARD KEY')
+        self.fig.add_prediction(data=data, obs_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_prediction(data=data, biom_key='SOME WRONG KEY')
+            self.fig.add_prediction(data=data, obs_key='SOME WRONG KEY')
 
-    def test_add_prediction_sample_key_mapping(self):
-        # Rename sample key
+    def test_add_prediction_value_key_mapping(self):
+        # Rename value key
         data = self.prediction.rename(
-            columns={'Sample': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_prediction(data=data, sample_key='SOME NON-STANDARD KEY')
+        self.fig.add_prediction(data=data, value_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_prediction(data=data, sample_key='SOME WRONG KEY')
+            self.fig.add_prediction(data=data, value_key='SOME WRONG KEY')
 
 
 class TestPKPredictivePlot(unittest.TestCase):
@@ -263,8 +264,7 @@ class TestPKPredictivePlot(unittest.TestCase):
     def setUpClass(cls):
         # Create test datasets
         cls.data = DataLibrary().lung_cancer_low_erlotinib_dose_group()
-        cls.prediction = cls.data.rename(
-            columns={'Measurement': 'Sample'})
+        cls.prediction = cls.data.copy()
 
         # Create test figure
         cls.fig = plots.PKPredictivePlot()
@@ -276,11 +276,11 @@ class TestPKPredictivePlot(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'Data has to be'):
             self.fig.add_data(data)
 
-    def test_add_data_wrong_biomarker(self):
-        biomarker = 'Does not exist'
+    def test_add_data_wrong_observable(self):
+        observable = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
-            self.fig.add_data(self.data, biomarker)
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
+            self.fig.add_data(self.data, observable)
 
     def test_add_data_wrong_id_key(self):
         # Rename ID key
@@ -298,21 +298,22 @@ class TestPKPredictivePlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biom_key(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_data_wrong_obs_key(self):
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_meas_key(self):
-        # Rename measurement key
+    def test_add_data_wrong_value_key(self):
+        # Rename Value key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Measurement>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_data, data)
 
     def test_add_data_id_key_mapping(self):
@@ -342,34 +343,35 @@ class TestPKPredictivePlot(unittest.TestCase):
             self.fig.add_data(
                 data, time_key='SOME WRONG KEY')
 
-    def test_add_data_biom_key_mapping(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
-
-        # Test that it works with correct mapping
-        self.fig.add_data(
-            data, biom_key='SOME NON-STANDARD KEY')
-
-        # Test that it fails with wrong mapping
-        with self.assertRaisesRegex(
-                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_data(
-                data, biom_key='SOME WRONG KEY')
-
-    def test_add_data_meas_key_mapping(self):
-        # Rename measurement key
+    def test_add_data_obs_key_mapping(self):
+        # Rename observable key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
         self.fig.add_data(
-            data, meas_key='SOME NON-STANDARD KEY')
+            data, obs_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(
-                data, meas_key='SOME WRONG KEY')
+                data, obs_key='SOME WRONG KEY')
+
+    def test_add_data_value_key_mapping(self):
+        # Rename Value key
+        data = self.data.rename(
+            columns={'Value': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_data(
+            data, value_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_data(
+                data, value_key='SOME WRONG KEY')
 
     def test_add_prediction_wrong_data_type(self):
         # Create data of wrong type
@@ -379,12 +381,12 @@ class TestPKPredictivePlot(unittest.TestCase):
             TypeError, 'Data has to be pandas.DataFrame.',
             self.fig.add_prediction, data)
 
-    def test_add_prediction_wrong_biomarker(self):
-        # Specify biomarker that is not in the dataset
-        biomarker = 'Does not exist'
+    def test_add_prediction_wrong_observable(self):
+        # Specify observable that is not in the dataset
+        observable = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
-            self.fig.add_prediction(self.prediction, biomarker)
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
+            self.fig.add_prediction(self.prediction, observable)
 
     def test_add_prediction_bad_bulk_probs(self):
         # A maximum of 7 bulk probs are allowed
@@ -414,38 +416,38 @@ class TestPKPredictivePlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_prediction, data)
 
-    def test_add_prediction_wrong_biom_key(self):
-        # Rename biomarker key
+    def test_add_prediction_wrong_obs_key(self):
+        # Rename observable key
         data = self.prediction.rename(
-            columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_prediction, data)
 
-    def test_add_prediction_wrong_sample_key(self):
-        # Rename sample key
+    def test_add_prediction_wrong_value_key(self):
+        # Rename value key
         data = self.prediction.rename(
-            columns={'Sample': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Sample>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_prediction, data)
 
     def test_add_prediction_biom_mapping(self):
-        # Rename rename biomarker
+        # Rename rename observable
         data = self.prediction.copy()
-        data['Biomarker'] = 'SOME NON-STANDARD BIOMARKER'
+        data['Observable'] = 'SOME NON-STANDARD observable'
 
         # Test that it works with correct mapping
         self.fig.add_prediction(
-            data=data, biomarker='SOME NON-STANDARD BIOMARKER')
+            data=data, observable='SOME NON-STANDARD observable')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
-                ValueError, 'The biomarker could not be found'):
+                ValueError, 'The observable could not be found'):
             self.fig.add_prediction(
-                data=data, biomarker='SOME WRONG BIOMARKER')
+                data=data, observable='SOME WRONG observable')
 
     def test_add_prediction_no_provided_bulk_prob(self):
         # Test that it works with correct mapping
@@ -467,31 +469,31 @@ class TestPKPredictivePlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_prediction(data=data, time_key='SOME WRONG KEY')
 
-    def test_add_prediction_biom_key_mapping(self):
-        # Rename biomarker key
+    def test_add_prediction_obs_key_mapping(self):
+        # Rename observable key
         data = self.prediction.rename(
-            columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_prediction(data=data, biom_key='SOME NON-STANDARD KEY')
+        self.fig.add_prediction(data=data, obs_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_prediction(data=data, biom_key='SOME WRONG KEY')
+            self.fig.add_prediction(data=data, obs_key='SOME WRONG KEY')
 
-    def test_add_prediction_sample_key_mapping(self):
-        # Rename sample key
+    def test_add_prediction_value_key_mapping(self):
+        # Rename value key
         data = self.prediction.rename(
-            columns={'Sample': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_prediction(data=data, sample_key='SOME NON-STANDARD KEY')
+        self.fig.add_prediction(data=data, value_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_prediction(data=data, sample_key='SOME WRONG KEY')
+            self.fig.add_prediction(data=data, value_key='SOME WRONG KEY')
 
 
 class TestPDTimeSeriesPlot(unittest.TestCase):
@@ -515,11 +517,11 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             TypeError, 'Data has to be pandas.DataFrame.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biomarker(self):
-        biomarker = 'Does not exist'
+    def test_add_data_wrong_observable(self):
+        observable = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
-            self.fig.add_data(self.data, biomarker)
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
+            self.fig.add_data(self.data, observable)
 
     def test_add_data_wrong_id_key(self):
         # Rename ID key
@@ -537,21 +539,22 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biom_key(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_data_wrong_obs_key(self):
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_meas_key(self):
-        # Rename measurement key
+    def test_add_data_wrong_value_key(self):
+        # Rename Value key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Measurement>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_data, data)
 
     def test_add_data_id_key_mapping(self):
@@ -578,30 +581,31 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, time_key='SOME WRONG KEY')
 
-    def test_add_data_biom_key_mapping(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
-
-        # Test that it works with correct mapping
-        self.fig.add_data(data=data, biom_key='SOME NON-STANDARD KEY')
-
-        # Test that it fails with wrong mapping
-        with self.assertRaisesRegex(
-                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_data(data=data, biom_key='SOME WRONG KEY')
-
-    def test_add_data_meas_key_mapping(self):
-        # Rename measurement key
+    def test_add_data_obs_key_mapping(self):
+        # Rename observable key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_data(data=data, meas_key='SOME NON-STANDARD KEY')
+        self.fig.add_data(data=data, obs_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_data(data=data, meas_key='SOME WRONG KEY')
+            self.fig.add_data(data=data, obs_key='SOME WRONG KEY')
+
+    def test_add_data_value_key_mapping(self):
+        # Rename Value key
+        data = self.data.rename(
+            columns={'Value': 'SOME NON-STANDARD KEY'})
+
+        # Test that it works with correct mapping
+        self.fig.add_data(data=data, value_key='SOME NON-STANDARD KEY')
+
+        # Test that it fails with wrong mapping
+        with self.assertRaisesRegex(
+                ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
+            self.fig.add_data(data=data, value_key='SOME WRONG KEY')
 
     def test_add_simulation_wrong_data_type(self):
         # Create data of wrong type
@@ -619,12 +623,12 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_simulation, data)
 
-    def test_add_simulation_wrong_biom_key(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_simulation_wrong_value_key(self):
+        # Rename value key
+        data = self.data.rename(columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_simulation, data)
 
     def test_add_simulation_time_key_mapping(self):
@@ -639,17 +643,18 @@ class TestPDTimeSeriesPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_simulation(data=data, time_key='SOME WRONG KEY')
 
-    def test_add_simulation_biom_key_mapping(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_simulation_value_key_mapping(self):
+        # Rename value key
+        data = self.data.rename(
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_simulation(data=data, biom_key='SOME NON-STANDARD KEY')
+        self.fig.add_simulation(data=data, value_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_simulation(data=data, biom_key='SOME WRONG KEY')
+            self.fig.add_simulation(data=data, value_key='SOME WRONG KEY')
 
 
 class TestPKTimeSeriesPlot(unittest.TestCase):
@@ -673,11 +678,11 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
             TypeError, 'Data has to be pandas.DataFrame.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biomarker(self):
-        biomarker = 'Does not exist'
+    def test_add_data_wrong_observable(self):
+        observable = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
-            self.fig.add_data(self.data, biomarker)
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
+            self.fig.add_data(self.data, observable)
 
     def test_add_data_wrong_id_key(self):
         # Rename ID key
@@ -695,21 +700,22 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biom_key(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_data_wrong_obs_key(self):
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_meas_key(self):
-        # Rename measurement key
+    def test_add_data_wrong_value_key(self):
+        # Rename Value key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Measurement>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_data, data)
 
     def test_add_data_wrong_dose_key(self):
@@ -744,17 +750,18 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, time_key='SOME WRONG KEY')
 
-    def test_add_data_biom_key_mapping(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_data_obs_key_mapping(self):
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_data(data=data, biom_key='SOME NON-STANDARD KEY')
+        self.fig.add_data(data=data, obs_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_data(data=data, biom_key='SOME WRONG KEY')
+            self.fig.add_data(data=data, obs_key='SOME WRONG KEY')
 
     def test_add_data_dose_key_mapping(self):
         # Rename dose key
@@ -768,18 +775,18 @@ class TestPKTimeSeriesPlot(unittest.TestCase):
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(data=data, dose_key='SOME WRONG KEY')
 
-    def test_add_data_meas_key_mapping(self):
-        # Rename measurement key
+    def test_add_data_value_key_mapping(self):
+        # Rename Value key
         data = self.data.rename(
-            columns={'Measurement': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
-        self.fig.add_data(data=data, meas_key='SOME NON-STANDARD KEY')
+        self.fig.add_data(data=data, value_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
-            self.fig.add_data(data=data, meas_key='SOME WRONG KEY')
+            self.fig.add_data(data=data, value_key='SOME WRONG KEY')
 
     def test_add_simulation(self):
         with self.assertRaisesRegex(NotImplementedError, ''):

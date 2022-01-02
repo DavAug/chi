@@ -15,14 +15,22 @@ Each predictive model consists of a :class:`MechanisticModel` and one
 Functional classes
 ------------------
 
+- :class:`PAMPredictiveModel`
+- :class:`PopulationPredictiveModel`
 - :class:`PosteriorPredictiveModel`
 - :class:`PredictiveModel`
-- :class:`PredictivePopulationModel`
 - :class:`PriorPredictiveModel`
-- :class:`StackedPredictiveModel`
 
 Detailed API
 ^^^^^^^^^^^^
+
+.. autoclass:: PAMPredictiveModel
+    :members:
+    :inherited-members:
+
+.. autoclass:: PopulationPredictiveModel
+    :members:
+    :inherited-members:
 
 .. autoclass:: PosteriorPredictiveModel
     :members:
@@ -31,25 +39,17 @@ Detailed API
 .. autoclass:: PredictiveModel
     :members:
 
-.. autoclass:: PredictivePopulationModel
-    :members:
-    :inherited-members:
-
 .. autoclass:: PriorPredictiveModel
-    :members:
-    :inherited-members:
-
-.. autoclass:: StackedPredictiveModel
     :members:
     :inherited-members:
 
 Base classes
 ------------
 
-- :class:`GenerativeModel`
+- :class:`AveragedPredictiveModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
-.. autoclass:: GenerativeModel
+.. autoclass:: AveragedPredictiveModel
     :members:
