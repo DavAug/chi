@@ -166,7 +166,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
 
         parameters = [mu_log] + [sigma_log]
         score = self.cpop_model.compute_log_likelihood(parameters, etas)
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
 
         # Test case I.3:
         etas = [0.2] * n_ids
@@ -200,7 +200,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         parameters = [mu_log] + [sigma_log]
         scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
         self.assertEqual(len(scores), 10)
-        self.assertEqual(np.sum(scores), ref_score)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 10))
 
         # Test case I.2:
@@ -216,7 +216,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         parameters = [mu_log] + [sigma_log]
         scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
         self.assertEqual(len(scores), 10)
-        self.assertEqual(np.sum(scores), ref_score)
+        self.assertAlmostEqual(np.sum(scores), ref_score)
         self.assertTrue(np.allclose(scores, ref_score / 10))
 
         # Test case I.3:

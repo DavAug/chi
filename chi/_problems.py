@@ -353,8 +353,7 @@ class ProblemModellingController(object):
         covariates = None
         covariate_map = None
         if len(covariate_names) > 0:
-            covariates, covariate_map = self._extract_covariates(
-                covariate_names)
+            covariates, covariate_map = self._extract_covariates()
 
         log_likelihood = chi.HierarchicalLogLikelihood(
                 log_likelihoods, self._population_models, covariates,
