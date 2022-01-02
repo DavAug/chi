@@ -6,9 +6,8 @@ Error Models
 
 .. currentmodule:: chi
 
-Error models in chi_ model the deviations of experimentally
-observed pharmacokinetic and pharmacodynamic biomarkers and
-the predictions of a :class:`MechanisticModel`.
+Error models in chi_ model the deviations between experimental
+observations and the :class:`MechanisticModel` predictions.
 
 Functional classes
 ------------------
