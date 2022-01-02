@@ -22,8 +22,7 @@ class TestResidualPlot(unittest.TestCase):
     def setUpClass(cls):
         # Create test datasets
         cls.measurements = DataLibrary().lung_cancer_control_group()
-        cls.data = cls.measurements.rename(
-            columns={'Measurement': 'Sample'})
+        cls.data = cls.measurements.rename({'Value': 'Value'})
 
         # Create test figure
         cls.fig = plots.ResidualPlot(cls.measurements)
@@ -42,13 +41,13 @@ class TestResidualPlot(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Measurements does not have'):
             plots.ResidualPlot(self.measurements, time_key='Wrong')
 
-        # Wrong biomarker key
+        # Wrong observable key
         with self.assertRaisesRegex(ValueError, 'Measurements does not have'):
-            plots.ResidualPlot(self.measurements, biom_key='Wrong')
+            plots.ResidualPlot(self.measurements, obs_key='Wrong')
 
         # Wrong measurement key
         with self.assertRaisesRegex(ValueError, 'Measurements does not have'):
-            plots.ResidualPlot(self.measurements, meas_key='Wrong')
+            plots.ResidualPlot(self.measurements, value_key='Wrong')
 
     def test_add_data_wrong_data_type(self):
         # Create data of wrong type
@@ -57,20 +56,20 @@ class TestResidualPlot(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'Data has to be'):
             self.fig.add_data(data)
 
-    def test_add_data_wrong_biomarker(self):
-        # Biomarker does not exist in prediction dataframe
-        biomarker = 'Does not exist'
+    def test_add_data_wrong_observable(self):
+        # observable does not exist in prediction dataframe
+        observable = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker could not be'):
-            self.fig.add_data(self.data, biomarker)
+        with self.assertRaisesRegex(ValueError, 'The observable could not be'):
+            self.fig.add_data(self.data, observable)
 
-        # Biomarker does not exist in measurement dataframe
+        # observable does not exist in measurement dataframe
         data = self.data.copy()
-        data['Biomarker'] = 'Does not exist'
-        biomarker = 'Does not exist'
+        data['Observable'] = 'Does not exist'
+        observable = 'Does not exist'
 
-        with self.assertRaisesRegex(ValueError, 'The biomarker <Does not'):
-            self.fig.add_data(data, biomarker)
+        with self.assertRaisesRegex(ValueError, 'The observable <Does not'):
+            self.fig.add_data(data, observable)
 
     def test_add_data_wrong_individual(self):
         individual = 'does not exist'
@@ -87,21 +86,22 @@ class TestResidualPlot(unittest.TestCase):
             ValueError, 'Data does not have the key <Time>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_biom_key(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_data_wrong_obs_key(self):
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Biomarker>.',
+            ValueError, 'Data does not have the key <Observable>.',
             self.fig.add_data, data)
 
-    def test_add_data_wrong_sample_key(self):
+    def test_add_data_wrong_value_key(self):
         # Rename measurement key
         data = self.data.rename(
-            columns={'Sample': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         self.assertRaisesRegex(
-            ValueError, 'Data does not have the key <Sample>.',
+            ValueError, 'Data does not have the key <Value>.',
             self.fig.add_data, data)
 
     def test_add_data_time_key_mapping(self):
@@ -118,34 +118,35 @@ class TestResidualPlot(unittest.TestCase):
             self.fig.add_data(
                 data, time_key='SOME WRONG KEY')
 
-    def test_add_data_biom_key_mapping(self):
-        # Rename biomarker key
-        data = self.data.rename(columns={'Biomarker': 'SOME NON-STANDARD KEY'})
+    def test_add_data_obs_key_mapping(self):
+        # Rename observable key
+        data = self.data.rename(
+            columns={'Observable': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
         self.fig.add_data(
-            data, biom_key='SOME NON-STANDARD KEY')
+            data, obs_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(
-                data, biom_key='SOME WRONG KEY')
+                data, obs_key='SOME WRONG KEY')
 
-    def test_add_data_sample_key_mapping(self):
+    def test_add_data_value_key_mapping(self):
         # Rename measurement key
         data = self.data.rename(
-            columns={'Sample': 'SOME NON-STANDARD KEY'})
+            columns={'Value': 'SOME NON-STANDARD KEY'})
 
         # Test that it works with correct mapping
         self.fig.add_data(
-            data, sample_key='SOME NON-STANDARD KEY')
+            data, value_key='SOME NON-STANDARD KEY')
 
         # Test that it fails with wrong mapping
         with self.assertRaisesRegex(
                 ValueError, 'Data does not have the key <SOME WRONG KEY>.'):
             self.fig.add_data(
-                data, sample_key='SOME WRONG KEY')
+                data, value_key='SOME WRONG KEY')
 
     def test_add_data_show_relative(self):
         self.fig.add_data(self.data, show_relative=True)

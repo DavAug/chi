@@ -19,7 +19,7 @@ class ResidualPlot(plots.SingleFigure):
     of a predictive model and measured observations.
 
     Expects a :class:`pandas.DataFrame` of measurements with an ID, a time,
-    biomarker and a measurement column. This dataset is used as reference to
+    observable and a value column. This dataset is used as reference to
     compute the residuals.
 
     Extends :class:`SingleFigure`.
@@ -36,12 +36,12 @@ class ResidualPlot(plots.SingleFigure):
     time_key
         Key label of the :class:`DataFrame` which specifies the time
         column. Defaults to ``'Time'``.
-    biom_key
-        Key label of the :class:`DataFrame` which specifies the PD
-        biomarker column. Defaults to ``'Biomarker'``.
-    meas_key
+    obs_key
+        Key label of the :class:`DataFrame` which specifies the observable
+        column. Defaults to ``'Observable'``.
+    value_key
         Key label of the :class:`DataFrame` which specifies the column of
-        the measured PD biomarker. Defaults to ``'Measurement'``.
+        the measured values. Defaults to ``'Value'``.
     updatemenu
         Boolean flag that enables or disables interactive buttons, such as a
         logarithmic scale switch for the y-axis.
@@ -49,7 +49,7 @@ class ResidualPlot(plots.SingleFigure):
 
     def __init__(
             self, measurements, id_key='ID', time_key='Time',
-            biom_key='Biomarker', meas_key='Measurement', updatemenu=True):
+            obs_key='Observable', value_key='Value', updatemenu=True):
         super(ResidualPlot, self).__init__(updatemenu)
 
         # Check input format
@@ -57,18 +57,18 @@ class ResidualPlot(plots.SingleFigure):
             raise TypeError(
                 'Measurements has to be pandas.DataFrame.')
 
-        for key in [id_key, time_key, biom_key, meas_key]:
+        for key in [id_key, time_key, obs_key, value_key]:
             if key not in measurements.keys():
                 raise ValueError(
                     'Measurements does not have the key <' + str(key) + '>.')
 
         # Remember data and keys
         self._measurements = measurements
-        self._keys = [id_key, time_key, biom_key, meas_key]
+        self._keys = [id_key, time_key, obs_key, value_key]
 
     def _add_predicted_versus_observed_scatter_plot(
-            self, meas, pred, show_residuals, show_relative, biomarker,
-            time_key, sample_key):
+            self, meas, pred, show_residuals, show_relative, time_key,
+            sample_key):
         """
         Adds a scatter plot of the mean predictions on the x-axis and
         the measured values on the y-axis. Each individual gets a
@@ -107,7 +107,7 @@ class ResidualPlot(plots.SingleFigure):
 
         # Add default axes labels
         xlabel = 'Prediction'
-        ylabel = 'Residual' if show_residuals is True else 'Biomarker'
+        ylabel = 'Residual' if show_residuals is True else 'Observable'
         if show_relative is True:
             ylabel += ' in rel. units'
         self._fig.update_layout(
@@ -178,17 +178,17 @@ class ResidualPlot(plots.SingleFigure):
         return measurements
 
     def add_data(
-            self, data, biomarker=None, individual=None, show_residuals=True,
-            show_relative=False, time_key='Time', biom_key='Biomarker',
-            sample_key='Sample'):
+            self, data, observable=None, individual=None, show_residuals=True,
+            show_relative=False, time_key='Time', obs_key='Observable',
+            value_key='Value'):
         r"""
-        Adds the residuals of the predicted biomarker values with respect
+        Adds the residuals of the predicted values with respect
         to the measured values to the figure.
 
-        Expects a :class:`pandas.DataFrame` with a time, a biomarker and a
-        sample column. The time column determines the time of the biomarker
-        measurement and the sample column the corresponding biomarker
-        measurement. The biomarker column determines the biomarker type.
+        Expects a :class:`pandas.DataFrame` with a time, an observable and a
+        value column. The time column determines the times of the
+        measurements and the value column the measured
+        values. The observable column determines the measured observable.
 
         The predictions are matched to the observations based on their ID and
         time label. If multiple predictions are provided for one measured time
@@ -198,11 +198,11 @@ class ResidualPlot(plots.SingleFigure):
         ----------
         data
             A :class:`pandas.DataFrame` with the time series PD simulation in
-            form of a time and biomarker column.
-        biomarker
+            form of a time and observable column.
+        observable
             The predicted bimoarker. This argument is used to determine the
-            relevant rows in the dataframe. If ``None``, the first biomarker
-            type in the biomarker column is selected.
+            relevant rows in the dataframe. If ``None``, the first observable
+            type in the observable column is selected.
         individual
             The ID of the individual whose measurements are used as reference
             for the predictive residuals. Defaults to ``None`` which compares
@@ -217,19 +217,19 @@ class ResidualPlot(plots.SingleFigure):
         time_key
             Key label of the :class:`pandas.DataFrame` which specifies the time
             column. Defaults to ``'Time'``.
-        biom_key
-            Key label of the :class:`pandas.DataFrame` which specifies the PD
-            biomarker column. Defaults to ``'Biomarker'``.
-        sample_key
+        obs_key
             Key label of the :class:`pandas.DataFrame` which specifies the
-            sample column. Defaults to ``'Sample'``.
+            observable column. Defaults to ``'Observable'``.
+        value_key
+            Key label of the :class:`pandas.DataFrame` which specifies the
+            value column. Defaults to ``'Value'``.
         """
         # Check input format
         if not isinstance(data, pd.DataFrame):
             raise TypeError(
                 'Data has to be pandas.DataFrame.')
 
-        for key in [time_key, biom_key, sample_key]:
+        for key in [time_key, obs_key, value_key]:
             if key not in data.keys():
                 raise ValueError(
                     'Data does not have the key <' + str(key) + '>.')
@@ -237,38 +237,38 @@ class ResidualPlot(plots.SingleFigure):
         # Check that selected individual exists in measurement dataframe
         if individual is not None:
             id_key_m = self._keys[0]
-            ids = self._measurements[id_key_m].unique()
+            ids = list(self._measurements[id_key_m].unique())
             if individual not in ids:
                 raise ValueError(
                     'The ID <' + str(individual) + '> does not exist in the '
                     'measurement dataframe.')
 
-        # Default to first bimoarker, if biomarker is not specified
-        biom_types = data[biom_key].dropna().unique()
-        if biomarker is None:
-            biomarker = biom_types[0]
+        # Default to first bimoarker, if observable is not specified
+        biom_types = data[obs_key].dropna().unique()
+        if observable is None:
+            observable = biom_types[0]
 
-        if biomarker not in biom_types:
+        if observable not in biom_types:
             raise ValueError(
-                'The biomarker could not be found in the biomarker column.')
+                'The observable could not be found in the observable column.')
 
-        # Check that selected biomarker exists in the measurement dataframe
-        biom_key_m = self._keys[2]
-        biomarkers = self._measurements[biom_key_m].unique()
-        if biomarker not in biomarkers:
+        # Check that selected observable exists in the measurement dataframe
+        obs_key_m = self._keys[2]
+        observables = self._measurements[obs_key_m].unique()
+        if observable not in observables:
             raise ValueError(
-                'The biomarker <' + str(biomarker) + '> does not exist in the '
-                'measurement dataframe.')
+                'The observable <' + str(observable) + '> does not exist in '
+                'the measurement dataframe.')
 
-        # Mask predictions for biomarker
-        mask = data[biom_key] == biomarker
+        # Mask predictions for observable
+        mask = data[obs_key] == observable
         data = data[mask]
 
         # Get the relevant observations
         meas = self._get_relevant_measurements(
-            data, biomarker, individual, time_key)
+            data, observable, individual, time_key)
 
         # Add mean predictions versus observations as scatter points
         self._add_predicted_versus_observed_scatter_plot(
-            meas, data, show_residuals, show_relative, biomarker, time_key,
-            sample_key)
+            meas, data, show_residuals, show_relative, time_key,
+            value_key)
