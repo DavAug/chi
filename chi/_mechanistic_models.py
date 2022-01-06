@@ -81,8 +81,14 @@ class MechanisticModel(object):
         # Get constant variable names and state names
         names = [var.qname() for var in self._model.states()]
         self._state_names = sorted(names)
-        self._const_names = sorted(
-            [var.qname() for var in self._model.variables(const=True)])
+
+        const_names = []
+        for var in self._model.variables(const=True):
+            # Sometimes constants are derived from parameters
+            if not var.is_literal():
+                continue
+            const_names.append(var.qname())
+        self._const_names = sorted(const_names)
 
         # Remember original order of state names for simulation
         order_after_sort = np.argsort(names)
