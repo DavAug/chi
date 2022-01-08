@@ -5,6 +5,7 @@
 # full license details.
 #
 
+import os
 import unittest
 
 import myokit
@@ -133,6 +134,18 @@ class TestMechanisticModel(unittest.TestCase):
         self.assertEqual(parameters[2], 'myokit.kappa')
         self.assertEqual(parameters[3], 'myokit.lambda_0')
         self.assertEqual(parameters[4], 'myokit.lambda_1')
+
+        # Test case II: Model where lambda_0 is defined as lambda_1 * kappa
+        directory = os.path.dirname(__file__)
+        model = chi.MechanisticModel(
+            directory + '/data/model_with_derived_constants.xml')
+        parameters = model.parameters()
+
+        self.assertEqual(len(parameters), 4)
+        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[1], 'myokit.drug_concentration')
+        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[3], 'myokit.lambda_1')
 
     def test_set_outputs(self):
         # Set twice the same output
