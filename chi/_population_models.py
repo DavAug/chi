@@ -405,7 +405,7 @@ class CovariatePopulationModel(PopulationModel):
 
     def sample(
             self, parameters, n_samples=None, seed=None, covariates=None,
-            return_psi=True):
+            return_psi=False):
         r"""
         Returns random samples from the population distribution.
 
