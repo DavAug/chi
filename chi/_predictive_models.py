@@ -350,18 +350,18 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
 
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):
-                container = container.append(pd.DataFrame({
+                container = pd.concat([container, pd.DataFrame({
                     'ID': sample_id,
                     'Time': times,
                     'Observable': name,
-                    'Value': sample[output_id, :, 0]}))
+                    'Value': sample[output_id, :, 0]})])
 
         # Add dosing regimen, if set
         final_time = np.max(times)
         regimen = self.get_dosing_regimen(final_time)
         if (regimen is not None) and (include_regimen is True):
             # Append dosing regimen only once for all samples
-            container = container.append(regimen)
+            container = pd.concat([container, regimen])
 
         return container
 
@@ -602,10 +602,10 @@ class PredictiveModel(object):
 
             if period == 0:
                 # Dose is administered only once
-                regimen_df = regimen_df.append(pd.DataFrame({
+                regimen_df = pd.concat([regimen_df, pd.DataFrame({
                     'Time': [start_time],
                     'Duration': [dose_duration],
-                    'Dose': [dose_amount]}))
+                    'Dose': [dose_amount]})])
 
                 # Continue to next dose event
                 continue
@@ -628,10 +628,10 @@ class PredictiveModel(object):
             dose_times = dose_times[mask]
 
             # Add dose administrations to dataframe
-            regimen_df = regimen_df.append(pd.DataFrame({
+            regimen_df = pd.concat([regimen_df, pd.DataFrame({
                 'Time': dose_times,
                 'Duration': dose_duration,
-                'Dose': dose_amount}))
+                'Dose': dose_amount})])
 
         # If no dose event before final_time exist, return None
         if regimen_df.empty:
@@ -774,11 +774,11 @@ class PredictiveModel(object):
         # Fill in all samples at a specific time point at once
         for output_id, name in enumerate(output_names):
             for time_id, time in enumerate(times):
-                samples = samples.append(pd.DataFrame({
+                samples = pd.concat([samples, pd.DataFrame({
                     'ID': sample_ids,
                     'Time': time,
                     'Observable': name,
-                    'Value': container[output_id, time_id, :]}))
+                    'Value': container[output_id, time_id, :]})])
 
         # Add dosing regimen information, if set
         final_time = np.max(times)
@@ -787,7 +787,7 @@ class PredictiveModel(object):
             # Add dosing regimen for each sample
             for _id in sample_ids:
                 regimen['ID'] = _id
-                samples = samples.append(regimen)
+                samples = pd.concat([samples, regimen])
 
         return samples
 
@@ -1252,11 +1252,11 @@ class PopulationPredictiveModel(PredictiveModel):
         # Fill in all samples at a specific time point at once
         for output_id, name in enumerate(output_names):
             for time_id, time in enumerate(times):
-                samples = samples.append(pd.DataFrame({
+                samples = pd.concat([samples, pd.DataFrame({
                     'ID': sample_ids,
                     'Time': time,
                     'Observable': name,
-                    'Value': container[output_id, time_id, :]}))
+                    'Value': container[output_id, time_id, :]})])
 
         # Append covariates, if used
         if covariates is not None:
@@ -1279,11 +1279,11 @@ class PopulationPredictiveModel(PredictiveModel):
 
             # Append to dataframe
             for idc, covariate in enumerate(covariate_names):
-                samples = samples.append(pd.DataFrame({
+                samples = pd.concat([samples, pd.DataFrame({
                     'ID': sample_ids,
                     'Time': np.nan,
                     'Observable': covariate,
-                    'Value': covariates[idc]}))
+                    'Value': covariates[idc]})])
 
         # Add dosing regimen information, if set
         final_time = np.max(times)
@@ -1292,7 +1292,7 @@ class PopulationPredictiveModel(PredictiveModel):
             # Add dosing regimen for each sample
             for _id in sample_ids:
                 regimen['ID'] = _id
-                samples = samples.append(regimen)
+                samples = pd.concat([samples, regimen])
 
         return samples
 
@@ -1459,18 +1459,18 @@ class PriorPredictiveModel(AveragedPredictiveModel):
 
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):
-                container = container.append(pd.DataFrame({
+                container = pd.concat([container, pd.DataFrame({
                     'ID': sample_id,
                     'Time': times,
                     'Observable': name,
-                    'Value': sample[output_id, :, 0]}))
+                    'Value': sample[output_id, :, 0]})])
 
         # Add dosing regimen, if set
         final_time = np.max(times)
         regimen = self.get_dosing_regimen(final_time)
         if (regimen is not None) and (include_regimen is True):
             # Append dosing regimen only once for all samples
-            container = container.append(regimen)
+            container = pd.concat([container, regimen])
 
         return container
 
@@ -1618,7 +1618,7 @@ class PAMPredictiveModel(AveragedPredictiveModel):
         regimen = self.get_dosing_regimen(final_time)
         if (regimen is not None) and (include_regimen is True):
             # Append dosing regimen only once for all samples
-            samples = samples.append(regimen)
+            samples = pd.concat([samples, regimen])
 
         return samples
 
