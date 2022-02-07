@@ -211,6 +211,10 @@ class HierarchicalLogLikelihood(object):
         """
         # Transform parameters to numpy array
         parameters = np.asarray(parameters)
+        if np.any(self._uses_eta):
+            # In place updates of parameters will affect input, when input was
+            # alread a np.ndarray. To avoid this we copy the parameters
+            parameters = np.copy(parameters)
 
         # Compute population model scores
         score = 0
