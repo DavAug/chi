@@ -388,7 +388,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             pooled_params[6],
             psis_2[1]]
 
-        parameters = [
+        parameters = np.array([
             pooled_params[0],
             etas_1[0],
             etas_1[1],
@@ -405,7 +405,8 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             pop_params_2[0],
             pop_params_2[1],
             pop_params_2[2],
-            pop_params_2[3]]
+            pop_params_2[3]])
+        copied_params = np.copy(parameters)
 
         ref_score = \
             ref_pop_model.compute_log_likelihood(
@@ -419,6 +420,23 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertNotEqual(ref_score, -np.inf)
         self.assertAlmostEqual(self.hierarchical_model3(parameters), ref_score)
+        self.assertEqual(parameters[0], copied_params[0])
+        self.assertEqual(parameters[1], copied_params[1])
+        self.assertEqual(parameters[2], copied_params[2])
+        self.assertEqual(parameters[3], copied_params[3])
+        self.assertEqual(parameters[4], copied_params[4])
+        self.assertEqual(parameters[5], copied_params[5])
+        self.assertEqual(parameters[6], copied_params[6])
+        self.assertEqual(parameters[7], copied_params[7])
+        self.assertEqual(parameters[8], copied_params[8])
+        self.assertEqual(parameters[9], copied_params[9])
+        self.assertEqual(parameters[10], copied_params[10])
+        self.assertEqual(parameters[11], copied_params[11])
+        self.assertEqual(parameters[12], copied_params[12])
+        self.assertEqual(parameters[13], copied_params[13])
+        self.assertEqual(parameters[14], copied_params[14])
+        self.assertEqual(parameters[15], copied_params[15])
+        self.assertEqual(parameters[16], copied_params[16])
 
         # Test case VI.2: Covariate population model
         # Provide explicit covariate map
