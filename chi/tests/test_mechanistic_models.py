@@ -142,6 +142,7 @@ class TestMechanisticModel(unittest.TestCase):
         parameters = model.parameters()
 
         self.assertEqual(len(parameters), 4)
+        self.assertEqual(model.n_parameters(), 4)
         self.assertEqual(parameters[0], 'myokit.tumour_volume')
         self.assertEqual(parameters[1], 'myokit.drug_concentration')
         self.assertEqual(parameters[2], 'myokit.kappa')

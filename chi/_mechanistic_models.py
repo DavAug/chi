@@ -76,7 +76,6 @@ class MechanisticModel(object):
         # Get the number of states and parameters
         self._n_states = self._model.count_states()
         n_const = self._model.count_variables(const=True)
-        self._n_parameters = self._n_states + n_const
 
         # Get constant variable names and state names
         names = [var.qname() for var in self._model.states()]
@@ -86,9 +85,11 @@ class MechanisticModel(object):
         for var in self._model.variables(const=True):
             # Sometimes constants are derived from parameters
             if not var.is_literal():
+                n_const -= 1
                 continue
             const_names.append(var.qname())
         self._const_names = sorted(const_names)
+        self._n_parameters = self._n_states + n_const
 
         # Remember original order of state names for simulation
         order_after_sort = np.argsort(names)
