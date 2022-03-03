@@ -10,7 +10,7 @@
 **Chi** is an open source Python package hosted on GitHub,
 which can be used to model dose response dynamics.
 
-All features of our software are described in detail in our
+All features of the software are described in detail in the
 [full API documentation](https://chi.readthedocs.io/en/latest/).
 
 ## Getting started
@@ -18,9 +18,9 @@ All features of our software are described in detail in our
 
 1. Install sundials
 
-Chi uses the open-source package Myokit to solve mechanistic models
+Chi uses the open source package Myokit to solve ordinary differential equations
 and compute their sensitivities efficiently. Myokit does this using sundials' CVODESS,
-which need to be installed with:
+which needs to be installed with:
 
 - On Ubuntu:
 ```bash
@@ -46,7 +46,7 @@ import chi
  ```
 
  Tutorials and more detailed explanations on how to use chi are currently
- under development.
+ being developed.
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
