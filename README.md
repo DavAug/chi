@@ -47,6 +47,27 @@ import chi
 
  Tutorials and more detailed explanations on how to use chi are currently
  being developed.
+ 
+## Citation
+
+If you use this software in your work, please cite it using the following metadata:
+
+#### APA
+```
+Augustin, D. (2021). Chi - An open source python package for treatment response modelling (Version 0.1.0) [Computer software]. https://github.com/DavAug/chi
+```
+
+#### BibTeX
+```
+@software{Augustin_Chi_-_An_2021,
+author = {Augustin, David},
+month = {12},
+title = {{Chi - An open source python package for treatment response modelling}},
+url = {https://github.com/DavAug/chi},
+version = {0.1.0},
+year = {2021}
+}
+```
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
