@@ -1,0 +1,10 @@
+cff-version: 0.1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Augustin"
+  given-names: "David"
+  orcid: "https://orcid.org/0000-0002-4885-1088"
+title: "Chi - An open source software for treatment response modelling"
+version: 0.1.0
+date-released: 2021-12-08
+url: "https://github.com/DavAug/chi"
