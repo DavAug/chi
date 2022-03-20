@@ -13,18 +13,114 @@ import numpy as np
 
 
 class MechanisticModel(object):
+    r"""
+    A base class for mechanistic time series models of the form
+
+    .. math:
+        \bar{y} = g(\bar{y}, \psi, t),
+
+    where :math:`\bar{y}` are the model outputs, :math`\psi` are the model
+    parameters and :math:`t` is the time. :math:`g` can be any (deterministic)
+    function.
     """
-    A base class for models that are specified by sbml files.
+    def __init__(self):
+        super(MechanisticModel, self).__init__()
 
-    Parameters
-    ----------
-    sbml_file
-        A path to the SBML model file that specifies the model.
+    def copy(self):
+        """
+        Returns a deep copy of the mechanistic model.
 
+        .. note:
+            The default implementation may have to be adapted based on the
+            implementation of :meth:`simulate`.
+        """
+        return copy.deepcopy(self)
+
+    def enable_sensitivities(self, enabled):
+        r"""
+        Enables the computation of the model output sensitivities to the model
+        parameters if set to ``True``.
+
+        The sensitivities of the model outputs are defined as the partial
+        derviatives of the ouputs :math:`\bar{y}` with respect to the model
+        parameters :math:`\psi`
+
+        .. math:
+            \frac{\del \bar{y}}{\del \psi}.
+
+        :param enabled: A boolean flag which enables (``True``) / disables
+            (``False``) the computation of sensitivities.
+        :type enabled: bool
+        """
+        raise NotImplementedError
+
+    def has_sensitivities(self):
+        """
+        Returns a boolean indicating whether sensitivities have been enabled.
+        """
+        raise NotImplementedError
+
+    def n_outputs(self):
+        """
+        Returns the number of output dimensions.
+
+        By default this is the number of states.
+        """
+        raise NotImplementedError
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters in the model.
+
+        Parameters of the model are initial state values and structural
+        parameter values.
+        """
+        raise NotImplementedError
+
+    def outputs(self):
+        """
+        Returns the output names of the model.
+        """
+        raise NotImplementedError
+
+    def parameters(self):
+        """
+        Returns the parameter names of the model.
+        """
+        raise NotImplementedError
+
+    def simulate(self, parameters, times):
+        """
+        Returns the numerical solution of the model outputs (and optionally
+        the sensitivites) for the specified parameters and times.
+
+        The model outputs are returned as a 2 dimensional NumPy array of shape
+        (n_outputs, n_times). If sensitivities are enabled, a tuple is returned
+        with the NumPy array of the model outputs and a NumPy array of the
+        sensitivities of shape (n_times, n_outputs, n_parameters).
+
+        :param parameters: An array-like object with values for the model
+            parameters.
+        :type parameters: list, numpy.ndarray
+        :param times: An array-like object with time points at which the output
+            values are returned.
+        :type times: list, numpy.ndarray
+        """
+        raise NotImplementedError
+
+
+class SBMLModel(MechanisticModel):
+    """
+    Instantiates a mechanistic model from a SBML specification.
+
+    Extends :class:`MechanisticModel`.
+
+    :param sbml_file: A path to the SBML model file that specifies the model.
+    :type sbml_file: str
     """
 
     def __init__(self, sbml_file):
-        super(MechanisticModel, self).__init__()
+        super(SBMLModel, self).__init__()
 
         # Import model
         self._model = sbml.SBMLImporter().model(sbml_file)
@@ -37,7 +133,7 @@ class MechanisticModel(object):
 
         # Create simulator without sensitivities
         # (intentionally public property)
-        self.simulator = myokit.Simulation(self._model)
+        self._simulator = myokit.Simulation(self._model)
         self._has_sensitivities = False
 
     def _get_time_unit(self):
@@ -58,7 +154,7 @@ class MechanisticModel(object):
         Sets values of constant model parameters.
         """
         for id_var, var in enumerate(self._const_names):
-            self.simulator.set_constant(var, float(parameters[id_var]))
+            self._simulator.set_constant(var, float(parameters[id_var]))
 
     def _set_state(self, parameters):
         """
@@ -66,7 +162,7 @@ class MechanisticModel(object):
         """
         parameters = np.array(parameters)
         parameters = parameters[self._original_order]
-        self.simulator.set_state(parameters)
+        self._simulator.set_state(parameters)
 
     def _set_number_and_names(self):
         """
@@ -119,7 +215,7 @@ class MechanisticModel(object):
         """
         # Copy model manually and get protocol
         myokit_model = self._model.clone()
-        protocol = self.simulator._protocol
+        protocol = self._simulator._protocol
 
         # Copy the mechanistic model
         model = copy.deepcopy(self)
@@ -154,13 +250,13 @@ class MechanisticModel(object):
         enabled = bool(enabled)
 
         # Get dosing regimen from existing simulator
-        protocol = self.simulator._protocol
+        protocol = self._simulator._protocol
 
         if not enabled:
             if self._has_sensitivities:
                 # Disable sensitivities
                 sim = myokit.Simulation(self._model, protocol)
-                self.simulator = sim
+                self._simulator = sim
                 self._has_sensitivities = False
 
                 return None
@@ -199,7 +295,7 @@ class MechanisticModel(object):
         sim = myokit.Simulation(self._model, protocol, sensitivities)
 
         # Update simulator and sensitivity state
-        self.simulator = sim
+        self._simulator = sim
         self._has_sensitivities = True
 
     def has_sensitivities(self):
@@ -271,7 +367,7 @@ class MechanisticModel(object):
         # Check that outputs are valid
         for output in outputs:
             try:
-                var = self.simulator._model.get(output)
+                var = self._simulator._model.get(output)
                 if not (var.is_state() or var.is_intermediary()):
                     raise ValueError(
                         'Outputs have to be state or intermediary variables.')
@@ -396,7 +492,7 @@ class MechanisticModel(object):
         :type times: list, numpy.ndarray
         """
         # Reset simulation
-        self.simulator.reset()
+        self._simulator.reset()
 
         # Set initial conditions
         self._set_state(parameters[:self._n_states])
@@ -406,13 +502,13 @@ class MechanisticModel(object):
 
         # Simulate
         if not self._has_sensitivities:
-            output = self.simulator.run(
+            output = self._simulator.run(
                 times[-1] + 1, log=self._output_names, log_times=times)
             output = np.array([output[name] for name in self._output_names])
 
             return output
 
-        output, sensitivities = self.simulator.run(
+        output, sensitivities = self._simulator.run(
             times[-1] + 1, log=self._output_names, log_times=times)
         output = np.array([output[name] for name in self._output_names])
         sensitivities = np.array(sensitivities)
@@ -426,86 +522,26 @@ class MechanisticModel(object):
         return self._time_unit
 
 
-class PharmacodynamicModel(MechanisticModel):
+class PKPDModel(SBMLModel):
     """
-    Converts a pharmacodynamic model specified by an SBML file into a forward
-    model that can be solved numerically.
+    Instantiates a PKPD model from a SBML specification.
 
-    Extends :class:`MechanisticModel`.
+    Extends :class:`SBMLModel`.
 
-    Parameters
-    ----------
-    sbml_file
-        A path to the SBML model file that specifies the pharmacodynamic model.
-
+    :param sbml_file: A path to the SBML model file that specifies the
+        PKPD model.
+    :type sbml_file: str
     """
 
     def __init__(self, sbml_file):
-        super(PharmacodynamicModel, self).__init__(sbml_file)
-
-        # Set default pharmacokinetic input variable
-        # (Typically drug concentration)
-        self._pk_input = None
-        if self._model.has_variable('myokit.drug_concentration'):
-            self._pk_input = 'myokit.drug_concentration'
-
-    def pk_input(self):
-        """
-        Returns the pharmacokinetic input variable. In most models this will be
-        the concentration of the drug.
-
-        Defaults to ``None`` or ``myokit.drug_concentration`` if the latter is
-        among the model parameters.
-        """
-        return self._pk_input
-
-    def set_pk_input(self, name):
-        """
-        Sets the pharmacokinetic input variable. In most models this will be
-        the concentration of the drug.
-
-        The name has to match a parameter of the model.
-        """
-        if name not in self._parameter_names:
-            raise ValueError(
-                'The name does not match a model parameter.')
-
-        self._pk_input = name
-
-
-class PharmacokineticModel(MechanisticModel):
-    """
-    Converts a pharmacokinetic model specified by an SBML file into a forward
-    model that can be solved numerically.
-
-    Extends :class:`MechanisticModel`.
-
-    Parameters
-    ----------
-    sbml_file
-        A path to the SBML model file that specifies the pharmacokinetic model.
-
-    """
-
-    def __init__(self, sbml_file):
-        super(PharmacokineticModel, self).__init__(sbml_file)
+        super(PKPDModel, self).__init__(sbml_file)
 
         # Set default dose administration
         self._administration = None
+        self._dosing_regimen = None
 
         # Safe vanilla model
         self._vanilla_model = self._model.clone()
-
-        # Set default output variable that interacts with the pharmacodynamic
-        # model
-        # (Typically drug concentration in central compartment)
-        self._pd_output = None
-        if self._model.has_variable('central.drug_concentration'):
-            self._pd_output = 'central.drug_concentration'
-
-        # Set default output to pd output if not None
-        if self._pd_output is not None:
-            self.set_outputs([self._pd_output])
 
     def _add_dose_compartment(self, model, drug_amount):
         """
@@ -599,7 +635,7 @@ class PharmacokineticModel(MechanisticModel):
         :class:`myokit.Protocol`. If the protocol has not been set, ``None`` is
         returned.
         """
-        return self.simulator._protocol
+        return self._dosing_regimen
 
     def set_administration(
             self, compartment, amount_var='drug_amount', direct=True):
@@ -684,7 +720,7 @@ class PharmacokineticModel(MechanisticModel):
         # Update model and simulator
         # (otherwise simulator won't know about pace bound variable)
         self._model = model
-        self.simulator = myokit.Simulation(model)
+        self._simulator = myokit.Simulation(model)
         self._has_sensitivities = False
 
         # Remember type of administration
@@ -692,7 +728,7 @@ class PharmacokineticModel(MechanisticModel):
             {'compartment': compartment, 'direct': direct})
 
     def set_dosing_regimen(
-            self, dose, start, duration=0.01, period=None, num=None):
+            self, dose, start=0, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
 
@@ -708,23 +744,23 @@ class PharmacokineticModel(MechanisticModel):
         By default the dose is administered once. To apply multiple doses
         provide a dose administration period.
 
-        Parameters
-        ----------
-        dose
-            The amount of the compound that is injected at each administration.
-        start
-            Start time of the treatment.
-        duration
-            Duration of dose administration. For a bolus injection, a dose
-            duration of 1% of the time unit should suffice. By default the
-            duration is set to 0.01 (bolus).
-        period
-            Periodicity at which doses are administered. If ``None`` the dose
-            is administered only once.
-        num
-            Number of administered doses. If ``None`` and the periodicity of
-            the administration is not ``None``, doses are administered
-            indefinitely.
+        :param dose: The amount of the compound that is injected at each
+            administration, or a myokit.Protocol instance that defines the
+            dosing regimen.
+        :type dose: float or myokit.Protocol
+        :param start: Start time of the treatment. By default the
+            administration starts at t=0.
+        :type start: float, optional
+        :param duration: Duration of dose administration. By default the
+            duration is set to 0.01 of the time unit (bolus).
+        :type duration: float, optional
+        :param period: Periodicity at which doses are administered. If ``None``
+            the dose is administered only once.
+        :type period: float, optional
+        :param num: Number of administered doses. If ``None`` and the
+            periodicity of the administration is not ``None``, doses are
+            administered indefinitely.
+        :type num: int, optional
         """
         if self._administration is None:
             raise ValueError(
@@ -740,6 +776,11 @@ class PharmacokineticModel(MechanisticModel):
             period = 0
             num = 0
 
+        if isinstance(dose, myokit.Protocol):
+            self._simulator.set_protocol(dose)
+            self._dosing_regimen = dose
+            return None
+
         # Translate dose to dose rate
         dose_rate = dose / duration
 
@@ -747,61 +788,20 @@ class PharmacokineticModel(MechanisticModel):
         dosing_regimen = myokit.pacing.blocktrain(
             period=period, duration=duration, offset=start, level=dose_rate,
             limit=num)
-        self.simulator.set_protocol(dosing_regimen)
-
-    def pd_output(self):
-        """
-        Returns the variable which interacts with the pharmacodynamic model.
-        In most models this will be the concentration of the drug in the
-        central compartment.
-
-        This variable is mapped to the
-        :meth:`chi.PharmacodynamicModel.pk_input` variable when a
-        :class:`PKPDModel` is instantiated.
-
-        Defaults to ``None`` or ``central.drug_concentration`` if the latter is
-        among the model parameters.
-        """
-        return self._pd_output
-
-    def set_pd_output(self, name):
-        """
-        Sets the variable which interacts with the pharmacodynamic model.
-        In most models this will be the concentration of the drug in the
-        central compartment.
-
-        The name has to match a parameter of the model.
-
-        This variable is mapped to the
-        :meth:`chi.PharmacodynamicModel.pk_input` variable when a
-        :class:`PKPDModel` is instantiated.
-        """
-        # Get intermediate variable names
-        inter_names = [
-            var.qname() for var in self._model.variables(inter=True)]
-
-        names = inter_names + self._parameter_names
-        if name not in names:
-            raise ValueError(
-                'The name does not match a model variable.')
-
-        self._pd_output = name
+        self._simulator.set_protocol(dosing_regimen)
+        self._dosing_regimen = dosing_regimen
 
 
-class ReducedMechanisticModel(object):
+class ReducedMechanisticModel(MechanisticModel):
     """
-    A class that can be used to permanently fix model parameters of a
-    :class:`MechanisticModel` instance.
+    A wrapper class for a :class:`MechanisticModel` instance that can be used
+    to fix model parameters to fixed values.
 
-    This may be useful to explore simplified versions of a model before
-    defining a new SBML file.
+    Extends :class:`MechanisticModel`.
 
-    Parameters
-    ----------
-    mechanistic_model
-        An instance of a :class:`MechanisticModel`.
+    :param mechanistic_model: A mechanistic model.
+    :type mechanistic_model: chi.MechanisticModel
     """
-
     def __init__(self, mechanistic_model):
         super(ReducedMechanisticModel, self).__init__()
 
@@ -812,7 +812,6 @@ class ReducedMechanisticModel(object):
                 'chi.MechanisticModel')
 
         self._mechanistic_model = mechanistic_model
-        self.simulator = mechanistic_model.simulator
 
         # Set defaults
         self._fixed_params_mask = None
@@ -837,7 +836,6 @@ class ReducedMechanisticModel(object):
 
         # Replace mechanistic model and simulator
         model._mechanistic_model = mechanistic_model
-        model.simulator = mechanistic_model.simulator
 
         return model
 
@@ -990,41 +988,6 @@ class ReducedMechanisticModel(object):
 
         return copy.copy(names)
 
-    def pd_output(self):
-        """
-        Returns the variable which interacts with the pharmacodynamic model.
-        In most models this will be the concentration of the drug in the
-        central compartment.
-
-        This variable is mapped to the
-        :meth:`chi.PharmacodynamicModel.pk_input` variable when a
-        :class:`PKPDModel` is instantiated.
-
-        Defaults to ``None`` or ``central.drug_concentration`` if the latter is
-        among the model parameters.
-
-        If the model does not support a pd output, ``None`` is returned.
-        """
-        try:
-            return self._mechanistic_model.pd_output()
-        except AttributeError:
-            return None
-
-    def pk_input(self):
-        """
-        Returns the pharmacokinetic input variable. In most models this will be
-        the concentration of the drug.
-
-        Defaults to ``None`` or ``myokit.drug_concentration`` if the latter is
-        among the model parameters.
-
-        If the model does not support a pk input, ``None`` is returned.
-        """
-        try:
-            return self._mechanistic_model.pk_input()
-        except AttributeError:
-            return None
-
     def set_dosing_regimen(
             self, dose, start, duration=0.01, period=None, num=None):
         """
@@ -1077,7 +1040,11 @@ class ReducedMechanisticModel(object):
             A list of quantifiable variable names of the :class:`myokit.Model`,
             e.g. `compartment.variable`.
         """
-        self._mechanistic_model.set_outputs(outputs)
+        try:
+            self._mechanistic_model.set_outputs(outputs)
+        except AttributeError:
+            raise AttributeError(
+                'The mechanistic model does not support setting outputs.')
 
     def set_output_names(self, names):
         """
@@ -1089,7 +1056,11 @@ class ReducedMechanisticModel(object):
         names
             A dictionary that maps the current output names to new names.
         """
-        self._mechanistic_model.set_output_names(names)
+        try:
+            self._mechanistic_model.set_output_names(names)
+        except AttributeError:
+            raise AttributeError(
+                'The mechanistic model does not support setting output names.')
 
     def set_parameter_names(self, names):
         """
@@ -1101,9 +1072,13 @@ class ReducedMechanisticModel(object):
         names
             A dictionary that maps the current parameter names to new names.
         """
-        # Set parameter names
-        self._mechanistic_model.set_parameter_names(names)
-        self._parameter_names = self._mechanistic_model.parameters()
+        try:
+            self._mechanistic_model.set_parameter_names(names)
+            self._parameter_names = self._mechanistic_model.parameters()
+        except AttributeError:
+            raise AttributeError(
+                'The mechanistic model does not support setting parameter '
+                'names.')
 
     def simulate(self, parameters, times):
         """
@@ -1134,4 +1109,10 @@ class ReducedMechanisticModel(object):
         """
         Returns the model's unit of time.
         """
-        return self._mechanistic_model.time_unit()
+        try:
+            time_unit = self._mechanistic_model.time_unit()
+        except AttributeError:
+            raise AttributeError(
+                'The mechanistic model does not define a time unit.')
+
+        return time_unit

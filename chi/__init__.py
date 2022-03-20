@@ -29,8 +29,8 @@ from ._log_pdfs import (  # noqa
 
 from ._mechanistic_models import (  # noqa
     MechanisticModel,
-    PharmacodynamicModel,
-    PharmacokineticModel,
+    SBMLModel,
+    PKPDModel,
     ReducedMechanisticModel
 )
 

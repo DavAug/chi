@@ -748,7 +748,7 @@ class SamplingController(InferenceController):
         super(SamplingController, self).__init__(log_posterior)
 
         # Set default sampler
-        self._sampler = pints.HaarioACMC
+        self._sampler = pints.HaarioBardenetACMC
 
     def _format_chains(self, chains, names, ids, divergent_iters):
         """
@@ -776,8 +776,8 @@ class SamplingController(InferenceController):
             trajectories occured, or None
         """
         # Broadcast IDs to length of names, if posterior has only one ID
-        if isinstance(ids, str):
-            ids = np.broadcast_to(ids, shape=len(names))
+        if (not ids) or isinstance(ids, str):
+            ids = [ids] * len(names)
 
         # Convert names and ids to numpy arrays
         ids = np.asarray(ids)
