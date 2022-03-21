@@ -46,7 +46,6 @@ Summary of all functions and classes in chi
     chi.HierarchicalLogPosterior
     chi.GaussianModel
     chi.InferenceController
-    chi.InverseProblem
     chi.MechanisticModel
     chi.MultiplicativeGaussianErrorModel
     chi.OptimisationController
