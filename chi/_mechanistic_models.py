@@ -224,15 +224,17 @@ class SBMLModel(MechanisticModel):
             Copying the model resets the sensitivity settings.
         """
         # Copy model manually and get protocol
-        myokit_model = self._model.clone()
-        protocol = self._simulator._protocol
+        m = self._model.clone()
+        myokit_model = m.clone()
+        self._model = None
 
         # Copy the mechanistic model
         model = copy.deepcopy(self)
 
         # Replace myokit model by safe copy and create simulator
+        self._model = m
         model._model = myokit_model
-        model.simulator = myokit.Simulation(myokit_model, protocol)
+        model._simulator = myokit.Simulation(myokit_model)
 
         return model
 
@@ -639,6 +641,18 @@ class PKPDModel(SBMLModel):
         """
         return self._administration
 
+    def copy(self):
+        """
+        Returns a deep copy of the mechanistic model.
+
+        .. note::
+            Copying the model resets the sensitivity settings.
+        """
+        model = super(PKPDModel, self).copy()
+        model._simulator.set_protocol(model.dosing_regimen())
+
+        return model
+
     def dosing_regimen(self):
         """
         Returns the dosing regimen of the compound in form of a
@@ -880,14 +894,16 @@ class ReducedMechanisticModel(MechanisticModel):
             Copying the model resets the sensitivity settings.
         """
         # Get a safe copy of the mechanistic model
-        mechanistic_model = self._mechanistic_model.copy()
+        m = self._mechanistic_model
+        mechanistic_model = m.copy()
 
         # Copy the reduced model
         # (this possibly corrupts the mechanistic model and the
         # simulator)
         model = copy.deepcopy(self)
 
-        # Replace mechanistic model and simulator
+        # Replace mechanistic model
+        self._mechanistic_model = m
         model._mechanistic_model = mechanistic_model
 
         return model
