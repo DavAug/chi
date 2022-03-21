@@ -225,14 +225,17 @@ class SBMLModel(MechanisticModel):
         """
         # Copy model manually and get protocol
         m = self._model.clone()
+        s = self._simulator
         myokit_model = m.clone()
         self._model = None
+        self._simulator = None
 
         # Copy the mechanistic model
         model = copy.deepcopy(self)
 
         # Replace myokit model by safe copy and create simulator
         self._model = m
+        self._simulator = s
         model._model = myokit_model
         model._simulator = myokit.Simulation(myokit_model)
 
