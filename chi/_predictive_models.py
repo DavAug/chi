@@ -406,8 +406,7 @@ class PredictiveModel(object):
 
         # Check inputs
         if not isinstance(
-                mechanistic_model,
-                (chi.MechanisticModel, chi.ReducedMechanisticModel)):
+                mechanistic_model, chi.MechanisticModel):
             raise TypeError(
                 'The mechanistic model has to be an instance of a '
                 'chi.MechanisticModel.')

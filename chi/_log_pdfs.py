@@ -1182,9 +1182,7 @@ class LogLikelihood(pints.LogPDF):
         super(LogLikelihood, self).__init__()
 
         # Check inputs
-        if not isinstance(
-                mechanistic_model,
-                (chi.MechanisticModel, chi.ReducedMechanisticModel)):
+        if not isinstance(mechanistic_model, chi.MechanisticModel):
             raise TypeError(
                 'The mechanistic model as to be an instance of a '
                 'chi.MechanisticModel.')

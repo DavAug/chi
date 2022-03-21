@@ -375,13 +375,9 @@ class ProblemModellingController(object):
         log_likelihoods = []
         for individual in ids:
             # Set dosing regimen
-            try:
-                self._mechanistic_model.simulator.set_protocol(
+            if self._dosing_regimens:
+                self._mechanistic_model.set_dosing_regimen(
                     self._dosing_regimens[individual])
-            except TypeError:
-                # TypeError is raised when applied regimens is still None,
-                # i.e. no doses were defined by the datasets.
-                pass
 
             log_likelihood = self._create_log_likelihood(individual)
             if log_likelihood is not None:
@@ -1007,10 +1003,7 @@ class ProblemModellingController(object):
                 'Data has to be a pandas.DataFrame.')
 
         # If model does not support dose administration, set dose keys to None
-        mechanistic_model = self._mechanistic_model
-        if isinstance(self._mechanistic_model, chi.ReducedMechanisticModel):
-            mechanistic_model = self._mechanistic_model.mechanistic_model()
-        if isinstance(mechanistic_model, chi.PharmacodynamicModel):
+        if not self._mechanistic_model.supports_dosing():
             dose_key = None
             dose_duration_key = None
 
