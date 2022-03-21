@@ -896,6 +896,7 @@ class ReducedMechanisticModel(MechanisticModel):
         # Get a safe copy of the mechanistic model
         m = self._mechanistic_model
         mechanistic_model = m.copy()
+        self._mechanistic_model = None
 
         # Copy the reduced model
         # (this possibly corrupts the mechanistic model and the
