@@ -60,7 +60,7 @@ class ProblemModellingController(object):
                     'chi.ErrorModel.')
 
         # Copy mechanistic model
-        mechanistic_model = copy.deepcopy(mechanistic_model)
+        mechanistic_model = mechanistic_model.copy()
 
         # Set outputs
         if outputs is not None:
