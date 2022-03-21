@@ -866,7 +866,9 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(len(outputs), 1)
         self.assertEqual(outputs[0], 'central.drug_concentration')
 
-        # Test case III: Set parameter names for chi.MechanisticModel
+        # Test case III: Set ouputs and output names for chi.MechanisticModel
+        with self.assertRaisesRegex(NotImplementedError, 'The mechanistic'):
+            self.pd_model.set_outputs(['some names'])
         with self.assertRaisesRegex(NotImplementedError, 'The mechanistic'):
             self.pd_model.set_output_names('some names')
 

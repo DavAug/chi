@@ -1096,8 +1096,9 @@ class ReducedMechanisticModel(MechanisticModel):
         try:
             self._mechanistic_model.set_outputs(outputs)
         except AttributeError:
-            raise AttributeError(
-                'The mechanistic model does not support setting outputs.')
+            raise NotImplementedError(
+                'The mechanistic model has no implemented set_outputs '
+                'method.')
 
     def set_output_names(self, names):
         """

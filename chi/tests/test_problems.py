@@ -16,10 +16,9 @@ import chi
 from chi.library import ModelLibrary
 
 
-class TestProblemModellingControllerPDProblem(unittest.TestCase):
+class TestProblemModellingController(unittest.TestCase):
     """
-    Tests the chi.ProblemModellingController class on a PD modelling
-    problem.
+    Tests the chi.ProblemModellingController class
     """
     @classmethod
     def setUpClass(cls):
@@ -57,6 +56,7 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case II: create PKPD modelling problem
         lib = ModelLibrary()
         cls.pkpd_model = lib.erlotinib_tumour_growth_inhibition_model()
+        cls.pkpd_model.set_administration('central')
         cls.pkpd_model.set_outputs([
             'central.drug_concentration',
             'myokit.tumour_volume'])
@@ -531,6 +531,29 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertIsNone(ids[10])
         self.assertEqual(names[11], 'Shift Age Sigma rel.')
         self.assertIsNone(ids[11])
+
+        # Test with PKPD model
+        problem = copy.deepcopy(self.pkpd_problem)
+
+        # Set data which does not provide measurements for all IDs
+        problem.set_data(
+            self.data,
+            output_observable_dict={
+                'central.drug_concentration': 'IL 6',
+                'myokit.tumour_volume': 'Tumour volume'})
+        problem.set_log_prior([
+            pints.HalfCauchyLogPrior(0, 1)]*11)
+
+        # Get all posteriors
+        posteriors = problem.get_log_posterior()
+
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 11)
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
+        self.assertEqual(posteriors[1].n_parameters(), 11)
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
+        self.assertEqual(posteriors[2].n_parameters(), 11)
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
 
     def test_get_log_posteriors_bad_input(self):
         problem = copy.deepcopy(self.pd_problem)
