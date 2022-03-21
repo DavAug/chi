@@ -23,6 +23,11 @@ jobs:
           python-version: 3.8
           architecture: x64
 
+      - name: install sundials (ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install libsundials-dev
+
       - name: install chi
         run: |
           python --version
