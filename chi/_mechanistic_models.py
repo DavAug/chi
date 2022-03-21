@@ -36,7 +36,7 @@ class MechanisticModel(object):
         """
         return copy.deepcopy(self)
 
-    def enable_sensitivities(self, enabled):
+    def enable_sensitivities(self, enabled, parameter_names=None):
         r"""
         Enables the computation of the model output sensitivities to the model
         parameters if set to ``True``.
@@ -659,11 +659,11 @@ class PKPDModel(SBMLModel):
 
         # Check whether myokit.Simulation needs to be updated
         new_sim = False
-        if enabled or (not enabled and self._has_sensitivities):
+        if enabled or ((not enabled) and self._has_sensitivities):
             new_sim = True
 
         # Set sensitivities
-        super(PKPDModel, self).enable_sensitivities(enabled)
+        super(PKPDModel, self).enable_sensitivities(enabled, parameter_names)
 
         # Update dosing regimen if sensitivity has resulted in new
         # myokit.Simulation instance
@@ -1092,8 +1092,9 @@ class ReducedMechanisticModel(MechanisticModel):
         try:
             self._mechanistic_model.set_output_names(names)
         except AttributeError:
-            raise AttributeError(
-                'The mechanistic model does not support setting output names.')
+            raise NotImplementedError(
+                'The mechanistic model has no implemented set_output_names '
+                'method.')
 
     def set_parameter_names(self, names):
         """
@@ -1109,9 +1110,9 @@ class ReducedMechanisticModel(MechanisticModel):
             self._mechanistic_model.set_parameter_names(names)
             self._parameter_names = self._mechanistic_model.parameters()
         except AttributeError:
-            raise AttributeError(
-                'The mechanistic model does not support setting parameter '
-                'names.')
+            raise NotImplementedError(
+                'The mechanistic model has no implemented set_parameter_names '
+                'method.')
 
     def simulate(self, parameters, times):
         """
@@ -1145,7 +1146,8 @@ class ReducedMechanisticModel(MechanisticModel):
         try:
             time_unit = self._mechanistic_model.time_unit()
         except AttributeError:
-            raise AttributeError(
-                'The mechanistic model does not define a time unit.')
+            raise NotImplementedError(
+                'The mechanistic model has no implemented time_unit '
+                'method.')
 
         return time_unit
