@@ -14,12 +14,12 @@ import numpy as np
 
 class MechanisticModel(object):
     r"""
-    A base class for mechanistic time series models of the form
+    A base class for time series models of the form
 
-    .. math:
+    .. math::
         \bar{y} = g(\bar{y}, \psi, t),
 
-    where :math:`\bar{y}` are the model outputs, :math`\psi` are the model
+    where :math:`\bar{y}` are the model outputs, :math:`\psi` are the model
     parameters and :math:`t` is the time. :math:`g` can be any (deterministic)
     function.
     """
@@ -95,9 +95,9 @@ class MechanisticModel(object):
         the sensitivites) for the specified parameters and times.
 
         The model outputs are returned as a 2 dimensional NumPy array of shape
-        (n_outputs, n_times). If sensitivities are enabled, a tuple is returned
-        with the NumPy array of the model outputs and a NumPy array of the
-        sensitivities of shape (n_times, n_outputs, n_parameters).
+        ``(n_outputs, n_times)``. If sensitivities are enabled, a tuple is
+        returned with the NumPy array of the model outputs and a NumPy array of
+        the sensitivities of shape ``(n_times, n_outputs, n_parameters)``.
 
         :param parameters: An array-like object with values for the model
             parameters.
@@ -105,6 +105,9 @@ class MechanisticModel(object):
         :param times: An array-like object with time points at which the output
             values are returned.
         :type times: list, numpy.ndarray
+
+        :rtype: np.ndarray of shape (n_outputs, n_times) or
+            (n_times, n_outputs, n_parameters)
         """
         raise NotImplementedError
 
@@ -485,9 +488,9 @@ class SBMLModel(MechanisticModel):
         the sensitivites) for the specified parameters and times.
 
         The model outputs are returned as a 2 dimensional NumPy array of shape
-        (n_outputs, n_times). If sensitivities are enabled, a tuple is returned
-        with the NumPy array of the model outputs and a NumPy array of the
-        sensitivities of shape (n_times, n_outputs, n_parameters).
+        ``(n_outputs, n_times)``. If sensitivities are enabled, a tuple is
+        returned with the NumPy array of the model outputs and a NumPy array of
+        the sensitivities of shape ``(n_times, n_outputs, n_parameters)``.
 
         :param parameters: An array-like object with values for the model
             parameters.
@@ -495,6 +498,9 @@ class SBMLModel(MechanisticModel):
         :param times: An array-like object with time points at which the output
             values are returned.
         :type times: list, numpy.ndarray
+
+        :rtype: np.ndarray of shape (n_outputs, n_times) or
+            (n_times, n_outputs, n_parameters)
         """
         # Reset simulation
         self._simulator.reset()
@@ -1134,9 +1140,9 @@ class ReducedMechanisticModel(MechanisticModel):
         the sensitivites) for the specified parameters and times.
 
         The model outputs are returned as a 2 dimensional NumPy array of shape
-        (n_outputs, n_times). If sensitivities are enabled, a tuple is returned
-        with the NumPy array of the model outputs and a NumPy array of the
-        sensitivities of shape (n_times, n_outputs, n_parameters).
+        ``(n_outputs, n_times)``. If sensitivities are enabled, a tuple is
+        returned with the NumPy array of the model outputs and a NumPy array of
+        the sensitivities of shape ``(n_times, n_outputs, n_parameters)``.
 
         :param parameters: An array-like object with values for the model
             parameters.
@@ -1144,6 +1150,9 @@ class ReducedMechanisticModel(MechanisticModel):
         :param times: An array-like object with time points at which the output
             values are returned.
         :type times: list, numpy.ndarray
+
+        :rtype: np.ndarray of shape (n_outputs, n_times) or
+            (n_times, n_outputs, n_parameters)
         """
         # Insert fixed parameter values
         if self._fixed_params_mask is not None:
