@@ -2181,8 +2181,9 @@ class TestReducedLogPDF(unittest.TestCase):
 
         # Set up inverse problem
         model = ModelLibrary().tumour_growth_inhibition_model_koch()
-        problem = chi.InverseProblem(model, times, values)
-        cls.log_likelihood = pints.GaussianLogLikelihood(problem)
+        error_model = chi.GaussianErrorModel()
+        cls.log_likelihood = chi.LogLikelihood(
+            model, error_model, values, times)
         cls.mask = [True, False, False, True, False, True]
         cls.values = [11, 12, 13]
         cls.reduced_log_pdf = chi.ReducedLogPDF(
