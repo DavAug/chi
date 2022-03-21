@@ -194,7 +194,7 @@ class SBMLModel(MechanisticModel):
         # Set default parameter names
         self._parameter_names = self._state_names + self._const_names
 
-        # Set default outputs
+        # Temporarily set outputs to default outputs
         self._output_names = self._state_names
         self._n_outputs = self._n_states
 
@@ -249,13 +249,10 @@ class SBMLModel(MechanisticModel):
         """
         enabled = bool(enabled)
 
-        # Get dosing regimen from existing simulator
-        protocol = self._simulator._protocol
-
         if not enabled:
             if self._has_sensitivities:
                 # Disable sensitivities
-                sim = myokit.Simulation(self._model, protocol)
+                sim = myokit.Simulation(self._model)
                 self._simulator = sim
                 self._has_sensitivities = False
 
@@ -292,7 +289,8 @@ class SBMLModel(MechanisticModel):
 
         # Create simulator
         sensitivities = (self._output_names, parameters)
-        sim = myokit.Simulation(self._model, protocol, sensitivities)
+        sim = myokit.Simulation(
+            self._model, protocol=None, sensitivities=sensitivities)
 
         # Update simulator and sensitivity state
         self._simulator = sim
@@ -583,12 +581,11 @@ class PKPDModel(SBMLModel):
         )
 
         # Update number of parameters and states, as well as their names
+        # (This overwrites current outputs, so we have to set them again)
         self._model = model
+        original_outputs = self._output_names
         self._set_number_and_names()
-
-        # Set default output to pd_output if it is not None
-        if self._pd_output is not None:
-            self.set_outputs([self._pd_output])
+        self.set_outputs(original_outputs)
 
         return model, dose_drug_amount
 
@@ -637,6 +634,42 @@ class PKPDModel(SBMLModel):
         """
         return self._dosing_regimen
 
+    def enable_sensitivities(self, enabled, parameter_names=None):
+        """
+        Enables the computation of the model output sensitivities to the model
+        parameters if set to ``True``.
+
+        The sensitivities are computed using the forward sensitivities method,
+        where an ODE for each sensitivity is derived. The sensitivities are
+        returned together with the solution to the orginal system of ODEs when
+        simulating the mechanistic model :meth:`simulate`.
+
+        The optional parameter names argument can be used to set which
+        sensitivities are computed. By default the sensitivities to all
+        parameters are computed.
+
+        :param enabled: A boolean flag which enables (``True``) / disables
+            (``False``) the computation of sensitivities.
+        :type enabled: bool
+        :param parameter_names: A list of parameter names of the model. If
+            ``None`` sensitivities for all parameters are computed.
+        :type parameter_names: list[str], optional
+        """
+        enabled = bool(enabled)
+
+        # Check whether myokit.Simulation needs to be updated
+        new_sim = False
+        if enabled or (not enabled and self._has_sensitivities):
+            new_sim = True
+
+        # Set sensitivities
+        super(PKPDModel, self).enable_sensitivities(enabled)
+
+        # Update dosing regimen if sensitivity has resulted in new
+        # myokit.Simulation instance
+        if new_sim:
+            self._simulator.set_protocol(self._dosing_regimen)
+
     def set_administration(
             self, compartment, amount_var='drug_amount', direct=True):
         r"""
@@ -672,8 +705,8 @@ class PKPDModel(SBMLModel):
         :math:`k_a` is the absorption rate.
 
         Setting an indirect administration route changes the number of
-        parameters of the model, and resets the parameter names to their
-        defaults.
+        parameters of the model, because an initial dose compartment drug
+        amount and a absorption rate parameter are added.
 
         .. note:
             Setting the route of administration will reset the sensitivity

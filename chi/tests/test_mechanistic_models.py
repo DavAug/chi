@@ -21,8 +21,53 @@ class TestMechanisticModel(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = chi.MechanisticModel(path)
+        cls.model = chi.MechanisticModel()
+
+    def test_copy(self):
+        model = self.model.copy()
+        self.assertIsInstance(model, chi.MechanisticModel)
+
+    def test_enable_sensitivities(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.enable_sensitivities(True)
+
+    def test_has_sensitivities(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.has_sensitivities()
+
+    def test_n_outputs(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.n_outputs()
+
+    def test_n_parameters(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.n_parameters()
+
+    def test_outputs(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.outputs()
+
+    def test_parameters(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.parameters()
+
+    def test_simulate(self):
+        parameters = 'some params'
+        times = 'some times'
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.simulate(parameters, times)
+
+
+class TestSBMLModel(unittest.TestCase):
+    """
+    Tests `chi.SBMLModel`.
+    """
+    @classmethod
+    def setUpClass(cls):
+        cls.model = ModelLibrary().tumour_growth_inhibition_model_koch()
+
+    def test_model_is_sbml_model(self):
+        self.assertIsInstance(self.model, chi.SBMLModel)
 
     def test_copy(self):
         # Case I: Copy model and check that all public properties coincide
@@ -137,7 +182,7 @@ class TestMechanisticModel(unittest.TestCase):
 
         # Test case II: Model where lambda_0 is defined as lambda_1 * kappa
         directory = os.path.dirname(__file__)
-        model = chi.MechanisticModel(
+        model = chi.SBMLModel(
             directory + '/data/model_with_derived_constants.xml')
         parameters = model.parameters()
 
@@ -273,133 +318,20 @@ class TestMechanisticModel(unittest.TestCase):
         self.assertIsInstance(sens, np.ndarray)
         self.assertEqual(sens.shape, (4, 1, 5))
 
-    def test_simulator(self):
-        self.assertIsInstance(self.model.simulator, myokit.Simulation)
 
-
-class TestPharmacodynamicModel(unittest.TestCase):
+class TestPKPDModel(unittest.TestCase):
     """
-    Tests `chi.PharmacodynamicModel`.
+    Tests `chi.PKPDModel`.
     """
     @classmethod
     def setUpClass(cls):
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = chi.PharmacodynamicModel(path)
+        cls.model = ModelLibrary().one_compartment_pk_model()
 
-    def test_n_outputs(self):
-        self.assertEqual(self.model.n_outputs(), 1)
-
-    def test_n_parameters(self):
-        self.assertEqual(self.model.n_parameters(), 5)
-
-    def test_outputs(self):
-        outputs = self.model.outputs()
-
-        self.assertEqual(outputs, ['myokit.tumour_volume'])
-
-    def test_parameters(self):
-        parameters = self.model.parameters()
-
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-
-    def test_pk_input(self):
-        pk_input = self.model.pk_input()
-
-        self.assertEqual(pk_input, 'myokit.drug_concentration')
-
-    def test_set_outputs(self):
-
-        # Set bad output
-        self.assertRaisesRegex(
-            KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
-
-        # Set twice the same output
-        outputs = ['myokit.tumour_volume', 'myokit.tumour_volume']
-        self.model.set_outputs(outputs)
-        self.assertEqual(self.model.outputs(), outputs)
-        self.assertEqual(self.model.n_outputs(), 2)
-        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
-        self.assertEqual(output.shape, (2, 2))
-
-        # Set to default again
-        outputs = ['myokit.tumour_volume']
-        self.model.set_outputs(outputs)
-        self.assertEqual(self.model.outputs(), outputs)
-        self.assertEqual(self.model.n_outputs(), 1)
-        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
-        self.assertEqual(output.shape, (1, 2))
-
-    def test_set_parameter_names(self):
-        # Set some parameter names
-        names = {
-            'myokit.tumour_volume': 'TV',
-            'myokit.lambda_0': 'Expon. growth rate'}
-        self.model.set_parameter_names(names)
-        parameters = self.model.parameters()
-
-        self.assertEqual(parameters[0], 'TV')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'Expon. growth rate')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-
-        # Reverse parameter names
-        names = {
-            'TV': 'myokit.tumour_volume',
-            'Expon. growth rate': 'myokit.lambda_0'}
-        self.model.set_parameter_names(names)
-        parameters = self.model.parameters()
-
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-
-    def test_set_parameter_names_bad_input(self):
-        # List input is not ok!
-        names = ['TV', 'some name']
-
-        with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
-            self.model.set_parameter_names(names)
-
-    def test_set_pk_input(self):
-        # Set pk input variable
-        pk_input = 'myokit.kappa'
-        self.model.set_pk_input(pk_input)
-
-        self.assertEqual(self.model.pk_input(), pk_input)
-
-        # Reset pk input
-        pk_input = 'myokit.drug_concentration'
-        self.model.set_pk_input(pk_input)
-
-        self.assertEqual(self.model.pk_input(), pk_input)
-
-    def test_set_pk_input_bad_input(self):
-        # Set pk input variable
-        pk_input = 'SOME NON-EXISTENT VARIABLE'
-
-        with self.assertRaisesRegex(ValueError, 'The name does not'):
-            self.model.set_pk_input(pk_input)
-
-
-class TestPharmacokineticModel(unittest.TestCase):
-    """
-    Tests `chi.PharmacokineticModel`.
-    """
-    @classmethod
-    def setUpClass(cls):
-        path = ModelLibrary().one_compartment_pk_model()
-        cls.model = chi.PharmacokineticModel(path)
+    def test_model_is_pkpd_model(self):
+        self.assertIsInstance(self.model, chi.PKPDModel)
 
     def test_administration(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Test default
         self.assertIsNone(model.administration())
@@ -423,8 +355,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertFalse(admin['direct'])
 
     def test_enable_sensitivities(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Disable sensitivities before setting administration
         model.enable_sensitivities(False)
@@ -445,7 +376,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(sens.shape, (4, 1, 5))
 
         # Enable sensitivities before setting an administration
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         model.enable_sensitivities(True)
         self.assertTrue(model.has_sensitivities())
         times = [0, 1, 2, 3]
@@ -476,14 +407,8 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(parameters[1], 'central.size')
         self.assertEqual(parameters[2], 'myokit.elimination_rate')
 
-    def test_pd_output(self):
-        pd_output = self.model.pd_output()
-
-        self.assertEqual(pd_output, 'central.drug_concentration')
-
     def test_set_administration(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Administer dose directly to central compartment
         model.set_administration(compartment='central')
@@ -523,8 +448,7 @@ class TestPharmacokineticModel(unittest.TestCase):
                 compartment='central', amount_var='drug_concentration')
 
     def test_set_dosing_regimen(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Administer dose directly to central compartment
         model.set_administration(compartment='central')
@@ -605,14 +529,12 @@ class TestPharmacokineticModel(unittest.TestCase):
     def test_set_dosing_regimen_bad_input(self):
         # Not setting an administration prior to setting a dosing regimen
         # should raise an error
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         with self.assertRaisesRegex(ValueError, 'The route of administration'):
             model.set_dosing_regimen(dose=10, start=3, period=5)
 
     def test_set_outputs(self):
-
         # Set bad output
         self.assertRaisesRegex(
             KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
@@ -693,28 +615,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
             self.model.set_parameter_names(names)
 
-    def test_set_pd_output(self):
-        # Set pd output variable
-        pd_output = 'central.drug_amount'
-        self.model.set_pd_output(pd_output)
-
-        self.assertEqual(self.model.pd_output(), pd_output)
-
-        # Reset pd output
-        pd_output = 'central.drug_concentration'
-        self.model.set_pd_output(pd_output)
-
-        self.assertEqual(self.model.pd_output(), pd_output)
-
-    def test_set_pd_output_bad_input(self):
-        # Set pd output variable
-        pd_output = 'SOME NON-EXISTENT VARIABLE'
-
-        with self.assertRaisesRegex(ValueError, 'The name does not'):
-            self.model.set_pd_output(pd_output)
-
     def test_simulate(self):
-
         times = [0, 1, 2, 3]
 
         # Test model with bare parameters
