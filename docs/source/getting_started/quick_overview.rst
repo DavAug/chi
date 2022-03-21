@@ -34,7 +34,7 @@ simulation of the model simply involves specifying the set of model parameters
 :math:`\psi = (a_0, v, k_e)` and the time points of interest
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 2-18
+    :lines: 285-301
 
 The simulation returns a :class:`numpy.ndarray` with the simulated drug
 concentrations at the specified times
@@ -61,7 +61,7 @@ the simulation results, where we also made the results slightly more
 interesting by administering bolus doses to the compartment in intervals of 0.5
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 22-46
+    :lines: 305-329
 
 .. raw:: html
    :file: images/1_simulation_1.html
@@ -88,7 +88,7 @@ measurement times relative to the evaluation times of the mechanistic model for
 aestetic reasons)
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 56-90
+    :lines: 339-373
 
 .. raw:: html
    :file: images/1_simulation_2.html
@@ -136,7 +136,7 @@ different parameter values can now be evaluated using the
 :meth:`chi.LogLikelihood.__call__` method
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 96-110
+    :lines: 379-393
 
 .. code-block:: console
 
@@ -171,7 +171,7 @@ Adaption-Evolution Strategy (CMA-ES) optimisation algorithm to optimise the
 log-likelihood
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 114-119
+    :lines: 397-402
 
 .. code-block:: console
 
@@ -192,7 +192,7 @@ mechanstic model output for the inferred parameters to confirm that
 the inferred model is indeed marginally closer to the measurements
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 124-132
+    :lines: 407-415
 
 .. raw:: html
    :file: images/1_simulation_3.html
@@ -241,7 +241,7 @@ values between 0 and 20. The log-posterior can be evaluated similar to the
 :class:`chi.LogLikelihood` using :meth:`chi.LogPosterior.__call__`
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 137-148
+    :lines: 420-431
 
 .. code-block:: console
 
@@ -263,13 +263,13 @@ and Bardenet's Adaptive Covariance Matrix Marcov Chain Monte Carlo,
 :class:`pints.HaarioBardenetACMC` to infer the posterior distribution
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 152-155
+    :lines: 435-438
 
 The inferred posterior distributions can now be compared to the data-generating
 parameters
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 232-341
+    :lines: 442-551
 
 .. raw:: html
    :file: images/1_simulation_5.html
