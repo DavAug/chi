@@ -40,7 +40,7 @@ The simulation returns a :class:`numpy.ndarray` with the simulated drug
 concentrations at the specified times
 :math:`[c(t=0), c(t=0.2), c(t=0.5), c(t=0.6), c(t=1)]`
 
-.. code-block:: console
+.. code-block:: bash
 
     >>> result
     array([[5.        , 4.09359579, 3.03157658, 2.74324885, 1.83903834]])
@@ -138,7 +138,7 @@ different parameter values can now be evaluated using the
 .. literalinclude:: code/1_simulation_1.py
     :lines: 379-393
 
-.. code-block:: console
+.. code-block:: bash
 
     >>> score_1
     -86.14214936785024
@@ -173,7 +173,7 @@ log-likelihood
 .. literalinclude:: code/1_simulation_1.py
     :lines: 397-402
 
-.. code-block:: console
+.. code-block:: bash
 
     >>> parameters_mle
     array([10.26564936, 2.01524534, 1.00148417, 0.18456719])
@@ -243,7 +243,7 @@ values between 0 and 20. The log-posterior can be evaluated similar to the
 .. literalinclude:: code/1_simulation_1.py
     :lines: 420-431
 
-.. code-block:: console
+.. code-block:: bash
 
     >>> score_1
     -104.56283011180261
