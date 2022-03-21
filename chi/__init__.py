@@ -62,6 +62,5 @@ from ._predictive_models import (  # noqa
 )
 
 from ._problems import (  # noqa
-    InverseProblem,
     ProblemModellingController
 )
