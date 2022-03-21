@@ -23,3 +23,4 @@ instructions please refer to the README_.
     error_model
     log_likelihood
     log_posterior
+    mcmc_sampling

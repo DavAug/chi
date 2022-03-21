@@ -149,91 +149,93 @@ score_2 = log_posterior(true_parameters)
 # End 7.
 
 # Start 8.
-from plotly.subplots import make_subplots
-
 # Run inference
 controller = chi.SamplingController(log_posterior)
 n_iterations = 5000
 posterior_samples = controller.run(n_iterations)
-
-# Discard warmup iterations
-warmup = 3000
-posterior_samples = posterior_samples.sel(draw=slice(warmup, n_iterations))
-
-# Visualise Markov chains
-fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
-
-# Add MCMC chains for initial drug amount
-for idc, chain in enumerate(posterior_samples['central.drug_amount'].values):
-    fig.add_trace(
-        go.Scatter(
-            legendgroup='Initial drug amount',
-            legendgrouptitle_text='Initial drug amount',
-            name='Chain %d' % idc,
-            x=np.arange(warmup, n_iterations) + 1,
-            y=chain,
-            showlegend=False
-        ),
-        row=1,
-        col=1
-    )
-# Add MCMC chains for compartment volume
-for idc, chain in enumerate(posterior_samples['central.size'].values):
-    fig.add_trace(
-        go.Scatter(
-            legendgroup='Compartment volume',
-            legendgrouptitle_text='Compartment volume',
-            name='Chain %d' % idc,
-            x=np.arange(warmup, n_iterations) + 1,
-            y=chain,
-            showlegend=False
-        ),
-        row=2,
-        col=1
-    )
-# Add MCMC chains of elimination rate
-for idc, chain in enumerate(
-        posterior_samples['myokit.elimination_rate'].values):
-    fig.add_trace(
-        go.Scatter(
-            legendgroup='Elimination rate',
-            legendgrouptitle_text='Elimination rate',
-            name='Chain %d' % idc,
-            x=np.arange(warmup, n_iterations) + 1,
-            y=chain,
-            showlegend=False
-        ),
-        row=3,
-        col=1
-    )
-# Add MCMC chains of sigma
-for idc, chain in enumerate(posterior_samples['Sigma'].values):
-    fig.add_trace(
-        go.Scatter(
-            legendgroup='Sigma',
-            legendgrouptitle_text='Sigma',
-            name='Chain %d' % idc,
-            x=np.arange(warmup, n_iterations) + 1,
-            y=chain,
-            showlegend=False
-        ),
-        row=4,
-        col=1
-    )
-
-fig.update_layout(
-    xaxis4_title='MCMC iteration',
-    yaxis_title='a_0',
-    yaxis2_title='v',
-    yaxis3_title='k_e',
-    yaxis4_title='sigma',
-    template='plotly_white'
-)
-fig.show()
 # End 8.
-fig.write_html(directory + '/images/1_simulation_4.html')
+
+# # Visualise Markov chains
+# fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
+
+# # Add MCMC chains for initial drug amount
+# for idc, chain in enumerate(posterior_samples['central.drug_amount'].values):
+#     fig.add_trace(
+#         go.Scatter(
+#             legendgroup='Initial drug amount',
+#             legendgrouptitle_text='Initial drug amount',
+#             name='Chain %d' % idc,
+#             x=np.arange(warmup, n_iterations) + 1,
+#             y=chain,
+#             showlegend=False
+#         ),
+#         row=1,
+#         col=1
+#     )
+# # Add MCMC chains for compartment volume
+# for idc, chain in enumerate(posterior_samples['central.size'].values):
+#     fig.add_trace(
+#         go.Scatter(
+#             legendgroup='Compartment volume',
+#             legendgrouptitle_text='Compartment volume',
+#             name='Chain %d' % idc,
+#             x=np.arange(warmup, n_iterations) + 1,
+#             y=chain,
+#             showlegend=False
+#         ),
+#         row=2,
+#         col=1
+#     )
+# # Add MCMC chains of elimination rate
+# for idc, chain in enumerate(
+#         posterior_samples['myokit.elimination_rate'].values):
+#     fig.add_trace(
+#         go.Scatter(
+#             legendgroup='Elimination rate',
+#             legendgrouptitle_text='Elimination rate',
+#             name='Chain %d' % idc,
+#             x=np.arange(warmup, n_iterations) + 1,
+#             y=chain,
+#             showlegend=False
+#         ),
+#         row=3,
+#         col=1
+#     )
+# # Add MCMC chains of sigma
+# for idc, chain in enumerate(posterior_samples['Sigma'].values):
+#     fig.add_trace(
+#         go.Scatter(
+#             legendgroup='Sigma',
+#             legendgrouptitle_text='Sigma',
+#             name='Chain %d' % idc,
+#             x=np.arange(warmup, n_iterations) + 1,
+#             y=chain,
+#             showlegend=False
+#         ),
+#         row=4,
+#         col=1
+#     )
+
+# fig.update_layout(
+#     xaxis4_title='MCMC iteration',
+#     yaxis_title='a_0',
+#     yaxis2_title='v',
+#     yaxis3_title='k_e',
+#     yaxis4_title='sigma',
+#     template='plotly_white'
+# )
+# fig.show()
+# # End 8.
+# fig.write_html(directory + '/images/1_simulation_4.html')
 
 # Start 9.
+from plotly.subplots import make_subplots
+
+# Discard warmup iterations
+warmup = 3000  # This number is not arbitrary but was carefully chosen
+posterior_samples = posterior_samples.sel(draw=slice(warmup, n_iterations))
+
+# Visualise posteriors
 fig = make_subplots(rows=2, cols=2, shared_yaxes=True)
 fig.add_trace(
     go.Histogram(

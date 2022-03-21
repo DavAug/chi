@@ -7,9 +7,9 @@ Quick overview
 **************
 
 The quick overview displays some of chi's main features to help you decide
-whether chi is the software that you want to use. The example model we will be
-using is a 1-compartment pharmacokinetic model (any other deterministic time
-series model would have been an equally good choice, but the 1-compartment
+whether chi is the right software for you. The running example for this
+overview will be a 1-compartment pharmacokinetic model (any other deterministic
+time series model would have been an equally good choice, but the 1-compartment
 pharmacokinetic model happens to be predefined in chi's model library;
 :class:`chi.library.ModelLibrary`). The model is defined by an ordinary
 differential equation for the drug amount and an algebraic equation for the
@@ -48,16 +48,17 @@ concentrations at the specified times
 The simulation results are of shape ``(n_outputs, n_times)`` which in this case
 is ``(1, 5)`` because we simuated the drug concentration for 5 different times.
 For details on how to implement your own :class:`chi.MechanisticModel` and
-many other details concerning the mechanistic model in chi, we refer to the
-next section :doc:`mechanistic_model`.
+many other details concerning the mechanistic models in chi, we refer to
+section :doc:`mechanistic_model`.
 
 Visualisation of the simulation
 *******************************
 
 The results of the simulation can be visualised with any of the standard Python
 visualisation libraries (e.g. matplotlib, seaborn, etc.).
-We will use plotly and make the simulation results slightly more interesting
-by administering bolus doses to the compartment in intervals of 0.5
+We will use plotly in this overview. Below is an example of how to visualise
+the simulation results, where we also made the results slightly more
+interesting by administering bolus doses to the compartment in intervals of 0.5
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 22-46
@@ -69,7 +70,8 @@ by administering bolus doses to the compartment in intervals of 0.5
 Simulation of measurements
 **************************
 
-Measurements are in chi modelled using a :class:`chi.ErrorModel` of the form
+Measurements are in chi modelled using a :class:`chi.ErrorModel` on top of the
+:class:`chi.MechanisticModel` of the form
 
 .. math::
     y(\psi, t) = \bar{y}(\psi, t) + \epsilon (\bar{y}, \sigma, t),
@@ -92,7 +94,7 @@ aestetic reasons)
    :file: images/1_simulation_2.html
 
 For details on how to implement a :class:`chi.ErrorModel` and
-many other details concerning error models in chi, we refer to the section
+many other details concerning error models in chi, we refer to section
 :doc:`error_model`.
 
 
@@ -101,16 +103,16 @@ Inference of model parameters
 
 While the simulation of mechanistic model outputs and measurements is an
 interesting feature of chi in its own right, the inference of model parameters
-from real-world measurements is arguably an even more interesting feature of
-chi. Here, we will use the simulated measurements to infer the model
-parameters, but the simulated measurement can be straightforwardly replaced
-by real-world measurements.
+from real-world measurements is arguably even more interesting. For simplicity,
+we will use the simulated measurements to infer the model
+parameters, but in practice the simulated measurements can be straightforwardly
+replaced by real-world measurements.
 
 Inference in chi leverages the fact that the modelled measurements :math:`y`
 follow a distribution that is defined by the mechanistic model and error model.
 In the case of a Gaussian error model, as in the previous example, the
-distribution of the measurements is a Gaussian distribution centered at the
-mechanistic model output
+distribution of the measurements is also a Gaussian distribution whose mean is
+equal to the mechanistic model output
 
 .. math::
     p(y | \psi , \sigma , t) = \mathcal{N}\left(
@@ -127,8 +129,8 @@ parameter values for the measurements
 
 In chi the log-likelihood of model parameters can be defined using
 :class:`chi.LogLikelihood`. A :class:`chi.LogLikelihood` defines the
-distribution of the measurements using a :class:`MechanisticModel` and a
-:class:`ErrorModel` for each mechanistic model output, and couples the
+distribution of the measurements using a :class:`chi.MechanisticModel` and a
+:class:`chi.ErrorModel` for each mechanistic model output, and couples the
 distribution to the measurements as defined above. The log-likelihood of
 different parameter values can now be evaluated using the
 :meth:`chi.LogLikelihood.__call__` method
@@ -147,7 +149,7 @@ different parameter values can now be evaluated using the
 We can see that the data-generating parameter values have a larger
 log-likelihood than the made-up parameter values (which should intuitively make
 sense). For details on how to define a :class:`chi.LogLikelihood` and
-many other details concerning log-likelihoods in chi, we refer to the section
+many other details concerning log-likelihoods in chi, we refer to section
 :doc:`log_likelihood`.
 
 Maximum likelihood estimation
@@ -187,7 +189,7 @@ the set of parameters that generated the measurments?
 A thorough discussion of the shortcomings of maximum likelihood estimation
 is beyond the scope of this documentation, but let us plot the
 mechanstic model output for the inferred parameters to confirm that
-inferred model is indeed marginally closer to the measurements
+the inferred model is indeed marginally closer to the measurements
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 124-132
@@ -201,20 +203,20 @@ Bayesian inference
 
 The reason why maximum likelihood estimation can differ from the
 data-generating parameters is that a finite number of
-measurements does not uniquely define the data-generating parameters of a
+measurements do not uniquely define the data-generating parameters of a
 probabilistic model. The
-maximum likelihood estimates can therefore be far away from the
-data-generating parameters when the measurements are limited (in this example
-the measurements estimate the data-generating parameters clearly quite well).
+maximum likelihood estimates *can* therefore be far away from the
+data-generating parameters (in this example
+the maximum likelihood estimates are clearly quite good).
 In other words, a finite number of measurements
 leaves uncertainty about the model parameters, a.k.a. *parametric uncertainty*.
 While for real-world measurements the notion of
 data-generating parameters may seem alien since models only
 approximate the real data-generating processes, we can generalise the notion of
-data-generating parameters to the set of parameters that capture the most about
-the data-generating process for a given model. Here, the maximum
-likelihood estimates can analogously differ significantly from the sought after
-data-generating parameters.
+data-generating parameters to being the set of parameters that capture the most
+about the data-generating process within the limitations of the model
+approximation. Here, the maximum likelihood estimates can analogously differ
+significantly from the sought after data-generating parameters.
 
 In chi the uncertainty of parameter estimates can be estimated using Bayesian
 inference. In Bayesian inference Bayes' rule is used to define a distribution
@@ -230,17 +232,16 @@ Here, :math:`\log p(\psi, \sigma | \mathcal{D})` is the log-posterior,
 :math:`\log p(\mathcal{D} | \psi , \sigma)` is the log-likelihood as defined
 above and :math:`\log p(\psi , \sigma )` is the log-prior distribution of the
 model parameters. The prior distribution of the model parameters is a
-modelling choice.
+modelling choice and captures prior knowlegde about the model parameters.
 
 In chi the log-posterior can be defined using :class:`chi.LogPosterior` which
-is instiated with a :class:`chi.LogLikelihood` and a :class:`pints.LogPrior`.
+is instantiated with a :class:`chi.LogLikelihood` and a :class:`pints.LogPrior`.
 For simplicity, we will use uniform priors that constrain the parameters to
-values between 0 and 100. The log-posterior can be evaluated up to the constant
-term in the equation above similar to the :class:`chi.LogLikelihood` using
-:meth:`chi.LogPosterior.__call__`
+values between 0 and 20. The log-posterior can be evaluated similar to the
+:class:`chi.LogLikelihood` using :meth:`chi.LogPosterior.__call__`
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 138-149
+    :lines: 137-148
 
 .. code-block:: console
 
@@ -250,27 +251,29 @@ term in the equation above similar to the :class:`chi.LogLikelihood` using
     -8.096007012665059
 
 For details on how to define a :class:`chi.LogPosterior` and
-many other details concerning log-posetriors in chi, we refer to the section
+many other details concerning log-posetriors in chi, we refer to section
 :doc:`log_posterior`.
 
 While the :class:`chi.LogPosterior` allows us to evaluate the log-posterior
 up to constant term for different parameter values it does not yet tell us
 how the posterior distribution of likely parameter values looks like.
-This distribution can be inferred from :class:`chi.LogPosterior` using MCMC
-sampling algorithms. In particular, we will use the implementation of Haario
+This distribution can be inferred from a :class:`chi.LogPosterior` using MCMC
+sampling algorithms. Below we will use the implementation of Haario
 and Bardenet's Adaptive Covariance Matrix Marcov Chain Monte Carlo,
 :class:`pints.HaarioBardenetACMC` to infer the posterior distribution
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 152-232
+    :lines: 152-155
 
-.. raw:: html
-   :file: images/1_simulation_4.html
-
-Some more text
+The inferred posterior distributions can now be compared to the data-generating
+parameters
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 237-339
+    :lines: 232-341
 
 .. raw:: html
    :file: images/1_simulation_5.html
+
+Note that a discussion of how to analyse the convergence of MCMC chains
+is beyond the scope of this overview, and we refer to section
+:doc:`mcmc_sampling`.
