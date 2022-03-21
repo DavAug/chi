@@ -1,6 +1,5 @@
 [run]
 source = chi
 omit =
-    chi/apps/*
     chi/plots/_base.py
     chi/tests/*
