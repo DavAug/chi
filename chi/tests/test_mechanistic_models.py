@@ -15,14 +15,104 @@ import chi
 from chi.library import ModelLibrary
 
 
+class ToyMechanisticModel(chi.MechanisticModel):
+    """
+    Minimal implementation of a chi.MechanisticModel.
+    """
+    def __init__(self):
+        super(ToyMechanisticModel, self).__init__()
+        self._has_sensitivities = False
+        self._n_outputs = 1
+        self._n_parameters = 1
+
+    def enable_sensitivities(self, enabled, parameter_names=None):
+        self._has_sensitivities = bool(enabled)
+
+    def has_sensitivities(self):
+        return self._has_sensitivities
+
+    def n_outputs(self):
+        return self._n_outputs
+
+    def n_parameters(self):
+        return self._n_parameters
+
+    def outputs(self):
+        return ['Output']
+
+    def parameters(self):
+        return ['Parameter']
+
+    def simulate(self, parameters, times):
+        n_times = len(times)
+        output = parameters[0]
+        outputs = np.full(
+            shape=(n_times, self._n_outputs), fill_value=output)
+        if not self._has_sensitivities:
+            return outputs
+
+        sensitivities = np.ones(
+            shape=((n_times, self._n_outputs, self._n_parameters)))
+
+        return outputs, sensitivities
+
+
 class TestMechanisticModel(unittest.TestCase):
     """
     Tests `chi.MechanisticModel`.
     """
     @classmethod
     def setUpClass(cls):
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = chi.MechanisticModel(path)
+        cls.model = chi.MechanisticModel()
+
+    def test_copy(self):
+        model = self.model.copy()
+        self.assertIsInstance(model, chi.MechanisticModel)
+
+    def test_enable_sensitivities(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.enable_sensitivities(True)
+
+    def test_has_sensitivities(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.has_sensitivities()
+
+    def test_n_outputs(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.n_outputs()
+
+    def test_n_parameters(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.n_parameters()
+
+    def test_outputs(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.outputs()
+
+    def test_parameters(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.parameters()
+
+    def test_simulate(self):
+        parameters = 'some params'
+        times = 'some times'
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.model.simulate(parameters, times)
+
+    def test_supports_dosing(self):
+        self.assertFalse(self.model.supports_dosing())
+
+
+class TestSBMLModel(unittest.TestCase):
+    """
+    Tests `chi.SBMLModel`.
+    """
+    @classmethod
+    def setUpClass(cls):
+        cls.model = ModelLibrary().tumour_growth_inhibition_model_koch()
+
+    def test_model_is_sbml_model(self):
+        self.assertIsInstance(self.model, chi.SBMLModel)
 
     def test_copy(self):
         # Case I: Copy model and check that all public properties coincide
@@ -137,7 +227,7 @@ class TestMechanisticModel(unittest.TestCase):
 
         # Test case II: Model where lambda_0 is defined as lambda_1 * kappa
         directory = os.path.dirname(__file__)
-        model = chi.MechanisticModel(
+        model = chi.SBMLModel(
             directory + '/data/model_with_derived_constants.xml')
         parameters = model.parameters()
 
@@ -273,133 +363,23 @@ class TestMechanisticModel(unittest.TestCase):
         self.assertIsInstance(sens, np.ndarray)
         self.assertEqual(sens.shape, (4, 1, 5))
 
-    def test_simulator(self):
-        self.assertIsInstance(self.model.simulator, myokit.Simulation)
+    def test_supports_dosing(self):
+        self.assertFalse(self.model.supports_dosing())
 
 
-class TestPharmacodynamicModel(unittest.TestCase):
+class TestPKPDModel(unittest.TestCase):
     """
-    Tests `chi.PharmacodynamicModel`.
-    """
-    @classmethod
-    def setUpClass(cls):
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = chi.PharmacodynamicModel(path)
-
-    def test_n_outputs(self):
-        self.assertEqual(self.model.n_outputs(), 1)
-
-    def test_n_parameters(self):
-        self.assertEqual(self.model.n_parameters(), 5)
-
-    def test_outputs(self):
-        outputs = self.model.outputs()
-
-        self.assertEqual(outputs, ['myokit.tumour_volume'])
-
-    def test_parameters(self):
-        parameters = self.model.parameters()
-
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-
-    def test_pk_input(self):
-        pk_input = self.model.pk_input()
-
-        self.assertEqual(pk_input, 'myokit.drug_concentration')
-
-    def test_set_outputs(self):
-
-        # Set bad output
-        self.assertRaisesRegex(
-            KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
-
-        # Set twice the same output
-        outputs = ['myokit.tumour_volume', 'myokit.tumour_volume']
-        self.model.set_outputs(outputs)
-        self.assertEqual(self.model.outputs(), outputs)
-        self.assertEqual(self.model.n_outputs(), 2)
-        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
-        self.assertEqual(output.shape, (2, 2))
-
-        # Set to default again
-        outputs = ['myokit.tumour_volume']
-        self.model.set_outputs(outputs)
-        self.assertEqual(self.model.outputs(), outputs)
-        self.assertEqual(self.model.n_outputs(), 1)
-        output = self.model.simulate([0.1, 2, 1, 1, 1], [0, 1])
-        self.assertEqual(output.shape, (1, 2))
-
-    def test_set_parameter_names(self):
-        # Set some parameter names
-        names = {
-            'myokit.tumour_volume': 'TV',
-            'myokit.lambda_0': 'Expon. growth rate'}
-        self.model.set_parameter_names(names)
-        parameters = self.model.parameters()
-
-        self.assertEqual(parameters[0], 'TV')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'Expon. growth rate')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-
-        # Reverse parameter names
-        names = {
-            'TV': 'myokit.tumour_volume',
-            'Expon. growth rate': 'myokit.lambda_0'}
-        self.model.set_parameter_names(names)
-        parameters = self.model.parameters()
-
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
-
-    def test_set_parameter_names_bad_input(self):
-        # List input is not ok!
-        names = ['TV', 'some name']
-
-        with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
-            self.model.set_parameter_names(names)
-
-    def test_set_pk_input(self):
-        # Set pk input variable
-        pk_input = 'myokit.kappa'
-        self.model.set_pk_input(pk_input)
-
-        self.assertEqual(self.model.pk_input(), pk_input)
-
-        # Reset pk input
-        pk_input = 'myokit.drug_concentration'
-        self.model.set_pk_input(pk_input)
-
-        self.assertEqual(self.model.pk_input(), pk_input)
-
-    def test_set_pk_input_bad_input(self):
-        # Set pk input variable
-        pk_input = 'SOME NON-EXISTENT VARIABLE'
-
-        with self.assertRaisesRegex(ValueError, 'The name does not'):
-            self.model.set_pk_input(pk_input)
-
-
-class TestPharmacokineticModel(unittest.TestCase):
-    """
-    Tests `chi.PharmacokineticModel`.
+    Tests `chi.PKPDModel`.
     """
     @classmethod
     def setUpClass(cls):
-        path = ModelLibrary().one_compartment_pk_model()
-        cls.model = chi.PharmacokineticModel(path)
+        cls.model = ModelLibrary().one_compartment_pk_model()
+
+    def test_model_is_pkpd_model(self):
+        self.assertIsInstance(self.model, chi.PKPDModel)
 
     def test_administration(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Test default
         self.assertIsNone(model.administration())
@@ -423,8 +403,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertFalse(admin['direct'])
 
     def test_enable_sensitivities(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Disable sensitivities before setting administration
         model.enable_sensitivities(False)
@@ -445,7 +424,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(sens.shape, (4, 1, 5))
 
         # Enable sensitivities before setting an administration
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         model.enable_sensitivities(True)
         self.assertTrue(model.has_sensitivities())
         times = [0, 1, 2, 3]
@@ -476,14 +455,8 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(parameters[1], 'central.size')
         self.assertEqual(parameters[2], 'myokit.elimination_rate')
 
-    def test_pd_output(self):
-        pd_output = self.model.pd_output()
-
-        self.assertEqual(pd_output, 'central.drug_concentration')
-
     def test_set_administration(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Administer dose directly to central compartment
         model.set_administration(compartment='central')
@@ -523,8 +496,7 @@ class TestPharmacokineticModel(unittest.TestCase):
                 compartment='central', amount_var='drug_concentration')
 
     def test_set_dosing_regimen(self):
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         # Administer dose directly to central compartment
         model.set_administration(compartment='central')
@@ -602,17 +574,33 @@ class TestPharmacokineticModel(unittest.TestCase):
         self.assertEqual(event.duration(), duration)
         self.assertEqual(event.multiplier(), num)
 
+        # Test case V: Set myokit.Protocol
+        protocol = myokit.pacing.blocktrain(period=1, duration=0.1, limit=1)
+        model.set_dosing_regimen(protocol)
+
+        events = model.dosing_regimen().events()
+        self.assertEqual(len(events), 1)
+
+        start = 0
+        num = 1
+        period = 1
+        duration = 0.1
+        event = events[0]
+        self.assertEqual(event.level(), 1)
+        self.assertEqual(event.start(), start)
+        self.assertEqual(event.period(), period)
+        self.assertEqual(event.duration(), duration)
+        self.assertEqual(event.multiplier(), num)
+
     def test_set_dosing_regimen_bad_input(self):
         # Not setting an administration prior to setting a dosing regimen
         # should raise an error
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
 
         with self.assertRaisesRegex(ValueError, 'The route of administration'):
             model.set_dosing_regimen(dose=10, start=3, period=5)
 
     def test_set_outputs(self):
-
         # Set bad output
         self.assertRaisesRegex(
             KeyError, 'The variable <', self.model.set_outputs, ['some.thing'])
@@ -693,28 +681,7 @@ class TestPharmacokineticModel(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'Names has to be a dictionary'):
             self.model.set_parameter_names(names)
 
-    def test_set_pd_output(self):
-        # Set pd output variable
-        pd_output = 'central.drug_amount'
-        self.model.set_pd_output(pd_output)
-
-        self.assertEqual(self.model.pd_output(), pd_output)
-
-        # Reset pd output
-        pd_output = 'central.drug_concentration'
-        self.model.set_pd_output(pd_output)
-
-        self.assertEqual(self.model.pd_output(), pd_output)
-
-    def test_set_pd_output_bad_input(self):
-        # Set pd output variable
-        pd_output = 'SOME NON-EXISTENT VARIABLE'
-
-        with self.assertRaisesRegex(ValueError, 'The name does not'):
-            self.model.set_pd_output(pd_output)
-
     def test_simulate(self):
-
         times = [0, 1, 2, 3]
 
         # Test model with bare parameters
@@ -722,6 +689,9 @@ class TestPharmacokineticModel(unittest.TestCase):
         output = self.model.simulate(parameters, times)
         self.assertIsInstance(output, np.ndarray)
         self.assertEqual(output.shape, (1, 4))
+
+    def test_supports_dosing(self):
+        self.assertTrue(self.model.supports_dosing())
 
 
 class TestReducedMechanisticModel(unittest.TestCase):
@@ -732,15 +702,12 @@ class TestReducedMechanisticModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Set up model
-        lib = ModelLibrary()
-        path = lib.tumour_growth_inhibition_model_koch()
-        model = chi.PharmacodynamicModel(path)
-        cls.pd_model = chi.ReducedMechanisticModel(model)
+        cls.pd_model = chi.ReducedMechanisticModel(
+            ToyMechanisticModel())
 
-        path = lib.one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         model.set_administration('central')
-        cls.pk_model = chi.ReducedMechanisticModel(model)
+        cls.pkpd_model = chi.ReducedMechanisticModel(model)
 
     def test_bad_instantiation(self):
         model = 'Bad type'
@@ -749,24 +716,24 @@ class TestReducedMechanisticModel(unittest.TestCase):
 
     def test_copy(self):
         # Fix some parameters
-        self.pk_model.fix_parameters({
+        self.pkpd_model.fix_parameters({
             'central.size': 1})
 
         # Copy model and make sure the are identical
-        model = self.pk_model.copy()
+        model = self.pkpd_model.copy()
 
         self.assertFalse(model.has_sensitivities())
-        self.assertFalse(self.pk_model.has_sensitivities())
+        self.assertFalse(self.pkpd_model.has_sensitivities())
         self.assertEqual(model.n_outputs(), 1)
-        self.assertEqual(self.pk_model.n_outputs(), 1)
+        self.assertEqual(self.pkpd_model.n_outputs(), 1)
         outputs_c = model.outputs()
-        outputs = self.pk_model.outputs()
+        outputs = self.pkpd_model.outputs()
         self.assertEqual(outputs_c[0], 'central.drug_concentration')
         self.assertEqual(outputs[0], 'central.drug_concentration')
         self.assertEqual(model.n_parameters(), 2)
-        self.assertEqual(self.pk_model.n_parameters(), 2)
+        self.assertEqual(self.pkpd_model.n_parameters(), 2)
         params_c = model.parameters()
-        params = self.pk_model.parameters()
+        params = self.pkpd_model.parameters()
         self.assertEqual(params_c[0], 'central.drug_amount')
         self.assertEqual(params_c[1], 'myokit.elimination_rate')
         self.assertEqual(params[0], 'central.drug_amount')
@@ -775,18 +742,18 @@ class TestReducedMechanisticModel(unittest.TestCase):
         # Rename the output
         model.set_output_names({'central.drug_concentration': 'test'})
         self.assertEqual(model.n_outputs(), 1)
-        self.assertEqual(self.pk_model.n_outputs(), 1)
+        self.assertEqual(self.pkpd_model.n_outputs(), 1)
         outputs_c = model.outputs()
-        outputs = self.pk_model.outputs()
+        outputs = self.pkpd_model.outputs()
         self.assertEqual(outputs_c[0], 'test')
         self.assertEqual(outputs[0], 'central.drug_concentration')
 
         # Set new ouputs
         model.set_outputs(['test', 'central.drug_amount'])
         self.assertEqual(model.n_outputs(), 2)
-        self.assertEqual(self.pk_model.n_outputs(), 1)
+        self.assertEqual(self.pkpd_model.n_outputs(), 1)
         outputs_c = model.outputs()
-        outputs = self.pk_model.outputs()
+        outputs = self.pkpd_model.outputs()
         self.assertEqual(outputs_c[0], 'test')
         self.assertEqual(outputs_c[1], 'central.drug_amount')
         self.assertEqual(outputs[0], 'central.drug_concentration')
@@ -796,13 +763,16 @@ class TestReducedMechanisticModel(unittest.TestCase):
             'central.size': None,
             'central.drug_amount': 1})
         self.assertEqual(model.n_parameters(), 2)
-        self.assertEqual(self.pk_model.n_parameters(), 2)
+        self.assertEqual(self.pkpd_model.n_parameters(), 2)
         params_c = model.parameters()
-        params = self.pk_model.parameters()
+        params = self.pkpd_model.parameters()
         self.assertEqual(params_c[0], 'central.size')
         self.assertEqual(params_c[1], 'myokit.elimination_rate')
         self.assertEqual(params[0], 'central.drug_amount')
         self.assertEqual(params[1], 'myokit.elimination_rate')
+
+        # Unfix model parameters
+        self.pkpd_model.fix_parameters({'central.size': None})
 
     def test_enable_sensitivities(self):
         # Enable sensitivities
@@ -816,48 +786,24 @@ class TestReducedMechanisticModel(unittest.TestCase):
     def test_fix_parameters(self):
         # Test case I: fix some parameters
         self.pd_model.fix_parameters(name_value_dict={
-            'myokit.tumour_volume': 1,
-            'myokit.kappa': 1})
+            'Parameter': 1})
 
         n_parameters = self.pd_model.n_parameters()
-        self.assertEqual(n_parameters, 3)
+        self.assertEqual(n_parameters, 0)
 
         parameter_names = self.pd_model.parameters()
-        self.assertEqual(len(parameter_names), 3)
-        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
-        self.assertEqual(parameter_names[1], 'myokit.lambda_0')
-        self.assertEqual(parameter_names[2], 'myokit.lambda_1')
+        self.assertEqual(len(parameter_names), 0)
 
-        # Test case II: fix overlapping set of parameters
+        # Test case II: unfix all parameters
         self.pd_model.fix_parameters(name_value_dict={
-            'myokit.kappa': None,
-            'myokit.lambda_0': 0.5,
-            'myokit.lambda_1': 0.3})
+            'Parameter': None})
 
         n_parameters = self.pd_model.n_parameters()
-        self.assertEqual(n_parameters, 2)
+        self.assertEqual(n_parameters, 1)
 
         parameter_names = self.pd_model.parameters()
-        self.assertEqual(len(parameter_names), 2)
-        self.assertEqual(parameter_names[0], 'myokit.drug_concentration')
-        self.assertEqual(parameter_names[1], 'myokit.kappa')
-
-        # Test case III: unfix all parameters
-        self.pd_model.fix_parameters(name_value_dict={
-            'myokit.tumour_volume': None,
-            'myokit.lambda_0': None,
-            'myokit.lambda_1': None})
-
-        n_parameters = self.pd_model.n_parameters()
-        self.assertEqual(n_parameters, 5)
-
-        parameter_names = self.pd_model.parameters()
-        self.assertEqual(len(parameter_names), 5)
-        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
-        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
-        self.assertEqual(parameter_names[2], 'myokit.kappa')
-        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
-        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+        self.assertEqual(len(parameter_names), 1)
+        self.assertEqual(parameter_names[0], 'Parameter')
 
     def test_fix_parameters_bad_input(self):
         name_value_dict = 'Bad type'
@@ -868,52 +814,11 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertIsInstance(
             self.pd_model.mechanistic_model(), chi.MechanisticModel)
 
-    def test_n_fixed_parameters(self):
-        # Test case I: fix some parameters
-        self.pd_model.fix_parameters(name_value_dict={
-            'myokit.tumour_volume': 1,
-            'myokit.kappa': 1})
-
-        self.assertEqual(self.pd_model.n_fixed_parameters(), 2)
-
-        # Test case II: fix overlapping set of parameters
-        self.pd_model.fix_parameters(name_value_dict={
-            'myokit.kappa': None,
-            'myokit.lambda_0': 0.5,
-            'myokit.lambda_1': 0.3})
-
-        self.assertEqual(self.pd_model.n_fixed_parameters(), 3)
-
-        # Test case III: unfix all parameters
-        self.pd_model.fix_parameters(name_value_dict={
-            'myokit.tumour_volume': None,
-            'myokit.lambda_0': None,
-            'myokit.lambda_1': None})
-
-        self.assertEqual(self.pd_model.n_fixed_parameters(), 0)
-
     def test_n_outputs(self):
         self.assertEqual(self.pd_model.n_outputs(), 1)
 
     def test_n_parameters(self):
-        self.assertEqual(self.pd_model.n_parameters(), 5)
-
-    def test_pd_output(self):
-        # Test PD model
-        self.assertIsNone(self.pd_model.pd_output())
-
-        # Test PK model
-        self.assertEqual(
-            self.pk_model.pd_output(), 'central.drug_concentration')
-
-    def test_pk_output(self):
-        # Test PD model
-        self.assertEqual(
-            self.pd_model.pk_input(), 'myokit.drug_concentration')
-        self.assertIsNone(self.pd_model.pd_output())
-
-        # Test PK model
-        self.assertIsNone(self.pk_model.pk_input())
+        self.assertEqual(self.pd_model.n_parameters(), 1)
 
     def test_set_get_dosing_regimen(self):
         # Test case I: dosing regimen unset
@@ -921,7 +826,7 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertIsNone(self.pd_model.dosing_regimen())
 
         # Test PK model
-        self.assertIsNone(self.pk_model.dosing_regimen())
+        self.assertIsNone(self.pkpd_model.dosing_regimen())
 
         # Test case II: dosing regimen set
         # Test PD model
@@ -930,76 +835,81 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertIsNone(self.pd_model.dosing_regimen())
 
         # Test PK model
-        self.pk_model.set_dosing_regimen(1, 1)
+        self.pkpd_model.set_dosing_regimen(1, 1)
         self.assertIsInstance(
-            self.pk_model.dosing_regimen(), myokit.Protocol)
+            self.pkpd_model.dosing_regimen(), myokit.Protocol)
 
     def test_set_get_outputs(self):
         # Test case I: Set outputs
-        self.pd_model.set_outputs([
-            'myokit.tumour_volume',
-            'myokit.tumour_volume'])
+        self.pkpd_model.set_outputs([
+            'central.drug_amount',
+            'central.drug_amount'])
 
-        outputs = self.pd_model.outputs()
+        outputs = self.pkpd_model.outputs()
         self.assertEqual(len(outputs), 2)
-        self.assertEqual(outputs[0], 'myokit.tumour_volume')
-        self.assertEqual(outputs[1], 'myokit.tumour_volume')
+        self.assertEqual(outputs[0], 'central.drug_amount')
+        self.assertEqual(outputs[1], 'central.drug_amount')
 
-        self.pd_model.set_output_names(
-            {'myokit.tumour_volume': 'Some name'})
-        outputs = self.pd_model.outputs()
+        self.pkpd_model.set_output_names(
+            {'central.drug_amount': 'Some name'})
+        outputs = self.pkpd_model.outputs()
         self.assertEqual(len(outputs), 2)
         self.assertEqual(outputs[0], 'Some name')
         self.assertEqual(outputs[1], 'Some name')
 
         # Test case II: Set outputs back to default
-        self.pd_model.set_output_names(
-            {'Some name': 'myokit.tumour_volume'})
-        self.pd_model.set_outputs(['myokit.tumour_volume'])
+        self.pkpd_model.set_output_names(
+            {'Some name': 'central.drug_amount'})
+        self.pkpd_model.set_outputs(['central.drug_concentration'])
 
-        outputs = self.pd_model.outputs()
+        outputs = self.pkpd_model.outputs()
         self.assertEqual(len(outputs), 1)
-        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[0], 'central.drug_concentration')
+
+        # Test case III: Set ouputs and output names for chi.MechanisticModel
+        with self.assertRaisesRegex(NotImplementedError, 'The mechanistic'):
+            self.pd_model.set_outputs(['some names'])
+        with self.assertRaisesRegex(NotImplementedError, 'The mechanistic'):
+            self.pd_model.set_output_names('some names')
 
     def test_set_get_parameters(self):
         # Test case I: set some parameter names
-        self.pd_model.set_parameter_names({
-            'myokit.tumour_volume': 'Test'})
+        self.pkpd_model.set_parameter_names({
+            'central.drug_amount': 'Test'})
 
-        parameters = self.pd_model.parameters()
-        self.assertEqual(len(parameters), 5)
+        parameters = self.pkpd_model.parameters()
+        self.assertEqual(len(parameters), 3)
         self.assertEqual(parameters[0], 'Test')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[1], 'central.size')
+        self.assertEqual(parameters[2], 'myokit.elimination_rate')
 
         # Test case II: set back to default
-        self.pd_model.set_parameter_names({
-            'Test': 'myokit.tumour_volume'})
+        self.pkpd_model.set_parameter_names({
+            'Test': 'central.drug_amount'})
 
-        parameters = self.pd_model.parameters()
-        self.assertEqual(len(parameters), 5)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        parameters = self.pkpd_model.parameters()
+        self.assertEqual(len(parameters), 3)
+        self.assertEqual(parameters[0], 'central.drug_amount')
+        self.assertEqual(parameters[1], 'central.size')
+        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+
+        # Test case III: Set parameter names for chi.MechanisticModel
+        with self.assertRaisesRegex(NotImplementedError, 'The mechanistic'):
+            self.pd_model.set_parameter_names('some names')
 
     def test_simulate(self):
         # Test case I: fix some parameters
         self.pd_model.fix_parameters(name_value_dict={
-            'myokit.tumour_volume': 1,
-            'myokit.kappa': 1})
+            'Parameter': 2})
 
         # Simulate
         times = [1, 2, 3]
-        parameters = [0, 0.5, 0.3]
+        parameters = []
         output = self.pd_model.simulate(parameters, times).flatten()
 
         # Simulate unfixed model with the same parameters
         model = self.pd_model.mechanistic_model()
-        parameters = [1, 0, 1, 0.5, 0.3]
+        parameters = [2]
         ref_output = model.simulate(parameters, times).flatten()
 
         self.assertEqual(len(output), 3)
@@ -1009,17 +919,19 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(output[2], ref_output[2])
 
         # Enable sensitivities
-        self.pd_model.enable_sensitivities(True)
+        self.pkpd_model.fix_parameters(name_value_dict={
+            'central.drug_amount': 2})
+        self.pkpd_model.enable_sensitivities(True)
 
         # Simulate
         times = [1, 2, 3]
-        parameters = [0, 0.5, 0.3]
-        output, sens = self.pd_model.simulate(parameters, times)
+        parameters = [0.5, 0.3]
+        output, sens = self.pkpd_model.simulate(parameters, times)
         output = output.squeeze()
 
         # Simulate unfixed model with the same parameters
-        model = self.pd_model.mechanistic_model()
-        parameters = [1, 0, 1, 0.5, 0.3]
+        model = self.pkpd_model.mechanistic_model()
+        parameters = [2, 0.5, 0.3]
         ref_output, ref_sens = model.simulate(parameters, times)
         ref_output = ref_output.squeeze()
 
@@ -1029,46 +941,30 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(output[1], ref_output[1])
         self.assertEqual(output[2], ref_output[2])
 
-        self.assertEqual(sens.shape, (3, 1, 3))
-        self.assertEqual(ref_sens.shape, (3, 1, 3))
+        self.assertEqual(sens.shape, (3, 1, 2))
+        self.assertEqual(ref_sens.shape, (3, 1, 2))
         self.assertEqual(sens[0, 0, 0], ref_sens[0, 0, 0])
         self.assertEqual(sens[1, 0, 0], ref_sens[1, 0, 0])
         self.assertEqual(sens[2, 0, 0], ref_sens[2, 0, 0])
         self.assertEqual(sens[0, 0, 1], ref_sens[0, 0, 1])
         self.assertEqual(sens[1, 0, 1], ref_sens[1, 0, 1])
         self.assertEqual(sens[2, 0, 1], ref_sens[2, 0, 1])
-        self.assertEqual(sens[0, 0, 2], ref_sens[0, 0, 2])
-        self.assertEqual(sens[1, 0, 2], ref_sens[1, 0, 2])
-        self.assertEqual(sens[2, 0, 2], ref_sens[2, 0, 2])
 
-        # Fix parameters after enabling sensitivities
-        self.pd_model.fix_parameters({'myokit.lambda_0': 0.5})
-        times = [1, 2, 3]
-        parameters = [0, 0.3]
-        output, sens = self.pd_model.simulate(parameters, times)
-        output = output.squeeze()
+        # Unfix parameters
+        self.pd_model.fix_parameters(name_value_dict={
+            'Parameter': None})
+        self.pkpd_model.fix_parameters(name_value_dict={
+            'central.drug_amount': None})
 
-        self.assertEqual(len(output), 3)
-        self.assertEqual(len(ref_output), 3)
-        self.assertEqual(output[0], ref_output[0])
-        self.assertEqual(output[1], ref_output[1])
-        self.assertEqual(output[2], ref_output[2])
-
-        self.assertEqual(sens.shape, (3, 1, 2))
-        self.assertEqual(ref_sens.shape, (3, 1, 3))
-        self.assertEqual(sens[0, 0, 0], ref_sens[0, 0, 0])
-        self.assertEqual(sens[1, 0, 0], ref_sens[1, 0, 0])
-        self.assertEqual(sens[2, 0, 0], ref_sens[2, 0, 0])
-        self.assertEqual(sens[0, 0, 1], ref_sens[0, 0, 2])
-        self.assertEqual(sens[1, 0, 1], ref_sens[1, 0, 2])
-        self.assertEqual(sens[2, 0, 1], ref_sens[2, 0, 2])
-
-    def test_simulator(self):
-        self.assertIsInstance(self.pd_model.simulator, myokit.Simulation)
-        self.assertIsInstance(self.pk_model.simulator, myokit.Simulation)
+    def test_supports_dosing(self):
+        self.assertTrue(self.pkpd_model.supports_dosing())
+        self.assertFalse(self.pd_model.supports_dosing())
 
     def test_time_unit(self):
-        self.assertIsInstance(self.pd_model.time_unit(), myokit.Unit)
+        self.assertIsInstance(self.pkpd_model.time_unit(), myokit.Unit)
+
+        with self.assertRaisesRegex(NotImplementedError, 'The mechanistic'):
+            self.pd_model.time_unit()
 
 
 if __name__ == '__main__':

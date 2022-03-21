@@ -9,7 +9,7 @@ ordered list of all classes and functions. The menu bar can be
 used to explore chi's functionality in a more structured way.
 
 .. toctree::
-    :hidden:
+    :caption: Table of Contents
     :maxdepth: 1
 
     covariate_models
@@ -22,6 +22,8 @@ used to explore chi's functionality in a more structured way.
     population_models
     predictive_models
     problems
+
+Summary of all functions and classes in chi
 
 
 .. autosummary::
@@ -44,13 +46,11 @@ used to explore chi's functionality in a more structured way.
     chi.HierarchicalLogPosterior
     chi.GaussianModel
     chi.InferenceController
-    chi.InverseProblem
     chi.MechanisticModel
     chi.MultiplicativeGaussianErrorModel
     chi.OptimisationController
     chi.PAMPredictiveModel
-    chi.PharmacodynamicModel
-    chi.PharmacokineticModel
+    chi.PKPDModel
     chi.plots.MarginalPosteriorPlot
     chi.plots.ParameterEstimatePlot
     chi.plots.PDTimeSeriesPlot
@@ -70,4 +70,5 @@ used to explore chi's functionality in a more structured way.
     chi.ReducedMechanisticModel
     chi.ReducedPopulationModel
     chi.SamplingController
+    chi.SBMLModel
     chi.TruncatedGaussianModel

@@ -31,8 +31,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         cls.times = [times_1, times_2]
 
         # Set up mechanistic and error models
-        path = ModelLibrary().one_compartment_pk_model()
-        cls.model = chi.PharmacokineticModel(path)
+        cls.model = ModelLibrary().one_compartment_pk_model()
         cls.model.set_administration('central', direct=False)
         cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         cls.error_models = [
@@ -105,8 +104,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
                 log_likelihoods, self.population_models)
 
         # Log-likelihoods are defined on different parameter spaces
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         model.set_administration('central', direct=False)
         error_models = [
             chi.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -1344,8 +1342,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         times = [times_1, times_2]
 
         # Set up mechanistic and error models
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         error_models = [
@@ -1625,8 +1622,7 @@ class TestLogLikelihood(unittest.TestCase):
         cls.times = [times_1, times_2]
 
         # Set up mechanistic and error models
-        path = ModelLibrary().one_compartment_pk_model()
-        cls.model = chi.PharmacokineticModel(path)
+        cls.model = ModelLibrary().one_compartment_pk_model()
         cls.model.set_administration('central', direct=False)
         cls.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         cls.error_models = [
@@ -1644,8 +1640,7 @@ class TestLogLikelihood(unittest.TestCase):
         # Check whether changing the model changes the log-likelihood
         obs = [1, 1.1, 1.2, 1.3]
         times = [1, 2, 3, 4]
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         error_model = [
             chi.ConstantAndMultiplicativeGaussianErrorModel()]
         log_likelihood = chi.LogLikelihood(
@@ -2087,8 +2082,7 @@ class TestLogPosterior(unittest.TestCase):
         values = [10, 11, 12, 13]
 
         # Create test model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = chi.PharmacodynamicModel(path)
+        model = ModelLibrary().tumour_growth_inhibition_model_koch()
         error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
         cls.log_likelihood = chi.LogLikelihood(
             model, error_model, values, times)
@@ -2186,10 +2180,10 @@ class TestReducedLogPDF(unittest.TestCase):
         values = [1, 2, 3, 4, 5]
 
         # Set up inverse problem
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = chi.PharmacodynamicModel(path)
-        problem = chi.InverseProblem(model, times, values)
-        cls.log_likelihood = pints.GaussianLogLikelihood(problem)
+        model = ModelLibrary().tumour_growth_inhibition_model_koch()
+        error_model = chi.GaussianErrorModel()
+        cls.log_likelihood = chi.LogLikelihood(
+            model, error_model, values, times)
         cls.mask = [True, False, False, True, False, True]
         cls.values = [11, 12, 13]
         cls.reduced_log_pdf = chi.ReducedLogPDF(

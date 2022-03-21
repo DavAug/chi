@@ -35,8 +35,8 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         times = data[mask]['Time'].to_numpy()
         observed_volumes = data[mask]['Value'].to_numpy()
 
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
         error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
         cls.log_likelihood = chi.LogLikelihood(
             mechanistic_model, error_model, observed_volumes, times)
@@ -583,8 +583,8 @@ class TestInferenceController(unittest.TestCase):
         times = data[mask]['Time'].to_numpy()
         observed_volumes = data[mask]['Value'].to_numpy()
 
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
         error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
         cls.log_likelihood = chi.LogLikelihood(
             mechanistic_model, error_model, observed_volumes, times)
@@ -688,8 +688,7 @@ class TestOptimisationController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = chi.PharmacodynamicModel(path)
+        model = ModelLibrary().tumour_growth_inhibition_model_koch()
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         cls.problem = chi.ProblemModellingController(model, error_models)
 
@@ -877,8 +876,7 @@ class TestSamplingController(unittest.TestCase):
     def setUpClass(cls):
         # Set up test problems
         # Model I: Individual with ID 40
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = chi.PharmacodynamicModel(path)
+        model = ModelLibrary().tumour_growth_inhibition_model_koch()
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         problem = chi.ProblemModellingController(model, error_models)
 
@@ -1008,8 +1006,7 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(divergent_iters, 'false')
 
         # Case III: Infer multiple independent models
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        model = chi.PharmacodynamicModel(path)
+        model = ModelLibrary().tumour_growth_inhibition_model_koch()
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         problem = chi.ProblemModellingController(model, error_models)
         data = DataLibrary().lung_cancer_control_group()

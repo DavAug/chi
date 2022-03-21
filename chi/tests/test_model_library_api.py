@@ -5,11 +5,9 @@
 # full license details.
 #
 
-import os
 import unittest
 
-import myokit.formats.sbml as sbml
-
+import chi
 from chi.library import ModelLibrary
 
 
@@ -23,26 +21,22 @@ class TestModelLibrary(unittest.TestCase):
         cls.model_library = ModelLibrary()
 
     def test_existence_erlotinib_tumour_growth_inhibition_model(self):
-        path = self.model_library.erlotinib_tumour_growth_inhibition_model()
-
-        self.assertTrue(os.path.exists(path))
+        model = self.model_library.erlotinib_tumour_growth_inhibition_model()
+        self.assertIsInstance(model, chi.PKPDModel)
 
     def test_existence_tumour_growth_inhibition_model_koch(self):
-        path = self.model_library.tumour_growth_inhibition_model_koch()
-
-        self.assertTrue(os.path.exists(path))
+        model = self.model_library.tumour_growth_inhibition_model_koch()
+        self.assertIsInstance(model, chi.SBMLModel)
 
     def test_existence_tumour_growth_inhibition_model_koch_reparametrised(
             self):
         lib = self.model_library
-        path = lib.tumour_growth_inhibition_model_koch_reparametrised()
-
-        self.assertTrue(os.path.exists(path))
+        model = lib.tumour_growth_inhibition_model_koch_reparametrised()
+        self.assertIsInstance(model, chi.SBMLModel)
 
     def test_existence_one_compartment_pk_model(self):
-        path = self.model_library.one_compartment_pk_model()
-
-        self.assertTrue(os.path.exists(path))
+        model = self.model_library.one_compartment_pk_model()
+        self.assertIsInstance(model, chi.PKPDModel)
 
 
 class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
@@ -54,9 +48,7 @@ class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         lib = ModelLibrary()
-        path = lib.erlotinib_tumour_growth_inhibition_model()
-        importer = sbml.SBMLImporter()
-        cls.model = importer.model(path)
+        cls.model = lib.erlotinib_tumour_growth_inhibition_model()._model
 
     def test_constant_variables(self):
         const_names = sorted(
@@ -99,9 +91,7 @@ class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         lib = ModelLibrary()
-        path = lib.tumour_growth_inhibition_model_koch()
-        importer = sbml.SBMLImporter()
-        cls.model = importer.model(path)
+        cls.model = lib.tumour_growth_inhibition_model_koch()._model
 
     def test_states(self):
         state_names = sorted(
@@ -143,9 +133,8 @@ class TestTumourGrowthInhibitionModelKochReparametrised(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         lib = ModelLibrary()
-        path = lib.tumour_growth_inhibition_model_koch_reparametrised()
-        importer = sbml.SBMLImporter()
-        cls.model = importer.model(path)
+        cls.model = \
+            lib.tumour_growth_inhibition_model_koch_reparametrised()._model
 
     def test_states(self):
         state_names = sorted(
@@ -185,9 +174,7 @@ class TestOneCompartmentPKModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         lib = ModelLibrary()
-        path = lib.one_compartment_pk_model()
-        importer = sbml.SBMLImporter()
-        cls.model = importer.model(path)
+        cls.model = lib.one_compartment_pk_model()._model
 
     def test_states(self):
         state_names = sorted(

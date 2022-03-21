@@ -26,8 +26,8 @@ class TestAveragedPredictiveModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
 
         # Define error models
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -82,8 +82,8 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
     def setUpClass(cls):
         # Test model I: Individual predictive model
         # Create predictive model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         cls.pred_model = chi.PredictiveModel(
             mechanistic_model, error_models)
@@ -346,8 +346,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
-        path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = chi.PharmacokineticModel(path)
+        mechanistic_model = ModelLibrary().one_compartment_pk_model()
         mechanistic_model.set_administration('central', direct=False)
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         predictive_model = chi.PredictiveModel(
@@ -529,8 +528,8 @@ class TestPredictiveModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.mechanistic_model = chi.PharmacodynamicModel(path)
+        cls.mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
 
         # Define error models
         cls.error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -644,8 +643,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertEqual(names[6], 'Sigma rel.')
 
         # Test case II: Multi-output problem
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         error_models = [
@@ -675,8 +673,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertIsNone(self.model.get_dosing_regimen())
 
         # Test case II: Mechanistic model supports dosing regimens
-        path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = chi.PharmacokineticModel(path)
+        mechanistic_model = ModelLibrary().one_compartment_pk_model()
         mechanistic_model.set_administration('central')
         model = chi.PredictiveModel(
             mechanistic_model, self.error_models)
@@ -1062,8 +1059,7 @@ class TestPredictiveModel(unittest.TestCase):
         self.assertAlmostEqual(values[4], -1.4664469447762758)
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
-        path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = chi.PharmacokineticModel(path)
+        mechanistic_model = ModelLibrary().one_compartment_pk_model()
         mechanistic_model.set_administration('central')
         model = chi.PredictiveModel(
             mechanistic_model, self.error_models)
@@ -1215,8 +1211,8 @@ class TestPopulationPredictiveModel(unittest.TestCase):
     def setUpClass(cls):
         # Test case I: No covariates
         # Get mechanistic and error model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
         # Create predictive model
@@ -1260,8 +1256,8 @@ class TestPopulationPredictiveModel(unittest.TestCase):
     def test_instantiation(self):
         # Define order of population model with params
         # Get mechanistic and error model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
 
         # Create predictive model
@@ -1436,8 +1432,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[8], 'Pooled Sigma rel.')
 
         # Test case II: Multi-output problem
-        path = ModelLibrary().one_compartment_pk_model()
-        model = chi.PharmacokineticModel(path)
+        model = ModelLibrary().one_compartment_pk_model()
         model.set_administration('central', direct=False)
         model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
         error_models = [
@@ -1666,8 +1661,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PKmodel, where the dosing regimen is not set
-        path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = chi.PharmacokineticModel(path)
+        mechanistic_model = ModelLibrary().one_compartment_pk_model()
         mechanistic_model.set_administration('central', direct=False)
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         predictive_model = chi.PredictiveModel(
@@ -1914,8 +1908,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get mechanistic model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
 
         # Define error models
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
@@ -2131,8 +2125,7 @@ class TestPriorPredictiveModel(unittest.TestCase):
         self.assertEqual(len(values), 5)
 
         # Test case III.2: PK model, regimen not set
-        path = ModelLibrary().one_compartment_pk_model()
-        mechanistic_model = chi.PharmacokineticModel(path)
+        mechanistic_model = ModelLibrary().one_compartment_pk_model()
         mechanistic_model.set_administration('central')
         error_models = [chi.ConstantAndMultiplicativeGaussianErrorModel()]
         predictive_model = chi.PredictiveModel(
@@ -2299,8 +2292,8 @@ class TestPAMPredictiveModel(unittest.TestCase):
     def setUpClass(cls):
         # Test model I: Individual predictive model
         # Create predictive model
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(path)
+        mechanistic_model = \
+            ModelLibrary().tumour_growth_inhibition_model_koch()
         error_models = [chi.GaussianErrorModel()]
         pred_model = chi.PredictiveModel(
             mechanistic_model, error_models)
@@ -2327,8 +2320,8 @@ class TestPAMPredictiveModel(unittest.TestCase):
 
         # Test model II: Erlotinib PKPD model
         # Create predictive model
-        path = ModelLibrary().erlotinib_tumour_growth_inhibition_model()
-        mechanistic_model = chi.PharmacokineticModel(path)
+        mechanistic_model = \
+            ModelLibrary().erlotinib_tumour_growth_inhibition_model()
         mechanistic_model.set_administration('central', direct=True)
         mechanistic_model.set_outputs(['myokit.tumour_volume'])
         error_models = [chi.GaussianErrorModel()]
@@ -2369,8 +2362,8 @@ class TestPAMPredictiveModel(unittest.TestCase):
                 models, self.weights)
 
         # The models have a different number of outputs
-        path = ModelLibrary().erlotinib_tumour_growth_inhibition_model()
-        mechanistic_model = chi.PharmacokineticModel(path)
+        mechanistic_model = \
+            ModelLibrary().erlotinib_tumour_growth_inhibition_model()
         mechanistic_model.set_outputs(
             ['central.drug_concentration', 'myokit.tumour_volume'])
         error_models = [chi.GaussianErrorModel()] * 2

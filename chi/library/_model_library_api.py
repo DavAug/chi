@@ -7,6 +7,8 @@
 
 import os
 
+import chi
+
 
 class ModelLibrary(object):
     """
@@ -30,22 +32,17 @@ class ModelLibrary(object):
 
     def erlotinib_tumour_growth_inhibition_model(self):
         """
-        .. warning::
-            This model is going to be deprecated soon in favour of a dynamic
-            PK model-PD model composition.
-
         This model is a combination of a
         :meth:`ModelLibrary.one_compartment_pk_model` and a
         :meth:`tumour_growth_inhibition_model_koch_reparametrised`.
         """
         file_name = 'temporary_full_pkpd_model.xml'
 
-        return self._path + file_name
+        return chi.PKPDModel(self._path + file_name)
 
     def one_compartment_pk_model(self):
         r"""
-        Returns the absolute path to a SBML file, specifying a one compartment
-        pharmacokinetic model.
+        Returns an instantiation of a 1-compartment PK model.
 
         In this model the distribution of the drug is modelled by one
         compartment with a linear elimination rate :math:`k_e`
@@ -62,13 +59,16 @@ class ModelLibrary(object):
         the drug through the liver may be approximated by an exponential decay
         with the rate :math:`k_e`.
 
-        With a :class:`erlotinib.PharmacokineticModel` the drug may be either
-        directly administered to :math:`A` or indirectly through a dosing
-        compartment.
+        The drug may be either directly administered to :math:`A` or indirectly
+        through a dosing compartment.
+
+        :rtype: chi.PKPDModel
         """
         file_name = 'pk_one_comp.xml'
+        model = chi.PKPDModel(self._path + file_name)
+        model.set_outputs(['central.drug_concentration'])
 
-        return self._path + file_name
+        return model
 
     def tumour_growth_inhibition_model_koch(self):
         r"""
@@ -100,10 +100,12 @@ class ModelLibrary(object):
 
         .. math::
             V_{\text{crit}} = \frac{\lambda _1}{2\lambda _0}.
+
+        :rtype: chi.SBMLModel
         """
         file_name = 'tgi_Koch_2009.xml'
 
-        return self._path + file_name
+        return chi.SBMLModel(self._path + file_name)
 
     def tumour_growth_inhibition_model_koch_reparametrised(self):
         r"""
@@ -136,7 +138,9 @@ class ModelLibrary(object):
         .. math::
             V_{\text{crit}} = \frac{\lambda _1}{2\lambda _0} \quad \text{and}
             \quad \lambda = 2\lambda _1 .
+
+        :rtype: chi.SBMLModel
         """
         file_name = 'tgi_Koch_2009_reparametrised.xml'
 
-        return self._path + file_name
+        return chi.SBMLModel(self._path + file_name)

@@ -66,7 +66,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Chi'
-copyright = u'2021, David Augustin'
+copyright = u'2022, David Augustin'
 author = u'David Augustin'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -96,7 +96,7 @@ suppress_warnings = [
 ]
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'emacs'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False

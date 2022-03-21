@@ -5,7 +5,6 @@
 # full license details.
 #
 
-import copy
 import unittest
 
 import numpy as np
@@ -16,10 +15,9 @@ import chi
 from chi.library import ModelLibrary
 
 
-class TestProblemModellingControllerPDProblem(unittest.TestCase):
+class TestProblemModellingController(unittest.TestCase):
     """
-    Tests the chi.ProblemModellingController class on a PD modelling
-    problem.
+    Tests the chi.ProblemModellingController class
     """
     @classmethod
     def setUpClass(cls):
@@ -49,16 +47,15 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
         # Test case I: create PD modelling problem
         lib = ModelLibrary()
-        path = lib.tumour_growth_inhibition_model_koch()
-        cls.pd_model = chi.PharmacodynamicModel(path)
+        cls.pd_model = lib.tumour_growth_inhibition_model_koch()
         cls.error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
         cls.pd_problem = chi.ProblemModellingController(
             cls.pd_model, cls.error_model)
 
         # Test case II: create PKPD modelling problem
         lib = ModelLibrary()
-        path = lib.erlotinib_tumour_growth_inhibition_model()
-        cls.pkpd_model = chi.PharmacokineticModel(path)
+        cls.pkpd_model = lib.erlotinib_tumour_growth_inhibition_model()
+        cls.pkpd_model.set_administration('central')
         cls.pkpd_model.set_outputs([
             'central.drug_concentration',
             'myokit.tumour_volume'])
@@ -152,7 +149,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[6], 'Sigma rel.')
 
         # Fix parameters before setting a population model
-        problem = copy.copy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
         name_value_dict = dict({
             'myokit.tumour_volume': 1,
             'myokit.drug_concentration': 0,
@@ -274,7 +272,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_get_covariate_names(self):
         # Test case I: PD model
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
 
         # I.1: No population model
         names = problem.get_covariate_names()
@@ -334,7 +333,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_get_dosing_regimens(self):
         # Test case I: PD problem
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
 
         # No data has been set
         regimens = problem.get_dosing_regimens()
@@ -346,7 +346,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertIsNone(regimens)
 
         # Test case II: PKPD problem
-        problem = copy.deepcopy(self.pkpd_problem)
+        problem = chi.ProblemModellingController(
+            self.pkpd_model, self.error_models)
 
         # No data has been set
         regimens = problem.get_dosing_regimens()
@@ -378,7 +379,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_get_log_posterior(self):
         # Test case I: Create posterior with no fixed parameters
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
 
         # Set data which does not provide measurements for all IDs
         problem.set_data(
@@ -534,8 +536,33 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(names[11], 'Shift Age Sigma rel.')
         self.assertIsNone(ids[11])
 
+        # Test with PKPD model
+        problem = chi.ProblemModellingController(
+            self.pkpd_model, self.error_models)
+
+        # Set data which does not provide measurements for all IDs
+        problem.set_data(
+            self.data,
+            output_observable_dict={
+                'central.drug_concentration': 'IL 6',
+                'myokit.tumour_volume': 'Tumour volume'})
+        problem.set_log_prior([
+            pints.HalfCauchyLogPrior(0, 1)]*11)
+
+        # Get all posteriors
+        posteriors = problem.get_log_posterior()
+
+        self.assertEqual(len(posteriors), 3)
+        self.assertEqual(posteriors[0].n_parameters(), 11)
+        self.assertEqual(posteriors[0].get_id(), 'ID 0')
+        self.assertEqual(posteriors[1].n_parameters(), 11)
+        self.assertEqual(posteriors[1].get_id(), 'ID 1')
+        self.assertEqual(posteriors[2].n_parameters(), 11)
+        self.assertEqual(posteriors[2].get_id(), 'ID 2')
+
     def test_get_log_posteriors_bad_input(self):
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
 
         # No log-prior has been set
         problem.set_data(
@@ -556,7 +583,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case I: PD model
         # Test case I.1: No population model
         # Test default flag
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
         n_parameters = problem.get_n_parameters()
         self.assertEqual(n_parameters, 7)
 
@@ -607,7 +635,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         # Test case II: PKPD model
         # Test case II.1: No population model
         # Test default flag
-        problem = copy.deepcopy(self.pkpd_problem)
+        problem = chi.ProblemModellingController(
+            self.pkpd_model, self.error_models)
         n_parameters = problem.get_n_parameters()
         self.assertEqual(n_parameters, 11)
 
@@ -663,7 +692,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_get_parameter_names(self):
         # Test case I: PD model
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
 
         # Test case I.1: No population model
         # Test default flag
@@ -796,7 +826,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[10], 'Std. log Sigma rel.')
 
         # Test case II: PKPD model
-        problem = copy.deepcopy(self.pkpd_problem)
+        problem = chi.ProblemModellingController(
+            self.pkpd_model, self.error_models)
 
         # Test case II.1: No population model
         # Test default flag
@@ -1030,7 +1061,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_get_predictive_model(self):
         # Test case I: PD model
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
 
         # Test case I.1: No population model
         predictive_model = problem.get_predictive_model()
@@ -1062,7 +1094,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Test case II: PKPD model
-        problem = copy.deepcopy(self.pkpd_problem)
+        problem = chi.ProblemModellingController(
+            self.pkpd_model, self.error_models)
 
         # Test case II.1: No population model
         predictive_model = problem.get_predictive_model()
@@ -1099,7 +1132,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_set_data(self):
         # Set data with explicit output-observable map
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
         output_observable_dict = {'myokit.tumour_volume': 'Tumour volume'}
         problem.set_data(self.data, output_observable_dict)
 
@@ -1170,7 +1204,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
             self.pkpd_problem.set_data(self.data)
 
         # Covariate map does not contain all model covariates
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
         cov_pop_model1 = chi.CovariatePopulationModel(
             chi.GaussianModel(),
             chi.LogNormalLinearCovariateModel(n_covariates=1)
@@ -1223,7 +1258,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_set_log_prior(self):
         # Test case I: PD model
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
         problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
         log_priors = [pints.HalfCauchyLogPrior(0, 1)] * 7
 
@@ -1242,7 +1278,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         problem.set_log_prior(log_priors, param_names)
 
     def test_set_log_prior_bad_input(self):
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
 
         # No data has been set
         with self.assertRaisesRegex(ValueError, 'The data has not'):
@@ -1282,7 +1319,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
 
     def test_set_population_model(self):
         # Test case I: PD model
-        problem = copy.deepcopy(self.pd_problem)
+        problem = chi.ProblemModellingController(
+            self.pd_model, self.error_model)
         problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
         pop_models = [
             chi.PooledModel(),
@@ -1380,7 +1418,8 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         self.assertEqual(param_names[17], 'Std. log Sigma rel.')
 
         # Test case II: PKPD model
-        problem = copy.deepcopy(self.pkpd_problem)
+        problem = chi.ProblemModellingController(
+            self.pkpd_model, self.error_models)
         problem.set_data(
             self.data,
             output_observable_dict={
@@ -1482,95 +1521,6 @@ class TestProblemModellingControllerPDProblem(unittest.TestCase):
         pop_models = [cov_pop_model] * 7
         with self.assertWarns(UserWarning):
             self.pd_problem.set_population_model(pop_models)
-
-
-class TestInverseProblem(unittest.TestCase):
-    """
-    Tests the chi.InverseProblem class.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        # Create test data
-        cls.times = [1, 2, 3, 4, 5]
-        cls.values = [1, 2, 3, 4, 5]
-
-        # Set up inverse problem
-        path = ModelLibrary().tumour_growth_inhibition_model_koch()
-        cls.model = chi.PharmacodynamicModel(path)
-        cls.problem = chi.InverseProblem(cls.model, cls.times, cls.values)
-
-    def test_bad_model_input(self):
-        model = 'bad model'
-
-        with self.assertRaisesRegex(ValueError, 'Model has to be an instance'):
-            chi.InverseProblem(model, self.times, self.values)
-
-    def test_bad_times_input(self):
-        times = [-1, 2, 3, 4, 5]
-        with self.assertRaisesRegex(ValueError, 'Times cannot be negative.'):
-            chi.InverseProblem(self.model, times, self.values)
-
-        times = [5, 4, 3, 2, 1]
-        with self.assertRaisesRegex(ValueError, 'Times must be increasing.'):
-            chi.InverseProblem(self.model, times, self.values)
-
-    def test_bad_values_input(self):
-        values = [1, 2, 3, 4, 5, 6, 7]
-        with self.assertRaisesRegex(ValueError, 'Values array must have'):
-            chi.InverseProblem(self.model, self.times, values)
-
-        values = [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]]
-        with self.assertRaisesRegex(ValueError, 'Values array must have'):
-            chi.InverseProblem(self.model, self.times, values)
-
-    def test_evaluate(self):
-        parameters = [0.1, 1, 1, 1, 1]
-        output = self.problem.evaluate(parameters)
-
-        n_times = 5
-        n_outputs = 1
-        self.assertEqual(output.shape, (n_times, n_outputs))
-
-    def test_evaluateS1(self):
-        parameters = [0.1, 1, 1, 1, 1]
-        with self.assertRaises(NotImplementedError):
-            self.problem.evaluateS1(parameters)
-
-    def test_n_ouputs(self):
-        self.assertEqual(self.problem.n_outputs(), 1)
-
-    def test_n_parameters(self):
-        self.assertEqual(self.problem.n_parameters(), 5)
-
-    def test_n_times(self):
-        n_times = len(self.times)
-        self.assertEqual(self.problem.n_times(), n_times)
-
-    def test_times(self):
-        times = self.problem.times()
-        n_times = len(times)
-
-        self.assertEqual(n_times, 5)
-
-        self.assertEqual(times[0], self.times[0])
-        self.assertEqual(times[1], self.times[1])
-        self.assertEqual(times[2], self.times[2])
-        self.assertEqual(times[3], self.times[3])
-        self.assertEqual(times[4], self.times[4])
-
-    def test_values(self):
-        values = self.problem.values()
-
-        n_times = 5
-        n_outputs = 1
-        self.assertEqual(values.shape, (n_times, n_outputs))
-
-        self.assertEqual(values[0], self.values[0])
-        self.assertEqual(values[1], self.values[1])
-        self.assertEqual(values[2], self.values[2])
-        self.assertEqual(values[3], self.values[3])
-        self.assertEqual(values[4], self.values[4])
 
 
 if __name__ == '__main__':

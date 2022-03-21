@@ -79,6 +79,9 @@ def run_doctests():
     # unintended modules are exposed via a public interface
     doctest_rst_and_public_interface()
 
+    # Check that example code runs without throwing errors
+    doctest_example_code()
+
     print('\n{}\n# Doctests passed. #\n{}\n'.format('#' * 20, '#' * 20))
 
 
@@ -136,6 +139,41 @@ def doctest_rst_and_public_interface():
 
     print('All classes and methods are documented in an RST file, and all '
           'public interfaces are clean.')
+
+
+def doctest_example_code():
+    """
+    Check that example scripts are compatible with chi interface and run
+    without errors.
+    """
+    print('\nChecking that all example scripts are compatible with chi.')
+
+    script_dir = \
+        os.path.dirname(os.path.abspath(__file__)) \
+        + '/docs/source/getting_started/code'
+    scripts = os.listdir(script_dir)
+    for script in scripts:
+        script = script_dir + '/' + script
+        p = subprocess.Popen([
+            'python',
+            script,
+            '--test',
+        ])
+        try:
+            ret = p.wait()
+        except KeyboardInterrupt:
+            try:
+                p.terminate()
+            except OSError:
+                pass
+            p.wait()
+            print('')
+            sys.exit(1)
+        if ret != 0:
+            print('FAILED')
+            sys.exit(ret)
+
+    print('All example scripts are compatible with chi.')
 
 
 def get_all_documented_symbols():

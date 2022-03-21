@@ -1,5 +1,5 @@
 
-.. Root of all pints docs
+.. Root of all chi docs
 
 .. _GitHub: https://github.com/DavAug/chi
 
