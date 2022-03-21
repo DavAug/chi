@@ -99,6 +99,9 @@ class TestMechanisticModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, None):
             self.model.simulate(parameters, times)
 
+    def test_supports_dosing(self):
+        self.assertFalse(self.model.supports_dosing())
+
 
 class TestSBMLModel(unittest.TestCase):
     """
@@ -359,6 +362,9 @@ class TestSBMLModel(unittest.TestCase):
         self.assertEqual(output.shape, (1, 4))
         self.assertIsInstance(sens, np.ndarray)
         self.assertEqual(sens.shape, (4, 1, 5))
+
+    def test_supports_dosing(self):
+        self.assertFalse(self.model.supports_dosing())
 
 
 class TestPKPDModel(unittest.TestCase):
@@ -684,6 +690,9 @@ class TestPKPDModel(unittest.TestCase):
         self.assertIsInstance(output, np.ndarray)
         self.assertEqual(output.shape, (1, 4))
 
+    def test_supports_dosing(self):
+        self.assertTrue(self.model.supports_dosing())
+
 
 class TestReducedMechanisticModel(unittest.TestCase):
     """
@@ -944,6 +953,10 @@ class TestReducedMechanisticModel(unittest.TestCase):
             'Parameter': None})
         self.pkpd_model.fix_parameters(name_value_dict={
             'central.drug_amount': None})
+
+    def test_supports_dosing(self):
+        self.assertTrue(self.pkpd_model.supports_dosing())
+        self.assertFalse(self.pd_model.supports_dosing())
 
     def test_time_unit(self):
         self.assertIsInstance(self.pkpd_model.time_unit(), myokit.Unit)

@@ -108,6 +108,13 @@ class MechanisticModel(object):
         """
         raise NotImplementedError
 
+    def supports_dosing(self):
+        """
+        Returns a boolean whether dose administration with
+        :meth:`PKPDModel.set_dosing_regimen` is supported by the model.
+        """
+        return False
+
 
 class SBMLModel(MechanisticModel):
     """
@@ -824,6 +831,13 @@ class PKPDModel(SBMLModel):
         self._simulator.set_protocol(dosing_regimen)
         self._dosing_regimen = dosing_regimen
 
+    def supports_dosing(self):
+        """
+        Returns a boolean whether dose administration with
+        :meth:`PKPDModel.set_dosing_regimen` is supported by the model.
+        """
+        return True
+
 
 class ReducedMechanisticModel(MechanisticModel):
     """
@@ -1138,6 +1152,13 @@ class ReducedMechanisticModel(MechanisticModel):
             parameters = self._fixed_params_values
 
         return self._mechanistic_model.simulate(parameters, times)
+
+    def supports_dosing(self):
+        """
+        Returns a boolean whether dose administration with
+        :meth:`PKPDModel.set_dosing_regimen` is supported by the model.
+        """
+        return self._mechanistic_model.supports_dosing()
 
     def time_unit(self):
         """
