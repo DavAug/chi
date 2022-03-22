@@ -1,4 +1,4 @@
-.. _README: https://github.com/DavAug/chi/README.md
+.. _README: https://github.com/DavAug/chi/blob/main/README.md
 
 ***************
 Getting started
