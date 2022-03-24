@@ -57,8 +57,9 @@ Visualisation of the simulation
 The results of the simulation can be visualised with any of the standard Python
 visualisation libraries (e.g. matplotlib, seaborn, etc.).
 We will use plotly in this overview. Below is an example of how to visualise
-the simulation results, where we also made the results slightly more
-interesting by administering bolus doses to the compartment in intervals of 0.5
+the simulation results, where we also made the time course of the drug
+concentration slightly more interesting by administering bolus doses to the
+compartment in intervals of 0.5
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 305-329
@@ -109,10 +110,10 @@ parameters, but in practice the simulated measurements can be straightforwardly
 replaced by real-world measurements.
 
 Inference in chi leverages the fact that the modelled measurements :math:`y`
-follow a distribution that is defined by the mechanistic model and error model.
-In the case of a Gaussian error model, as in the previous example, the
-distribution of the measurements is also a Gaussian distribution whose mean is
-equal to the mechanistic model output
+follow a distribution that is defined by the mechanistic model and the
+error model. In the case of a Gaussian error model, as in the previous example,
+the distribution of the measurements is also a Gaussian distribution whose mean
+is equal to the mechanistic model output
 
 .. math::
     p(y | \psi , \sigma , t) = \mathcal{N}\left(
@@ -167,8 +168,8 @@ a.k.a. maximum likelihood estimation
 In chi the maximum likelihood estimates of the model parameters can be found
 using any of the standard Python optimisation libraries such as scipy.optimize.
 We will use Pints_ and its implementation of the Covariance Matrix
-Adaption-Evolution Strategy (CMA-ES) optimisation algorithm to optimise the
-log-likelihood
+Adaption-Evolution Strategy (CMA-ES) optimisation algorithm,
+:class:`pints.CMAES`, to optimise the log-likelihood
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 397-402
@@ -213,10 +214,10 @@ leaves uncertainty about the model parameters, a.k.a. *parametric uncertainty*.
 While for real-world measurements the notion of
 data-generating parameters may seem alien since models only
 approximate the real data-generating processes, we can generalise the notion of
-data-generating parameters to being the set of parameters that capture the most
-about the data-generating process within the limitations of the model
-approximation. Here, the maximum likelihood estimates can analogously differ
-significantly from the sought after data-generating parameters.
+data-generating parameters to being the effective set of parameter values that
+capture the most about the data-generating process within the limitations of
+the model approximation. Here, the maximum likelihood estimates can analogously
+differ significantly from the sought after data-generating parameters.
 
 In chi the uncertainty of parameter estimates can be estimated using Bayesian
 inference. In Bayesian inference Bayes' rule is used to define a distribution
@@ -236,9 +237,10 @@ modelling choice and captures prior knowlegde about the model parameters.
 
 In chi the log-posterior can be defined using :class:`chi.LogPosterior` which
 is instantiated with a :class:`chi.LogLikelihood` and a :class:`pints.LogPrior`.
-For simplicity, we will use uniform priors that constrain the parameters to
-values between 0 and 20. The log-posterior can be evaluated similar to the
-:class:`chi.LogLikelihood` using :meth:`chi.LogPosterior.__call__`
+For the sake of this overview, we will use uniform priors that constrain the
+parameters to values between 0 and 20. In practice, informative priors are
+likely better choices. The resulting log-posterior can now be evaluated similar
+to the :class:`chi.LogLikelihood` using :meth:`chi.LogPosterior.__call__`
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 420-431
@@ -255,25 +257,25 @@ many other details concerning log-posetriors in chi, we refer to section
 :doc:`log_posterior`.
 
 While the :class:`chi.LogPosterior` allows us to evaluate the log-posterior
-up to constant term for different parameter values it does not yet tell us
+up to the constant term for different parameter values it does not yet tell us
 how the posterior distribution of likely parameter values looks like.
 This distribution can be inferred from a :class:`chi.LogPosterior` using MCMC
 sampling algorithms. Below we will use the implementation of Haario
-and Bardenet's Adaptive Covariance Matrix Marcov Chain Monte Carlo,
-:class:`pints.HaarioBardenetACMC` to infer the posterior distribution
+and Bardenet's Adaptive Covariance Matrix Marcov Chain Monte Carlo algorithm,
+:class:`pints.HaarioBardenetACMC`, to infer the posterior distribution
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 435-438
+    :lines: 435-439
 
 The inferred posterior distributions can now be compared to the data-generating
 parameters
 
 .. literalinclude:: code/1_simulation_1.py
-    :lines: 442-551
+    :lines: 443-552
 
 .. raw:: html
    :file: images/1_simulation_5.html
 
-Note that a discussion of how to analyse the convergence of MCMC chains
-is beyond the scope of this overview, and we refer to section
+For details on how to infer posterior distributions in chi and
+many other details on MCMC sampling, we refer to section
 :doc:`mcmc_sampling`.

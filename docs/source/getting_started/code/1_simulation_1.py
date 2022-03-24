@@ -434,6 +434,7 @@ score_2 = log_posterior(true_parameters)
 # Start 8.
 # Run inference
 controller = chi.SamplingController(log_posterior)
+controller.set_sampler(pints.HaarioBardenetACMC)
 n_iterations = 5000
 posterior_samples = controller.run(n_iterations)
 # End 8.
