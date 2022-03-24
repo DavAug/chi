@@ -1355,141 +1355,145 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(score, -np.inf)
 
     def test_compute_pointwise_ll(self):
-        # Hard to test exactly, but at least test some edge cases where
-        # loglikelihood is straightforward to compute analytically
+        # TODO:
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.pop_model.compute_pointwise_ll('some', 'input')
 
-        n_ids = 10
+        # # Hard to test exactly, but at least test some edge cases where
+        # # loglikelihood is straightforward to compute analytically
 
-        # Test case I: psis = 1, sigma_log = 1
-        # Score reduces to
-        # -n_ids * np.log(2*pi) / 2 - n_ids * mu_log^2 / 2
+        # n_ids = 10
 
-        # Test case I.1:
-        psis = [1] * n_ids
-        mu_log = 1
-        sigma_log = 1
-        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
+        # # Test case I: psis = 1, sigma_log = 1
+        # # Score reduces to
+        # # -n_ids * np.log(2*pi) / 2 - n_ids * mu_log^2 / 2
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Test case I.1:
+        # psis = [1] * n_ids
+        # mu_log = 1
+        # sigma_log = 1
+        # ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
-        # Test case I.2:
-        n_ids = 6
-        psis = [1] * n_ids
-        mu_log = 5
-        sigma_log = 1
-        ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(len(scores), 6)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 6))
+        # # Test case I.2:
+        # n_ids = 6
+        # psis = [1] * n_ids
+        # mu_log = 5
+        # sigma_log = 1
+        # ref_score = -n_ids * (np.log(2 * np.pi) + mu_log**2) / 2
 
-        # Test case II: psis = 1.
-        # Score reduces to
-        # -n_ids * log(sigma_log) - n_ids * log(2 * pi) / 2
-        # - n_ids * mu_log^2 / (2 * sigma_log^2)
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(len(scores), 6)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 6))
 
-        # Test case II.1:
-        n_ids = 10
-        psis = [1] * n_ids
-        mu_log = 1
-        sigma_log = np.exp(2)
-        ref_score = \
-            -n_ids * (
-                np.log(2 * np.pi * sigma_log**2)
-                + mu_log**2 / sigma_log**2) / 2
+        # # Test case II: psis = 1.
+        # # Score reduces to
+        # # -n_ids * log(sigma_log) - n_ids * log(2 * pi) / 2
+        # # - n_ids * mu_log^2 / (2 * sigma_log^2)
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Test case II.1:
+        # n_ids = 10
+        # psis = [1] * n_ids
+        # mu_log = 1
+        # sigma_log = np.exp(2)
+        # ref_score = \
+        #     -n_ids * (
+        #         np.log(2 * np.pi * sigma_log**2)
+        #         + mu_log**2 / sigma_log**2) / 2
 
-        # Test case II.2:
-        psis = [1] * n_ids
-        mu_log = 3
-        sigma_log = np.exp(3)
-        ref_score = \
-            -n_ids * (
-                np.log(2 * np.pi * sigma_log**2)
-                + mu_log**2 / sigma_log**2) / 2
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Test case II.2:
+        # psis = [1] * n_ids
+        # mu_log = 3
+        # sigma_log = np.exp(3)
+        # ref_score = \
+        #     -n_ids * (
+        #         np.log(2 * np.pi * sigma_log**2)
+        #         + mu_log**2 / sigma_log**2) / 2
 
-        # Test case III: Different psis
-        psis = [1, 2]
-        mu = 1
-        sigma = 1
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        parameters = [mu] + [sigma]
-        ref_score = self.pop_model.compute_log_likelihood(parameters, psis)
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(len(scores), 2)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertNotEqual(scores[0], scores[1])
+        # # Test case III: Different psis
+        # psis = [1, 2]
+        # mu = 1
+        # sigma = 1
 
-        # Test case III: psis all the same, sigma_log = 1.
-        # Score reduces to
-        # -n_ids * log(psi) - n_ids * np.log(2 * pi) / 2
-        # - n_ids * (log(psi) - mu_log)^2 / 2
+        # parameters = [mu] + [sigma]
+        # ref_score = self.pop_model.compute_log_likelihood(parameters, psis)
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(len(scores), 2)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertNotEqual(scores[0], scores[1])
 
-        # Test case III.1
-        psis = [np.exp(4)] * n_ids
-        mu_log = 1
-        sigma_log = 1
-        ref_score = \
-            -n_ids * (4 + np.log(2 * np.pi) / 2 + (4 - mu_log)**2 / 2)
+        # # Test case III: psis all the same, sigma_log = 1.
+        # # Score reduces to
+        # # -n_ids * log(psi) - n_ids * np.log(2 * pi) / 2
+        # # - n_ids * (log(psi) - mu_log)^2 / 2
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Test case III.1
+        # psis = [np.exp(4)] * n_ids
+        # mu_log = 1
+        # sigma_log = 1
+        # ref_score = \
+        #     -n_ids * (4 + np.log(2 * np.pi) / 2 + (4 - mu_log)**2 / 2)
 
-        # Test case III.2
-        psis = [np.exp(3)] * n_ids
-        mu_log = 3
-        sigma_log = 1
-        ref_score = -n_ids * (3 + np.log(2 * np.pi) / 2)
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Test case III.2
+        # psis = [np.exp(3)] * n_ids
+        # mu_log = 3
+        # sigma_log = 1
+        # ref_score = -n_ids * (3 + np.log(2 * np.pi) / 2)
 
-        # Test case IV: mu_log or sigma_log negative or zero
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        # Test case IV.1
-        psis = [np.exp(10)] * n_ids
-        mu = 1
-        sigma = 0
+        # # Test case IV: mu_log or sigma_log negative or zero
 
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
+        # # Test case IV.1
+        # psis = [np.exp(10)] * n_ids
+        # mu = 1
+        # sigma = 0
 
-        # Test case IV.2
-        psis = [np.exp(10)] * n_ids
-        mu = 1
-        sigma = -10
+        # parameters = [mu] + [sigma]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(scores[0], -np.inf)
+        # self.assertEqual(scores[1], -np.inf)
+        # self.assertEqual(scores[2], -np.inf)
 
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
+        # # Test case IV.2
+        # psis = [np.exp(10)] * n_ids
+        # mu = 1
+        # sigma = -10
+
+        # parameters = [mu] + [sigma]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(scores[0], -np.inf)
+        # self.assertEqual(scores[1], -np.inf)
+        # self.assertEqual(scores[2], -np.inf)
 
     def test_compute_sensitivities(self):
         # Hard to test exactly, but at least test some edge cases where
@@ -1763,6 +1767,51 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(sens[1], np.inf)
         self.assertEqual(sens[2], np.inf)
 
+        # Test case VI. Multi-dimensional
+        psi = [np.exp(3)] * n_ids
+        mu_log = 3
+        sigma_log = 1
+
+        # Compute ref scores
+        parameters = [mu_log] + [sigma_log]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
+        ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
+        ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
+        ref_dsigma = ((np.log(psi[0]) - mu_log)**2 - 1) * n_ids
+
+        # Compute log-likelihood and sensitivities
+        pop_model = chi.LogNormalModel(n_dim=2)
+        psi = np.vstack((np.array(psi), np.array(psi))).T
+        parameters = [mu_log, mu_log, sigma_log, sigma_log]
+        score, sens = pop_model.compute_sensitivities(parameters, psi)
+
+        self.assertAlmostEqual(score, 2 * ref_ll)
+        self.assertEqual(len(sens), (n_ids + 2) * 2)
+        self.assertEqual(sens[0], ref_dpsi)
+        self.assertEqual(sens[1], ref_dpsi)
+        self.assertEqual(sens[2], ref_dpsi)
+        self.assertEqual(sens[3], ref_dpsi)
+        self.assertEqual(sens[4], ref_dpsi)
+        self.assertEqual(sens[5], ref_dpsi)
+        self.assertEqual(sens[6], ref_dpsi)
+        self.assertEqual(sens[7], ref_dpsi)
+        self.assertEqual(sens[8], ref_dpsi)
+        self.assertEqual(sens[9], ref_dpsi)
+        self.assertEqual(sens[10], ref_dpsi)
+        self.assertEqual(sens[11], ref_dpsi)
+        self.assertEqual(sens[12], ref_dpsi)
+        self.assertEqual(sens[13], ref_dpsi)
+        self.assertEqual(sens[14], ref_dpsi)
+        self.assertEqual(sens[15], ref_dpsi)
+        self.assertEqual(sens[16], ref_dpsi)
+        self.assertEqual(sens[17], ref_dpsi)
+        self.assertEqual(sens[18], ref_dpsi)
+        self.assertEqual(sens[19], ref_dpsi)
+        self.assertAlmostEqual(sens[20], ref_dmu)
+        self.assertAlmostEqual(sens[21], ref_dmu)
+        self.assertAlmostEqual(sens[22], ref_dsigma)
+        self.assertAlmostEqual(sens[23], ref_dsigma)
+
     def test_get_mean_and_std(self):
         # Test case I: std_log = 0
         # Then:
@@ -1829,8 +1878,13 @@ class TestLogNormalModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The standard deviation'):
             self.pop_model.get_mean_and_std(parameters)
 
+        # Test case III: Multi-dimensional
+        pop_model = chi.LogNormalModel(n_dim=3)
+        m = pop_model.get_mean_and_std([1, 1, 1, 1, 1, 1])
+        self.assertEqual(m.shape, (2, 3))
+
     def test_get_parameter_names(self):
-        names = ['Mean log', 'Std. log']
+        names = ['Log mean Dim. 1', 'Log std. Dim. 1']
 
         self.assertEqual(self.pop_model.get_parameter_names(), names)
 
@@ -1852,7 +1906,7 @@ class TestLogNormalModel(unittest.TestCase):
         sample = self.pop_model.sample(parameters, seed=seed)
 
         n_samples = 1
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test II: sample size > 1
         parameters = [3, 2]
@@ -1861,7 +1915,17 @@ class TestLogNormalModel(unittest.TestCase):
             parameters, n_samples=n_samples, seed=seed)
 
         self.assertEqual(
-            sample.shape, (n_samples,))
+            sample.shape, (n_samples, 1))
+
+        # Test case III: Multi-dimensional
+        parameters = [3, 2, 3, 2]
+        n_samples = 4
+        pop_model = chi.LogNormalModel(n_dim=2)
+        sample = pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed)
+
+        self.assertEqual(
+            sample.shape, (n_samples, 2))
 
     def test_sample_bad_input(self):
         # Too many paramaters
@@ -1889,8 +1953,8 @@ class TestLogNormalModel(unittest.TestCase):
         names = self.pop_model.get_parameter_names()
 
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Mean log')
-        self.assertEqual(names[1], 'Std. log')
+        self.assertEqual(names[0], 'Log mean Dim. 1')
+        self.assertEqual(names[1], 'Log std. Dim. 1')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names

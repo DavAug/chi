@@ -92,7 +92,7 @@ class PopulationModel(object):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p, n_dim)]
+        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
         """
         raise NotImplementedError
 
@@ -647,7 +647,8 @@ class GaussianModel(PopulationModel):
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
-            return -np.inf, np.full(shape=n_ids + 2, fill_value=np.inf)
+            return -np.inf, np.full(
+                shape=(n_ids + 2) * self._n_dim, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
         dpsi = (mus - psi) / vars
@@ -660,7 +661,7 @@ class GaussianModel(PopulationModel):
         # ([psis dim 1, ..., psis dim d, mu dim 1, ..., mu dim d, sigma dim 1,
         # ..., sigma dim d])
         sensitivities = np.concatenate((
-            dpsi.T.flatten(), np.array([dmus, dstd]).flatten()))
+            dpsi.T.flatten(), np.hstack([dmus, dstd]).flatten()))
 
         return log_likelihood, sensitivities
 
@@ -689,8 +690,8 @@ class GaussianModel(PopulationModel):
         :param parameters: Parameters of the population model, i.e.
             [:math:`\mu`, :math:`\sigma`]. If the population model is
             multi-dimensional :math:`\mu` and :math:`\sigma` are expected to be
-            vector-valued. The parameters can then either be concatenated or
-            used to define a parameter matrix.
+            vector-valued. The parameters can then either be defined as a
+            one-dimensional array or a matrix.
         :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
         :param observations: "Observations" of the individuals. Typically
             refers to the values of a mechanistic model parameter for each
@@ -773,7 +774,7 @@ class GaussianModel(PopulationModel):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p, n_dim)]
+        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
         """
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
@@ -997,7 +998,7 @@ class HeterogeneousModel(PopulationModel):
         """
         n_ids = int(n_ids)
 
-        return (n_ids, self._n_parameters)
+        return (n_ids * self._n_dim, self._n_parameters)
 
     def n_parameters(self):
         """
@@ -1042,28 +1043,37 @@ class LogNormalModel(PopulationModel):
     assumed to be a realisation of the random variable :math:`\psi`.
 
     Extends :class:`PopulationModel`.
+
+    :param n_dim: The dimensionality of the population model.
+    :type n_dim: int, optional
+    :param dim_names: Optional names of the population dimensions.
+    :type dim_names: List[str], optional
     """
 
-    def __init__(self):
-        super(LogNormalModel, self).__init__()
+    def __init__(self, n_dim=1, dim_names=None):
+        super(LogNormalModel, self).__init__(n_dim, dim_names)
 
         # Set number of parameters
-        self._n_parameters = 2
+        self._n_parameters = 2 * self._n_dim
 
         # Set default parameter names
-        self._parameter_names = ['Mean log', 'Std. log']
+        self._parameter_names = [
+            'Log mean ' + dim_name for dim_name in self._dim_names] + [
+            'Log std. ' + dim_name for dim_name in self._dim_names]
 
     @staticmethod
-    def _compute_log_likelihood(mean, var, observations):  # pragma: no cover
+    def _compute_log_likelihood(mus, vars, observations):
         r"""
-        Calculates the log-likelihood using numba speed up.
+        Calculates the log-likelihood using.
+
+        mus shape: (n_dim,)
+        vars shape: (n_dim,)
+        observations: (n_ids, n_dim)
         """
         # Compute log-likelihood score
-        n_ids = len(observations)
-        log_likelihood = \
-            - n_ids * np.log(2 * np.pi * var) / 2 \
-            - np.sum(np.log(observations)) \
-            - np.sum((np.log(observations) - mean)**2) / 2 / var
+        log_likelihood = - np.sum(
+            np.log(2 * np.pi * vars) / 2 + np.log(observations)
+            + (np.log(observations) - mus)**2 / 2 / vars)
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -1093,36 +1103,43 @@ class LogNormalModel(PopulationModel):
 
         return log_likelihood
 
-    def _compute_sensitivities(self, mean, var, psi):  # pragma: no cover
+    def _compute_sensitivities(self, mus, vars, psi):  # pragma: no cover
         r"""
         Calculates the log-likelihood and its sensitivities using numba
         speed up.
 
         Expects:
-        mean = float
-        var = float
-        Shape observations =  (n_obs,)
+        mus shape: (n_dim,)
+        vars shape: (n_dim,)
+        observations: (n_ids, n_dim)
 
         Returns:
         log_likelihood: float
-        sensitivities: np.ndarray of shape (n_obs + 2,)
+        sensitivities: np.ndarray of shape (n_ids * n_dim + 2 * n_dim,)
         """
         # Compute log-likelihood score
         n_ids = len(psi)
-        log_likelihood = self._compute_log_likelihood(mean, var, psi)
+        log_likelihood = self._compute_log_likelihood(mus, vars, psi)
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
-            return -np.inf, np.full(shape=n_ids + 2, fill_value=np.inf)
+            return -np.inf, np.full(
+                shape=(n_ids + 2) * self._n_dim, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
-        dpsi = - ((np.log(psi) - mean) / var + 1) / psi
+        dpsi = - ((np.log(psi) - mus) / vars + 1) / psi
 
         # Copmute sensitivities w.r.t. parameters
-        dmean = np.sum(np.log(psi) - mean) / var
-        dstd = (np.sum((np.log(psi) - mean)**2) / var - n_ids) / np.sqrt(var)
+        dmus = np.sum(np.log(psi) - mus, axis=0) / vars
+        dstd = \
+            (np.sum((np.log(psi) - mus)**2, axis=0) / vars - n_ids) \
+            / np.sqrt(vars)
 
-        sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
+        # Collect sensitivities
+        # ([psis dim 1, ..., psis dim d, mu dim 1, ..., mu dim d, sigma dim 1,
+        # ..., sigma dim d])
+        sensitivities = np.concatenate((
+            dpsi.T.flatten(), np.hstack([dmus, dstd]).flatten()))
 
         return log_likelihood, sensitivities
 
@@ -1148,27 +1165,42 @@ class LogNormalModel(PopulationModel):
             parameters are never "observed" directly, but rather inferred
             from biomarker measurements.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the model parameter values, i.e.
+        :param parameters: Parameters of the population model, i.e.
             [:math:`\mu _{\text{log}}`, :math:`\sigma _{\text{log}}`].
-        observations
-            An array like object with the parameter values for the individuals,
-            i.e. [:math:`\psi _1, \ldots , \psi _N`].
+            If the population model is
+            multi-dimensional :math:`\mu _{\text{log}}` and
+            :math:`\sigma _{\text{log}}` are expected to be
+            vector-valued. The parameters can then either be defined as a
+            one-dimensional array or a matrix.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood of individual parameters and population
+            parameters.
+        :rtype: float
         """
         observations = np.asarray(observations)
-        mean, std = parameters
-        var = std**2
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+
+        # Parse parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
+        vars = sigmas**2
 
         eps = 1E-12
-        if (std <= 0) or (var <= eps) or np.any(observations == 0):
-            # The standard deviation of log psi is strictly positive
+        if np.any(sigmas <= 0) or np.any(vars <= eps):
+            # The std. is strictly positive
             return -np.inf
 
-        return self._compute_log_likelihood(mean, var, observations)
+        return self._compute_log_likelihood(mus, vars, observations)
 
-    def compute_pointwise_ll(self, parameters, observations):
+    def compute_pointwise_ll(
+            self, parameters, observations):  # pragma: no cover
         r"""
         Returns the pointwise log-likelihood of the model parameters for
         each observation.
@@ -1194,6 +1226,10 @@ class LogNormalModel(PopulationModel):
             An array like object with the parameter values for the individuals,
             i.e. [:math:`\psi _1, \ldots , \psi _N`].
         """
+        # TODO: Needs proper research to establish which pointwise
+        # log-likelihood makes sense for hierarchical models.
+        # Also needs to be adapted to match multi-dimensional API.
+        raise NotImplementedError
         observations = np.asarray(observations)
         mean, std = parameters
         var = std**2
@@ -1210,25 +1246,35 @@ class LogNormalModel(PopulationModel):
         Returns the log-likelihood of the population parameters and its
         sensitivity w.r.t. the observations and the parameters.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood and its sensitivity to individual parameters
+            as well as population parameters.
+        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
         """
         observations = np.asarray(observations)
-        mean, std = parameters
-        var = std**2
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
 
-        eps = 1E-12
-        if (std <= 0) or (var <= eps) or np.any(observations == 0):
-            # The standard deviation of log psi is strictly positive
+        # Parse parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
+        vars = sigmas**2
+
+        eps = 1E-6
+        if np.any(sigmas <= 0) or np.any(vars <= eps):
+            # The std. of the Gaussian distribution is strictly positive
             n_obs = len(observations)
-            return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
+            return -np.inf, np.full(
+                shape=(n_obs + 2, self._n_dim), fill_value=np.inf)
 
-        return self._compute_sensitivities(mean, var, observations)
+        return self._compute_sensitivities(mus, vars, observations)
 
     def get_mean_and_std(self, parameters):
         r"""
@@ -1245,24 +1291,25 @@ class LogNormalModel(PopulationModel):
             \sigma ^2 =
             \mu ^2 \left( \mathrm{e}^{\sigma ^2_{\text{log}}} - 1\right) .
 
-        Parameters
-        ----------
-        mean_log
-            Mean of :math:`\log \psi` in the population.
-        std_log
-            Standard deviation of :math:`\log \psi` in the population.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
         """
         # Check input
-        mean_log, std_log = parameters
-        if std_log < 0:
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+        mus = parameters[0]
+        sigmas = parameters[1]
+        if np.any(sigmas < 0):
             raise ValueError('The standard deviation cannot be negative.')
 
         # Compute mean and standard deviation
-        mean = np.exp(mean_log + std_log**2 / 2)
+        mean = np.exp(mus + sigmas**2 / 2)
         std = np.sqrt(
-            np.exp(2 * mean_log + std_log**2) * (np.exp(std_log**2) - 1))
+            np.exp(2 * mus + sigmas**2) * (np.exp(sigmas**2) - 1))
 
-        return [mean, std]
+        return np.vstack([mean, std])
 
     def get_parameter_names(self):
         """
@@ -1285,7 +1332,7 @@ class LogNormalModel(PopulationModel):
         """
         n_ids = int(n_ids)
 
-        return (n_ids, self._n_parameters)
+        return (n_ids * self._n_dim, self._n_parameters)
 
     def n_parameters(self):
         """
@@ -1299,30 +1346,33 @@ class LogNormalModel(PopulationModel):
 
         The returned value is a NumPy array with shape ``(n_samples,)``.
 
-        Parameters
-        ----------
-        parameters
-            Parameter values of the top-level parameters that are used for the
-            simulation.
-        n_samples
-            Number of samples. If ``None``, one sample is returned.
-        seed
-            A seed for the pseudo-random number generator.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param n_samples: Number of samples. If ``None``, one sample is
+            returned.
+        :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
         """
-        if len(parameters) != self._n_parameters:
+        parameters = np.asarray(parameters)
+        if len(parameters.flatten()) != self._n_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
 
         # Define shape of samples
         if n_samples is None:
             n_samples = 1
-        sample_shape = (int(n_samples),)
+        sample_shape = (int(n_samples), self._n_dim)
 
         # Get parameters
-        mean, std = parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
 
-        if std <= 0:
+        if np.any(sigmas <= 0):
             raise ValueError(
                 'A log-normal distribution only accepts strictly positive '
                 'standard deviations.')
@@ -1332,7 +1382,7 @@ class LogNormalModel(PopulationModel):
         # the log samples)
         rng = np.random.default_rng(seed=seed)
         samples = rng.lognormal(
-            mean=mean, sigma=std, size=sample_shape)
+            mean=mus, sigma=sigmas, size=sample_shape)
 
         return samples
 
@@ -1352,7 +1402,9 @@ class LogNormalModel(PopulationModel):
         """
         if names is None:
             # Reset names to defaults
-            self._parameter_names = ['Mean log', 'Std. log']
+            self._parameter_names = [
+                'Log mean ' + dim_name for dim_name in self._dim_names] + [
+                'Log std. ' + dim_name for dim_name in self._dim_names]
             return None
 
         if len(names) != self._n_parameters:
