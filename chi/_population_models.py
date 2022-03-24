@@ -198,12 +198,10 @@ class PopulationModel(object):
         """
         Sets the names of the population model parameters.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_parameters`. If ``None``, parameter names are reset to
-            defaults.
+        :param names: A list with string-convertable entries of
+            length :meth:`n_parameters`. If ``None``, parameter names are
+            reset to defaults.
+        :type names: List[str]
         """
         raise NotImplementedError
 
@@ -540,12 +538,10 @@ class CovariatePopulationModel(PopulationModel):
         """
         Sets the names of the population model parameters.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_parameters`. If ``None``, parameter names are reset to
-            defaults.
+        :param names: A list with string-convertable entries of
+            length :meth:`n_parameters`. If ``None``, parameter names are
+            reset to defaults.
+        :type names: List[str]
         """
         self._covariate_model.set_parameter_names(names)
 
@@ -878,12 +874,10 @@ class GaussianModel(PopulationModel):
         The population parameter of a GaussianModel are the population mean
         and standard deviation of the parameter :math:`\psi`.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_parameters`. If ``None``, parameter names are reset to
-            defaults.
+        :param names: A list with string-convertable entries of
+            length :meth:`n_parameters`. If ``None``, parameter names are
+            reset to defaults.
+        :type names: List[str]
         """
         if names is None:
             # Reset names to defaults
@@ -1010,12 +1004,10 @@ class HeterogeneousModel(PopulationModel):
         r"""
         Sets the names of the population model parameters.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_parameters`. If ``None``, parameter names are reset to
-            defaults.
+        :param names: A list with string-convertable entries of
+            length :meth:`n_parameters`. If ``None``, parameter names are
+            reset to defaults.
+        :type names: List[str]
         """
         # Model has no population parameters.
         return None
@@ -1393,12 +1385,10 @@ class LogNormalModel(PopulationModel):
         The population parameter of a LogNormalModel are the population mean
         and standard deviation of the parameter :math:`\psi`.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_parameters`. If ``None``, parameter names are reset to
-            defaults.
+        :param names: A list with string-convertable entries of
+            length :meth:`n_parameters`. If ``None``, parameter names are
+            reset to defaults.
+        :type names: List[str]
         """
         if names is None:
             # Reset names to defaults
@@ -1422,16 +1412,21 @@ class PooledModel(PopulationModel):
     As a result, all individual parameters are set to the same value.
 
     Extends :class:`PopulationModel`.
+
+    :param n_dim: The dimensionality of the population model.
+    :type n_dim: int, optional
+    :param dim_names: Optional names of the population dimensions.
+    :type dim_names: List[str], optional
     """
 
-    def __init__(self):
-        super(PooledModel, self).__init__()
+    def __init__(self, n_dim=1, dim_names=None):
+        super(PooledModel, self).__init__(n_dim, dim_names)
 
         # Set number of parameters
-        self._n_parameters = 1
+        self._n_parameters = self._n_dim
 
         # Set default parameter names
-        self._parameter_names = ['Pooled']
+        self._parameter_names = ['Pooled ' + name for name in self._dim_names]
 
     def compute_log_likelihood(self, parameters, observations):
         r"""
@@ -1442,21 +1437,24 @@ class PooledModel(PopulationModel):
         is 0, if all individual parameters are equal to the population
         parameter, and :math:`-\infty` otherwise.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood of individual parameters and population
+            parameters.
+        :rtype: float
         """
-        # Get the population parameter
-        parameter = parameters[0]
+        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            parameters = parameters.reshape(1, self._n_dim)
 
-        # Return -inf if any of the observations does not equal the pooled
+        # Return -inf if any of the observations do not equal the pooled
         # parameter
-        observations = np.array(observations)
-        mask = observations != parameter
+        mask = observations != parameters
         if np.any(mask):
             return -np.inf
 
@@ -1473,22 +1471,25 @@ class PooledModel(PopulationModel):
         is 0, if all individual parameters are equal to the population
         parameter, and :math:`-\infty` otherwise.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihoods for each individual parameter for population
+            parameters.
+        :rtype: np.ndarray of length (n, n_dim)
         """
-        # Get the population parameter
-        parameter = parameters[0]
+        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            parameters = parameters.reshape(1, self._n_dim)
 
         # Return -inf if any of the observations does not equal the pooled
         # parameter
-        log_likelihood = np.zeros(shape=len(observations))
-        observations = np.array(observations)
-        mask = observations != parameter
+        log_likelihood = np.zeros_like(observations, dtype=float)
+        mask = observations != parameters
         log_likelihood[mask] = -np.inf
 
         return log_likelihood
@@ -1498,27 +1499,31 @@ class PooledModel(PopulationModel):
         Returns the log-likelihood of the population parameters and its
         sensitivities w.r.t. the observations and the parameters.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood and its sensitivity to individual parameters
+            as well as population parameters.
+        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
         """
-        # Get the population parameter
-        parameter = parameters[0]
+        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            parameters = parameters.reshape(1, self._n_dim)
 
         # Return -inf if any of the observations does not equal the pooled
         # parameter
-        observations = np.array(observations)
-        n_obs = len(observations)
-        mask = observations != parameter
+        n_ids = len(observations)
+        mask = observations != parameters
         if np.any(mask):
-            return -np.inf, np.full(shape=n_obs + 1, fill_value=np.inf)
+            return -np.inf, np.full(
+                shape=(n_ids + 1) * self._n_dim, fill_value=np.inf)
 
         # Otherwise return 0
-        return 0, np.zeros(shape=n_obs + 1)
+        return 0, np.zeros(shape=(n_ids + 1) * self._n_dim)
 
     def get_parameter_names(self):
         """
@@ -1557,45 +1562,46 @@ class PooledModel(PopulationModel):
 
         The returned value is a NumPy array with shape ``(n_samples,)``.
 
-        Parameters
-        ----------
-        parameters
-            Parameter values of the top-level parameters that are used for the
-            simulation.
-        n_samples
-            Number of samples. If ``None``, one sample is returned.
-        seed
-            A seed for the pseudo-random number generator.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param n_samples: Number of samples. If ``None``, one sample is
+            returned.
+        :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
         """
-        if len(parameters) != self._n_parameters:
+        parameters = np.asarray(parameters)
+        if len(parameters.flatten()) != self._n_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
-        samples = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
 
-        # If only one sample is wanted, return input parameter
+        # If only one sample is requested, return input parameters
         if n_samples is None:
-            return samples
+            return parameters
 
         # If more samples are wanted, broadcast input parameter to shape
-        # (n_samples,)
-        samples = np.broadcast_to(samples, shape=(n_samples,))
+        # (n_samples, n_dim)
+        sample_shape = (int(n_samples), self._n_dim)
+        samples = np.broadcast_to(parameters, shape=sample_shape)
         return samples
 
     def set_parameter_names(self, names=None):
         """
         Sets the names of the population model parameters.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_parameters`. If ``None``, parameter names are reset to
-            defaults.
+        :param names: A list with string-convertable entries of
+            length :meth:`n_parameters`. If ``None``, parameter names are
+            reset to defaults.
+        :type names: List[str]
         """
         if names is None:
             # Reset names to defaults
-            self._parameter_names = ['Pooled']
+            self._parameter_names = [
+                'Pooled ' + name for name in self._dim_names]
             return None
 
         if len(names) != self._n_parameters:

@@ -1996,7 +1996,7 @@ class TestPooledModel(unittest.TestCase):
         # Test case I: observation differ from parameter
         # Test case I.1
         parameters = [1]
-        observations = [0, 1, 1, 1]
+        observations = [[0], [1], [1], [1]]
         scores = self.pop_model.compute_pointwise_ll(
             parameters, observations)
         self.assertEqual(len(scores), 4)
@@ -2007,7 +2007,7 @@ class TestPooledModel(unittest.TestCase):
 
         # Test case I.2
         parameters = [1]
-        observations = [1, 2, 1, 10, 1]
+        observations = [[1], [2], [1], [10], [1]]
         scores = self.pop_model.compute_pointwise_ll(
             parameters, observations)
         self.assertEqual(len(scores), 5)
@@ -2019,7 +2019,7 @@ class TestPooledModel(unittest.TestCase):
 
         # Test case II: all values agree with parameter
         parameters = [1]
-        observations = [1, 1, 1]
+        observations = [[1], [1], [1]]
         scores = self.pop_model.compute_pointwise_ll(
             parameters, observations)
         self.assertEqual(len(scores), 3)
@@ -2069,7 +2069,7 @@ class TestPooledModel(unittest.TestCase):
         self.assertEqual(sens[4], 0)
 
     def test_get_parameter_names(self):
-        names = ['Pooled']
+        names = ['Pooled Dim. 1']
 
         self.assertEqual(self.pop_model.get_parameter_names(), names)
 
@@ -2090,7 +2090,7 @@ class TestPooledModel(unittest.TestCase):
         sample = self.pop_model.sample(parameters)
 
         n_samples = 1
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
         self.assertEqual(sample[0], parameters[0])
 
         # Test one sample size > 1
@@ -2099,7 +2099,7 @@ class TestPooledModel(unittest.TestCase):
         sample = self.pop_model.sample(parameters, n_samples=n_samples)
 
         self.assertEqual(
-            sample.shape, (n_samples,))
+            sample.shape, (n_samples, 1))
         self.assertEqual(sample[0], parameters[0])
         self.assertEqual(sample[1], parameters[0])
         self.assertEqual(sample[2], parameters[0])
@@ -2125,7 +2125,7 @@ class TestPooledModel(unittest.TestCase):
         names = self.pop_model.get_parameter_names()
 
         self.assertEqual(len(names), 1)
-        self.assertEqual(names[0], 'Pooled')
+        self.assertEqual(names[0], 'Pooled Dim. 1')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
