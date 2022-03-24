@@ -17,22 +17,45 @@ import chi
 class PopulationModel(object):
     """
     A base class for population models.
-    """
-    def __init__(self):
-        super(PopulationModel, self).__init__()
 
+    Population models can be multi-dimensional, but unless explicitly specfied,
+    the dimensions of the model are assumed to be independent.
+
+    :param n_dim: The dimensionality of the population model.
+    :type n_dim: int, optional
+    :param dim_names: Optional names of the population dimensions.
+    :type dim_names: List[str], optional
+    """
+    def __init__(self, n_dim=1, dim_names=None):
+        super(PopulationModel, self).__init__()
+        if n_dim < 1:
+            raise ValueError(
+                'The dimension of the population model has to be greater or '
+                'equal to 1.')
+        self._n_dim = int(n_dim)
         self._transforms_psi = False
+
+        if dim_names:
+            if len(dim_names) != self._n_dim:
+                raise ValueError(
+                    'The number of dimension names has to match the number of '
+                    'dimensions of the population model.')
+            dim_names = [str(name) for name in dim_names]
+        else:
+            dim_names = [
+                'Dim. %d' % (id_dim + 1) for id_dim in range(self._n_dim)]
+        self._dim_names = dim_names
 
     def compute_log_likelihood(self, parameters, observations):
         """
         Returns the log-likelihood of the population model parameters.
 
         :param parameters: Parameters of the population model.
-        :type parameters: List, np.ndarray of length (p,)
+        :type parameters: np.ndarray of shape (p,)
         :param observations: "Observations" of the individuals. Typically
             refers to the values of a mechanistic model parameter for each
             individual.
-        :type observations: List, np.ndarray of length (n,)
+        :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood of individual parameters and population
             parameters.
         :rtype: float
@@ -45,14 +68,14 @@ class PopulationModel(object):
         each observation.
 
         :param parameters: Parameters of the population model.
-        :type parameters: List, np.ndarray of length (p,)
+        :type parameters: np.ndarray of shape (p, n_dim)
         :param observations: "Observations" of the individuals. Typically
             refers to the values of a mechanistic model parameter for each
             individual.
-        :type observations: List, np.ndarray of length (n,)
+        :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihoods for each individual parameter for population
             parameters.
-        :rtype: np.ndarray of length (n,)
+        :rtype: np.ndarray of length (n, n_dim)
         """
         raise NotImplementedError
 
@@ -62,16 +85,22 @@ class PopulationModel(object):
         sensitivities w.r.t. the observations and the parameters.
 
         :param parameters: Parameters of the population model.
-        :type parameters: List, np.ndarray of length (p,)
+        :type parameters: np.ndarray of shape (p,)
         :param observations: "Observations" of the individuals. Typically
             refers to the values of a mechanistic model parameter for each
             individual.
-        :type observations: List, np.ndarray of length (n,)
+        :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of length (n + p,)]
+        :rtype: Tuple[float, np.ndarray of shape (n + p, n_dim)]
         """
         raise NotImplementedError
+
+    def get_dim_names(self):
+        """
+        Returns the names of the dimensions.
+        """
+        return self._dim_names
 
     def get_parameter_names(self):
         """
@@ -79,6 +108,12 @@ class PopulationModel(object):
         not set, defaults are returned.
         """
         raise NotImplementedError
+
+    def n_dim(self):
+        """
+        Returns the dimensionality of the population model.
+        """
+        return self._n_dim
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -124,18 +159,40 @@ class PopulationModel(object):
         r"""
         Returns random samples from the population distribution.
 
-        The returned value is a NumPy array with shape ``(n_samples,)``.
+        The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
+
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param n_samples: Number of samples. If ``None``, one sample is
+            returned.
+        :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
+        """
+        raise NotImplementedError
+
+    def set_dim_names(self, names=None):
+        r"""
+        Sets the names of the population model dimensions.
 
         Parameters
         ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        n_samples
-            Number of samples. If ``None``, one sample is returned.
-        seed
-            A seed for the pseudo-random number generator.
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_dim`. If ``None``, dimension names are reset to
+            defaults.
         """
-        raise NotImplementedError
+        if names is None:
+            # Reset names to defaults
+            self._dim_names = [
+                'Dim. %d' % (id_dim + 1) for id_dim in range(self._n_dim)]
+            return None
+
+        if len(names) != self._n_dim:
+            raise ValueError(
+                'Length of names does not match the number of dimensions.')
+
+        self._dim_names = [str(label) for label in names]
 
     def set_parameter_names(self, names=None):
         """
@@ -515,27 +572,37 @@ class GaussianModel(PopulationModel):
     assumed to be a realisation of the random variable :math:`\psi`.
 
     Extends :class:`PopulationModel`.
+
+    :param n_dim: The dimensionality of the population model.
+    :type n_dim: int, optional
+    :param dim_names: Optional names of the population dimensions.
+    :type dim_names: List[str], optional
     """
 
-    def __init__(self):
-        super(GaussianModel, self).__init__()
+    def __init__(self, n_dim=1, dim_names=None):
+        super(GaussianModel, self).__init__(n_dim, dim_names)
 
         # Set number of parameters
-        self._n_parameters = 2
+        self._n_parameters = 2 * self._n_dim
 
         # Set default parameter names
-        self._parameter_names = ['Mean', 'Std.']
+        self._parameter_names = [
+            'Mean ' + dim_name for dim_name in self._dim_names] + [
+            'Std. ' + dim_name for dim_name in self._dim_names]
 
     @staticmethod
-    def _compute_log_likelihood(mean, var, observations):  # pragma: no cover
+    def _compute_log_likelihood(mus, vars, observations):
         r"""
-        Calculates the log-likelihood using numba speed up.
+        Calculates the log-likelihood.
+
+        mus shape: (n_dim,)
+        vars shape: (n_dim,)
+        observations: (n_ids, n_dim)
         """
         # Compute log-likelihood score
-        n_ids = len(observations)
-        log_likelihood = \
-            - n_ids * np.log(2 * np.pi * var) / 2 \
-            - np.sum((observations - mean) ** 2) / (2 * var)
+        log_likelihood = - np.sum(
+            np.log(2 * np.pi * vars) / 2 + (observations - mus) ** 2
+            / (2 * vars))
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -561,36 +628,40 @@ class GaussianModel(PopulationModel):
 
         return log_likelihood
 
-    def _compute_sensitivities(self, mean, var, psi):  # pragma: no cover
+    def _compute_sensitivities(self, mus, vars, psi):  # pragma: no cover
         r"""
         Calculates the log-likelihood and its sensitivities using numba
         speed up.
 
         Expects:
-        mean = float
-        var = float
-        Shape observations =  (n_obs,)
+        mus shape: (n_dim,)
+        vars shape: (n_dim,)
+        observations: (n_ids, n_dim)
 
         Returns:
         log_likelihood: float
-        sensitivities: np.ndarray of shape (n_obs + 2,)
+        sensitivities: np.ndarray of shape (n_ids * n_dim + 2 * n_dim,)
         """
         # Compute log-likelihood score
         n_ids = len(psi)
-        log_likelihood = self._compute_log_likelihood(mean, var, psi)
+        log_likelihood = self._compute_log_likelihood(mus, vars, psi)
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
             return -np.inf, np.full(shape=n_ids + 2, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
-        dpsi = (mean - psi) / var
+        dpsi = (mus - psi) / vars
 
-        # Copmute sensitivities w.r.t. parameters
-        dmean = np.sum(psi - mean) / var
-        dstd = (-n_ids + np.sum((psi - mean)**2) / var) / np.sqrt(var)
+        # Compute sensitivities w.r.t. parameters
+        dmus = np.sum(psi - mus, axis=0) / vars
+        dstd = (-n_ids + np.sum((psi - mus)**2, axis=0) / vars) / np.sqrt(vars)
 
-        sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
+        # Collect sensitivities
+        # ([psis dim 1, ..., psis dim d, mu dim 1, ..., mu dim d, sigma dim 1,
+        # ..., sigma dim d])
+        sensitivities = np.concatenate((
+            dpsi.T.flatten(), np.array([dmus, dstd]).flatten()))
 
         return log_likelihood, sensitivities
 
@@ -598,7 +669,7 @@ class GaussianModel(PopulationModel):
         r"""
         Returns the log-likelihood of the population model parameters.
 
-        The log-likelihood of a truncated Gaussian distribution is the log-pdf
+        The log-likelihood of a Gaussian distribution is the log-pdf
         evaluated at the observations
 
         .. math::
@@ -614,34 +685,47 @@ class GaussianModel(PopulationModel):
         .. note::
             Note that in the context of PKPD modelling the individual
             parameters are never "observed" directly, but rather inferred
-            from biomarker measurements.
+            from measurements.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the model parameter values, i.e.
-            [:math:`\mu`, :math:`\sigma`].
-        observations
-            An array like object with the parameter values for the individuals,
-            i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :param parameters: Parameters of the population model, i.e.
+            [:math:`\mu`, :math:`\sigma`]. If the population model is
+            multi-dimensional :math:`\mu` and :math:`\sigma` are expected to be
+            vector-valued. The parameters can then either be concatenated or
+            used to define a parameter matrix.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood of individual parameters and population
+            parameters.
+        :rtype: float
         """
         observations = np.asarray(observations)
-        mean, std = parameters
-        var = std**2
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+
+        # Parse parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
+        vars = sigmas**2
 
         eps = 1E-12
-        if (std <= 0) or (var <= eps):
+        if np.any(sigmas <= 0) or np.any(vars <= eps):
             # The std. of the Gaussian distribution is strictly positive
             return -np.inf
 
-        return self._compute_log_likelihood(mean, var, observations)
+        return self._compute_log_likelihood(mus, vars, observations)
 
-    def compute_pointwise_ll(self, parameters, observations):
+    def compute_pointwise_ll(
+            self, parameters, observations):  # pragma: no cover
         r"""
         Returns the pointwise log-likelihood of the model parameters for
         each observation.
 
-        The pointwise log-likelihood of a truncated Gaussian distribution is
+        The pointwise log-likelihood of a Gaussian distribution is
         the log-pdf evaluated at the observations
 
         .. math::
@@ -662,6 +746,10 @@ class GaussianModel(PopulationModel):
             An array like object with the parameter values for the individuals,
             i.e. [:math:`\psi _1, \ldots , \psi _N`].
         """
+        # TODO: Needs proper research to establish which pointwise
+        # log-likelihood makes sense for hierarchical models.
+        # Also needs to be adapted to match multi-dimensional API.
+        raise NotImplementedError
         observations = np.asarray(observations)
         mean, std = parameters
         var = std**2
@@ -678,25 +766,35 @@ class GaussianModel(PopulationModel):
         Returns the log-likelihood of the population parameters and its
         sensitivity w.r.t. the observations and the parameters.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood and its sensitivity to individual parameters
+            as well as population parameters.
+        :rtype: Tuple[float, np.ndarray of shape (n + p, n_dim)]
         """
         observations = np.asarray(observations)
-        mean, std = parameters
-        var = std**2
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+
+        # Parse parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
+        vars = sigmas**2
 
         eps = 1E-6
-        if (std <= 0) or (var <= eps):
+        if np.any(sigmas <= 0) or np.any(vars <= eps):
             # The std. of the Gaussian distribution is strictly positive
             n_obs = len(observations)
-            return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
+            return -np.inf, np.full(
+                shape=(n_obs + 2, self._n_dim), fill_value=np.inf)
 
-        return self._compute_sensitivities(mean, var, observations)
+        return self._compute_sensitivities(mus, vars, observations)
 
     def get_parameter_names(self):
         """
@@ -719,7 +817,7 @@ class GaussianModel(PopulationModel):
         """
         n_ids = int(n_ids)
 
-        return (n_ids, self._n_parameters)
+        return (n_ids * self._n_dim, self._n_parameters)
 
     def n_parameters(self):
         """
@@ -731,32 +829,35 @@ class GaussianModel(PopulationModel):
         r"""
         Returns random samples from the population distribution.
 
-        The returned value is a NumPy array with shape ``(n_samples,)``.
+        The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
 
-        Parameters
-        ----------
-        parameters
-            Parameter values of the top-level parameters that are used for the
-            simulation.
-        n_samples
-            Number of samples. If ``None``, one sample is returned.
-        seed
-            A seed for the pseudo-random number generator.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param n_samples: Number of samples. If ``None``, one sample is
+            returned.
+        :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
         """
-        if len(parameters) != self._n_parameters:
+        parameters = np.asarray(parameters)
+        if len(parameters.flatten()) != self._n_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
 
         # Define shape of samples
         if n_samples is None:
             n_samples = 1
-        sample_shape = (int(n_samples),)
+        sample_shape = (int(n_samples), self._n_dim)
 
         # Get parameters
-        mu, sigma = parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
 
-        if sigma < 0:
+        if np.any(sigmas < 0):
             # The std. of the Gaussian distribution are
             # strictly positive
             raise ValueError(
@@ -766,7 +867,7 @@ class GaussianModel(PopulationModel):
         # Sample from population distribution
         rng = np.random.default_rng(seed=seed)
         samples = rng.normal(
-            loc=mu, scale=sigma, size=sample_shape)
+            loc=mus, scale=sigmas, size=sample_shape)
 
         return samples
 
@@ -786,7 +887,9 @@ class GaussianModel(PopulationModel):
         """
         if names is None:
             # Reset names to defaults
-            self._parameter_names = ['Mean', 'Std.']
+            self._parameter_names = [
+                'Mean ' + dim_name for dim_name in self._dim_names] + [
+                'Std. ' + dim_name for dim_name in self._dim_names]
             return None
 
         if len(names) != self._n_parameters:

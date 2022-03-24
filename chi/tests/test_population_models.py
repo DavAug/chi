@@ -620,80 +620,105 @@ class TestGaussianModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, -np.inf)
 
-    def test_compute_pointwise_ll(self):
-        # Test case I.1:
+        # Test case V: multi-dimensional input
+        # Test case V.1: matrix parameters.
+        pop_model = chi.GaussianModel(n_dim=2)
         psis = np.arange(10)
-        mu = 1
-        sigma = 1
-        ref_scores = \
-            - np.log(2 * np.pi) / 2 \
-            - np.log(sigma) \
-            - (psis - mu)**2 / (2 * sigma ** 2)
+        mu = 10
+        sigma = 15
+        ref_score = \
+            - n_ids * np.log(2 * np.pi) / 2 \
+            - n_ids * np.log(sigma) \
+            - np.sum((psis - mu)**2) / (2 * sigma ** 2)
 
-        parameters = [mu, sigma]
-        pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(len(pw_scores), 10)
-        self.assertAlmostEqual(np.sum(pw_scores), score)
-        self.assertAlmostEqual(pw_scores[0], ref_scores[0])
-        self.assertAlmostEqual(pw_scores[1], ref_scores[1])
-        self.assertAlmostEqual(pw_scores[2], ref_scores[2])
-        self.assertAlmostEqual(pw_scores[3], ref_scores[3])
-        self.assertAlmostEqual(pw_scores[4], ref_scores[4])
-        self.assertAlmostEqual(pw_scores[5], ref_scores[5])
-        self.assertAlmostEqual(pw_scores[6], ref_scores[6])
-        self.assertAlmostEqual(pw_scores[7], ref_scores[7])
-        self.assertAlmostEqual(pw_scores[8], ref_scores[8])
-        self.assertAlmostEqual(pw_scores[9], ref_scores[9])
+        psis = np.vstack([psis, psis]).T
+        parameters = np.array([[mu, mu], [sigma, sigma]])
+        score = pop_model.compute_log_likelihood(parameters, psis)
+        self.assertAlmostEqual(score, 2 * ref_score)
 
-        # Test case I.2:
-        psis = np.linspace(3, 5, 10)
-        mu = 2
-        sigma = 4
-        ref_scores = \
-            - np.log(2 * np.pi) / 2 \
-            - np.log(sigma) \
-            - (psis - mu)**2 / (2 * sigma ** 2)
+        # Test case V.2: flat parameters.
+        parameters = np.array([mu, mu, sigma, sigma])
+        score = pop_model.compute_log_likelihood(parameters, psis)
+        self.assertAlmostEqual(score, 2 * ref_score)
 
-        parameters = [mu, sigma]
-        pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(len(pw_scores), 10)
-        self.assertAlmostEqual(np.sum(pw_scores), score)
-        self.assertAlmostEqual(pw_scores[0], ref_scores[0])
-        self.assertAlmostEqual(pw_scores[1], ref_scores[1])
-        self.assertAlmostEqual(pw_scores[2], ref_scores[2])
-        self.assertAlmostEqual(pw_scores[3], ref_scores[3])
-        self.assertAlmostEqual(pw_scores[4], ref_scores[4])
-        self.assertAlmostEqual(pw_scores[5], ref_scores[5])
-        self.assertAlmostEqual(pw_scores[6], ref_scores[6])
-        self.assertAlmostEqual(pw_scores[7], ref_scores[7])
-        self.assertAlmostEqual(pw_scores[8], ref_scores[8])
-        self.assertAlmostEqual(pw_scores[9], ref_scores[9])
+    def test_compute_pointwise_ll(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.pop_model.compute_pointwise_ll('some', 'input')
 
-        # Test case IV: sigma negative or zero
+        # TODO: Pointwise likelihoods have been removed for now
+        # # Test case I.1:
+        # psis = np.arange(10)
+        # mu = 1
+        # sigma = 1
+        # ref_scores = \
+        #     - np.log(2 * np.pi) / 2 \
+        #     - np.log(sigma) \
+        #     - (psis - mu)**2 / (2 * sigma ** 2)
 
-        # Test case IV.1
-        psis = [np.exp(10)] * 3
-        mu = 1
-        sigma = 0
+        # parameters = [mu, sigma]
+        # pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # score = self.pop_model.compute_log_likelihood(parameters, psis)
+        # self.assertEqual(len(pw_scores), 10)
+        # self.assertAlmostEqual(np.sum(pw_scores), score)
+        # self.assertAlmostEqual(pw_scores[0], ref_scores[0])
+        # self.assertAlmostEqual(pw_scores[1], ref_scores[1])
+        # self.assertAlmostEqual(pw_scores[2], ref_scores[2])
+        # self.assertAlmostEqual(pw_scores[3], ref_scores[3])
+        # self.assertAlmostEqual(pw_scores[4], ref_scores[4])
+        # self.assertAlmostEqual(pw_scores[5], ref_scores[5])
+        # self.assertAlmostEqual(pw_scores[6], ref_scores[6])
+        # self.assertAlmostEqual(pw_scores[7], ref_scores[7])
+        # self.assertAlmostEqual(pw_scores[8], ref_scores[8])
+        # self.assertAlmostEqual(pw_scores[9], ref_scores[9])
 
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
+        # # Test case I.2:
+        # psis = np.linspace(3, 5, 10)
+        # mu = 2
+        # sigma = 4
+        # ref_scores = \
+        #     - np.log(2 * np.pi) / 2 \
+        #     - np.log(sigma) \
+        #     - (psis - mu)**2 / (2 * sigma ** 2)
 
-        # Test case IV.2
-        psis = [np.exp(10)] * 3
-        mu = 1
-        sigma = -10
+        # parameters = [mu, sigma]
+        # pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # score = self.pop_model.compute_log_likelihood(parameters, psis)
+        # self.assertEqual(len(pw_scores), 10)
+        # self.assertAlmostEqual(np.sum(pw_scores), score)
+        # self.assertAlmostEqual(pw_scores[0], ref_scores[0])
+        # self.assertAlmostEqual(pw_scores[1], ref_scores[1])
+        # self.assertAlmostEqual(pw_scores[2], ref_scores[2])
+        # self.assertAlmostEqual(pw_scores[3], ref_scores[3])
+        # self.assertAlmostEqual(pw_scores[4], ref_scores[4])
+        # self.assertAlmostEqual(pw_scores[5], ref_scores[5])
+        # self.assertAlmostEqual(pw_scores[6], ref_scores[6])
+        # self.assertAlmostEqual(pw_scores[7], ref_scores[7])
+        # self.assertAlmostEqual(pw_scores[8], ref_scores[8])
+        # self.assertAlmostEqual(pw_scores[9], ref_scores[9])
 
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
+        # # Test case IV: sigma negative or zero
+
+        # # Test case IV.1
+        # psis = [np.exp(10)] * 3
+        # mu = 1
+        # sigma = 0
+
+        # parameters = [mu] + [sigma]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(scores[0], -np.inf)
+        # self.assertEqual(scores[1], -np.inf)
+        # self.assertEqual(scores[2], -np.inf)
+
+        # # Test case IV.2
+        # psis = [np.exp(10)] * 3
+        # mu = 1
+        # sigma = -10
+
+        # parameters = [mu] + [sigma]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(scores[0], -np.inf)
+        # self.assertEqual(scores[1], -np.inf)
+        # self.assertEqual(scores[2], -np.inf)
 
     def test_compute_sensitivities(self):
         n_ids = 10
@@ -963,10 +988,93 @@ class TestGaussianModel(unittest.TestCase):
         self.assertEqual(sens[1], np.inf)
         self.assertEqual(sens[2], np.inf)
 
-    def test_get_parameter_names(self):
-        names = ['Mean', 'Std.']
+        # Test case VI: Multi-dimensional distribuion
+        # Test case VI.1: matrix parameters
+        psis = np.array([7] * n_ids)
+        mu = 0.5
+        sigma = 0.1
 
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = (mu - psis[0]) / sigma**2
+        ref_dmu = np.sum(psis - mu) / sigma**2
+        ref_dsigma = - n_ids / sigma + np.sum((psis - mu)**2) / sigma**3
+
+        # Compute log-likelihood and sensitivities
+        pop_model = chi.GaussianModel(n_dim=2)
+        psis = np.vstack([psis, psis]).T
+        parameters = np.array([[mu, mu], [sigma, sigma]])
+        score, sens = pop_model.compute_sensitivities(parameters, psis)
+
+        self.assertAlmostEqual(score, 2 * ref_ll)
+        self.assertEqual(len(sens), n_ids * 2 + 2 * 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dpsi)
+        self.assertAlmostEqual(sens[11], ref_dpsi)
+        self.assertAlmostEqual(sens[12], ref_dpsi)
+        self.assertAlmostEqual(sens[13], ref_dpsi)
+        self.assertAlmostEqual(sens[14], ref_dpsi)
+        self.assertAlmostEqual(sens[15], ref_dpsi)
+        self.assertAlmostEqual(sens[16], ref_dpsi)
+        self.assertAlmostEqual(sens[17], ref_dpsi)
+        self.assertAlmostEqual(sens[18], ref_dpsi)
+        self.assertAlmostEqual(sens[19], ref_dpsi)
+        self.assertAlmostEqual(sens[20], ref_dmu)
+        self.assertAlmostEqual(sens[21], ref_dmu)
+        self.assertAlmostEqual(sens[22], ref_dsigma)
+        self.assertAlmostEqual(sens[23], ref_dsigma)
+
+        # Test case V.2: flattened parameters
+        # Compute log-likelihood and sensitivities
+        parameters = np.array([mu, mu, sigma, sigma])
+        score, sens = pop_model.compute_sensitivities(parameters, psis)
+
+        self.assertAlmostEqual(score, 2 * ref_ll)
+        self.assertEqual(len(sens), n_ids * 2 + 2 * 2)
+        self.assertAlmostEqual(sens[0], ref_dpsi)
+        self.assertAlmostEqual(sens[1], ref_dpsi)
+        self.assertAlmostEqual(sens[2], ref_dpsi)
+        self.assertAlmostEqual(sens[3], ref_dpsi)
+        self.assertAlmostEqual(sens[4], ref_dpsi)
+        self.assertAlmostEqual(sens[5], ref_dpsi)
+        self.assertAlmostEqual(sens[6], ref_dpsi)
+        self.assertAlmostEqual(sens[7], ref_dpsi)
+        self.assertAlmostEqual(sens[8], ref_dpsi)
+        self.assertAlmostEqual(sens[9], ref_dpsi)
+        self.assertAlmostEqual(sens[10], ref_dpsi)
+        self.assertAlmostEqual(sens[11], ref_dpsi)
+        self.assertAlmostEqual(sens[12], ref_dpsi)
+        self.assertAlmostEqual(sens[13], ref_dpsi)
+        self.assertAlmostEqual(sens[14], ref_dpsi)
+        self.assertAlmostEqual(sens[15], ref_dpsi)
+        self.assertAlmostEqual(sens[16], ref_dpsi)
+        self.assertAlmostEqual(sens[17], ref_dpsi)
+        self.assertAlmostEqual(sens[18], ref_dpsi)
+        self.assertAlmostEqual(sens[19], ref_dpsi)
+        self.assertAlmostEqual(sens[20], ref_dmu)
+        self.assertAlmostEqual(sens[21], ref_dmu)
+        self.assertAlmostEqual(sens[22], ref_dsigma)
+        self.assertAlmostEqual(sens[23], ref_dsigma)
+
+    def test_get_parameter_names(self):
+        # Test case for 1 dim
+        names = ['Mean Dim. 1', 'Std. Dim. 1']
         self.assertEqual(self.pop_model.get_parameter_names(), names)
+
+        # Test case for 2 dim
+        pop_model = chi.GaussianModel(n_dim=2)
+        names = ['Mean Dim. 1', 'Mean Dim. 2', 'Std. Dim. 1', 'Std. Dim. 2']
+        self.assertEqual(pop_model.get_parameter_names(), names)
 
     def test_n_hierarchical_parameters(self):
         n_ids = 10
@@ -986,7 +1094,7 @@ class TestGaussianModel(unittest.TestCase):
         sample = self.pop_model.sample(parameters, seed=seed)
 
         n_samples = 1
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test II: sample size > 1
         seed = 1
@@ -996,7 +1104,18 @@ class TestGaussianModel(unittest.TestCase):
             parameters, n_samples=n_samples, seed=seed)
 
         self.assertEqual(
-            sample.shape, (n_samples,))
+            sample.shape, (n_samples, 1))
+
+        # Test III: multi-dimensional sampling
+        seed = 1
+        parameters = [3, 3, 2, 5]
+        n_samples = 4
+        pop_model = chi.GaussianModel(n_dim=2)
+        sample = pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed)
+
+        self.assertEqual(
+            sample.shape, (n_samples, 2))
 
     def test_sample_bad_input(self):
         # Too many paramaters
@@ -1992,6 +2111,39 @@ class TestPopulationModel(unittest.TestCase):
     def test_get_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.get_parameter_names()
+
+    def test_n_dim(self):
+        pop_model = chi.PopulationModel(n_dim=1, dim_names=None)
+        self.assertEqual(pop_model.n_dim(), 1)
+        self.assertEqual(pop_model.get_dim_names(), ['Dim. 1'])
+        pop_model.set_dim_names(['Some name'])
+        self.assertEqual(pop_model.get_dim_names(), ['Some name'])
+        pop_model.set_dim_names(None)
+        self.assertEqual(pop_model.get_dim_names(), ['Dim. 1'])
+
+        pop_model = chi.PopulationModel(n_dim=2, dim_names=['Some', 'name'])
+        self.assertEqual(pop_model.n_dim(), 2)
+        names = pop_model.get_dim_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Some')
+        self.assertEqual(names[1], 'name')
+        pop_model.set_dim_names(None)
+        names = pop_model.get_dim_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Dim. 1')
+        self.assertEqual(names[1], 'Dim. 2')
+
+    def test_bad_dim(self):
+        with self.assertRaisesRegex(ValueError, 'The dimension of the pop'):
+            chi.PopulationModel(n_dim=0)
+
+        # too few names
+        with self.assertRaisesRegex(ValueError, 'The number of dimension'):
+            chi.PopulationModel(n_dim=2, dim_names=['name'])
+
+        pop_model = chi.PopulationModel(n_dim=2)
+        with self.assertRaisesRegex(ValueError, 'Length of names does'):
+            pop_model.set_dim_names(['name'])
 
     def test_n_hierarchical_parameters(self):
         n_ids = 'some ids'
