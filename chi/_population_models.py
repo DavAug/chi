@@ -578,7 +578,6 @@ class GaussianModel(PopulationModel):
     :param dim_names: Optional names of the population dimensions.
     :type dim_names: List[str], optional
     """
-
     def __init__(self, n_dim=1, dim_names=None):
         super(GaussianModel, self).__init__(n_dim, dim_names)
 
@@ -908,10 +907,15 @@ class HeterogeneousModel(PopulationModel):
     independent.
 
     Extends :class:`PopulationModel`.
+
+    :param n_dim: The dimensionality of the population model.
+    :type n_dim: int, optional
+    :param dim_names: Optional names of the population dimensions.
+    :type dim_names: List[str], optional
     """
 
-    def __init__(self):
-        super(HeterogeneousModel, self).__init__()
+    def __init__(self, n_dim=1, dim_names=None):
+        super(HeterogeneousModel, self).__init__(n_dim, dim_names)
 
         # Set number of parameters
         self._n_parameters = 0
@@ -1005,9 +1009,6 @@ class HeterogeneousModel(PopulationModel):
         r"""
         Sets the names of the population model parameters.
 
-        A heterogeneous population model has no population parameters.
-        However, a name may nevertheless be assigned for convience.
-
         Parameters
         ----------
         names
@@ -1015,16 +1016,8 @@ class HeterogeneousModel(PopulationModel):
             :meth:`n_parameters`. If ``None``, parameter names are reset to
             defaults.
         """
-        if names is None:
-            # Reset names to defaults
-            self._parameter_names = None
-            return None
-
-        if len(names) != 1:
-            raise ValueError(
-                'Length of names has to be 1.')
-
-        self._parameter_names = [str(label) for label in names]
+        # Model has no population parameters.
+        return None
 
 
 class LogNormalModel(PopulationModel):
