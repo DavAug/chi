@@ -7,6 +7,7 @@
 
 import copy
 import math
+from multiprocessing.sharedctypes import Value
 
 import numpy as np
 from scipy.stats import norm, truncnorm
@@ -93,7 +94,7 @@ class PopulationModel(object):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
+        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
         """
         raise NotImplementedError
 
@@ -326,7 +327,7 @@ class ComposedPopulationModel(PopulationModel):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
+        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
         """
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
@@ -519,10 +520,8 @@ class CovariatePopulationModel(PopulationModel):
     :param covariate_model: Defines the covariate model.
     :type covariate_model: CovariateModel
     """
-
     def __init__(self, population_model, covariate_model):
         super(CovariatePopulationModel, self).__init__()
-
         # Check inputs
         if not isinstance(population_model, PopulationModel):
             raise TypeError(
@@ -532,6 +531,12 @@ class CovariatePopulationModel(PopulationModel):
             raise TypeError(
                 'The covariate model has to be an instance of a '
                 'chi.CovariateModel.')
+        if population_model.n_dim() != 1:
+            raise ValueError(
+                'Only 1-dimensional population models are currently supported '
+                'as inputs. If you want to construct multi-dimensional '
+                'covariate models, use chi.ComposedPopulationModel together '
+                'with 1-dimensional covariate models.')
 
         # Check compatibility of population model with covariate model
         covariate_model.check_compatibility(population_model)
@@ -542,6 +547,8 @@ class CovariatePopulationModel(PopulationModel):
 
         # Set transform psis to true
         self._transforms_psi = True
+        self._n_dim = self._population_model.n_dim()
+        self._dim_names = self._population_model.get_dim_names()
 
     def compute_individual_parameters(
             self, parameters, eta, covariates=None):
@@ -626,6 +633,7 @@ class CovariatePopulationModel(PopulationModel):
             parameters.
         :rtype: np.ndarray of length (n,)
         """
+        raise NotImplementedError
         # Compute population parameters
         parameters = self._covariate_model.compute_population_parameters(
             parameters)
@@ -764,7 +772,7 @@ class CovariatePopulationModel(PopulationModel):
             inter-individual fluctuations.
         :type return_psi: bool, optional
         :returns: Samples from population model conditional on covariates.
-        :rtype: np.ndarray of shape (n_samples,)
+        :rtype: np.ndarray of shape (n_samples, n_dims)
         """
         # Check that covariates has the correct dimensions
         if covariates is not None:
@@ -1043,7 +1051,7 @@ class GaussianModel(PopulationModel):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
+        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
         """
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
@@ -1242,7 +1250,7 @@ class HeterogeneousModel(PopulationModel):
             entry is assumed to belong to one individual.
         """
         n_observations = len(observations)
-        return 0, np.zeros(shape=n_observations)
+        return 0, np.zeros(shape=n_observations * self._n_dim)
 
     def get_parameter_names(self):
         """
@@ -1519,7 +1527,7 @@ class LogNormalModel(PopulationModel):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
+        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
         """
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
@@ -1780,7 +1788,7 @@ class PooledModel(PopulationModel):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
+        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
         """
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
@@ -1884,17 +1892,17 @@ class PooledModel(PopulationModel):
         self._parameter_names = [str(label) for label in names]
 
 
-class ReducedPopulationModel(object):
+class ReducedPopulationModel(PopulationModel):
     """
     A class that can be used to permanently fix model parameters of a
     :class:`PopulationModel` instance.
 
     This may be useful to explore simplified versions of a model.
 
-    Parameters
-    ----------
-    population_model
-        An instance of a :class:`PopulationModel`.
+    Extends :class:`chi.PopulationModel`.
+
+    :param population_model: A population model.
+    :type population_model: chi.PopulationModel
     """
 
     def __init__(self, population_model):
@@ -1913,6 +1921,8 @@ class ReducedPopulationModel(object):
         self._fixed_params_values = None
         self._n_parameters = population_model.n_parameters()
         self._parameter_names = population_model.get_parameter_names()
+        self._n_dim = population_model.n_dim()
+        self._dim_names = population_model.get_dim_names()
 
     def compute_individual_parameters(
             self, parameters, eta, covariates=None):
@@ -1931,6 +1941,7 @@ class ReducedPopulationModel(object):
         :returns: Individual parameters :math:`\psi`.
         :rtype: np.ndarray of length (n,)
         """
+        #TODO:
         if not self.transforms_individual_parameters():
             return eta
 
@@ -1962,6 +1973,7 @@ class ReducedPopulationModel(object):
         :returns: Individual parameters and sensitivities of shape (1 + p, n).
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
+        # TODO:
         if not self.transforms_individual_parameters():
             n = len(eta)
             p = len(parameters)
@@ -1980,16 +1992,18 @@ class ReducedPopulationModel(object):
             parameters, eta, covariates)
 
     def compute_log_likelihood(self, parameters, observations):
-        """
+        r"""
         Returns the log-likelihood of the population model parameters.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood of individual parameters and population
+            parameters.
+        :rtype: float
         """
         # Get fixed parameter values
         if self._fixed_params_mask is not None:
@@ -2015,6 +2029,10 @@ class ReducedPopulationModel(object):
             An array-like object with the observations of the individuals. Each
             entry is assumed to belong to one individual.
         """
+        # TODO: Needs proper research to establish which pointwise
+        # log-likelihood makes sense for hierarchical models.
+        # Also needs to be adapted to match multi-dimensional API.
+        raise NotImplementedError
         # Get fixed parameter values
         if self._fixed_params_mask is not None:
             self._fixed_params_values[~self._fixed_params_mask] = parameters
@@ -2031,13 +2049,15 @@ class ReducedPopulationModel(object):
         Returns the log-likelihood of the population parameters and its
         sensitivities w.r.t. the observations and the parameters.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood and its sensitivity to individual parameters
+            as well as population parameters.
+        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
         """
         # Get fixed parameter values
         if self._fixed_params_mask is not None:
@@ -2053,7 +2073,7 @@ class ReducedPopulationModel(object):
 
         # Filter sensitivities for fixed parameters
         n_obs = len(observations)
-        mask = np.ones(n_obs + self._n_parameters, dtype=bool)
+        mask = np.ones(n_obs * self._n_dim + self._n_parameters, dtype=bool)
         mask[-self._n_parameters:] = ~self._fixed_params_mask
 
         return score, sensitivities[mask]
@@ -2064,11 +2084,9 @@ class ReducedPopulationModel(object):
         parameter from the model. Fixing the value of a parameter at ``None``,
         sets the parameter free again.
 
-        Parameters
-        ----------
-        name_value_dict
-            A dictionary with model parameter names as keys, and parameter
-            values as values.
+        :param name_value_dict: A dictionary with model parameter names as
+            keys, and parameter values as values.
+        :type name_value_dict: Dict[str:float]
         """
         # Check type
         try:
@@ -2555,7 +2573,7 @@ class TruncatedGaussianModel(PopulationModel):
         :type observations: np.ndarray of shape (n, n_dim)
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
+        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
         """
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)

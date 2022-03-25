@@ -359,57 +359,61 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertAlmostEqual(score, ref_score)
 
     def test_compute_pointwise_ll(self):
-        # Hard to test exactly, but at least test some edge cases where
-        # loglikelihood is straightforward to compute analytically
+        # TODO:
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.cpop_model.compute_pointwise_ll('some', 'inputs')
 
-        n_ids = 10
+        # # Hard to test exactly, but at least test some edge cases where
+        # # loglikelihood is straightforward to compute analytically
 
-        # Test case I:
-        # Test case I.1:
-        etas = [1] * n_ids
-        mu_log = 1
-        sigma_log = 10
+        # n_ids = 10
 
-        # Parameters of standard normal (mean=0, std=1)
-        ref_score = -n_ids * (
-            np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
+        # # Test case I:
+        # # Test case I.1:
+        # etas = [1] * n_ids
+        # mu_log = 1
+        # sigma_log = 10
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Parameters of standard normal (mean=0, std=1)
+        # ref_score = -n_ids * (
+        #     np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
 
-        # Test case I.2:
-        etas = [1] * n_ids
-        mu_log = 0.1
-        sigma_log = 5
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        # Parameters of standard normal (mean=0, std=1)
-        sigma = 1
-        ref_score = -n_ids * (
-            np.log(2 * np.pi * sigma**2) / 2 + etas[0]**2 / (2 * sigma**2))
+        # # Test case I.2:
+        # etas = [1] * n_ids
+        # mu_log = 0.1
+        # sigma_log = 5
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Parameters of standard normal (mean=0, std=1)
+        # sigma = 1
+        # ref_score = -n_ids * (
+        #     np.log(2 * np.pi * sigma**2) / 2 + etas[0]**2 / (2 * sigma**2))
 
-        # Test case I.3:
-        etas = [0.2] * n_ids
-        mu_log = 1
-        sigma_log = 2
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        # Parameters of standard normal (mean=0, std=1)
-        ref_score = -n_ids * (
-            np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
+        # # Test case I.3:
+        # etas = [0.2] * n_ids
+        # mu_log = 1
+        # sigma_log = 2
 
-        parameters = [mu_log] + [sigma_log]
-        scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
-        self.assertEqual(len(scores), 10)
-        self.assertAlmostEqual(np.sum(scores), ref_score)
-        self.assertTrue(np.allclose(scores, ref_score / 10))
+        # # Parameters of standard normal (mean=0, std=1)
+        # ref_score = -n_ids * (
+        #     np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
+
+        # parameters = [mu_log] + [sigma_log]
+        # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
+        # self.assertEqual(len(scores), 10)
+        # self.assertAlmostEqual(np.sum(scores), ref_score)
+        # self.assertTrue(np.allclose(scores, ref_score / 10))
 
     def test_compute_sensitivities(self):
         n_ids = 10
@@ -615,11 +619,11 @@ class TestCovariatePopulationModel(unittest.TestCase):
         sample = self.cpop_model.sample(parameters, seed=seed)
 
         n_samples = 1
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test case I.2: return psi
         sample = self.cpop_model.sample(parameters, seed=seed, return_psi=True)
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test II: sample size > 1
         # Test case II.1: return eta
@@ -628,13 +632,12 @@ class TestCovariatePopulationModel(unittest.TestCase):
         sample = self.cpop_model.sample(
             parameters, n_samples=n_samples, seed=seed)
 
-        self.assertEqual(
-            sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test case II.2: return psi
         sample = self.cpop_model.sample(
             parameters, n_samples=n_samples, seed=seed, return_psi=True)
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test III: Model with covariates
         # Test case III.1: return eta
@@ -645,12 +648,12 @@ class TestCovariatePopulationModel(unittest.TestCase):
             parameters, covariates=covariates, seed=seed, return_psi=False)
 
         n_samples = 1
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test case III.2: return psi
         sample = self.cpop_model2.sample(
             parameters, covariates=covariates, seed=seed, return_psi=True)
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
     def test_sample_bad_input(self):
         # Covariates do not match
