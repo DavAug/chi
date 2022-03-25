@@ -3011,30 +3011,11 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertAlmostEqual(score, ref_score)
 
-        # Test case IV: mu and sigma negative or zero
-
-        # Test case IV.1
-        psis = [np.exp(10)] * n_ids
-        mu = 0
-        sigma = 1
-
-        parameters = [mu] + [sigma]
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, -np.inf)
-
+        # Test case IV: sigma negative or zero
         # Test case IV.2
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = 0
-
-        parameters = [mu] + [sigma]
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(score, -np.inf)
-
-        # Test case IV.3
-        psis = [np.exp(10)] * n_ids
-        mu = -1
-        sigma = 1
 
         parameters = [mu] + [sigma]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
@@ -3050,77 +3031,81 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         self.assertEqual(score, -np.inf)
 
     def test_compute_pointwise_ll(self):
-        # Test case I.1:
-        psis = np.arange(10)
-        mu = 1
-        sigma = 1
-        a = (0 - mu) / sigma
-        ref_scores = truncnorm.logpdf(
-            psis, a=a, b=np.inf, loc=mu, scale=sigma)
+        # TODO:
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.pop_model.compute_pointwise_ll('some', 'inputs')
 
-        parameters = [mu, sigma]
-        pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(len(pw_scores), 10)
-        self.assertAlmostEqual(np.sum(pw_scores), score)
-        self.assertAlmostEqual(pw_scores[0], ref_scores[0])
-        self.assertAlmostEqual(pw_scores[1], ref_scores[1])
-        self.assertAlmostEqual(pw_scores[2], ref_scores[2])
-        self.assertAlmostEqual(pw_scores[3], ref_scores[3])
-        self.assertAlmostEqual(pw_scores[4], ref_scores[4])
-        self.assertAlmostEqual(pw_scores[5], ref_scores[5])
-        self.assertAlmostEqual(pw_scores[6], ref_scores[6])
-        self.assertAlmostEqual(pw_scores[7], ref_scores[7])
-        self.assertAlmostEqual(pw_scores[8], ref_scores[8])
-        self.assertAlmostEqual(pw_scores[9], ref_scores[9])
+        # # Test case I.1:
+        # psis = np.arange(10)
+        # mu = 1
+        # sigma = 1
+        # a = (0 - mu) / sigma
+        # ref_scores = truncnorm.logpdf(
+        #     psis, a=a, b=np.inf, loc=mu, scale=sigma)
 
-        # Test case I.2:
-        psis = np.linspace(3, 5, 10)
-        mu = 2
-        sigma = 4
-        a = (0 - mu) / sigma
-        ref_scores = truncnorm.logpdf(
-            psis, a=a, b=np.inf, loc=mu, scale=sigma)
+        # parameters = [mu, sigma]
+        # pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # score = self.pop_model.compute_log_likelihood(parameters, psis)
+        # self.assertEqual(len(pw_scores), 10)
+        # self.assertAlmostEqual(np.sum(pw_scores), score)
+        # self.assertAlmostEqual(pw_scores[0], ref_scores[0])
+        # self.assertAlmostEqual(pw_scores[1], ref_scores[1])
+        # self.assertAlmostEqual(pw_scores[2], ref_scores[2])
+        # self.assertAlmostEqual(pw_scores[3], ref_scores[3])
+        # self.assertAlmostEqual(pw_scores[4], ref_scores[4])
+        # self.assertAlmostEqual(pw_scores[5], ref_scores[5])
+        # self.assertAlmostEqual(pw_scores[6], ref_scores[6])
+        # self.assertAlmostEqual(pw_scores[7], ref_scores[7])
+        # self.assertAlmostEqual(pw_scores[8], ref_scores[8])
+        # self.assertAlmostEqual(pw_scores[9], ref_scores[9])
 
-        parameters = [mu, sigma]
-        pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        score = self.pop_model.compute_log_likelihood(parameters, psis)
-        self.assertEqual(len(pw_scores), 10)
-        self.assertAlmostEqual(np.sum(pw_scores), score)
-        self.assertAlmostEqual(pw_scores[0], ref_scores[0])
-        self.assertAlmostEqual(pw_scores[1], ref_scores[1])
-        self.assertAlmostEqual(pw_scores[2], ref_scores[2])
-        self.assertAlmostEqual(pw_scores[3], ref_scores[3])
-        self.assertAlmostEqual(pw_scores[4], ref_scores[4])
-        self.assertAlmostEqual(pw_scores[5], ref_scores[5])
-        self.assertAlmostEqual(pw_scores[6], ref_scores[6])
-        self.assertAlmostEqual(pw_scores[7], ref_scores[7])
-        self.assertAlmostEqual(pw_scores[8], ref_scores[8])
-        self.assertAlmostEqual(pw_scores[9], ref_scores[9])
+        # # Test case I.2:
+        # psis = np.linspace(3, 5, 10)
+        # mu = 2
+        # sigma = 4
+        # a = (0 - mu) / sigma
+        # ref_scores = truncnorm.logpdf(
+        #     psis, a=a, b=np.inf, loc=mu, scale=sigma)
 
-        # Test case IV: mu_log or sigma_log negative or zero
+        # parameters = [mu, sigma]
+        # pw_scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # score = self.pop_model.compute_log_likelihood(parameters, psis)
+        # self.assertEqual(len(pw_scores), 10)
+        # self.assertAlmostEqual(np.sum(pw_scores), score)
+        # self.assertAlmostEqual(pw_scores[0], ref_scores[0])
+        # self.assertAlmostEqual(pw_scores[1], ref_scores[1])
+        # self.assertAlmostEqual(pw_scores[2], ref_scores[2])
+        # self.assertAlmostEqual(pw_scores[3], ref_scores[3])
+        # self.assertAlmostEqual(pw_scores[4], ref_scores[4])
+        # self.assertAlmostEqual(pw_scores[5], ref_scores[5])
+        # self.assertAlmostEqual(pw_scores[6], ref_scores[6])
+        # self.assertAlmostEqual(pw_scores[7], ref_scores[7])
+        # self.assertAlmostEqual(pw_scores[8], ref_scores[8])
+        # self.assertAlmostEqual(pw_scores[9], ref_scores[9])
 
-        # Test case IV.1
-        psis = [np.exp(10)] * 3
-        mu = 1
-        sigma = 0
+        # # Test case IV: mu_log or sigma_log negative or zero
 
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
+        # # Test case IV.1
+        # psis = [np.exp(10)] * 3
+        # mu = 1
+        # sigma = 0
 
-        # Test case IV.2
-        psis = [np.exp(10)] * 3
-        mu = 1
-        sigma = -10
+        # parameters = [mu] + [sigma]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(scores[0], -np.inf)
+        # self.assertEqual(scores[1], -np.inf)
+        # self.assertEqual(scores[2], -np.inf)
 
-        parameters = [mu] + [sigma]
-        scores = self.pop_model.compute_pointwise_ll(parameters, psis)
-        self.assertEqual(scores[0], -np.inf)
-        self.assertEqual(scores[1], -np.inf)
-        self.assertEqual(scores[2], -np.inf)
+        # # Test case IV.2
+        # psis = [np.exp(10)] * 3
+        # mu = 1
+        # sigma = -10
+
+        # parameters = [mu] + [sigma]
+        # scores = self.pop_model.compute_pointwise_ll(parameters, psis)
+        # self.assertEqual(scores[0], -np.inf)
+        # self.assertEqual(scores[1], -np.inf)
+        # self.assertEqual(scores[2], -np.inf)
 
     def test_compute_sensitivities(self):
         n_ids = 10
@@ -3474,21 +3459,20 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         self.assertEqual(mean, mean_ref)
         self.assertEqual(std, std_ref)
 
-        # Test case III: Negative mu and sigma
         mu = -1
         sigma = 1
         parameters = [mu, sigma]
-        with self.assertRaisesRegex(ValueError, 'The parameters mu'):
-            self.pop_model.get_mean_and_std(parameters)
+        mean, std = self.pop_model.get_mean_and_std(parameters)
 
+        # Test case III: Negative mu and sigma
         mu = 1
         sigma = -1
         parameters = [mu, sigma]
-        with self.assertRaisesRegex(ValueError, 'The parameters mu'):
+        with self.assertRaisesRegex(ValueError, 'The standard deviation'):
             self.pop_model.get_mean_and_std(parameters)
 
     def test_get_parameter_names(self):
-        names = ['Mu', 'Sigma']
+        names = ['Mu Dim. 1', 'Sigma Dim. 1']
 
         self.assertEqual(self.pop_model.get_parameter_names(), names)
 
@@ -3510,7 +3494,7 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         sample = self.pop_model.sample(parameters, seed=seed)
 
         n_samples = 1
-        self.assertEqual(sample.shape, (n_samples,))
+        self.assertEqual(sample.shape, (n_samples, 1))
 
         # Test II: sample size > 1
         seed = 1
@@ -3520,7 +3504,7 @@ class TestTruncatedGaussianModel(unittest.TestCase):
             parameters, n_samples=n_samples, seed=seed)
 
         self.assertEqual(
-            sample.shape, (n_samples,))
+            sample.shape, (n_samples, 1))
 
     def test_sample_bad_input(self):
         # Too many paramaters
@@ -3549,8 +3533,8 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         names = self.pop_model.get_parameter_names()
 
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Mu')
-        self.assertEqual(names[1], 'Sigma')
+        self.assertEqual(names[0], 'Mu Dim. 1')
+        self.assertEqual(names[1], 'Sigma Dim. 1')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names

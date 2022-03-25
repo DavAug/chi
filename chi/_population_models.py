@@ -10,6 +10,7 @@ import math
 
 import numpy as np
 from scipy.stats import norm, truncnorm
+from scipy.special import erf
 
 import chi
 
@@ -100,7 +101,7 @@ class PopulationModel(object):
         """
         Returns the names of the dimensions.
         """
-        return self._dim_names
+        return copy.copy(self._dim_names)
 
     def get_parameter_names(self):
         """
@@ -361,7 +362,7 @@ class ComposedPopulationModel(PopulationModel):
         Returns the names of the population model parameters. If name is
         not set, defaults are returned.
         """
-        return self._parameter_names
+        return copy.copy(self._parameter_names)
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -2340,19 +2341,25 @@ class TruncatedGaussianModel(PopulationModel):
     assumed to be a realisation of the random variable :math:`\psi`.
 
     Extends :class:`PopulationModel`.
-    """
 
-    def __init__(self):
-        super(TruncatedGaussianModel, self).__init__()
+    :param n_dim: The dimensionality of the population model.
+    :type n_dim: int, optional
+    :param dim_names: Optional names of the population dimensions.
+    :type dim_names: List[str], optional
+    """
+    def __init__(self, n_dim=1, dim_names=None):
+        super(TruncatedGaussianModel, self).__init__(n_dim, dim_names)
 
         # Set number of parameters
-        self._n_parameters = 2
+        self._n_parameters = 2 * self._n_dim
 
         # Set default parameter names
-        self._parameter_names = ['Mu', 'Sigma']
+        self._parameter_names = [
+            'Mu ' + dim_name for dim_name in self._dim_names] + [
+            'Sigma ' + dim_name for dim_name in self._dim_names]
 
     @staticmethod
-    def _compute_log_likelihood(mean, std, observations):  # pragma: no cover
+    def _compute_log_likelihood(mus, sigmas, observations):  # pragma: no cover
         r"""
         Calculates the log-likelihood using numba speed up.
 
@@ -2361,13 +2368,20 @@ class TruncatedGaussianModel(PopulationModel):
 
         ..math::
             Phi(x) = (1 + erf(x/sqrt(2))) / 2
+
+        mus shape: (n_dim,)
+        sigmas shape: (n_dim,)
+        observations: (n_ids, n_dim)
         """
+        # Return infinity if any psis are negative
+        if np.any(observations < 0):
+            return -np.inf
+
         # Compute log-likelihood score
-        n_ids = len(observations)
-        log_likelihood = \
-            - n_ids * np.log(2 * np.pi * std**2) / 2 \
-            - np.sum((observations - mean) ** 2) / (2 * std**2) \
-            - n_ids * np.log(1 - _norm_cdf(-mean/std))
+        log_likelihood = - np.sum(
+            np.log(2 * np.pi * sigmas**2) / 2
+            + (observations - mus) ** 2 / (2 * sigmas**2)
+            + np.log(1 - _norm_cdf(-mus/sigmas)))
 
         # If score evaluates to NaN, return -infinity
         if np.isnan(log_likelihood):
@@ -2394,48 +2408,43 @@ class TruncatedGaussianModel(PopulationModel):
 
         return log_likelihood
 
-    @staticmethod
-    def _compute_sensitivities(mean, std, psi):  # pragma: no cover
+    def _compute_sensitivities(self, mus, sigmas, psi):  # pragma: no cover
         r"""
-        Calculates the log-likelihood and its sensitivities using numba
-        speed up.
+        Calculates the log-likelihood and its sensitivities.
 
         Expects:
-        mean = float
-        std = float
-        Shape observations =  (n_obs,)
+        mus shape: (n_dim,)
+        sigmas shape: (n_dim,)
+        observations: (n_ids, n_dim)
 
         Returns:
         log_likelihood: float
         sensitivities: np.ndarray of shape (n_obs + 2,)
         """
         # Compute log-likelihood score
-        n_ids = len(psi)
-        log_likelihood = \
-            - n_ids * (np.log(2 * np.pi) / 2 + np.log(std)) \
-            - np.sum((psi - mean)**2) / (2 * std**2) \
-            - n_ids * np.log(1 - _norm_cdf(-mean/std))
+        log_likelihood = self._compute_log_likelihood(mus, sigmas, psi)
 
-        # If score evaluates to NaN, return -infinity
-        if np.isnan(log_likelihood):
+        if np.isinf(log_likelihood):
             n_obs = len(psi)
             return -np.inf, np.full(shape=n_obs + 2, fill_value=np.inf)
 
         # Compute sensitivities w.r.t. observations (psi)
-        dpsi = (mean - psi) / std**2
+        dpsi = (mus - psi) / sigmas**2
 
         # Copmute sensitivities w.r.t. parameters
-        dmean = (
-            np.sum(psi - mean) / std
-            - _norm_pdf(mean/std) / (1 - _norm_cdf(-mean/std)) * n_ids
-            ) / std
-        dstd = (
-            -n_ids + np.sum((psi - mean)**2) / std**2
-            + _norm_pdf(mean/std) * mean / std / (1 - _norm_cdf(-mean/std))
-            * n_ids
-            ) / std
+        dmus = np.sum((
+            (psi - mus) / sigmas - _norm_pdf(mus/sigmas)
+            / (1 - _norm_cdf(-mus/sigmas))
+            ) / sigmas, axis=0)
+        dsigmas = np.sum(
+            -1 + (psi - mus)**2 / sigmas**2 + _norm_pdf(mus/sigmas) * mus
+            / sigmas / (1 - _norm_cdf(-mus/sigmas)), axis=0) / sigmas
 
-        sensitivities = np.concatenate((dpsi, np.array([dmean, dstd])))
+        # Collect sensitivities
+        # ([psis dim 1, ..., psis dim d, mu dim 1, ..., mu dim d, sigma dim 1,
+        # ..., sigma dim d])
+        sensitivities = np.concatenate((
+            dpsi.T.flatten(), np.hstack([dmus, dsigmas]).flatten()))
 
         return log_likelihood, sensitivities
 
@@ -2461,24 +2470,37 @@ class TruncatedGaussianModel(PopulationModel):
             parameters are never "observed" directly, but rather inferred
             from biomarker measurements.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the model parameter values, i.e.
-            [:math:`\mu`, :math:`\sigma`].
-        observations
-            An array like object with the parameter values for the individuals,
-            i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :param parameters: Parameters of the population model, i.e.
+            [:math:`\mu`, :math:`\sigma`]. If the population model is
+            multi-dimensional :math:`\mu` and :math:`\sigma` are expected to be
+            vector-valued. The parameters can then either be defined as a
+            one-dimensional array or a matrix.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood of individual parameters and population
+            parameters.
+        :rtype: float
         """
         observations = np.asarray(observations)
-        mean, std = parameters
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
 
-        if (mean <= 0) or (std <= 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        # Parse parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
+        vars = sigmas**2
+
+        eps = 1E-12
+        if np.any(sigmas <= 0) or np.any(vars <= eps):
+            # Gaussians are only defined for positive sigmas.
             return -np.inf
 
-        return self._compute_log_likelihood(mean, std, observations)
+        return self._compute_log_likelihood(mus, sigmas, observations)
 
     def compute_pointwise_ll(self, parameters, observations):
         r"""
@@ -2506,6 +2528,10 @@ class TruncatedGaussianModel(PopulationModel):
             An array like object with the parameter values for the individuals,
             i.e. [:math:`\psi _1, \ldots , \psi _N`].
         """
+        # TODO: Needs proper research to establish which pointwise
+        # log-likelihood makes sense for hierarchical models.
+        # Also needs to be adapted to match multi-dimensional API.
+        raise NotImplementedError
         observations = np.asarray(observations)
         mean, std = parameters
 
@@ -2521,24 +2547,35 @@ class TruncatedGaussianModel(PopulationModel):
         Returns the log-likelihood of the population parameters and its
         sensitivity w.r.t. the observations and the parameters.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood and its sensitivity to individual parameters
+            as well as population parameters.
+        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
         """
         observations = np.asarray(observations)
-        mean, std = parameters
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
 
-        if (mean <= 0) or (std <= 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        # Parse parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
+        vars = sigmas**2
+
+        eps = 1E-6
+        if np.any(sigmas <= 0) or np.any(vars <= eps):
+            # Gaussians are only defined for positive sigmas.
             n_obs = len(observations)
-            return -np.inf, np.full(shape=(n_obs + 2,), fill_value=np.inf)
+            return -np.inf, np.full(
+                shape=(n_obs + 2, self._n_dim), fill_value=np.inf)
 
-        return self._compute_sensitivities(mean, std, observations)
+        return self._compute_sensitivities(mus, sigmas, observations)
 
     def get_mean_and_std(self, parameters):
         r"""
@@ -2563,28 +2600,29 @@ class TruncatedGaussianModel(PopulationModel):
         :math:`\phi(\psi)` and the Gaussian cumulative distribution function
         :math:`\Phi(\psi)`.
 
-        Parameters
-        ----------
-        mu
-            Mean of untruncated Gaussian distribution.
-        sigma
-            Standard deviation of untruncated Gaussian distribution.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
         """
         # Check input
-        mu, sigma = parameters
-        if (mu < 0) or (sigma < 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
-            raise ValueError(
-                'The parameters mu and sigma cannot be negative.')
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+        mus = parameters[0]
+        sigmas = parameters[1]
+        if np.any(sigmas < 0):
+            raise ValueError('The standard deviation cannot be negative.')
 
         # Compute mean and standard deviation
-        mean = mu + sigma * norm.pdf(mu/sigma) / (1 - norm.cdf(-mu/sigma))
+        # TODO: Test this, especially for negative means
+        mean = \
+            mus + sigmas * norm.pdf(mus/sigmas) / (1 - norm.cdf(-mus/sigmas))
         std = np.sqrt(
-            sigma**2 * (
+            sigmas**2 * (
                 1 -
-                mu / sigma * norm.pdf(mu/sigma) / (1 - norm.cdf(-mu/sigma))
-                - (norm.pdf(mu/sigma) / (1 - norm.cdf(-mu/sigma)))**2)
+                mus / sigmas * norm.pdf(mus/sigmas)
+                / (1 - norm.cdf(-mus/sigmas))
+                - (norm.pdf(mus/sigmas) / (1 - norm.cdf(-mus/sigmas)))**2)
             )
 
         return [mean, std]
@@ -2610,7 +2648,7 @@ class TruncatedGaussianModel(PopulationModel):
         """
         n_ids = int(n_ids)
 
-        return (n_ids, self._n_parameters)
+        return (n_ids * self._n_dim, self._n_parameters)
 
     def n_parameters(self):
         """
@@ -2624,35 +2662,38 @@ class TruncatedGaussianModel(PopulationModel):
 
         The returned value is a NumPy array with shape ``(n_samples,)``.
 
-        Parameters
-        ----------
-        parameters
-            Parameter values of the top-level parameters that are used for the
-            simulation.
-        n_samples
-            Number of samples. If ``None``, one sample is returned.
-        seed
-            A seed for the pseudo-random number generator.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param n_samples: Number of samples. If ``None``, one sample is
+            returned.
+        :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
         """
-        if len(parameters) != self._n_parameters:
+        parameters = np.asarray(parameters)
+        if len(parameters.flatten()) != self._n_parameters:
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
+        if parameters.ndim != 2:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_parameters, self._n_dim)
 
         # Define shape of samples
         if n_samples is None:
             n_samples = 1
-        sample_shape = (int(n_samples),)
+        sample_shape = (int(n_samples), self._n_dim)
 
         # Get parameters
-        mu, sigma = parameters
+        mus = parameters[0]
+        sigmas = parameters[1]
 
-        if (mu < 0) or (sigma < 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
+        if np.any(sigmas < 0):
+            # The std. of the Gaussian distribution are
+            # strictly positive
             raise ValueError(
                 'A truncated Gaussian distribution only accepts strictly '
-                'positive means and standard deviations.')
+                'positive standard deviations.')
 
         # Convert seed to int if seed is a rng
         # (Unfortunately truncated normal is not yet available with numpys
@@ -2665,7 +2706,7 @@ class TruncatedGaussianModel(PopulationModel):
 
         # Sample from population distribution
         samples = truncnorm.rvs(
-            a=0, b=np.inf, loc=mu, scale=sigma, size=sample_shape)
+            a=0, b=np.inf, loc=mus, scale=sigmas, size=sample_shape)
 
         return samples
 
@@ -2685,7 +2726,9 @@ class TruncatedGaussianModel(PopulationModel):
         """
         if names is None:
             # Reset names to defaults
-            self._parameter_names = ['Mu', 'Sigma']
+            self._parameter_names = [
+                'Mu ' + dim_name for dim_name in self._dim_names] + [
+                'Sigma ' + dim_name for dim_name in self._dim_names]
             return None
 
         if len(names) != self._n_parameters:
@@ -2700,7 +2743,7 @@ def _norm_cdf(x):  # pragma: no cover
     Returns the cumulative distribution function value of a standard normal
     Gaussian distribtion.
     """
-    return 0.5 * (1 + math.erf(x/math.sqrt(2)))
+    return 0.5 * (1 + erf(x/np.sqrt(2)))
 
 
 def _norm_pdf(x):  # pragma: no cover
@@ -2708,4 +2751,4 @@ def _norm_pdf(x):  # pragma: no cover
     Returns the probability density function value of a standard normal
     Gaussian distribtion.
     """
-    return math.exp(-x**2/2) / math.sqrt(2 * math.pi)
+    return np.exp(-x**2/2) / np.sqrt(2 * np.pi)
