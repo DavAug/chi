@@ -175,6 +175,8 @@ class PopulationModel(object):
         r"""
         Sets the names of the population model dimensions.
 
+        This resets the parameter names to the default names.
+
         Parameters
         ----------
         names
@@ -193,6 +195,7 @@ class PopulationModel(object):
                 'Length of names does not match the number of dimensions.')
 
         self._dim_names = [str(label) for label in names]
+        self.set_parameter_names(None)
 
     def set_parameter_names(self, names=None):
         """
@@ -204,6 +207,275 @@ class PopulationModel(object):
         :type names: List[str]
         """
         raise NotImplementedError
+
+
+class ComposedPopulationModel(PopulationModel):
+    r"""
+    A multi-dimensional composed of mutliple population models.
+
+    A :class:`ComposedPopulationModel` assumes that its constituent population
+    models are independent. The probability density function of the composed
+    population model is therefore given by the product of the probability
+    density functions.
+
+    For constituent population models
+    :math:`p(\psi _1 | \theta _1), \ldots , p(\psi _n | \theta _n)`, the
+    probability density function of the composed population model is given by
+
+    .. math::
+        p(\psi _1, \ldots , \psi _n | \theta _1, \ldots , \theta _n) =
+            \prod _{k=1}^n p(\psi _k | \theta _k) .
+
+    Extends :class:`chi.PopulationModel`.
+
+    :param population_models: A list of population models.
+    :type population_models: List[chi.PopulationModel]
+    """
+    def __init__(self, population_models):
+        super(PopulationModel, self).__init__()
+        # TODO: Need to generalise to covariate models
+        # Check inputs
+        for pop_model in population_models:
+            if not isinstance(pop_model, chi.PopulationModel):
+                raise TypeError(
+                    'The population models have to be instances of '
+                    'chi.PopulationModel.')
+
+        self._population_models = population_models
+
+        # Get properties of population models
+        n_dim = 0
+        n_parameters = 0
+        names = []
+        dim_names = []
+        transforms_psi = False
+        for pop_model in self._population_models:
+            n_dim += pop_model.n_dim()
+            n_parameters += pop_model.n_parameters()
+            names += pop_model.get_parameter_names()
+            dim_names += pop_model.get_dim_names()
+            transforms_psi = \
+                transforms_psi \
+                | pop_model.transforms_individual_parameters()
+        self._n_dim = n_dim
+        self._n_parameters = n_parameters
+        self._parameter_names = names
+        self._dim_names = dim_names
+        self._transforms_psi = transforms_psi
+
+    def compute_log_likelihood(self, parameters, observations):
+        """
+        Returns the log-likelihood of the population model parameters.
+
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood of individual parameters and population
+            parameters.
+        :rtype: float
+        """
+        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+
+        score = 0
+        current_dim = 0
+        current_param = 0
+        for pop_model in self._population_models:
+            end_dim = current_dim + pop_model.n_dim()
+            end_param = current_param + pop_model.n_parameters()
+            score += pop_model.compute_log_likelihood(
+                parameters=parameters[current_param:end_param],
+                observations=observations[:, current_dim:end_dim]
+            )
+            current_dim = end_dim
+            current_param = end_param
+
+        return score
+
+    def compute_pointwise_ll(self, parameters, observations):
+        r"""
+        Returns the pointwise log-likelihood of the model parameters for
+        each observation.
+
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p, n_dim)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihoods for each individual parameter for population
+            parameters.
+        :rtype: np.ndarray of length (n, n_dim)
+        """
+        raise NotImplementedError
+
+    def compute_sensitivities(self, parameters, observations):
+        r"""
+        Returns the log-likelihood of the population parameters and its
+        sensitivities w.r.t. the observations and the parameters.
+
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n, n_dim)
+        :returns: Log-likelihood and its sensitivity to individual parameters
+            as well as population parameters.
+        :rtype: Tuple[float, np.ndarray of shape (n + p,)]
+        """
+        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+
+        n_ids = len(observations)
+        score = 0
+        sensitivities = np.zeros(shape=n_ids*self._n_dim+self._n_parameters)
+        current_dim = 0
+        current_param = 0
+        for pop_model in self._population_models:
+            end_dim = current_dim + pop_model.n_dim()
+            end_param = current_param + pop_model.n_parameters()
+            s, sens = pop_model.compute_sensitivities(
+                parameters=parameters[current_param:end_param],
+                observations=observations[:, current_dim:end_dim])
+
+            # Add score and sensitivities
+            score += s
+            sensitivities[current_dim*n_ids:end_dim*n_ids] = sens[
+                :n_ids*pop_model.n_dim()]
+            sensitivities[
+                    n_ids*self._n_dim+current_param:
+                    n_ids*self._n_dim+end_param] = sens[
+                n_ids*pop_model.n_dim():]
+
+            current_dim = end_dim
+            current_param = end_param
+
+        return score, sensitivities
+
+    def get_parameter_names(self):
+        """
+        Returns the names of the population model parameters. If name is
+        not set, defaults are returned.
+        """
+        return self._parameter_names
+
+    def n_hierarchical_parameters(self, n_ids):
+        """
+        Returns a tuple of the number of individual parameters and the number
+        of population parameters that this model expects in context of a
+        :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
+        modelled.
+
+        Parameters
+        ----------
+        n_ids
+            Number of individuals.
+        """
+        n_bottom, n_top = 0, 0
+        for pop_model in self._population_models:
+            n_b, n_t = pop_model.n_hierarchical_parameters(n_ids)
+            n_bottom += n_b
+            n_top += n_t
+
+        return n_bottom, n_top
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters of the population model.
+        """
+        return self._n_parameters
+
+    def transforms_individual_parameters(self):
+        r"""
+        Returns a boolean whether the population model models the individual
+        likelihood parameters directly or a transform of those parameters.
+
+        Some population models compute the likelihood of the population
+        parameters :math:`\theta` based on estimates of the
+        individual likelihood parameters :math:`\Psi = \{\psi _i \} _{i=1}^n`,
+        where :math:`n` is the number of individual likelihoods. Here,
+        the parameters are not transformed and ``False`` is returned.
+
+        Other population models, in particular the
+        :class:`CovariatePopulationModel`, transform the parameters to a
+        latent representation
+        :math:`\Psi \rightarrow \{\eta _i \} _{i=1}^n`.
+        Here, a transformation of the likelihood parameters is modelled and
+        ``True`` is returned.
+        """
+        return self._transforms_psi
+
+    def sample(self, parameters, n_samples=None, seed=None):
+        r"""
+        Returns random samples from the population distribution.
+
+        The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
+
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param n_samples: Number of samples. If ``None``, one sample is
+            returned.
+        :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
+        """
+        parameters = np.asarray(parameters)
+        if len(parameters) != self._n_parameters:
+            raise ValueError(
+                'The number of provided parameters does not match the expected'
+                ' number of top-level parameters.')
+
+        # Define shape of samples
+        if n_samples is None:
+            n_samples = 1
+        sample_shape = (int(n_samples), self._n_dim)
+        samples = np.empty(shape=sample_shape)
+
+        # Transform seed to random number generator, so all models use the same
+        # seed
+        rng = np.random.default_rng(seed=seed)
+
+        # Sample from constituent population models
+        current_dim = 0
+        current_param = 0
+        for pop_model in self._population_models:
+            end_dim = current_dim + pop_model.n_dim()
+            end_param = current_param + pop_model.n_parameters()
+            samples[:, current_dim:end_dim] = pop_model.sample(
+                parameters=parameters[current_param:end_param],
+                n_samples=n_samples,
+                seed=rng)
+            current_dim = end_dim
+            current_param = end_param
+
+        return samples
+
+    def set_parameter_names(self, names=None):
+        """
+        Sets the names of the population model parameters.
+
+        :param names: A list with string-convertable entries of
+            length :meth:`n_parameters`. If ``None``, parameter names are
+            reset to defaults.
+        :type names: List[str]
+        """
+        if names is None:
+            # Reset names to defaults
+            names = []
+            for pop_model in self._population_models:
+                names += pop_model.get_parameter_names()
+            self._parameter_names = names
+            return None
+
+        if len(names) != self._n_parameters:
+            raise ValueError(
+                'Length of names does not match the number of parameters.')
+
+        self._parameter_names = [str(label) for label in names]
 
 
 class CovariatePopulationModel(PopulationModel):

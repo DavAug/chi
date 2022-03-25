@@ -13,6 +13,183 @@ from scipy.stats import norm, truncnorm
 import chi
 
 
+class TestComposedPopulationModel(unittest.TestCase):
+    """
+    Tests the chi.ComposedPopulationModel class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Test case I
+        cls.pop_model1 = chi.GaussianModel()
+        cls.pop_model2 = chi.LogNormalModel(n_dim=2)
+        cls.pop_model3 = chi.PooledModel()
+        cls.pop_model = chi.ComposedPopulationModel(
+            population_models=[cls.pop_model1, cls.pop_model2, cls.pop_model3])
+
+    def test_bad_instantiation(self):
+        pop_models = ['bad', 'type']
+        with self.assertRaisesRegex(TypeError, 'The population models have'):
+            chi.ComposedPopulationModel(pop_models)
+
+    def test_compute_log_likelihood(self):
+        n_ids, n_dim = (6, 4)
+        psis = np.ones(shape=(n_ids, n_dim))
+        parameters = np.arange(7)
+        parameters[-1] = 1
+
+        ref_score = \
+            self.pop_model1.compute_log_likelihood(
+                parameters[:2], psis[:, 0]) \
+            + self.pop_model2.compute_log_likelihood(
+                parameters[2:6], psis[:, 1:3]) \
+            + self.pop_model3.compute_log_likelihood(
+                parameters[6], psis[:, 3])
+        score = self.pop_model.compute_log_likelihood(parameters, psis)
+        self.assertAlmostEqual(score, ref_score)
+
+    def test_compute_sensitivities(self):
+        n_ids, n_dim = (6, 4)
+        psis = np.ones(shape=(n_ids, n_dim))
+        parameters = np.arange(7)
+        parameters[-1] = 1
+
+        s1, ref_sens1 = self.pop_model1.compute_sensitivities(
+            parameters[:2], psis[:, 0])
+        s2, ref_sens2 = self.pop_model2.compute_sensitivities(
+            parameters[2:6], psis[:, 1:3])
+        s3, ref_sens3 = self.pop_model3.compute_sensitivities(
+            parameters[6], psis[:, 3])
+        ref_score = s1 + s2 + s3
+        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(
+            len(sens), len(ref_sens1) + len(ref_sens2) + len(ref_sens3))
+        self.assertEqual(sens[0], ref_sens1[0])
+        self.assertEqual(sens[1], ref_sens1[1])
+        self.assertEqual(sens[2], ref_sens1[2])
+        self.assertEqual(sens[3], ref_sens1[3])
+        self.assertEqual(sens[4], ref_sens1[4])
+        self.assertEqual(sens[5], ref_sens1[5])
+        self.assertEqual(sens[6], ref_sens2[0])
+        self.assertEqual(sens[7], ref_sens2[1])
+        self.assertEqual(sens[8], ref_sens2[2])
+        self.assertEqual(sens[9], ref_sens2[3])
+        self.assertEqual(sens[10], ref_sens2[4])
+        self.assertEqual(sens[11], ref_sens2[5])
+        self.assertEqual(sens[12], ref_sens2[6])
+        self.assertEqual(sens[13], ref_sens2[7])
+        self.assertEqual(sens[14], ref_sens2[8])
+        self.assertEqual(sens[15], ref_sens2[9])
+        self.assertEqual(sens[16], ref_sens2[10])
+        self.assertEqual(sens[17], ref_sens2[11])
+        self.assertEqual(sens[18], ref_sens3[0])
+        self.assertEqual(sens[19], ref_sens3[1])
+        self.assertEqual(sens[20], ref_sens3[2])
+        self.assertEqual(sens[21], ref_sens3[3])
+        self.assertEqual(sens[22], ref_sens3[4])
+        self.assertEqual(sens[23], ref_sens3[5])
+        self.assertEqual(sens[24], ref_sens1[6])
+        self.assertEqual(sens[25], ref_sens1[7])
+        self.assertEqual(sens[26], ref_sens2[12])
+        self.assertEqual(sens[27], ref_sens2[13])
+        self.assertEqual(sens[28], ref_sens2[14])
+        self.assertEqual(sens[29], ref_sens2[15])
+        self.assertEqual(sens[30], ref_sens3[6])
+
+    def test_get_parameter_names(self):
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
+        self.assertEqual(names[2], 'Log mean Dim. 1')
+        self.assertEqual(names[3], 'Log mean Dim. 2')
+        self.assertEqual(names[4], 'Log std. Dim. 1')
+        self.assertEqual(names[5], 'Log std. Dim. 2')
+        self.assertEqual(names[6], 'Pooled Dim. 1')
+
+    def test_n_hierarchical_parameters(self):
+        # Test case I
+        n_ids = 1
+        n_dim = self.pop_model.n_dim()
+        n_parameters = self.pop_model.n_parameters()
+        n_bottom, n_top = self.pop_model.n_hierarchical_parameters(n_ids)
+
+        self.assertEqual(n_bottom, n_dim - 1)
+        self.assertEqual(n_top, n_parameters)
+
+        # Test case II
+        n_ids = 10
+        n_dim = self.pop_model.n_dim()
+        n_parameters = self.pop_model.n_parameters()
+        n_bottom, n_top = self.pop_model.n_hierarchical_parameters(n_ids)
+
+        self.assertEqual(n_bottom, n_ids * (n_dim - 1))
+        self.assertEqual(n_top, n_parameters)
+
+    def test_n_parameters(self):
+        n_parameters = self.pop_model.n_parameters()
+        ref = \
+            self.pop_model1.n_parameters() \
+            + self.pop_model2.n_parameters() \
+            + self.pop_model3.n_parameters()
+        self.assertEqual(n_parameters, ref)
+
+    def test_transforms_individual_parameters(self):
+        self.assertFalse(self.pop_model.transforms_individual_parameters())
+
+    def test_sample(self):
+        # Test case I: just one sample
+        seed = 1
+        n_samples = None
+        parameters = np.arange(7)
+        samples = self.pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed)
+        n_dim = self.pop_model.n_dim()
+        self.assertEqual(samples.shape, (1, n_dim))
+
+        # Test case II: Multiple samples
+        seed = 1
+        n_samples = 10
+        parameters = np.arange(7)
+        samples = self.pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed)
+        n_dim = self.pop_model.n_dim()
+        self.assertEqual(samples.shape, (n_samples, n_dim))
+
+    def test_bad_sample(self):
+        # Wrong number of parameters
+        parameters = np.arange(10)
+        with self.assertRaisesRegex(ValueError, 'The number of provided'):
+            self.pop_model.sample(parameters)
+
+    def test_set_parameter_names(self):
+        # Set parameter names to something
+        names = ['some', 'names', 'that', 'match', 'number', 'of', 'params']
+        self.pop_model.set_parameter_names(names)
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], 'some')
+        self.assertEqual(names[1], 'names')
+        self.assertEqual(names[2], 'that')
+        self.assertEqual(names[3], 'match')
+        self.assertEqual(names[4], 'number')
+        self.assertEqual(names[5], 'of')
+        self.assertEqual(names[6], 'params')
+
+        # Reset parameter names
+        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
+        self.assertEqual(names[2], 'Log mean Dim. 1')
+        self.assertEqual(names[3], 'Log mean Dim. 2')
+        self.assertEqual(names[4], 'Log std. Dim. 1')
+        self.assertEqual(names[5], 'Log std. Dim. 2')
+        self.assertEqual(names[6], 'Pooled Dim. 1')
+
+
 class TestCovariatePopulationModel(unittest.TestCase):
     """
     Tests the chi.CovariatePopulationModel class.
