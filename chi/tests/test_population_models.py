@@ -2594,7 +2594,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_compute_log_likelihood(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': 1})
+            'Log mean Dim. 1': 1})
 
         # Compute log-likelihood
         parameters = [2]
@@ -2612,39 +2612,42 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': None})
+            'Log mean Dim. 1': None})
 
     def test_compute_pointwise_ll(self):
-        # Test case I: fix some parameters
-        self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': 1})
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.cpop_model.compute_pointwise_ll('some', 'input')
 
-        # Compute log-likelihood
-        parameters = [2]
-        observations = [2, 3, 4, 5]
-        scores = self.pop_model.compute_pointwise_ll(
-            parameters, observations)
+        # # Test case I: fix some parameters
+        # self.pop_model.fix_parameters(name_value_dict={
+        #     'Log mean Dim. 1': 1})
 
-        # Compute ref score with original error model
-        parameters = [1, 2]
-        error_model = self.pop_model.get_population_model()
-        ref_scores = error_model.compute_pointwise_ll(
-            parameters, observations)
+        # # Compute log-likelihood
+        # parameters = [2]
+        # observations = [2, 3, 4, 5]
+        # scores = self.pop_model.compute_pointwise_ll(
+        #     parameters, observations)
 
-        self.assertEqual(len(scores), 4)
-        self.assertEqual(scores[0], ref_scores[0])
-        self.assertEqual(scores[1], ref_scores[1])
-        self.assertEqual(scores[2], ref_scores[2])
-        self.assertEqual(scores[3], ref_scores[3])
+        # # Compute ref score with original error model
+        # parameters = [1, 2]
+        # error_model = self.pop_model.get_population_model()
+        # ref_scores = error_model.compute_pointwise_ll(
+        #     parameters, observations)
 
-        # Unfix model parameters
-        self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': None})
+        # self.assertEqual(len(scores), 4)
+        # self.assertEqual(scores[0], ref_scores[0])
+        # self.assertEqual(scores[1], ref_scores[1])
+        # self.assertEqual(scores[2], ref_scores[2])
+        # self.assertEqual(scores[3], ref_scores[3])
+
+        # # Unfix model parameters
+        # self.pop_model.fix_parameters(name_value_dict={
+        #     'Log mean Dim. 1': None})
 
     def test_compute_sensitivities(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': 1})
+            'Log mean Dim. 1': 1})
 
         # Compute log-likelihood
         parameters = [2]
@@ -2668,7 +2671,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': None})
+            'Log mean Dim. 1': None})
 
         # Compute log-likelihood
         score, sens = self.pop_model.compute_sensitivities(
@@ -2686,19 +2689,19 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_fix_parameters(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': 1})
+            'Log mean Dim. 1': 1})
 
         n_parameters = self.pop_model.n_parameters()
         self.assertEqual(n_parameters, 1)
 
         parameter_names = self.pop_model.get_parameter_names()
         self.assertEqual(len(parameter_names), 1)
-        self.assertEqual(parameter_names[0], 'Std. log')
+        self.assertEqual(parameter_names[0], 'Log std. Dim. 1')
 
         # Test case II: fix overlapping set of parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': 0.2,
-            'Std. log': 0.1})
+            'Log mean Dim. 1': 0.2,
+            'Log std. Dim. 1': 0.1})
 
         n_parameters = self.pop_model.n_parameters()
         self.assertEqual(n_parameters, 0)
@@ -2708,16 +2711,16 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Test case III: unfix all parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': None,
-            'Std. log': None})
+            'Log mean Dim. 1': None,
+            'Log std. Dim. 1': None})
 
         n_parameters = self.pop_model.n_parameters()
         self.assertEqual(n_parameters, 2)
 
         parameter_names = self.pop_model.get_parameter_names()
         self.assertEqual(len(parameter_names), 2)
-        self.assertEqual(parameter_names[0], 'Mean log')
-        self.assertEqual(parameter_names[1], 'Std. log')
+        self.assertEqual(parameter_names[0], 'Log mean Dim. 1')
+        self.assertEqual(parameter_names[1], 'Log std. Dim. 1')
 
     def test_fix_parameters_bad_input(self):
         name_value_dict = 'Bad type'
@@ -2740,7 +2743,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_n_hierarchical_parameters(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std. log': 0.1})
+            'Log std. Dim. 1': 0.1})
 
         n_ids = 10
         n_indiv, n_pop = self.pop_model.n_hierarchical_parameters(n_ids)
@@ -2749,7 +2752,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix all parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std. log': None})
+            'Log std. Dim. 1': None})
 
         n_ids = 10
         n_indiv, n_pop = self.pop_model.n_hierarchical_parameters(n_ids)
@@ -2759,13 +2762,13 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_n_fixed_parameters(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std. log': 0.1})
+            'Log std. Dim. 1': 0.1})
 
         self.assertEqual(self.pop_model.n_fixed_parameters(), 1)
 
         # Unfix all parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Std. log': None})
+            'Log std. Dim. 1': None})
 
         self.assertEqual(self.pop_model.n_fixed_parameters(), 0)
 
@@ -2776,7 +2779,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_sample(self):
         # Test case I: No covariates
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': 0.1})
+            'Log mean Dim. 1': 0.1})
 
         # Sample
         seed = 42
@@ -2789,8 +2792,8 @@ class TestReducedPopulationModel(unittest.TestCase):
         pop_model = self.pop_model.get_population_model()
         ref_samples = pop_model.sample(parameters, n_samples, seed)
 
-        self.assertEqual(samples.shape, (4,))
-        self.assertEqual(ref_samples.shape, (4,))
+        self.assertEqual(samples.shape, (4, 1))
+        self.assertEqual(ref_samples.shape, (4, 1))
         self.assertEqual(samples[0], ref_samples[0])
         self.assertEqual(samples[1], ref_samples[1])
         self.assertEqual(samples[2], ref_samples[2])
@@ -2798,7 +2801,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': None})
+            'Log mean Dim. 1': None})
 
         # Test case II: Covariates
         seed = 42
@@ -2810,8 +2813,8 @@ class TestReducedPopulationModel(unittest.TestCase):
         ref_samples = self.bare_pop_model.sample(
             parameters, n_samples, seed, covariates, return_psi=True)
 
-        self.assertEqual(samples.shape, (4,))
-        self.assertEqual(ref_samples.shape, (4,))
+        self.assertEqual(samples.shape, (4, 1))
+        self.assertEqual(ref_samples.shape, (4, 1))
         self.assertEqual(samples[0], ref_samples[0])
         self.assertEqual(samples[1], ref_samples[1])
         self.assertEqual(samples[2], ref_samples[2])
@@ -2856,12 +2859,12 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Mean log')
-        self.assertEqual(names[1], 'Std. log')
+        self.assertEqual(names[0], 'Log mean Dim. 1')
+        self.assertEqual(names[1], 'Log std. Dim. 1')
 
         # Fix parameter and set parameter name
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': 1})
+            'Log mean Dim. 1': 1})
         self.pop_model.set_parameter_names(
             ['Std. log myokit.tumour_volume'])
 
@@ -2874,11 +2877,11 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 1)
-        self.assertEqual(names[0], 'Std. log')
+        self.assertEqual(names[0], 'Log std. Dim. 1')
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
-            'Mean log': None})
+            'Log mean Dim. 1': None})
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names

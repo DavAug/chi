@@ -7,7 +7,6 @@
 
 import copy
 import math
-from multiprocessing.sharedctypes import Value
 
 import numpy as np
 from scipy.stats import norm, truncnorm
@@ -1941,7 +1940,6 @@ class ReducedPopulationModel(PopulationModel):
         :returns: Individual parameters :math:`\psi`.
         :rtype: np.ndarray of length (n,)
         """
-        #TODO:
         if not self.transforms_individual_parameters():
             return eta
 
@@ -1973,7 +1971,6 @@ class ReducedPopulationModel(PopulationModel):
         :returns: Individual parameters and sensitivities of shape (1 + p, n).
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
-        # TODO:
         if not self.transforms_individual_parameters():
             n = len(eta)
             p = len(parameters)
