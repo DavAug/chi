@@ -279,3 +279,158 @@ parameters
 For details on how to infer posterior distributions in chi and
 many other details on MCMC sampling, we refer to section
 :doc:`mcmc_sampling`.
+
+Simulating a population model
+*****************************
+
+Above we have seen how chi may be used to infer model parameters from
+measurements. To this end, we assumed that measurements originate
+from a data-generating process that is approximated by a mechanistic model,
+an associated error model and a unique set of model parameters - the
+data-generating parameters. For measurements of many biological systems this
+is, however, a too naïve assumption, as measurements are often taken from
+different, non-identical entities, ranging from measurements across
+cells to measurements across patients. In these cases, it is well established
+that differences between individual entities may lead to inter-individual
+variability in the measurements. A natural extension of the modelling framework
+to capture this additional source of variability is to assume that differences
+across individuals can be modelled by different data-generating parameter
+values for each individual
+
+.. literalinclude:: code/1_simulation_2.py
+    :lines: 303-378
+
+.. raw:: html
+   :file: images/1_simulation_6.html
+
+In this case, we assume for simplicity that the
+inter-individual variability in drug concentration measurements originates from
+different drug elimination rates, :math:`k_e` (a more realistic model would
+also include inter-individual variations in the compartment volume :math:`v`).
+
+Defining a population model
+---------------------------
+
+When sufficiently informative measurements are available for each patient, we
+can use the above introduced inference approaches to learn the
+data-generating parameters for each patient separately. However, when
+measurements are of limited availability it is beneficial to infer the model
+parameters from all available data simultaneously. This requires us to
+explicitly model the inter-individual variability.
+A common approach to model the inter-individual variability is **non-linear mixed
+effects** modelling, where the parameters of patients are modelled as
+a composite of fixed effects :math:`\mu` and random effects :math:`\eta`
+
+.. math::
+    \psi = \mu _{\psi} + \eta _{\psi} \quad \text{and}\quad
+    \sigma = \mu _{\sigma} + \eta _{\sigma},
+
+Here, :math:`\mu _{\psi}` and :math:`\mu _{\sigma}` are constants that model
+the typical parameter values across patients, and
+:math:`\eta _{\psi}` and :math:`\eta _{\sigma}` are random variables that
+model the inter-individual differences. While the mixed-effects picture can
+be useful to develop some intuition for population models, an alternative
+picture is to focus on the distribution of model parameters that is defined by
+the mixed-effects model
+
+.. math::
+    p(\psi, \sigma | \theta),
+
+where :math:`\theta` are the population model parameters.
+The population distribution picture is the one adopted in chi (note however,
+that this picture is equivalent to the mixed-effects picture).
+In the remainder, we
+will for notational ease include :math:`\sigma` in the definition of
+:math:`\psi`, i.e. :math:`(\psi , \sigma) \rightarrow \psi`. To make the
+hierarchy between the model parameters explicit we will refer to
+:math:`\psi` as bottom-level or individual parameters and
+to :math:`\theta` as top-level or population parameters.
+
+The data-generating model can now explicitly model inter-individual
+variability in measurements for known population parameters
+
+.. math::
+    p(y, \psi | \theta , t) = p(y | \psi , t)\, p(\psi | \theta),
+
+where :math:`p(y | \psi , t)` models the measurements of a patient with
+data-generating parameters :math:`\psi`, and :math:`p(\psi | \theta)` models
+the distribution over data-generating (patient-specific) parameters in the
+population.
+
+To make the concept of a population model less abstract let us revisit the
+1 compartment pharmacokinetic model from above where the elimination rate
+varies across patients, and the initial drug amount :math:`a_0`, the
+compartment volume :math:`v` and the measurement noise :math:`\sigma` are the
+same for all patients. Since all parameters but the elimination rate are the
+same across patients, the population model takes the form
+
+.. math::
+    p(\psi | \theta) =
+        \delta (a_0 - \theta _{a_0})\, \delta (v - \theta _{v})\,
+        p(k_e | \theta _{k_e})\, \delta (\sigma - \theta _{\sigma}),
+
+where :math:`\delta (x)` is Dirac's delta distribution which has non-zero
+probability only for :math:`x=0`. In this example, this ensures that all
+patients have the same initial drug amount :math:`a_0 = \theta _{a_0}`, the
+same compartment volume :math:`v = \theta _{v}` and the same measurement noise
+:math:`\sigma = \theta _{\sigma}`. In chi delta distributions
+can be implemented with a :class:`chi.PooledModel`. The distribution of the
+elimination rate in the population, :math:`p(k_e | \theta _{k_e})`, is a
+modelling choice. The simplest, sensible choice for
+:math:`p(k_e | \theta _{k_e})` is a lognormal distribution,
+:class:`chi.LogNormalModel`, which assumes that
+the logarithm of :math:`k_e` is normally distributed (in the mixed-effects
+picture: :math:`\log k_e = \mu _{k_e} + \eta _{k_e}` with
+:math:`\mathcal{N}(\eta _{k_e} | 0, \sigma _{k_e}^2)`).
+This ensures that :math:`k_e` can only assume positive values (choosing a
+Gaussian distribution for :math:`k_e` makes in this case no sense, because
+negative elimination rates would increase the drug amount in the compartment
+over time)
+
+.. math::
+    p(\psi | \theta) =
+        \delta (a_0 - \theta _{a_0})\, \delta (v - \theta _{v})\,
+        \mathrm{LN}(k_e | \mu _{k_e}, \sigma _{k_e}) \,
+        \delta (\sigma - \theta _{\sigma}).
+
+The resulting model has 5 population parameters
+:math:`\theta = (\theta _{a_0}, \theta _{v}, \mu _{k_e}, \sigma _{k_e}, \theta _{\sigma})`.
+
+In chi we can define this population model from instances of
+:class:`chi.PooledModel` and :class:`chi.LogNormalModel` using the
+:class:`chi.ComposedPopulationModel`. From the population model we can then
+simulate the distribution of the individual parameters in the population by
+sampling individual parameters from it
+
+.. literalinclude:: code/1_simulation_2.py
+    :lines: 396-477
+
+.. raw:: html
+   :file: images/1_simulation_7.html
+
+The distribution of drug concentration measurements in the population
+can be simulated by measuring the drug concentration for each sampled set of
+individual parameters, i.e by simulating measurements for the simulated
+patients. Below we will illustrate the 5th to 95th percentile
+range of the population distribution together with the measurements of the 3
+patients from above
+
+.. literalinclude:: code/1_simulation_2.py
+    :lines: 484-535
+
+.. raw:: html
+   :file: images/1_simulation_8.html
+
+For details on how to implement a :class:`chi.PopulationModel` and
+many other details concerning the population models in chi, we refer to
+section :doc:`population_model`.
+
+Hierarchical inference
+**********************
+
+While the simulation of population models is interesting in its own right,
+especially when it is crucial to understand the inter-individual variability
+of the modelled dynamics, we motivated the construction of a population model
+for the individual parameters as a necessity for inference. In particular,
+the population model allows us to estimate the bottom-level parameters for
+all measured individuals simultaneously
