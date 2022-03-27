@@ -124,7 +124,7 @@ if args.test:
     import pints
 
     # Run optimisation
-    initial_parameters = [9, 3, 5, 1]
+    initial_parameters = [9, 3, 5, 1]  # Starting point of optimisation
     parameters_mle, score = pints.optimise(
         log_likelihood, initial_parameters, method=pints.CMAES)
     # End 5.

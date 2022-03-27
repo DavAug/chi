@@ -207,8 +207,9 @@ data-generating parameters is that a finite number of
 measurements do not uniquely define the data-generating parameters of a
 probabilistic model. The
 maximum likelihood estimates *can* therefore be far away from the
-data-generating parameters (in this example
-the maximum likelihood estimates are clearly quite good).
+data-generating parameters just because the realisation of the measurement
+noise happens to favour different parameter values than the data-generating
+ones (in this example the maximum likelihood estimates are clearly quite good).
 In other words, a finite number of measurements
 leaves uncertainty about the model parameters, a.k.a. *parametric uncertainty*.
 While for real-world measurements the notion of
@@ -311,14 +312,14 @@ also include inter-individual variations in the compartment volume :math:`v`).
 Defining a population model
 ---------------------------
 
-When sufficiently informative measurements are available for each patient, we
-can use the above introduced inference approaches to learn the
-data-generating parameters for each patient separately. However, when
+When sufficiently informative measurements are available for each indiviudal,
+we can use the above introduced inference approaches to learn the
+data-generating parameters for each individual separately. However, when
 measurements are of limited availability it is beneficial to infer the model
 parameters from all available data simultaneously. This requires us to
 explicitly model the inter-individual variability.
-A common approach to model the inter-individual variability is **non-linear mixed
-effects** modelling, where the parameters of patients are modelled as
+A popular approach to model inter-individual variability is **non-linear
+mixed effects** modelling, where the parameters of individuals are modelled as
 a composite of fixed effects :math:`\mu` and random effects :math:`\eta`
 
 .. math::
@@ -326,36 +327,40 @@ a composite of fixed effects :math:`\mu` and random effects :math:`\eta`
     \sigma = \mu _{\sigma} + \eta _{\sigma},
 
 Here, :math:`\mu _{\psi}` and :math:`\mu _{\sigma}` are constants that model
-the typical parameter values across patients, and
+the typical parameter values across individuals, and
 :math:`\eta _{\psi}` and :math:`\eta _{\sigma}` are random variables that
 model the inter-individual differences. While the mixed-effects picture can
 be useful to develop some intuition for population models, an alternative
-picture is to focus on the distribution of model parameters that is defined by
-the mixed-effects model
+approach is to focus on the distribution of model parameters that is
+defined by the mixed-effects model
 
 .. math::
     p(\psi, \sigma | \theta),
 
 where :math:`\theta` are the population model parameters.
-The population distribution picture is the one adopted in chi (note however,
-that this picture is equivalent to the mixed-effects picture).
-In the remainder, we
-will for notational ease include :math:`\sigma` in the definition of
+The population distribution picture has the advantage that we can define
+the population distribution, :math:`p(\psi, \sigma | \theta)`, directly,
+while it is not always trivial to workout the distribution of :math:`\psi`
+from the distribution of :math:`\eta`. In chi we will therefore adopt the
+population distribution picture (note however, that this is just a different
+representation of non-linear mixed effects modelling and the approaches are
+equivalent).
+In the remainder, we will for notational ease include :math:`\sigma` in the
+definition of
 :math:`\psi`, i.e. :math:`(\psi , \sigma) \rightarrow \psi`. To make the
 hierarchy between the model parameters explicit we will refer to
 :math:`\psi` as bottom-level or individual parameters and
 to :math:`\theta` as top-level or population parameters.
 
-The data-generating model can now explicitly model inter-individual
-variability in measurements for known population parameters
+We can now construct a data-generating model that explicitly models
+inter-individual variability in measurements
 
 .. math::
     p(y, \psi | \theta , t) = p(y | \psi , t)\, p(\psi | \theta),
 
-where :math:`p(y | \psi , t)` models the measurements of a patient with
+where :math:`p(y | \psi , t)` models the measurements of an individual with
 data-generating parameters :math:`\psi`, and :math:`p(\psi | \theta)` models
-the distribution over data-generating (patient-specific) parameters in the
-population.
+the distribution over data-generating parameters in the population.
 
 To make the concept of a population model less abstract let us revisit the
 1 compartment pharmacokinetic model from above where the elimination rate
@@ -397,16 +402,20 @@ The resulting model has 5 population parameters
 :math:`\theta = (\theta _{a_0}, \theta _{v}, \mu _{k_e}, \sigma _{k_e}, \theta _{\sigma})`.
 
 In chi we can define this population model from instances of
-:class:`chi.PooledModel` and :class:`chi.LogNormalModel` using the
+:class:`chi.PooledModel` and :class:`chi.LogNormalModel` using
 :class:`chi.ComposedPopulationModel`. From the population model we can then
-simulate the distribution of the individual parameters in the population by
-sampling individual parameters from it
+simulate the distribution of the individual parameters in the population via
+sampling
 
 .. literalinclude:: code/1_simulation_2.py
     :lines: 396-477
 
 .. raw:: html
    :file: images/1_simulation_7.html
+
+The dashed lines illustrate the elimination rates of the 3 simulated patients
+above. We omit plotting the other patient parameters as they are all the same
+and uniquely defined by the population distribution.
 
 The distribution of drug concentration measurements in the population
 can be simulated by measuring the drug concentration for each sampled set of
@@ -429,8 +438,10 @@ Hierarchical inference
 **********************
 
 While the simulation of population models is interesting in its own right,
-especially when it is crucial to understand the inter-individual variability
-of the modelled dynamics, we motivated the construction of a population model
-for the individual parameters as a necessity for inference. In particular,
-the population model allows us to estimate the bottom-level parameters for
-all measured individuals simultaneously
+especially when it is crucial to understand the variation
+of the modelled dynamics across individuals, we initially motivated the
+construction of a population model as a necessity for inference when
+measurements come from different, non-identical entities and we nevertheless
+want to estimate the data-generating parameters of all entities.
+
+The population model allows us ...

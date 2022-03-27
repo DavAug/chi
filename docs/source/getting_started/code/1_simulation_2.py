@@ -406,9 +406,9 @@ population_model = chi.ComposedPopulationModel([
 population_parameters = [
     10,     # Pooled initial drug amount
     2,      # Pooled compartment volume
-    -0.35,  # Log mean elimination rate (mu k_e)
+    -0.55,  # Log mean elimination rate (mu k_e)
     0.3,    # Log std. elimination rate (sigma k_e)
-    0.2     # Pooled measurement noise
+    0.4     # Pooled measurement noise
 ]
 
 # Sample individuals from population model
@@ -427,7 +427,8 @@ fig.add_trace(
         x=individual_parameters[:, 0],
         histnorm='probability',
         showlegend=False,
-        xbins_size=0.01
+        xbins_size=0.01,
+        marker_color='lightgrey'
     ),
     row=1,
     col=1
@@ -438,7 +439,8 @@ fig.add_trace(
         x=individual_parameters[:, 1],
         histnorm='probability',
         showlegend=False,
-        xbins_size=0.01
+        xbins_size=0.01,
+        marker_color='lightgrey'
     ),
     row=1,
     col=2
@@ -448,7 +450,8 @@ fig.add_trace(
         name='Pop. model samples',
         x=individual_parameters[:, 2],
         histnorm='probability',
-        showlegend=False
+        showlegend=False,
+        marker_color='lightgrey'
     ),
     row=2,
     col=1
@@ -459,10 +462,47 @@ fig.add_trace(
         x=individual_parameters[:, 3],
         histnorm='probability',
         showlegend=False,
-        xbins_size=0.01
+        xbins_size=0.01,
+        marker_color='lightgrey'
     ),
     row=2,
     col=2
+)
+fig.add_trace(
+    go.Scatter(
+        name='Patient 1',
+        x=[parameters_patient_1[2], parameters_patient_1[2]],
+        y=[0, 0.12],
+        mode='lines',
+        line=dict(color=colors[0], dash='dash'),
+        showlegend=False
+    ),
+    row=2,
+    col=1
+)
+fig.add_trace(
+    go.Scatter(
+        name='Patient 2',
+        x=[parameters_patient_2[2], parameters_patient_2[2]],
+        y=[0, 0.12],
+        mode='lines',
+        line=dict(color=colors[1], dash='dash'),
+        showlegend=False
+    ),
+    row=2,
+    col=1
+)
+fig.add_trace(
+    go.Scatter(
+        name='Patient 3',
+        x=[parameters_patient_3[2], parameters_patient_3[2]],
+        y=[0, 0.12],
+        mode='lines',
+        line=dict(color=colors[2], dash='dash'),
+        showlegend=False
+    ),
+    row=2,
+    col=1
 )
 fig.update_layout(
     xaxis_title='Initial drug amount',
@@ -473,7 +513,7 @@ fig.update_layout(
     yaxis3_title='Probability',
     xaxis_range=[9.8, 10.2],
     xaxis2_range=[1.8, 2.2],
-    xaxis4_range=[0, 0.4],
+    xaxis4_range=[0.2, 0.6],
     template='plotly_white'
 )
 fig.show()
@@ -497,7 +537,7 @@ ninety_fifth = np.percentile(pop_measurements, q=95, axis=0)
 fig.add_trace(go.Scatter(
     x=np.hstack([times, times[::-1]]),
     y=np.hstack([fifth, ninety_fifth[::-1]]),
-    line=dict(width=1, color='grey'),
+    line=dict(width=1, color='lightgrey'),
     fill='toself',
     name='Population model',
     text=r"90% bulk probability",
