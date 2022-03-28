@@ -635,8 +635,8 @@ class TestLogNormalLinearCovariateModel(unittest.TestCase):
     def test_get_parameter_names(self):
         names = self.cov_model.get_parameter_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Base mean log')
-        self.assertEqual(names[1], 'Std. log')
+        self.assertEqual(names[0], 'Base log mean')
+        self.assertEqual(names[1], 'Log std.')
 
     def test_n_covariates(self):
         self.assertEqual(self.cov_model.n_covariates(), 0)
@@ -654,8 +654,8 @@ class TestLogNormalLinearCovariateModel(unittest.TestCase):
         self.assertEqual(n[1], names[1])
 
         n = self.cov_model2.get_parameter_names()
-        self.assertEqual(n[0], 'Base mean log')
-        self.assertEqual(n[1], 'Std. log')
+        self.assertEqual(n[0], 'Base log mean')
+        self.assertEqual(n[1], 'Log std.')
         self.assertEqual(n[2], 'Shift Covariate 1')
         self.assertEqual(n[3], 'Shift Covariate 2')
 
@@ -668,8 +668,8 @@ class TestLogNormalLinearCovariateModel(unittest.TestCase):
         self.assertEqual(n[1], names[1])
 
         n = self.cov_model2.get_parameter_names()
-        self.assertEqual(n[0], 'Base mean log')
-        self.assertEqual(n[1], 'Std. log')
+        self.assertEqual(n[0], 'Base log mean')
+        self.assertEqual(n[1], 'Log std.')
         self.assertEqual(n[2], 'Shift test')
         self.assertEqual(n[3], 'Shift names')
 
@@ -701,8 +701,8 @@ class TestLogNormalLinearCovariateModel(unittest.TestCase):
         names = self.cov_model.get_parameter_names()
 
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Base mean log')
-        self.assertEqual(names[1], 'Std. log')
+        self.assertEqual(names[0], 'Base log mean')
+        self.assertEqual(names[1], 'Log std.')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
