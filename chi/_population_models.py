@@ -35,6 +35,7 @@ class PopulationModel(object):
                 'equal to 1.')
         self._n_dim = int(n_dim)
         self._transforms_psi = False
+        self._needs_covariates = False
 
         if dim_names:
             if len(dim_names) != self._n_dim:
@@ -103,10 +104,14 @@ class PopulationModel(object):
         """
         return copy.copy(self._dim_names)
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the names of the population model parameters. If name is
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
         raise NotImplementedError
 
@@ -115,6 +120,13 @@ class PopulationModel(object):
         Returns the dimensionality of the population model.
         """
         return self._n_dim
+
+    def needs_covariates(self):
+        """
+        A boolean flag indicating whether the population model is conditionally
+        defined on covariates.
+        """
+        return self._needs_covariates
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -156,7 +168,7 @@ class PopulationModel(object):
         """
         return self._transforms_psi
 
-    def sample(self, parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
         r"""
         Returns random samples from the population distribution.
 
@@ -176,8 +188,6 @@ class PopulationModel(object):
         r"""
         Sets the names of the population model dimensions.
 
-        This resets the parameter names to the default names.
-
         Parameters
         ----------
         names
@@ -196,7 +206,6 @@ class PopulationModel(object):
                 'Length of names does not match the number of dimensions.')
 
         self._dim_names = [str(label) for label in names]
-        self.set_parameter_names(None)
 
     def set_parameter_names(self, names=None):
         """
@@ -234,35 +243,160 @@ class ComposedPopulationModel(PopulationModel):
     """
     def __init__(self, population_models):
         super(PopulationModel, self).__init__()
-        # TODO: Need to generalise to covariate models
         # Check inputs
         for pop_model in population_models:
             if not isinstance(pop_model, chi.PopulationModel):
                 raise TypeError(
                     'The population models have to be instances of '
                     'chi.PopulationModel.')
-
         self._population_models = population_models
 
         # Get properties of population models
         n_dim = 0
         n_parameters = 0
-        names = []
-        dim_names = []
-        transforms_psi = False
-        for pop_model in self._population_models:
+        n_covariates = 0
+        transforms_psi = []
+        needs_covariates = False
+        for idp, pop_model in enumerate(self._population_models):
+            needs_cov = pop_model.needs_covariates()
+            needs_covariates = needs_covariates | needs_cov
+            if pop_model.transforms_individual_parameters():
+                transforms_psi.append(
+                    [idp, needs_cov, n_dim, n_parameters])
+            if needs_cov:
+                n_covariates += pop_model.n_covariates()
             n_dim += pop_model.n_dim()
             n_parameters += pop_model.n_parameters()
-            names += pop_model.get_parameter_names()
-            dim_names += pop_model.get_dim_names()
-            transforms_psi = \
-                transforms_psi \
-                | pop_model.transforms_individual_parameters()
+
         self._n_dim = n_dim
         self._n_parameters = n_parameters
-        self._parameter_names = names
-        self._dim_names = dim_names
-        self._transforms_psi = transforms_psi
+        self._n_covariates = n_covariates
+        self._transforms_psi = True if len(transforms_psi) > 0 else False
+        self._transform_psi_models = transforms_psi
+        self._needs_covariates = needs_covariates
+
+    def compute_individual_parameters(
+            self, parameters, eta, covariates=None):
+        r"""
+        Returns the individual parameters :math:`\psi`.
+
+        If the model does not transform the bottom parameters, i.e.
+        :math:`\eta = \psi`, the input :math:`\eta` are returned.
+
+        If the population model does not use covariates, the covariate input
+        is ignored.
+
+        If the population model uses covariates, the covariates of the
+        constituent population models are expected to be concatinated in the
+        order of the consitutent models. The order of the covariates can be
+        checked with :meth:`get_covariate_names`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (n_parameters,)
+        :param eta: Inter-individual fluctuations :math:`\eta`.
+        :type eta: np.ndarray of shape (n_ids, n_dim)
+        :param covariates: Individual covariates :math:`\chi`.
+        :type covariates: np.ndarray of shape (n_ids, n_cov)
+        :returns: Individual parameters :math:`\psi`.
+        :rtype: np.ndarray of shape (n_ids, n_dim)
+        """
+        if not self._transforms_psi:
+            return eta
+
+        current_cov = 0
+        psis = np.empty(shape=eta.shape)
+        psis[:, :] = eta[:, :]
+        for info in self._transform_psi_models:
+            idp, needs_cov, current_dim, current_parameters = info
+            pop_model = self._population_models[idp]
+
+            # Get covariates
+            cov = None
+            if needs_cov:
+                end_cov = current_cov+pop_model.n_covariates()
+                cov = covariates[:, current_cov:end_cov]
+                current_cov = end_cov
+
+            # Transform parameters
+            # NOTE: This only works because CovariatePopulationModel can only
+            # be 1-dimensional. Should they be extended to multiple dimensions
+            # we need to start slicing the dimensions.
+            end_parameters = current_parameters + pop_model.n_parameters()
+            psis[:, current_dim] = \
+                pop_model.compute_individual_parameters(
+                    parameters[current_parameters:end_parameters],
+                    eta[:, current_dim], cov)
+
+        return psis
+
+    def compute_individual_sensitivities(
+            self, parameters, eta, covariates=None):
+        r"""
+        Returns the individual parameters :math:`\psi` and their sensitivities
+        with respect to the model parameters :math:`\vartheta` and the relevant
+        fluctuations :math:`\eta`.
+
+        If the model does not transform the bottom parameters, i.e.
+        :math:`\eta = \psi`, the input :math:`\eta` are returned.
+
+        If the population model does not use covariates, the covariate input
+        is ignored.
+
+        If the population model uses covariates, the covariates of the
+        constituent population models are expected to be concatinated in the
+        order of the consitutent models. The order of the covariates can be
+        checked with :meth:`get_covariate_names`.
+
+        :param parameters: Model parameters :math:`\vartheta`.
+        :type parameters: np.ndarray of length (n_parameters,)
+        :param eta: Inter-individual fluctuations :math:`\eta`.
+        :type eta: np.ndarray of shape (n_ids, n_dim)
+        :param covariates: Individual covariates :math:`\chi`.
+        :type covariates: np.ndarray of shape (n_ids, n_cov)
+        :returns: Individual parameters :math:`\psi` and sensitivities
+            (:math:`\partial _{\eta} \psi` ,
+            :math:`\partial _{\vartheta _1} \psi`, :math:`\ldots`,
+            :math:`\partial _{\vartheta _p} \psi`).
+        :rtype: Tuple[np.ndarray, np.ndarray] of shapes (n_ids, n_dim) and
+            (1 + n_parameters, n_ids, n_dim)
+        """
+        sensitivities = np.zeros(
+            shape=(1 + self._n_parameters, len(eta), self._n_dim))
+        sensitivities[0] = 1
+        if not self._transforms_psi:
+            return eta, sensitivities
+
+        current_cov = 0
+        psis = np.empty(shape=eta.shape)
+        psis[:, :] = eta[:, :]
+        for info in self._transform_psi_models:
+            idp, needs_cov, current_dim, current_parameters = info
+            pop_model = self._population_models[idp]
+
+            # Get covariates
+            cov = None
+            if needs_cov:
+                end_cov = current_cov+pop_model.n_covariates()
+                cov = covariates[:, current_cov:end_cov]
+                current_cov = end_cov
+
+            # Transform parameters
+            # NOTE: This only works because CovariatePopulationModel can only
+            # be 1-dimensional. Should they be extended to multiple dimensions
+            # we need to start slicing the dimensions.
+            end_parameters = current_parameters + pop_model.n_parameters()
+            psi, sens = \
+                pop_model.compute_individual_sensitivities(
+                    parameters[current_parameters:end_parameters],
+                    eta[:, current_dim], cov)
+
+            psis[:, current_dim] = psi
+            sensitivities[0, :, current_dim] = sens[0]
+            sensitivities[
+                1+current_parameters:1+end_parameters, :, current_dim
+            ] = sens[1:]
+
+        return psis, sensitivities
 
     def compute_log_likelihood(self, parameters, observations):
         """
@@ -357,12 +491,41 @@ class ComposedPopulationModel(PopulationModel):
 
         return score, sensitivities
 
-    def get_parameter_names(self):
+    def get_covariate_names(self):
+        """
+        Returns the names of the covariates. If name is
+        not set, defaults are returned.
+        """
+        names = []
+        for pop_model in self._population_models:
+            if pop_model.needs_covariates():
+                names += pop_model.get_covariate_names()
+        return names
+
+    def get_dim_names(self):
+        """
+        Returns the names of the dimensions.
+        """
+        names = []
+        for pop_model in self._population_models:
+            names += pop_model.get_dim_names()
+
+        return names
+
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the names of the population model parameters. If name is
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
-        return copy.copy(self._parameter_names)
+        names = []
+        for pop_model in self._population_models:
+            names += pop_model.get_parameter_names(exclude_dim_names)
+
+        return names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -383,6 +546,12 @@ class ComposedPopulationModel(PopulationModel):
             n_top += n_t
 
         return n_bottom, n_top
+
+    def n_covariates(self):
+        """
+        Returns the number of covariates.
+        """
+        return self._n_covariates
 
     def n_parameters(self):
         """
@@ -410,19 +579,32 @@ class ComposedPopulationModel(PopulationModel):
         """
         return self._transforms_psi
 
-    def sample(self, parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, seed=None, covariates=None):
         r"""
         Returns random samples from the population distribution.
 
         The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
 
-        :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,)
+        If the model does not depend on covariates the ``covariate`` input is
+        ignored.
+
+        If the population model uses covariates, the covariates of the
+        constituent population models are expected to be concatinated in the
+        order of the consitutent models. The order of the covariates can be
+        checked with :meth:`get_covariate_names`.
+
+        :param parameters: Values of the model parameters.
+        :type parameters: List, np.ndarray of shape (n_parameters,)
         :param n_samples: Number of samples. If ``None``, one sample is
             returned.
         :type n_samples: int, optional
         :param seed: A seed for the pseudo-random number generator.
-        :type seed: int, optional
+        :type seed: int, np.random.Generator, optional
+        :param covariates: Values for the covariates. If ``None``, default
+            is assumed defined by the :class:`CovariateModel`.
+        :type covariates: List, np.ndarray of shape (n_cov,)
+        :returns: Samples from population model conditional on covariates.
+        :rtype: np.ndarray of shape (n_samples, n_dim)
         """
         parameters = np.asarray(parameters)
         if len(parameters) != self._n_parameters:
@@ -443,17 +625,56 @@ class ComposedPopulationModel(PopulationModel):
         # Sample from constituent population models
         current_dim = 0
         current_param = 0
+        current_cov = 0
         for pop_model in self._population_models:
             end_dim = current_dim + pop_model.n_dim()
             end_param = current_param + pop_model.n_parameters()
+
+            # Get covariates
+            cov = None
+            if pop_model.needs_covariates():
+                cov = covariates[:, current_cov:pop_model.n_covariates()]
+                current_cov += pop_model.n_covariates()
+
+            # Sample bottom-level parameters
             samples[:, current_dim:end_dim] = pop_model.sample(
-                parameters=parameters[current_param:end_param],
-                n_samples=n_samples,
-                seed=rng)
+                    parameters=parameters[current_param:end_param],
+                    n_samples=n_samples,
+                    seed=rng,
+                    covariates=cov)
             current_dim = end_dim
             current_param = end_param
 
         return samples
+
+    def set_dim_names(self, names=None):
+        r"""
+        Sets the names of the population model dimensions.
+
+        Parameters
+        ----------
+        names
+            An array-like object with string-convertable entries of length
+            :meth:`n_dim`. If ``None``, dimension names are reset to
+            defaults.
+        """
+        if names is None:
+            # Reset dimension names
+            for pop_model in self._population_models:
+                pop_model.set_dim_names()
+            return None
+
+        if len(names) != self._n_dim:
+            raise ValueError(
+                'Length of names does not match the number of dimensions.')
+
+        # Set dimension names
+        names = [str(label) for label in names]
+        current_dim = 0
+        for pop_model in self._population_models:
+            end_dim = current_dim + pop_model.n_dim()
+            pop_model.set_dim_names(names[current_dim:end_dim])
+            current_dim = end_dim
 
     def set_parameter_names(self, names=None):
         """
@@ -465,18 +686,22 @@ class ComposedPopulationModel(PopulationModel):
         :type names: List[str]
         """
         if names is None:
-            # Reset names to defaults
-            names = []
+            # Reset parameter names
             for pop_model in self._population_models:
-                names += pop_model.get_parameter_names()
-            self._parameter_names = names
+                pop_model.set_parameter_names()
             return None
 
         if len(names) != self._n_parameters:
             raise ValueError(
                 'Length of names does not match the number of parameters.')
 
-        self._parameter_names = [str(label) for label in names]
+        # Set parameter names
+        names = [str(label) for label in names]
+        current_param = 0
+        for pop_model in self._population_models:
+            end_param = current_param + pop_model.n_parameters()
+            pop_model.set_parameter_names(names[current_param:end_param])
+            current_param = end_param
 
 
 class CovariatePopulationModel(PopulationModel):
@@ -518,8 +743,10 @@ class CovariatePopulationModel(PopulationModel):
     :type population_model: PopulationModel
     :param covariate_model: Defines the covariate model.
     :type covariate_model: CovariateModel
+    :param dim_names: Name of dimensions.
+    :type dim_names: List[str], optional
     """
-    def __init__(self, population_model, covariate_model):
+    def __init__(self, population_model, covariate_model, dim_names=None):
         super(CovariatePopulationModel, self).__init__()
         # Check inputs
         if not isinstance(population_model, PopulationModel):
@@ -546,8 +773,12 @@ class CovariatePopulationModel(PopulationModel):
 
         # Set transform psis to true
         self._transforms_psi = True
+        self._needs_covariates = \
+            True if self._covariate_model.n_covariates() > 0 else False
         self._n_dim = self._population_model.n_dim()
-        self._dim_names = self._population_model.get_dim_names()
+        if (not dim_names) or (len(dim_names) != 1):
+            dim_names = self._population_model.get_dim_names()
+        self._dim_names = dim_names
 
     def compute_individual_parameters(
             self, parameters, eta, covariates=None):
@@ -564,7 +795,7 @@ class CovariatePopulationModel(PopulationModel):
         :param eta: Inter-individual fluctuations :math:`\eta`.
         :type eta: np.ndarray of length (n,)
         :param covariates: Individual covariates :math:`\chi`.
-        :type covariates: np.ndarray of length (n, c)
+        :type covariates: np.ndarray of shape (n, c)
         :returns: Individual parameters :math:`\psi`.
         :rtype: np.ndarray of length (n,)
         """
@@ -702,12 +933,22 @@ class CovariatePopulationModel(PopulationModel):
         """
         return self._covariate_model.get_covariate_names()
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the names of the model parameters. If name is
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
-        return self._covariate_model.get_parameter_names()
+        names = self._covariate_model.get_parameter_names()
+        if exclude_dim_names:
+            return names
+
+        # Append dim name to model parameters
+        names = [name + ' ' + self._dim_names[0] for name in names]
+        return names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -861,9 +1102,7 @@ class GaussianModel(PopulationModel):
         self._n_parameters = 2 * self._n_dim
 
         # Set default parameter names
-        self._parameter_names = [
-            'Mean ' + dim_name for dim_name in self._dim_names] + [
-            'Std. ' + dim_name for dim_name in self._dim_names]
+        self._parameter_names = ['Mean'] * self._n_dim + ['Std.'] * self._n_dim
 
     @staticmethod
     def _compute_log_likelihood(mus, vars, observations):
@@ -1072,12 +1311,25 @@ class GaussianModel(PopulationModel):
 
         return self._compute_sensitivities(mus, vars, observations)
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
-        return copy.copy(self._parameter_names)
+        if exclude_dim_names:
+            return copy.copy(self._parameter_names)
+
+        # Append dimension names
+        names = []
+        for name_id, name in enumerate(self._parameter_names):
+            current_dim = name_id % self._n_dim
+            names += [name + ' ' + self._dim_names[current_dim]]
+
+        return names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -1101,7 +1353,7 @@ class GaussianModel(PopulationModel):
         """
         return self._n_parameters
 
-    def sample(self, parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
         r"""
         Returns random samples from the population distribution.
 
@@ -1162,8 +1414,7 @@ class GaussianModel(PopulationModel):
         if names is None:
             # Reset names to defaults
             self._parameter_names = [
-                'Mean ' + dim_name for dim_name in self._dim_names] + [
-                'Std. ' + dim_name for dim_name in self._dim_names]
+                'Mean'] * self._n_dim + ['Std.'] * self._n_dim
             return None
 
         if len(names) != self._n_parameters:
@@ -1330,8 +1581,7 @@ class LogNormalModel(PopulationModel):
 
         # Set default parameter names
         self._parameter_names = [
-            'Log mean ' + dim_name for dim_name in self._dim_names] + [
-            'Log std. ' + dim_name for dim_name in self._dim_names]
+            'Log mean'] * self._n_dim + ['Log std.'] * self._n_dim
 
     @staticmethod
     def _compute_log_likelihood(mus, vars, observations):
@@ -1583,12 +1833,25 @@ class LogNormalModel(PopulationModel):
 
         return np.vstack([mean, std])
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
-        return copy.copy(self._parameter_names)
+        if exclude_dim_names:
+            return copy.copy(self._parameter_names)
+
+        # Append dimension names
+        names = []
+        for name_id, name in enumerate(self._parameter_names):
+            current_dim = name_id % self._n_dim
+            names += [name + ' ' + self._dim_names[current_dim]]
+
+        return names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -1612,7 +1875,7 @@ class LogNormalModel(PopulationModel):
         """
         return self._n_parameters
 
-    def sample(self, parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
         r"""
         Returns random samples from the population distribution.
 
@@ -1673,8 +1936,7 @@ class LogNormalModel(PopulationModel):
         if names is None:
             # Reset names to defaults
             self._parameter_names = [
-                'Log mean ' + dim_name for dim_name in self._dim_names] + [
-                'Log std. ' + dim_name for dim_name in self._dim_names]
+                'Log mean'] * self._n_dim + ['Log std.'] * self._n_dim
             return None
 
         if len(names) != self._n_parameters:
@@ -1706,7 +1968,7 @@ class PooledModel(PopulationModel):
         self._n_parameters = self._n_dim
 
         # Set default parameter names
-        self._parameter_names = ['Pooled ' + name for name in self._dim_names]
+        self._parameter_names = ['Pooled'] * self._n_dim
 
     def compute_log_likelihood(self, parameters, observations):
         r"""
@@ -1805,12 +2067,25 @@ class PooledModel(PopulationModel):
         # Otherwise return 0
         return 0, np.zeros(shape=(n_ids + 1) * self._n_dim)
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
-        return copy.copy(self._parameter_names)
+        if exclude_dim_names:
+            return copy.copy(self._parameter_names)
+
+        # Append dimension names
+        names = []
+        for name_id, name in enumerate(self._parameter_names):
+            current_dim = name_id % self._n_dim
+            names += [name + ' ' + self._dim_names[current_dim]]
+
+        return names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -1832,7 +2107,7 @@ class PooledModel(PopulationModel):
         """
         return self._n_parameters
 
-    def sample(self, parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, *args, **kwargs):
         r"""
         Returns random samples from the underlying population
         distribution.
@@ -1847,8 +2122,6 @@ class PooledModel(PopulationModel):
         :param n_samples: Number of samples. If ``None``, one sample is
             returned.
         :type n_samples: int, optional
-        :param seed: A seed for the pseudo-random number generator.
-        :type seed: int, optional
         """
         parameters = np.asarray(parameters)
         if len(parameters.flatten()) != self._n_parameters:
@@ -1880,8 +2153,7 @@ class PooledModel(PopulationModel):
         """
         if names is None:
             # Reset names to defaults
-            self._parameter_names = [
-                'Pooled ' + name for name in self._dim_names]
+            self._parameter_names = ['Pooled'] * self._n_dim
             return None
 
         if len(names) != self._n_parameters:
@@ -1919,9 +2191,6 @@ class ReducedPopulationModel(PopulationModel):
         self._fixed_params_mask = None
         self._fixed_params_values = None
         self._n_parameters = population_model.n_parameters()
-        self._parameter_names = population_model.get_parameter_names()
-        self._n_dim = population_model.n_dim()
-        self._dim_names = population_model.get_dim_names()
 
     def compute_individual_parameters(
             self, parameters, eta, covariates=None):
@@ -2107,7 +2376,8 @@ class ReducedPopulationModel(PopulationModel):
             self._fixed_params_values = np.empty(shape=self._n_parameters)
 
         # Update the mask and values
-        for index, name in enumerate(self._parameter_names):
+        for index, name in enumerate(
+                self._population_model.get_parameter_names()):
             try:
                 value = name_value_dict[name]
             except KeyError:
@@ -2133,13 +2403,14 @@ class ReducedPopulationModel(PopulationModel):
         except AttributeError:
             return []
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
         """
+        names = self._population_model.get_parameter_names(exclude_dim_names)
+
         # Remove fixed model parameters
-        names = self._parameter_names
         if self._fixed_params_mask is not None:
             names = np.array(names)
             names = names[~self._fixed_params_mask]
@@ -2241,11 +2512,8 @@ class ReducedPopulationModel(PopulationModel):
             parameters = self._fixed_params_values
 
         # Sample from population model
-        if self.transforms_individual_parameters():
-            sample = self._population_model.sample(
-                parameters, n_samples, seed, covariates, return_psi)
-        else:
-            sample = self._population_model.sample(parameters, n_samples, seed)
+        sample = self._population_model.sample(
+            parameters, n_samples, seed, covariates, return_psi)
 
         return sample
 
@@ -2280,8 +2548,6 @@ class ReducedPopulationModel(PopulationModel):
         if names is None:
             # Reset names to defaults
             self._population_model.set_parameter_names()
-            self._parameter_names = \
-                self._population_model.get_parameter_names()
             return None
 
         # Check input
@@ -2306,7 +2572,6 @@ class ReducedPopulationModel(PopulationModel):
 
         # Set parameter names
         self._population_model.set_parameter_names(parameter_names)
-        self._parameter_names = self._population_model.get_parameter_names()
 
     def transforms_individual_parameters(self):
         r"""
@@ -2369,9 +2634,7 @@ class TruncatedGaussianModel(PopulationModel):
         self._n_parameters = 2 * self._n_dim
 
         # Set default parameter names
-        self._parameter_names = [
-            'Mu ' + dim_name for dim_name in self._dim_names] + [
-            'Sigma ' + dim_name for dim_name in self._dim_names]
+        self._parameter_names = ['Mu'] * self._n_dim + ['Sigma'] * self._n_dim
 
     @staticmethod
     def _compute_log_likelihood(mus, sigmas, observations):  # pragma: no cover
@@ -2629,7 +2892,6 @@ class TruncatedGaussianModel(PopulationModel):
             raise ValueError('The standard deviation cannot be negative.')
 
         # Compute mean and standard deviation
-        # TODO: Test this, especially for negative means
         mean = \
             mus + sigmas * norm.pdf(mus/sigmas) / (1 - norm.cdf(-mus/sigmas))
         std = np.sqrt(
@@ -2642,12 +2904,25 @@ class TruncatedGaussianModel(PopulationModel):
 
         return [mean, std]
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
-        return copy.copy(self._parameter_names)
+        if exclude_dim_names:
+            return copy.copy(self._parameter_names)
+
+        # Append dimension names
+        names = []
+        for name_id, name in enumerate(self._parameter_names):
+            current_dim = name_id % self._n_dim
+            names += [name + ' ' + self._dim_names[current_dim]]
+
+        return names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -2671,7 +2946,7 @@ class TruncatedGaussianModel(PopulationModel):
         """
         return self._n_parameters
 
-    def sample(self, parameters, n_samples=None, seed=None):
+    def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
         r"""
         Returns random samples from the population distribution.
 
@@ -2742,8 +3017,7 @@ class TruncatedGaussianModel(PopulationModel):
         if names is None:
             # Reset names to defaults
             self._parameter_names = [
-                'Mu ' + dim_name for dim_name in self._dim_names] + [
-                'Sigma ' + dim_name for dim_name in self._dim_names]
+                'Mu'] * self._n_dim + ['Sigma'] * self._n_dim
             return None
 
         if len(names) != self._n_parameters:

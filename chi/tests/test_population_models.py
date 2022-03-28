@@ -21,18 +21,115 @@ class TestComposedPopulationModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Test case I
-        cls.pop_model1 = chi.GaussianModel()
-        cls.pop_model2 = chi.LogNormalModel(n_dim=2)
-        cls.pop_model3 = chi.PooledModel()
+        cls.pop_model1 = chi.GaussianModel(dim_names=['Dim. 1'])
+        cls.pop_model2 = chi.LogNormalModel(
+            n_dim=2, dim_names=['Dim. 2', 'Dim. 3'])
+        cls.pop_model3 = chi.PooledModel(dim_names=['Dim. 4'])
         cls.pop_model = chi.ComposedPopulationModel(
-            population_models=[cls.pop_model1, cls.pop_model2, cls.pop_model3])
+            population_models=[
+                cls.pop_model1,
+                cls.pop_model2,
+                cls.pop_model3])
+
+        # Test case II:
+        cls.pop_model4 = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LogNormalLinearCovariateModel(n_covariates=1),
+            dim_names=['Dim. 2'])
+        cls.pop_model_prime = chi.ComposedPopulationModel(
+            population_models=[
+                cls.pop_model1,
+                cls.pop_model4,
+                cls.pop_model3])
 
     def test_bad_instantiation(self):
         pop_models = ['bad', 'type']
         with self.assertRaisesRegex(TypeError, 'The population models have'):
             chi.ComposedPopulationModel(pop_models)
 
+    def test_compute_individual_parameters(self):
+        # Test case I: no covariate model
+        n_ids, n_dim = (6, 4)
+        etas = np.ones(shape=(n_ids, n_dim))
+        parameters = np.arange(7)
+        psis = self.pop_model.compute_individual_parameters(
+            parameters, etas)
+        self.assertEqual(psis.shape, (6, 4))
+        self.assertEqual(list(psis[:, 0]), list(etas[:, 0]))
+        self.assertEqual(list(psis[:, 1]), list(etas[:, 1]))
+        self.assertEqual(list(psis[:, 2]), list(etas[:, 2]))
+        self.assertEqual(list(psis[:, 3]), list(etas[:, 3]))
+
+        psis = self.pop_model.compute_individual_parameters(
+            parameters, etas, covariates='some covs')
+        self.assertEqual(psis.shape, (6, 4))
+        self.assertEqual(list(psis[:, 0]), list(etas[:, 0]))
+        self.assertEqual(list(psis[:, 1]), list(etas[:, 1]))
+        self.assertEqual(list(psis[:, 2]), list(etas[:, 2]))
+        self.assertEqual(list(psis[:, 3]), list(etas[:, 3]))
+
+        # Test case II: covariate model
+        n_ids, n_dim, n_cov = (6, 3, 1)
+        etas = np.ones(shape=(n_ids, n_dim))
+        parameters = np.arange(6)
+        covariates = np.arange(n_ids * n_cov).reshape(n_ids, n_cov)
+        psis = self.pop_model_prime.compute_individual_parameters(
+            parameters, etas, covariates)
+        self.assertEqual(psis.shape, (6, 3))
+        self.assertEqual(list(psis[:, 0]), list(etas[:, 0]))
+        self.assertNotEqual(list(psis[:, 1]), list(etas[:, 1]))
+        self.assertEqual(list(psis[:, 2]), list(etas[:, 2]))
+
+    def test_compute_individual_sensitivities(self):
+        # Test case I: no covariate model
+        n_ids, n_dim = (6, 4)
+        etas = np.ones(shape=(n_ids, n_dim))
+        n_parameters = 7
+        parameters = np.arange(n_parameters)
+        psis, dpsi = self.pop_model.compute_individual_sensitivities(
+            parameters, etas)
+        self.assertEqual(psis.shape, (6, 4))
+        self.assertTrue(np.array_equal(psis, etas))
+        self.assertEqual(dpsi.shape, (1 + n_parameters, n_ids, n_dim))
+        self.assertTrue(np.array_equal(dpsi[0], np.ones((n_ids, n_dim))))
+        self.assertTrue(
+            np.array_equal(dpsi[1:], np.zeros((n_parameters, n_ids, n_dim))))
+
+        psis, dpsi = self.pop_model.compute_individual_sensitivities(
+            parameters, etas, covariates='some covariates')
+        self.assertEqual(psis.shape, (6, 4))
+        self.assertTrue(np.array_equal(psis, etas))
+        self.assertEqual(dpsi.shape, (1 + n_parameters, n_ids, n_dim))
+        self.assertTrue(np.array_equal(dpsi[0], np.ones((n_ids, n_dim))))
+        self.assertTrue(
+            np.array_equal(dpsi[1:], np.zeros((n_parameters, n_ids, n_dim))))
+
+        # Test case II: covariate model
+        n_ids, n_dim, n_cov = (6, 3, 1)
+        etas = np.ones(shape=(n_ids, n_dim))
+        n_parameters = 6
+        parameters = np.arange(n_parameters)
+        covariates = np.arange(n_ids * n_cov).reshape(n_ids, n_cov)
+        psis, dpsi = self.pop_model_prime.compute_individual_sensitivities(
+            parameters, etas, covariates)
+        self.assertEqual(psis.shape, (6, 3))
+        self.assertTrue(np.array_equal(psis[:, 0], etas[:, 0]))
+        self.assertFalse(np.array_equal(psis[:, 1], etas[:, 1]))
+        self.assertTrue(np.array_equal(psis[:, 2], etas[:, 2]))
+        self.assertEqual(dpsi.shape, (1 + n_parameters, n_ids, n_dim))
+        ref_dpsi = np.zeros((1 + n_parameters, n_ids, n_dim))
+        ref_dpsi[0] = 1
+        self.assertTrue(np.array_equal(dpsi[0, :, 0], ref_dpsi[0, :, 0]))
+        self.assertFalse(np.array_equal(dpsi[0, :, 1], ref_dpsi[0, :, 1]))
+        self.assertTrue(np.array_equal(dpsi[0, :, 2], ref_dpsi[0, :, 2]))
+        self.assertTrue(np.array_equal(dpsi[1:, :, 0], ref_dpsi[1:, :, 0]))
+        self.assertTrue(np.array_equal(dpsi[1:3, :, 1], ref_dpsi[1:3, :, 1]))
+        self.assertFalse(np.array_equal(dpsi[3:6, :, 1], ref_dpsi[3:6, :, 1]))
+        self.assertTrue(np.array_equal(dpsi[6, :, 1], ref_dpsi[6, :, 1]))
+        self.assertTrue(np.array_equal(dpsi[1:, :, 2], ref_dpsi[1:, :, 2]))
+
     def test_compute_log_likelihood(self):
+        # Test case I: no covariate model
         n_ids, n_dim = (6, 4)
         psis = np.ones(shape=(n_ids, n_dim))
         parameters = np.arange(7)
@@ -48,7 +145,23 @@ class TestComposedPopulationModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertAlmostEqual(score, ref_score)
 
+        # Test case II: covariate model
+        n_ids, n_dim = (6, 3)
+        psis = np.ones(shape=(n_ids, n_dim))
+        parameters = np.arange(6)
+        parameters[-1] = 1
+        ref_score = \
+            self.pop_model1.compute_log_likelihood(
+                parameters[:2], psis[:, 0]) \
+            + self.pop_model4.compute_log_likelihood(
+                parameters[2:5], psis[:, 1]) \
+            + self.pop_model3.compute_log_likelihood(
+                parameters[5], psis[:, 2])
+        score = self.pop_model_prime.compute_log_likelihood(parameters, psis)
+        self.assertAlmostEqual(score, ref_score)
+
     def test_compute_sensitivities(self):
+        # Test case I: no covariate model
         n_ids, n_dim = (6, 4)
         psis = np.ones(shape=(n_ids, n_dim))
         parameters = np.arange(7)
@@ -97,19 +210,83 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(sens[29], ref_sens2[15])
         self.assertEqual(sens[30], ref_sens3[6])
 
+        # Test case II: covariate model
+        n_ids, n_dim = (6, 3)
+        psis = np.ones(shape=(n_ids, n_dim))
+        parameters = np.arange(6)
+        parameters[-1] = 1
+
+        s1, ref_sens1 = self.pop_model1.compute_sensitivities(
+            parameters[:2], psis[:, 0])
+        s2, ref_sens2 = self.pop_model4.compute_sensitivities(
+            parameters[2:5], psis[:, 1])
+        s3, ref_sens3 = self.pop_model3.compute_sensitivities(
+            parameters[5], psis[:, 2])
+        ref_score = s1 + s2 + s3
+        score, sens = self.pop_model_prime.compute_sensitivities(
+            parameters, psis)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(
+            len(sens), len(ref_sens1) + len(ref_sens2) + len(ref_sens3))
+        self.assertEqual(sens[0], ref_sens1[0])
+        self.assertEqual(sens[1], ref_sens1[1])
+        self.assertEqual(sens[2], ref_sens1[2])
+        self.assertEqual(sens[3], ref_sens1[3])
+        self.assertEqual(sens[4], ref_sens1[4])
+        self.assertEqual(sens[5], ref_sens1[5])
+        self.assertEqual(sens[6], ref_sens2[0])
+        self.assertEqual(sens[7], ref_sens2[1])
+        self.assertEqual(sens[8], ref_sens2[2])
+        self.assertEqual(sens[9], ref_sens2[3])
+        self.assertEqual(sens[10], ref_sens2[4])
+        self.assertEqual(sens[11], ref_sens2[5])
+        self.assertEqual(sens[12], ref_sens3[0])
+        self.assertEqual(sens[13], ref_sens3[1])
+        self.assertEqual(sens[14], ref_sens3[2])
+        self.assertEqual(sens[15], ref_sens3[3])
+        self.assertEqual(sens[16], ref_sens3[4])
+        self.assertEqual(sens[17], ref_sens3[5])
+        self.assertEqual(sens[18], ref_sens1[6])
+        self.assertEqual(sens[19], ref_sens1[7])
+        self.assertEqual(sens[20], ref_sens2[6])
+        self.assertEqual(sens[21], ref_sens2[7])
+        self.assertEqual(sens[22], ref_sens2[8])
+        self.assertEqual(sens[23], ref_sens3[6])
+
+    def test_get_covariate_names(self):
+        # Test case I: no covariates
+        names = self.pop_model.get_covariate_names()
+        self.assertEqual(len(names), 0)
+
+        # Test case II: covariates
+        names = self.pop_model_prime.get_covariate_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Covariate 1')
+
     def test_get_parameter_names(self):
+        # Test case I
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 7)
         self.assertEqual(names[0], 'Mean Dim. 1')
         self.assertEqual(names[1], 'Std. Dim. 1')
-        self.assertEqual(names[2], 'Log mean Dim. 1')
-        self.assertEqual(names[3], 'Log mean Dim. 2')
-        self.assertEqual(names[4], 'Log std. Dim. 1')
-        self.assertEqual(names[5], 'Log std. Dim. 2')
-        self.assertEqual(names[6], 'Pooled Dim. 1')
+        self.assertEqual(names[2], 'Log mean Dim. 2')
+        self.assertEqual(names[3], 'Log mean Dim. 3')
+        self.assertEqual(names[4], 'Log std. Dim. 2')
+        self.assertEqual(names[5], 'Log std. Dim. 3')
+        self.assertEqual(names[6], 'Pooled Dim. 4')
+
+        # Test case II
+        names = self.pop_model_prime.get_parameter_names()
+        self.assertEqual(len(names), 6)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
+        self.assertEqual(names[2], 'Base log mean Dim. 2')
+        self.assertEqual(names[3], 'Log std. Dim. 2')
+        self.assertEqual(names[4], 'Shift Covariate 1 Dim. 2')
+        self.assertEqual(names[5], 'Pooled Dim. 4')
 
     def test_n_hierarchical_parameters(self):
-        # Test case I
+        # Test case I.1
         n_ids = 1
         n_dim = self.pop_model.n_dim()
         n_parameters = self.pop_model.n_parameters()
@@ -118,7 +295,7 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(n_bottom, n_dim - 1)
         self.assertEqual(n_top, n_parameters)
 
-        # Test case II
+        # Test case I.2
         n_ids = 10
         n_dim = self.pop_model.n_dim()
         n_parameters = self.pop_model.n_parameters()
@@ -127,7 +304,26 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(n_bottom, n_ids * (n_dim - 1))
         self.assertEqual(n_top, n_parameters)
 
+        # Test case I.1
+        n_ids = 1
+        n_dim = self.pop_model_prime.n_dim()
+        n_parameters = self.pop_model_prime.n_parameters()
+        n_bottom, n_top = self.pop_model_prime.n_hierarchical_parameters(n_ids)
+
+        self.assertEqual(n_bottom, n_dim - 1)
+        self.assertEqual(n_top, n_parameters)
+
+        # Test case I.2
+        n_ids = 10
+        n_dim = self.pop_model_prime.n_dim()
+        n_parameters = self.pop_model_prime.n_parameters()
+        n_bottom, n_top = self.pop_model_prime.n_hierarchical_parameters(n_ids)
+
+        self.assertEqual(n_bottom, n_ids * (n_dim - 1))
+        self.assertEqual(n_top, n_parameters)
+
     def test_n_parameters(self):
+        # Test case I
         n_parameters = self.pop_model.n_parameters()
         ref = \
             self.pop_model1.n_parameters() \
@@ -135,11 +331,24 @@ class TestComposedPopulationModel(unittest.TestCase):
             + self.pop_model3.n_parameters()
         self.assertEqual(n_parameters, ref)
 
+        # Test case II
+        n_parameters = self.pop_model_prime.n_parameters()
+        ref = \
+            self.pop_model1.n_parameters() \
+            + self.pop_model4.n_parameters() \
+            + self.pop_model3.n_parameters()
+        self.assertEqual(n_parameters, ref)
+
     def test_transforms_individual_parameters(self):
+        # Test case I
         self.assertFalse(self.pop_model.transforms_individual_parameters())
 
+        # Test case II
+        self.assertTrue(
+            self.pop_model_prime.transforms_individual_parameters())
+
     def test_sample(self):
-        # Test case I: just one sample
+        # Test case I.1: just one sample
         seed = 1
         n_samples = None
         parameters = np.arange(7)
@@ -148,12 +357,32 @@ class TestComposedPopulationModel(unittest.TestCase):
         n_dim = self.pop_model.n_dim()
         self.assertEqual(samples.shape, (1, n_dim))
 
-        # Test case II: Multiple samples
+        # Test case I.2: Multiple samples
         seed = 1
         n_samples = 10
         parameters = np.arange(7)
         samples = self.pop_model.sample(
             parameters, n_samples=n_samples, seed=seed)
+        n_dim = self.pop_model.n_dim()
+        self.assertEqual(samples.shape, (n_samples, n_dim))
+
+        # Test case II.1: just one sample
+        seed = 1
+        n_samples = None
+        parameters = np.arange(7)
+        covariates = np.array([3.2])
+        samples = self.pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed, covariates=covariates)
+        n_dim = self.pop_model.n_dim()
+        self.assertEqual(samples.shape, (1, n_dim))
+
+        # Test case II.2: Multiple samples
+        seed = 1
+        n_samples = 10
+        parameters = np.arange(7)
+        covariates = np.array([3.2])
+        samples = self.pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed, covariates=covariates)
         n_dim = self.pop_model.n_dim()
         self.assertEqual(samples.shape, (n_samples, n_dim))
 
@@ -163,22 +392,36 @@ class TestComposedPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The number of provided'):
             self.pop_model.sample(parameters)
 
-    def test_set_parameter_names(self):
+    def test_set_dim_names(self):
         # Set parameter names to something
-        names = ['some', 'names', 'that', 'match', 'number', 'of', 'params']
-        self.pop_model.set_parameter_names(names)
-        names = self.pop_model.get_parameter_names()
-        self.assertEqual(len(names), 7)
-        self.assertEqual(names[0], 'some')
+        names = ['dim', 'names', 'that', 'match']
+        self.pop_model.set_dim_names(names)
+        names = self.pop_model.get_dim_names()
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[0], 'dim')
         self.assertEqual(names[1], 'names')
         self.assertEqual(names[2], 'that')
         self.assertEqual(names[3], 'match')
-        self.assertEqual(names[4], 'number')
-        self.assertEqual(names[5], 'of')
-        self.assertEqual(names[6], 'params')
 
-        # Reset parameter names
-        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], 'Mean dim')
+        self.assertEqual(names[1], 'Std. dim')
+        self.assertEqual(names[2], 'Log mean names')
+        self.assertEqual(names[3], 'Log mean that')
+        self.assertEqual(names[4], 'Log std. names')
+        self.assertEqual(names[5], 'Log std. that')
+        self.assertEqual(names[6], 'Pooled match')
+
+        # Reset dim names
+        self.pop_model.set_dim_names(None)
+        names = self.pop_model.get_dim_names()
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[0], 'Dim. 1')
+        self.assertEqual(names[1], 'Dim. 1')
+        self.assertEqual(names[2], 'Dim. 2')
+        self.assertEqual(names[3], 'Dim. 1')
+
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 7)
         self.assertEqual(names[0], 'Mean Dim. 1')
@@ -188,6 +431,46 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(names[4], 'Log std. Dim. 1')
         self.assertEqual(names[5], 'Log std. Dim. 2')
         self.assertEqual(names[6], 'Pooled Dim. 1')
+
+        # Set dim names to what we had before
+        names = ['Dim. 1', 'Dim. 2', 'Dim. 3', 'Dim. 4']
+        self.pop_model.set_dim_names(names)
+
+    def test_bad_dim_names(self):
+        names = ['wrong', 'length']
+        with self.assertRaisesRegex(ValueError, 'Length of names does not'):
+            self.pop_model.set_dim_names(names)
+
+    def test_set_parameter_names(self):
+        # Set parameter names to something
+        names = ['some', 'names', 'that', 'match', 'number', 'of', 'params']
+        self.pop_model.set_parameter_names(names)
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], 'some Dim. 1')
+        self.assertEqual(names[1], 'names Dim. 1')
+        self.assertEqual(names[2], 'that Dim. 2')
+        self.assertEqual(names[3], 'match Dim. 3')
+        self.assertEqual(names[4], 'number Dim. 2')
+        self.assertEqual(names[5], 'of Dim. 3')
+        self.assertEqual(names[6], 'params Dim. 4')
+
+        # Reset parameter names
+        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 7)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
+        self.assertEqual(names[2], 'Log mean Dim. 2')
+        self.assertEqual(names[3], 'Log mean Dim. 3')
+        self.assertEqual(names[4], 'Log std. Dim. 2')
+        self.assertEqual(names[5], 'Log std. Dim. 3')
+        self.assertEqual(names[6], 'Pooled Dim. 4')
+
+    def test_bad_parameter_names(self):
+        names = ['wrong', 'length']
+        with self.assertRaisesRegex(ValueError, 'Length of names does not'):
+            self.pop_model.set_parameter_names(names)
 
 
 class TestCovariatePopulationModel(unittest.TestCase):
@@ -568,13 +851,13 @@ class TestCovariatePopulationModel(unittest.TestCase):
 
     def test_get_parameter_names(self):
         # Test case I:
-        names = ['Base mean log', 'Std. log']
+        names = ['Base log mean Dim. 1', 'Log std. Dim. 1']
         self.assertEqual(self.cpop_model.get_parameter_names(), names)
 
         # Test case II:
         names = [
-            'Base mean log', 'Std. log', 'Shift Covariate 1',
-            'Shift Covariate 2']
+            'Base log mean Dim. 1', 'Log std. Dim. 1',
+            'Shift Covariate 1 Dim. 1', 'Shift Covariate 2 Dim. 1']
         self.assertEqual(self.cpop_model2.get_parameter_names(), names)
 
     def test_n_hierarchical_parameters(self):
@@ -676,6 +959,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         names = ['test', 'name']
         self.cpop_model.set_parameter_names(names)
 
+        names = ['test Dim. 1', 'name Dim. 1']
         self.assertEqual(
             self.cpop_model.get_parameter_names(), names)
 
@@ -684,8 +968,8 @@ class TestCovariatePopulationModel(unittest.TestCase):
         names = self.cpop_model.get_parameter_names()
 
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Base mean log')
-        self.assertEqual(names[1], 'Std. log')
+        self.assertEqual(names[0], 'Base log mean Dim. 1')
+        self.assertEqual(names[1], 'Log std. Dim. 1')
 
 
 class TestGaussianModel(unittest.TestCase):
@@ -1315,6 +1599,7 @@ class TestGaussianModel(unittest.TestCase):
         names = ['test', 'name']
         self.pop_model.set_parameter_names(names)
 
+        names = ['test Dim. 1', 'name Dim. 1']
         self.assertEqual(
             self.pop_model.get_parameter_names(), names)
 
@@ -1323,8 +1608,8 @@ class TestGaussianModel(unittest.TestCase):
         names = self.pop_model.get_parameter_names()
 
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Mean')
-        self.assertEqual(names[1], 'Std.')
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
 
     def test_set_parameter_names_bad_input(self):
         # Wrong number of names
@@ -2125,6 +2410,7 @@ class TestLogNormalModel(unittest.TestCase):
         names = ['test', 'name']
         self.pop_model.set_parameter_names(names)
 
+        names = ['test Dim. 1', 'name Dim. 1']
         self.assertEqual(
             self.pop_model.get_parameter_names(), names)
 
@@ -2297,6 +2583,7 @@ class TestPooledModel(unittest.TestCase):
         names = ['test name']
         self.pop_model.set_parameter_names(names)
 
+        names = ['test name Dim. 1']
         self.assertEqual(
             self.pop_model.get_parameter_names(), names)
 
@@ -2452,8 +2739,8 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Test case II.1: Fix some parameters
         self.cpop_model.fix_parameters({
-            'Base mean log': 1,
-            'Shift Covariate 1': -1
+            'Base log mean Dim. 1': 1,
+            'Shift Covariate 1 Dim. 1': -1
         })
         reduced_parameters = [1, 1]
         eta = [0.2, -0.3, 1, 5]
@@ -2471,8 +2758,8 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix parameters
         self.cpop_model.fix_parameters({
-            'Base mean log': None,
-            'Shift Covariate 1': None
+            'Base log mean Dim. 1': None,
+            'Shift Covariate 1 Dim. 1': None
         })
 
     def test_compute_individual_sensitivities(self):
@@ -2544,8 +2831,8 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Test case II.2: Fix some parameters
         self.cpop_model.fix_parameters({
-            'Base mean log': 1,
-            'Shift Covariate 1': -1
+            'Base log mean Dim. 1': 1,
+            'Shift Covariate 1 Dim. 1': -1
         })
         reduced_parameters = [1, 1]
         eta = [0.2, -0.3, 1, 5]
@@ -2587,8 +2874,8 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix parameters
         self.cpop_model.fix_parameters({
-            'Base mean log': None,
-            'Shift Covariate 1': None
+            'Base log mean Dim. 1': None,
+            'Shift Covariate 1 Dim. 1': None
         })
 
     def test_compute_log_likelihood(self):
@@ -2851,8 +3138,8 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Test 1')
-        self.assertEqual(names[1], 'Test 2')
+        self.assertEqual(names[0], 'Test 1 Dim. 1')
+        self.assertEqual(names[1], 'Test 2 Dim. 1')
 
         # Reset to defaults
         self.pop_model.set_parameter_names(None)
@@ -2870,7 +3157,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 1)
-        self.assertEqual(names[0], 'Std. log myokit.tumour_volume')
+        self.assertEqual(names[0], 'Std. log myokit.tumour_volume Dim. 1')
 
         # Reset to defaults
         self.pop_model.set_parameter_names(None)
@@ -3531,6 +3818,7 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         names = ['test', 'name']
         self.pop_model.set_parameter_names(names)
 
+        names = ['test Dim. 1', 'name Dim. 1']
         self.assertEqual(
             self.pop_model.get_parameter_names(), names)
 
