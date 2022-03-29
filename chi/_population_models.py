@@ -452,6 +452,11 @@ class ComposedPopulationModel(PopulationModel):
         Returns the log-likelihood of the population parameters and its
         sensitivities w.r.t. the observations and the parameters.
 
+        The sensitivities are returned as a 1-dimensional array
+
+        ..math::
+            (\psi _1, \ldots , \psi _n, \theta _1, \dlots , \theta _k).
+
         :param parameters: Parameters of the population model.
         :type parameters: np.ndarray of shape (p,)
         :param observations: "Observations" of the individuals. Typically
@@ -465,9 +470,11 @@ class ComposedPopulationModel(PopulationModel):
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
 
-        n_ids = len(observations)
         score = 0
-        sensitivities = np.zeros(shape=n_ids*self._n_dim+self._n_parameters)
+        n_ids = len(observations)
+        n_bottom = n_ids*self._n_dim
+        bottom_sens = np.empty(shape=(n_ids, self._n_dim))
+        sensitivities = np.empty(shape=n_bottom+self._n_parameters)
         current_dim = 0
         current_param = 0
         for pop_model in self._population_models:
@@ -479,15 +486,18 @@ class ComposedPopulationModel(PopulationModel):
 
             # Add score and sensitivities
             score += s
-            sensitivities[current_dim*n_ids:end_dim*n_ids] = sens[
-                :n_ids*pop_model.n_dim()]
+            bottom_sens[:, current_dim:end_dim] = sens[
+                :n_ids*pop_model.n_dim()].reshape(n_ids, pop_model.n_dim())
             sensitivities[
-                    n_ids*self._n_dim+current_param:
-                    n_ids*self._n_dim+end_param] = sens[
-                n_ids*pop_model.n_dim():]
+                    n_bottom+current_param:
+                    n_bottom+end_param] = sens[n_ids*pop_model.n_dim():]
 
             current_dim = end_dim
             current_param = end_param
+
+        # Add bottom sensitivitities
+        # (Final order psi_1, ..., psi_n, theta_1, ..., theta_k)
+        sensitivities[:n_bottom] = bottom_sens.flatten()
 
         return score, sensitivities
 
@@ -526,6 +536,12 @@ class ComposedPopulationModel(PopulationModel):
             names += pop_model.get_parameter_names(exclude_dim_names)
 
         return names
+
+    def get_population_models(self):
+        """
+        Returns the constituent population models.
+        """
+        return self._population_models
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -1173,10 +1189,10 @@ class GaussianModel(PopulationModel):
         dstd = (-n_ids + np.sum((psi - mus)**2, axis=0) / vars) / np.sqrt(vars)
 
         # Collect sensitivities
-        # ([psis dim 1, ..., psis dim d, mu dim 1, ..., mu dim d, sigma dim 1,
-        # ..., sigma dim d])
+        # ([psi_1 all dim, ..., psi_n all dim, mu dim 1, ..., mu dim d,
+        # sigma dim 1, ..., sigma dim d])
         sensitivities = np.concatenate((
-            dpsi.T.flatten(), np.hstack([dmus, dstd]).flatten()))
+            dpsi.flatten(), np.hstack([dmus, dstd]).flatten()))
 
         return log_likelihood, sensitivities
 
@@ -1219,8 +1235,8 @@ class GaussianModel(PopulationModel):
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
         if parameters.ndim != 2:
-            n_parameters = len(parameters) // self._n_dim
-            parameters = parameters.reshape(n_parameters, self._n_dim)
+            n_ids = len(parameters) // self._n_dim
+            parameters = parameters.reshape(n_ids, self._n_dim)
 
         # Parse parameters
         mus = parameters[0]
@@ -1507,7 +1523,7 @@ class HeterogeneousModel(PopulationModel):
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
         """
-        return copy.copy(self._parameter_names)
+        return self._parameter_names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -1658,10 +1674,10 @@ class LogNormalModel(PopulationModel):
             / np.sqrt(vars)
 
         # Collect sensitivities
-        # ([psis dim 1, ..., psis dim d, mu dim 1, ..., mu dim d, sigma dim 1,
-        # ..., sigma dim d])
+        # ([psi_1 all dim, ..., psi_n all dim, mu dim 1, ..., mu dim d,
+        # sigma dim 1, ..., sigma dim d])
         sensitivities = np.concatenate((
-            dpsi.T.flatten(), np.hstack([dmus, dstd]).flatten()))
+            dpsi.flatten(), np.hstack([dmus, dstd]).flatten()))
 
         return log_likelihood, sensitivities
 
@@ -2719,10 +2735,10 @@ class TruncatedGaussianModel(PopulationModel):
             / sigmas / (1 - _norm_cdf(-mus/sigmas)), axis=0) / sigmas
 
         # Collect sensitivities
-        # ([psis dim 1, ..., psis dim d, mu dim 1, ..., mu dim d, sigma dim 1,
-        # ..., sigma dim d])
+        # ([psi_1 all dim, ..., psi_n all dim, mu dim 1, ..., mu dim d,
+        # sigma dim 1, ..., sigma dim d])
         sensitivities = np.concatenate((
-            dpsi.T.flatten(), np.hstack([dmus, dsigmas]).flatten()))
+            dpsi.flatten(), np.hstack([dmus, dsigmas]).flatten()))
 
         return log_likelihood, sensitivities
 
