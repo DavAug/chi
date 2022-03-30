@@ -18,64 +18,37 @@ import chi
 class HierarchicalLogLikelihood(object):
     r"""
     A hierarchical log-likelihood consists of structurally identical
-    log-likelihoods whose parameters are related by population models.
+    log-likelihoods whose parameters are related by a population model.
 
-    A hierarchical log-likelihood takes a list of a :class:`LogLikelihood`
-    instances and one instance of a :class:`PopulationModel` for each
-    parameter dimension of the log-likelihoods. This defines a
-    time-dependent distribution of observable biomarkers in the population
-    equivalent to a :class:`PredictivePopulationModel`
-
-    .. math::
-        p(x | t; \theta ) = \int \text{d}\psi \,
-        p(x | t, \psi) p(\psi | \theta) .
-
-    Here, :math:`x` are the observable biomarker values at time :math:`t`,
-    and :math:`\psi` are the model parameters of the
-    mechanistic and error model (or bottom-level parameters).
-    :math:`\theta` are the parameters of the population model (or
-    top-level parameters). For multiple outputs of the
-    mechanistic model, :math:`p(x | t; \theta )` will be a multivariate
-    distribution.
-
-    The integral over the :math:`\psi` can in general not be solved
-    analytically. Numerically the integral can be solved using Monte Carlo
-    sampling. To this end, we define the hierarchical log-likelihood as
-    the sum over the individual log-likelihoods
+    A hierarchical log-likelihood takes a list of :class:`LogLikelihood`
+    instances and a :class:`PopulationModel` with the same dimension as the
+    number of parameters of the log-likelihoods. The hierarchical
+    log-likelihood is defined as
 
     .. math::
-        L(\Psi , \theta | X^{\text{obs}}) =
-        \sum _{i, n} \log p(x^{\text{obs}}_{in} | \psi _i )
-        + \sum _{i} \log p(\psi _i | \theta ) .
+        \log p(\mathcal{D}, \Psi | \theta ) =
+            \sum _{ij} \log p(y_{ij} | \psi _{i} , t_{ij})
+            + \sum _{ik} \log p(\psi _{ik}| \theta _k),
 
-    Here, :math:`\psi _i` are the
-    bottom-level parameters of individual :math:`i`,
-    :math:`\theta` are the top-level parameters of the population models,
-    and :math:`X^{\text{obs}} = \{ x^{\text{obs}}_{in}\}`
-    are the observations for each individual, where :math:`n` runs over
-    the observation points and :math:`i` over the individuals.
+    where :math:`\sum _{j} \log p(y_{ij} | \psi _{i} , t_{ij})` is the
+    log-likelihood of :math:`\psi _{i}` associated with individual :math:`i`
+    and :math:`\sum _{ik} \log p(\psi _{ik}| \theta _k)` is the log-likelihood
+    of the population parameters. :math:`\mathcal{D}=\{ \mathcal{D}_i\}` is the
+    data, composed of measurements from different individuals
+    :math:`\mathcal{D}_i = \{(y_{ij}, t_{ij})\}`. :math:`\Psi = \{ \psi_i\}`
+    is the collection of bottom-level parameters, which in turn are the
+    parameters of the individual log-likelihoods
+    :math:`\psi_i = \{ \psi _{ik}\}`.
+    We use :math:`i` to index individuals, :math:`j` to index measurements for
+    an individual and :math:`k` to index the bottom-level parameters.
+    :math:`\theta _k` are the population parameters associated with the
+    :math:`k^{\text{th}}` bottom-level parameter.
 
-    This log-likelihood can now be optimised or sampled from. While
-    sampling will converge to the true solution of the integral,
-    optimisation should rather be interpreted as a saddle-point
-    approximation.
-
-    Note that for notational ease we've omitted that the likelihood is
-    conditional on the measurement time points and the dosing regimens.
-
-    .. note::
-        The number of parameters of an hierarchical log-likelihood is
-        larger than the number of parameters of the corresponding
-        :class:`PredictivePopulationModel`,
-        as the integral over the individual parameters
-        :math:`\psi` can in general not be solved analytically.
-
-    :param log_likelihoods: A list of length :math:`n` with log-likelihoods
-        defined on the same parameter space of dimension :math:`p`.
-    :type log_likelihoods: list[LogLikelihood] of length n
-    :param population_models: A list of length :math:`p` with population
-        models, one population model for each parameter of the log-likelihoods.
-    :type population_models: list[PopulationModel] of length p
+    :param log_likelihoods: A list of log-likelihoods which are
+        defined on the same parameter space with dimension ``n_parameters``.
+    :type log_likelihoods: list[LogLikelihood] of length ``n_ids``
+    :param population_models: A population model of dimension ``n_parameters``.
+    :type population_models: PopulationModel
     :param covariates: An array-like object of dimension :math:`(n, c)` with
         :math:`c` covariates for each of the :math:`n` log-likelihoods.
         By default, all covariates inform all
@@ -83,510 +56,261 @@ class HierarchicalLogLikelihood(object):
         An explicit mapping of the covariates can also beprovided with
         ``covariate_map``.
     :type covariates: np.ndarray of shape (n, c), optional
-    :param covariate_map: A nested list with
-        indices for each :class:`PopulationModel`. The indices are
-        used to mask the second dimension of ``covariates`` to determine which
-        covariates are relevant
-        for the respective population model.
-        Indices for non CovariatePopulationModels are ignored, but a list
-        has to be provided nonetheless.
-    :type covariate_map: List[List[int]] of length :math:`p`, optional
-
-    Example
-    -------
-
-    ::
-
-        import chi
-
-        # Define mechanistic and error model
-        sbml_file = chi.ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(sbml_file)
-        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
-
-        # Define observations
-        observations_1 = [1, 2, 3, 4]
-        observations_2 = [1.5, 3.2, 2.8, 3]
-        times = [0, 0.5, 1, 2]
-
-        # Define log-likelihoods
-        log_likelihood_1 = chi.LogLikelihood(
-            mechanistic_model,
-            error_model,
-            observations_1,
-            times)
-        log_likelihood_2 = chi.LogLikelihood(
-            mechanistic_model,
-            error_model,
-            observations_2,
-            times)
-
-        # Define population models
-        population_models = [
-            chi.LogNormalModel(),
-            chi.PooledModel(),
-            chi.HeterogeneousModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel()]
-
-        # Create hierarchical log-likelihood
-        hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
-            log_likelihoods=[log_likelihood_1, log_likelihood_2],
-            population_models=population_models)
-
-        # Compute log-likelihood score
-        parameters = [1] * 11
-        score = hierarch_log_likelihood(parameters)  # -10.132207445908946
     """
     def __init__(
-            self, log_likelihoods, population_models, covariates=None,
-            covariate_map=None):
+            self, log_likelihoods, population_model, covariates=None):
         super(HierarchicalLogLikelihood, self).__init__()
-
         for log_likelihood in log_likelihoods:
             if not isinstance(log_likelihood, chi.LogLikelihood):
                 raise ValueError(
                     'The log-likelihoods have to be instances of a '
                     'chi.LogLikelihood.')
 
-        n_parameters = log_likelihoods[0].n_parameters()
+        if not isinstance(population_model, chi.PopulationModel):
+            raise ValueError(
+                'The population model has to be an instances of '
+                'chi.PopulationModel.')
+
+        n_parameters = population_model.n_dim()
         for log_likelihood in log_likelihoods:
             if log_likelihood.n_parameters() != n_parameters:
                 raise ValueError(
-                    'The number of parameters of the log-likelihoods differ. '
-                    'All log-likelihoods have to be defined on the same '
-                    'parameter space.')
-
-        names = log_likelihoods[0].get_parameter_names()
-        for log_likelihood in log_likelihoods:
-            if not np.array_equal(log_likelihood.get_parameter_names(), names):
-                raise ValueError(
-                    'The parameter names of the log-likelihoods differ.'
-                    'All log-likelihoods have to be defined on the same '
-                    'parameter space.')
-
-        if len(population_models) != n_parameters:
-            raise ValueError(
-                'Wrong number of population models. One population model has '
-                'to be provided for each model parameters.')
-
-        for pop_model in population_models:
-            if not isinstance(pop_model, chi.PopulationModel):
-                raise ValueError(
-                    'The population models have to be instances of '
-                    'chi.PopulationModel.')
-
-        # Check whether covariates are needed
-        covariates_needed, n_covs, uses_eta = \
-            self._check_covariates_needed(population_models)
+                    'The dimension of the population model does not match the '
+                    'the dimensions of the log-likelihood parameter space.')
 
         n_ids = len(log_likelihoods)
-        if covariates_needed:
-            covariates, covariate_map = self._check_covariates(
-                covariates, covariate_map, n_ids, n_covs)
+        if population_model.needs_covariates():
+            if covariates is None:
+                raise ValueError(
+                    'The population model needs covariates, but no covariates '
+                    'have been provided.')
+
+            # Make sure covariates have correct format
+            n_cov = population_model.n_covariates()
+            try:
+                covariates = np.asarray(covariates).reshape(n_ids, n_cov)
+            except ValueError:
+                raise ValueError(
+                    'The covariates do not have the correct format. '
+                    'Covariates need to be of shape (n_ids, n_cov).')
 
         # Remember models and number of individuals
         self._log_likelihoods = log_likelihoods
-        self._population_models = population_models
-        self._uses_eta = uses_eta
+        self._population_model = population_model
         self._covariates = covariates
-        self._covariate_map = covariate_map
         self._n_ids = n_ids
+        self._n_dim = self._population_model.n_dim()
+        info = self._count_parameters()
+        self._n_parameters, self._pooled_dims, self._n_pooled_dim = info[:3]
+        self._hetero_dims = info[3]
+
+        # NOTE: Heterogeneous model parameters are weird. They count are top
+        # parameters, but also are counted as bottom parameters during
+        # inference because they are the parameters that go into the individual
+        # likelihoods directly. self._n_top + self._n_bottom IS NOT
+        # n_parameters, because heterogeneous parameters are counted twice.
+        n_hetero_dim = \
+            np.sum([dims[1] - dims[0] for dims in self._hetero_dims])
+        self._n_top = \
+            self._n_ids * n_hetero_dim + self._population_model.n_parameters()
+        self._n_bottom = \
+            self._n_parameters - self._population_model.n_parameters()
+
+        # Label log-likelihoods for later convenience
+        self._label_log_likelihoods()
+
+        # Count number of observations per individual
         self._n_obs = [np.sum(ll.n_observations()) for ll in log_likelihoods]
-
-        # Set IDs
-        self._set_ids()
-
-        # Set parameter names and number of parameters
-        self._set_number_and_parameter_names()
-
-        # Construct mask for top-level parameters
-        self._create_top_level_mask()
 
     def __call__(self, parameters):
         """
         Returns the log-likelihood score of the model.
+
+        Expects parameters in order of
+        [psi_1, ..., psi_n, theta_1, ..., theta_k], where
+        psi_i = [psi_i1, ..., psi_ik] are the bottom parameters of
+        individual i.
         """
-        # Transform parameters to numpy array
+        # Split parameters into bottom- and top-level parameters
         parameters = np.asarray(parameters)
-        if np.any(self._uses_eta):
-            # In place updates of parameters will affect input, when input was
-            # alread a np.ndarray. To avoid this we copy the parameters
-            parameters = np.copy(parameters)
+        bottom_parameters = parameters[:self._n_bottom]
+        top_parameters = parameters[self._n_bottom:]
 
-        # Compute population model scores
-        score = 0
-        start = 0
-        for idp, pop_model in enumerate(self._population_models):
-            # Get number of individual and population level parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+        # Broadcast pooled parameters and reshape bottom parameters to
+        # (n_ids, n_dim)
+        bottom_parameters = self._reshape_bottom_parameters(
+            bottom_parameters, top_parameters)
 
-            # Get parameter ranges
-            end_indiv = start + n_indiv
-            end_pop = end_indiv + n_pop
-
-            # Add score
-            score += pop_model.compute_log_likelihood(
-                parameters=parameters[end_indiv:end_pop],
-                observations=parameters[start:end_indiv])
-
-            # If CovariatePopulationModel, transform deviations to parameters
-            # for log-likelihood evaluation, i.e. eta -> psi.
-            if self._uses_eta[idp]:
-                # Get relevant covariates
-                covariates = \
-                    self._covariates if (self._covariates is None) \
-                    else self._covariates[:, self._covariate_map[idp]]
-
-                # Compute parameters for log-likelihood
-                psis = pop_model.compute_individual_parameters(
-                    parameters=parameters[end_indiv:end_pop],
-                    eta=parameters[start:end_indiv],
-                    covariates=covariates)
-                parameters[start:end_indiv] = psis
-
-            # Shift start index
-            start = end_pop
+        # Compute population model score
+        score = self._population_model.compute_log_likelihood(
+            top_parameters, bottom_parameters)
 
         # Return if values already lead to a rejection
         if np.isinf(score):
             return score
 
+        # Transform bottom-level parameters
+        if self._population_model.transforms_individual_parameters():
+            bottom_parameters = \
+                self._population_model.compute_individual_parameters(
+                    top_parameters, bottom_parameters, self._covariates)
+
         # Evaluate individual likelihoods
         for idi, log_likelihood in enumerate(self._log_likelihoods):
-            score += log_likelihood(parameters[self._indiv_params[idi]])
-
+            score += log_likelihood(bottom_parameters[idi])
         return score
 
-    def _check_covariates(
-            self, covariates, covariate_map, n_ids, n_covs):
+    def _remove_pooled_duplicates(self, sensitivities):
         """
-        Checks that the provided covariates match the covariates needed by the
-        population models.
+        In some sense the reverse of self._reshape_bottom_parameters.
 
-        Returns formatted covariates and covariate_map.
-
-        Case I: No covariates are provided. At this stage it's however already
-            established that covariates are needed.
-        Case II: Covariates are not of shape (n, c), where n is the number of
-            log-likelihoods and c the total number of covariates.
-        Case III: The c covariates per individual are not explicitly mapped
-            to the population models with covariate_map. Then all covariates
-            have to be used by all covariate population models.
-        Case IV: covariate_map is provided. Then all entries in covariate_map
-            need to be integers between 0 and c, and the number of indices
-            provided in covariate_map need to match the number of covariates
-            of each model.
+        Reshaping the bottom parameters introduces duplicates of pooled
+        parameters, so the bottom parameters can be expressed in a shape
+        (n_ids, n_dim). The sensitivities are now of length (n_ids * n_dim),
+        even though, so the duplicates are treated as independent. Those
+        sensitivities need to be summed, because the originate from the same
+        pooled input parameter.
         """
-        if covariates is None:
-            raise ValueError(
-                'At least one PopulationModel relies on covariates, '
-                'but none were provided.')
+        # Check for quick solution 1: no pooled parameters
+        if self._n_pooled_dim == 0:
+            return sensitivities
 
-        covariates = np.asarray(covariates)
-        n = len(covariates)
-        if (covariates.ndim != 2) or (n != n_ids):
-            raise ValueError(
-                'The list of covariates needs to be of length '
-                'len(log_likelihoods) and of dimension 2.')
-        c = covariates.shape[1]
+        # Get population parameter sensitvitities
+        start_pop = self._n_ids * self._n_dim
+        sens = np.zeros(shape=self._n_parameters)
+        sens[self._n_bottom:] = sensitivities[start_pop:]
 
-        # Construct identity covariate map, if no covariate map has been
-        # provided
-        if covariate_map is None:
-            # Check that all population models take the same number of
-            # covariates, and that this number is equal to the provided number
-            # of covariates
-            pos_n_covs = np.unique(np.array(n_covs)[np.array(n_covs) > 0])
-            n_covs_match = (len(pos_n_covs) == 1) and (pos_n_covs[0] == c)
-            if n_covs_match:
-                # Construct identity covariate map
-                n_population_models = len(n_covs)
-                covariate_map = [np.arange(c)] * n_population_models
-                return covariates, covariate_map
+        # Check for quick solution 2: all parameters pooled
+        if self._n_pooled_dim == self._n_dim:
+            # Add contributions from bottom-level parameters
+            # (For fully pooled models, n_pooled = n_pop)
+            sens = np.sum(
+                sensitivities[:start_pop].reshape(self._n_ids, self._n_dim),
+                axis=0)
+            return sens
 
-            raise ValueError(
-                'The provided covariates cannot be trivially mapped to the '
-                'covariate population models and no covariate_map has been '
-                'provided.')
+        shift = 0
+        current_dim = 0
+        bottom_sensitivities = sensitivities[:start_pop].reshape(
+            self._n_ids, self._n_dim)
+        bottom_sens = np.zeros(
+            shape=(self._n_ids, self._n_dim - self._n_pooled_dim))
+        for info in self._pooled_dims:
+            start_dim, end_dim, start_top, end_top = info
+            # Fill leading non-pooled dims
+            bottom_sens[:, current_dim-shift:start_dim-shift] = \
+                bottom_sensitivities[:, current_dim:start_dim]
+            # Fill pooled dims
+            sens[self._n_bottom+start_top:self._n_bottom+end_top] = \
+                np.sum(bottom_sensitivities[:, start_dim:end_dim], axis=0)
+            current_dim = end_dim
+            shift += end_dim - start_dim
+        # Fill trailing non-pooled dims
+        bottom_sens[:, current_dim-shift:] = bottom_sensitivities[
+            :, current_dim:]
 
-        n_pop_models = len(n_covs)
-        if len(covariate_map) != n_pop_models:
-            raise ValueError(
-                'The covariate_map needs to be of the same length as '
-                'the number of PopulationModels.')
+        # Add bottom sensitivties
+        sens[:self._n_bottom] = bottom_sens.flatten()
 
-        # Make sure that the provided covariate map is compatible with
-        # population models
-        if np.max(np.hstack(covariate_map)) >= c:
-            raise IndexError(
-                'Index in covariate map exceeds the number of provided '
-                'covariates.')
-        for idp, indices in enumerate(covariate_map):
-            # Check that number of indices matches model's expected number
-            # of covariates, or covariate model does not need covariates
-            if (len(indices) != n_covs[idp]) and (n_covs[idp] > 0):
-                raise ValueError(
-                    'The covariate_map does not map the covariates '
-                    'successfully to the population models. For at least '
-                    'one population model, the number of indices in the map '
-                    'does not match the number of required covariates.')
+        return sens
 
-        return covariates, covariate_map
-
-    def _check_covariates_needed(self, population_models):
+    def _count_parameters(self):
         """
-        Returns a boolean flag whether covariates are needed, a list
-        of number of covariates for each population model and a list
-        with boolean flags, indicating whether the population model is
-        a covariate model.
+        Counts the parameters of the hierarchical log-likelihood.
+
+        For convenience it also remembers the indices where pooled parameters
+        have to be broadcasted and inserted (pooled parameters appear only
+        once for the inference, but the computation of the log-likelihood
+        requires n_ids+1 copies of the pooled parametres).
         """
-        uses_eta = []
-        n_covariates = []
-        for pop_model in population_models:
-            is_using_eta = pop_model.transforms_individual_parameters()
-            uses_eta.append(is_using_eta)
-            if is_using_eta:
-                n_covariates.append(pop_model.n_covariates())
-            else:
-                n_covariates.append(0)
+        # Get elementary population models
+        pop_models = [self._population_model]
+        if isinstance(self._population_model, chi.ComposedPopulationModel):
+            pop_models = self._population_model.get_population_models()
 
-        # Check whether at least covariate is needed
-        covariates_needed = np.max(n_covariates) > 0
-
-        return covariates_needed, n_covariates, uses_eta
-
-    def _compute_dvartheta(self, sens, dpsidvartheta, likelihood_id):
-        """
-        Returns dL/dpsi * dpsi/dvartheta.
-
-        sens has shape (n_population_models).
-        Each element in dpsi/dvartheta has shape
-        (n_pop_parameters, n_ids), where n_pop_parameters
-        changes between entries.
-        The likelihood ID indicates to which individual likelihood the
-        sensitivies belong.
-
-        Returns:
-            dvartheta (np.ndarray of shape (n_top_parameters,))
-        """
-        dvartheta = []
-        for idp, dpsi in enumerate(sens):
-            if self._uses_eta[idp]:
-                dpop = dpsi * dpsidvartheta[idp][:, likelihood_id]
-            else:
-                dpop = [0] * self._population_models[idp].n_parameters()
-            dvartheta.append(dpop)
-
-        return np.hstack(dvartheta)
-
-    def _compute_psi_and_sensitivities(self, parameters):
-        """
-        Returns parameters where eta is replaced by psi, dpsi/deta and
-        dpsi/dvartheta.
-
-        Note that each psi depends only on one eta.
-
-        Returns:
-            parameters (np.ndarray of shape (n_parameters,))
-            dpsideta (np.ndarray of shape (n_ids, n_pop_models))
-            dpsidvartheta (List of length n_population_models, each index is
-                a np.ndarray of shape (n_pop_parameters,)) or None, if
-                population model is not a covariate model
-        """
-        n_ids = self.n_log_likelihoods()
-        n_population_models = len(self._population_models)
-        dpsideta = np.ones(shape=(n_ids, n_population_models))
-        dpsidvartheta = []
-
-        # Compute population model likelihood and sensitivities
-        start = 0
-        for idp, pop_model in enumerate(self._population_models):
-            # Get start and end index of individual parameters and population
-            # parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
-            end_indiv = start + n_indiv
-            end_pop = end_indiv + n_pop
-
-            if not self._uses_eta[idp]:
-                # Add dummy place holder (is filtered later)
-                dpsidvartheta.append(None)
-
-                # Shift start index and population parameter counter
-                start = end_pop
-                continue
-
-            # Get relevant covariates
-            covariates = \
-                self._covariates if (self._covariates is None) \
-                else self._covariates[:, self._covariate_map[idp]]
-
-            # Compute parameters for log-likelihood and sensitivities
-            psis, sens = pop_model.compute_individual_sensitivities(
-                parameters=parameters[end_indiv:end_pop],
-                eta=parameters[start:end_indiv],
-                covariates=covariates)
-            parameters[start:end_indiv] = psis
-            dpsideta[:, idp] = sens[0]
-            dpsidvartheta.append(sens[1:])
-
-            # Shift start index and population parameter counter
-            start = end_pop
-
-        return parameters, dpsideta, dpsidvartheta
-
-    def _create_top_level_mask(self):
-        """
-        Creates a mask that can be used to mask for the top level
-        parameters.
-        """
-        start = 0
-        top_level_mask = []
-        for pop_model in self._population_models:
-            # Get number of hierarchical parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
-
+        n_parameters = 0
+        n_pooled_dims = 0
+        pooled_dims = []
+        hetero_dims = []
+        current_dim = 0
+        current_top_index = 0
+        for pop_model in pop_models:
+            # Check whether dimension is pooled
+            n_bottom, n_top = pop_model.n_hierarchical_parameters(self._n_ids)
+            if isinstance(pop_model, chi.PooledModel):
+                # Remember start and end of pooled dimensions,
+                # Start and end of pooled parameter values,
+                pooled_dims.append([
+                    current_dim, current_dim + pop_model.n_dim(),
+                    current_top_index,
+                    current_top_index + n_top])
+                n_pooled_dims += pop_model.n_dim()
             if isinstance(pop_model, chi.HeterogeneousModel):
-                # For heterogeneous models the individual parameters are the
-                # top-level parameters
-                end = start + n_indiv
-                top_level_mask += list(np.arange(start, end))
+                # Remember start and end of heterogeneous dimensions
+                # Subtract pooled dims for later convenience
+                hetero_dims.append([
+                    current_dim - n_pooled_dims,
+                    current_dim + pop_model.n_dim() - n_pooled_dims])
 
-            # Add the population parameters as top-level parameters
-            # (Heterogeneous model has 0 population parameters)
-            start += n_indiv
-            end = start + n_pop
-            top_level_mask += list(np.arange(start, end))
+            # Count overall number of parameters
+            n_parameters += n_bottom + n_top
+            current_dim += pop_model.n_dim()
+            current_top_index += n_top
 
-            # Shift start to end
-            start = end
+        return n_parameters, pooled_dims, n_pooled_dims, hetero_dims
 
-        # Store mask
-        self._top_level_mask = top_level_mask
-
-    def _get_individual_parameter_reference_matrix(self, param_ranges):
+    def _label_log_likelihoods(self):
         """
-        Returns a matrix of shape
-        (number of individuals, number of parameters per individual) with the
-        indices of the individual parameters.
+        Labels log-likelihoods if they don't already have an ID.
         """
-        # Construct matrix of indices which reference the idividual parameters
-        indiv_params = np.zeros(
-            shape=(self._n_ids, self._n_indiv_params), dtype=int)
-        for param_id, indices in enumerate(param_ranges):
-            # Get indices for this parameter
-            start, end = indices
-
-            # Reference parameter for all individuals
-            if start == end:
-                # This parameter is pooled, reference the same value for all
-                # individuals
-                indiv_params[:, param_id] = start
-                continue
-
-            indiv_params[:, param_id] = np.arange(start=start, stop=end)
-
-        return indiv_params
-
-    def _set_ids(self):
-        """
-        Sets the IDs of the hierarchical model.
-
-        IDs for population model parameters are ``None``.
-        """
-        # Get IDs of individual log-likelihoods
-        indiv_ids = []
-        for index, log_likelihood in enumerate(self._log_likelihoods):
-            _id = log_likelihood.get_id()
-
-            # If ID not set, give some arbitrary ID
-            if _id is None:
-                _id = 'automatic-id-%d' % (index + 1)
-
-            indiv_ids.append(_id)
-
-        # Construct IDs (prefixes) for hierarchical model
         ids = []
-        for pop_model in self._population_models:
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+        for idl, log_likelihood in enumerate(self._log_likelihoods):
+            _id = log_likelihood.get_id()
+            if not _id:
+                _id = 'Log-likelihood %d' % (idl + 1)
+            if _id in ids:
+                raise ValueError('Log-likelihood IDs need to be unique.')
+            log_likelihood.set_id(_id)
+            ids.append(_id)
 
-            # If population model has individual parameters, add IDs
-            if n_indiv > 0:
-                ids += indiv_ids
-
-            # If population model has population model parameters, add them as
-            # prefixes.
-            ids += [None] * n_pop
-
-        # Remember IDs
-        self._ids = ids
-
-    def _set_number_and_parameter_names(self):
+    def _reshape_bottom_parameters(self, bottom_parameters, top_parameters):
         """
-        Sets the number and names of the parameters.
-
-        The model parameters are arranged by keeping the order of the
-        parameters of the individual log-likelihoods and expanding them such
-        that the parameters associated with individuals come first and the
-        the population parameters.
-
-        Example:
-        Parameters of hierarchical log-likelihood:
-        [
-        log-likelihood 1 parameter 1, ..., log-likelihood N parameter 1,
-        population model 1 parameter 1, ..., population model 1 parameter K,
-        log-likelihood 1 parameter 2, ..., log-likelihood N parameter 2,
-        population model 2 parameter 1, ..., population model 2 parameter L,
-        ...
-        ]
-        where N is the number of parameters of the individual log-likelihoods,
-        and K and L are the varying numbers of parameters of the respective
-        population models.
+        Takes bottom parameters and top parameters with no duplicates and
+        returns bottom parameters of shape (n_ids, n_dim), where pooled
+        parameters are duplicated.
         """
-        # Get individual parameter names
-        indiv_names = self._log_likelihoods[0].get_parameter_names()
+        bottom_params = np.empty(shape=(self._n_ids, self._n_dim))
 
-        # Construct parameter names
-        start = 0
-        indiv_params = []
-        parameter_names = []
-        for param_id, pop_model in enumerate(self._population_models):
-            # Get number of hierarchical parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+        # Check for quick solution 1: no pooled parameters
+        if self._n_pooled_dim == 0:
+            bottom_params[:, :] = bottom_parameters.reshape(
+                self._n_ids, self._n_dim)
+            return bottom_params
 
-            # Add a copy of the parameter name for each individual parameter
-            name = indiv_names[param_id]
-            if self._uses_eta[param_id]:
-                parameter_names += [name + ' Eta'] * n_indiv
-            else:
-                parameter_names += [name] * n_indiv
+        # Check for quick solution 2: all parameters pooled
+        if self._n_pooled_dim == self._n_dim:
+            bottom_params[:, :] = top_parameters[np.newaxis, :]
+            return bottom_params
 
-            # Add the population parameter name, composed of the population
-            # name and the parameter name
-            if n_pop > 0:
-                # (Reset population parameter names first)
-                pop_model.set_parameter_names(None)
-                pop_names = pop_model.get_parameter_names()
-                parameter_names += [
-                    pop_name + ' ' + name for pop_name in pop_names]
+        shift = 0
+        current_dim = 0
+        bottom_parameters = bottom_parameters.reshape(
+            self._n_ids, self._n_dim - self._n_pooled_dim)
+        for info in self._pooled_dims:
+            start_dim, end_dim, start_top, end_top = info
+            # Fill leading non-pooled dims
+            bottom_params[:, current_dim:start_dim] = bottom_parameters[
+                :, current_dim-shift:start_dim-shift]
+            # Fill pooled dims
+            bottom_params[:, start_dim:end_dim] = top_parameters[
+                start_top:end_top]
+            current_dim = end_dim
+            shift += end_dim - start_dim
+        # Fill trailing non-pooled dims
+        bottom_params[:, current_dim:] = bottom_parameters[
+            :, current_dim-shift:]
 
-            # Remember positions of individual parameters
-            end = start + n_indiv
-            indiv_params.append([start, end])
-
-            # Shift start index
-            start += n_indiv + n_pop
-
-        # Remember parameter names and number of parameters
-        self._parameter_names = parameter_names
-        self._n_parameters = len(parameter_names)
-        self._n_indiv_params = len(indiv_names)
-
-        # Remember positions of individual parameters
-        self._indiv_params = self._get_individual_parameter_reference_matrix(
-            indiv_params)
+        return bottom_params
 
     def compute_pointwise_ll(self, parameters, per_individual=True):
         r"""
@@ -623,6 +347,7 @@ class HierarchicalLogLikelihood(object):
             scores are computed per individual or per observation.
         :type per_individual: bool, optional
         """
+        raise NotImplementedError
         # TODO: Implement for covariate model
         # TODO: Think again whether this pointwise log-likelihood
         # is really meaningful, e.g. when computing LOO.
@@ -687,82 +412,77 @@ class HierarchicalLogLikelihood(object):
         :param parameters: A list of parameter values
         :type parameters: list, numpy.ndarray
         """
-        # Transform parameters to numpy array
+        # Split parameters into bottom- and top-level parameters
         parameters = np.asarray(parameters)
+        bottom_parameters = parameters[:self._n_bottom]
+        top_parameters = parameters[self._n_bottom:]
 
-        # Compute population model likelihood and sensitivities
-        start = 0
-        ll_score = 0
-        sensitivities = np.zeros(shape=len(parameters))
-        for pop_model in self._population_models:
-            # Get start and end index of individual parameters and population
-            # parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
-            end_indiv = start + n_indiv
-            end_pop = end_indiv + n_pop
+        # Broadcast pooled parameters and reshape bottom parameters to
+        # (n_ids, n_dim)
+        bottom_parameters = self._reshape_bottom_parameters(
+            bottom_parameters, top_parameters)
 
-            # Compute likelihood and sensitivities
-            score, sens = pop_model.compute_sensitivities(
-                parameters=parameters[end_indiv:end_pop],
-                observations=parameters[start:end_indiv])
-            ll_score += score
-            sensitivities[start:end_pop] += sens
-
-            # Shift start index and population parameter counter
-            start = end_pop
+        # Compute population model score
+        score, sensitivities = self._population_model.compute_sensitivities(
+            top_parameters, bottom_parameters)
 
         # Return if values already lead to a rejection
-        if np.isinf(ll_score):
-            return ll_score, np.full(shape=len(parameters), fill_value=np.inf)
+        if np.isinf(score):
+            return score, np.full(shape=self._n_parameters, fill_value=np.inf)
 
-        # If covariate models are used, transform for eta to psi
-        if np.any(self._uses_eta):
-            parameters, dpsideta, dpsidvartheta = \
-                self._compute_psi_and_sensitivities(parameters)
+        # Transform bottom-level parameters
+        dpsi = None
+        if self._population_model.transforms_individual_parameters():
+            bottom_parameters, dpsi = \
+                self._population_model.compute_individual_sensitivities(
+                    top_parameters, bottom_parameters, self._covariates)
+            dpsi_deta = dpsi[0]
+            dpsi_dtheta = dpsi[1:]
 
-        # Evaluate individual likelihoods and sensitivities
-        for index, log_likelihood in enumerate(self._log_likelihoods):
-            indices = self._indiv_params[index]
-            score, sens = log_likelihood.evaluateS1(parameters[indices])
-            ll_score += score
+        # Evaluate individual likelihoods
+        for idi, log_likelihood in enumerate(self._log_likelihoods):
+            l, dl_dpsi = log_likelihood.evaluateS1(bottom_parameters[idi])
 
-            if not np.any(self._uses_eta):
-                sensitivities[indices] += sens
+            # Collect score and sensitivities
+            score += l
+            if dpsi is None:
+                sensitivities[idi*self._n_dim:(idi+1)*self._n_dim] += dl_dpsi
             else:
-                # Add dL/dpsi * dpsi/deta
-                sensitivities[indices] += sens * dpsideta[index]
+                sensitivities[idi*self._n_dim:(idi+1)*self._n_dim] += \
+                    dl_dpsi * dpsi_deta[idi]
+                sensitivities[self._n_ids*self._n_dim:] += np.sum(
+                    dl_dpsi[np.newaxis, :] * dpsi_dtheta[:, idi, :],
+                    axis=1)
 
-                # Add dL/dpsi * dpsi/dvartheta
-                sens = self._compute_dvartheta(sens, dpsidvartheta, index)
-                sensitivities[self._top_level_mask] += sens
+        # Collect sensitivities of pooled parameters
+        sensitivities = self._remove_pooled_duplicates(sensitivities)
 
-        return ll_score, sensitivities
+        return score, sensitivities
 
-    def get_id(self, individual_ids=False):
+    def get_id(self, unique=False):
         """
         Returns the IDs (prefixes) of the model parameters.
 
         By default the IDs of all parameters (bottom and top level) parameters
-        are returned in the order of the parameter names. If ``individual_ids``
-        is set to ``True``, the IDs of the modelled individual log-likelihoods
-        are returned.
+        are returned in the order of the parameter names. If ``unique``
+        is set to ``True``, each ID is returned only once.
         """
-        if individual_ids is False:
-            return self._ids
-
-        # Get individual IDs
         ids = []
-        index = 0
         for log_likelihood in self._log_likelihoods:
-            _id = log_likelihood.get_id()
+            ids.append(log_likelihood.get_id())
 
-            # If ID not set, generate some ID
-            if _id is None:
-                _id = 'automatic-id-%d' % (index + 1)
-                index += 1
+        if unique:
+            return ids
 
-            # Add ID to list
-            ids.append(_id)
+        # Add n_bottom / n_ids copies of ids
+        n_copies = self._n_bottom // self._n_ids
+        _ids = []
+        for _id in ids:
+            _ids += [_id] * n_copies
+        ids = _ids
+
+        # Append None's for population level parameters
+        ids += [None] * self._population_model.n_parameters()
 
         return ids
 
@@ -779,40 +499,50 @@ class HierarchicalLogLikelihood(object):
             (prefixes) of the model parameters are included.
         :type include_ids: bool, optional
         """
-        if include_ids is False:
-            # Return names without ids
-            if exclude_bottom_level is False:
-                return self._parameter_names
+        # Get bottom parameter names (pooled parameters need to be filtered)
+        current_dim = 0
+        names = self._log_likelihoods[0].get_parameter_names()
+        n = []
+        for info in self._pooled_dims:
+            start_dim, end_dim, _, _ = info
+            n += names[current_dim:start_dim]
+            current_dim = end_dim
+        n += names[current_dim:]
+        names = n
 
-            # Exclude bottom level parameters
-            names = np.asarray(self._parameter_names)
-            names = names[self._top_level_mask]
-            return list(names)
+        # Make copies of bottom parameters and append top parameters
+        n_copies = self._n_bottom // self._n_ids
+        names = names * n_copies
+        names += self._population_model.get_parameter_names()
 
-        # Construct parameters names as <ID> <Name>
-        names = []
-        for index in range(self._n_parameters):
-            _id = self._ids[index]
-            name = self._parameter_names[index]
+        if include_ids:
+            ids = self.get_id()
+            n = []
+            for idn, name in enumerate(names):
+                if ids[idn]:
+                    name = ids[idn] + ' ' + name
+                n.append(name)
+            names = n
 
-            # Prepend ID for non-population parameters
-            if _id is None:
-                names.append(name)
-            else:
-                names.append(_id + ' ' + name)
-
-        if exclude_bottom_level is True:
-            names = np.asarray(names)
-            names = names[self._top_level_mask]
-            return list(names)
+        if exclude_bottom_level:
+            n = []
+            for info in self._hetero_dims:
+                # NOTE: Heterogeneous bottom parameters count as top parameters
+                start_dim, end_dim = info
+                while start_dim < end_dim:
+                    n += names[start_dim:self._n_bottom:self._n_ids]
+                    start_dim += 1
+            # Append top-level parameters
+            n += names[self._n_bottom:]
+            names = n
 
         return names
 
-    def get_population_models(self):
+    def get_population_model(self):
         """
-        Returns the population models.
+        Returns the population model.
         """
-        return self._population_models
+        return self._population_model
 
     def n_log_likelihoods(self):
         """
@@ -830,7 +560,7 @@ class HierarchicalLogLikelihood(object):
         :type exclude_bottom_level: bool, optional
         """
         if exclude_bottom_level:
-            return len(self._top_level_mask)
+            return self._n_top
 
         return self._n_parameters
 
@@ -1618,10 +1348,12 @@ class LogLikelihood(pints.LogPDF):
             log-likelihood.
         :type label: str
         """
-        label = int(label)
+        if isinstance(label, float):
+            # Just in case floats are used as labels
+            label = int(label)
 
         # Construct ID as <ID: #> for convenience
-        self._id = 'ID ' + str(label)
+        self._id = str(label)
 
 
 class LogPosterior(pints.LogPDF):
