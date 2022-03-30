@@ -1463,7 +1463,7 @@ class HeterogeneousModel(PopulationModel):
         self._n_parameters = 0
 
         # Set default parameter names
-        self._parameter_names = None
+        self._parameter_names = []
 
     def compute_log_likelihood(self, parameters, observations):
         """
@@ -1518,7 +1518,7 @@ class HeterogeneousModel(PopulationModel):
         n_observations = len(observations)
         return 0, np.zeros(shape=n_observations * self._n_dim)
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, *args, **kwargs):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.

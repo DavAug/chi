@@ -1674,7 +1674,7 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertEqual(sens[1], 0)
 
     def test_get_parameter_names(self):
-        self.assertIsNone(self.pop_model.get_parameter_names())
+        self.assertEqual(len(self.pop_model.get_parameter_names()), 0)
 
     def test_n_hierarchical_parameters(self):
         n_ids = 10
