@@ -72,7 +72,7 @@ Simulation of measurements
 **************************
 
 Measurements are in chi modelled using a :class:`chi.ErrorModel` on top of the
-:class:`chi.MechanisticModel` of the form
+:class:`chi.MechanisticModel` . Formally this takes the form of
 
 .. math::
     y(\psi, t) = \bar{y}(\psi, t) + \epsilon (\bar{y}, \sigma, t),
@@ -104,9 +104,9 @@ Inference of model parameters
 
 While the simulation of mechanistic model outputs and measurements is an
 interesting feature of chi in its own right, the inference of model parameters
-from real-world measurements is arguably even more interesting. For simplicity,
-we will use the simulated measurements to infer the model
-parameters, but in practice the simulated measurements can be straightforwardly
+from real-world measurements is arguably even more interesting. In this
+overview, we will use the simulated measurements from above to infer the model
+parameters, but in practice the simulated measurements may be straightforwardly
 replaced by real-world measurements.
 
 Inference in chi leverages the fact that the modelled measurements :math:`y`
@@ -131,7 +131,7 @@ parameter values for the measurements
 In chi the log-likelihood of model parameters can be defined using
 :class:`chi.LogLikelihood`. A :class:`chi.LogLikelihood` defines the
 distribution of the measurements using a :class:`chi.MechanisticModel` and a
-:class:`chi.ErrorModel` for each mechanistic model output, and couples the
+:class:`chi.ErrorModel` , and couples the
 distribution to the measurements as defined above. The log-likelihood of
 different parameter values can now be evaluated using the
 :meth:`chi.LogLikelihood.__call__` method
@@ -186,7 +186,7 @@ but close to the data-generating parameters. Note, however, that the inferred
 parameters have a larger log-likelihood than the data-generating parameters,
 which may seem surprising at first. How can
 a different set of parameters be more likely to describe the measurements than
-the set of parameters that generated the measurments?
+the set of parameters that generated the measurements?
 A thorough discussion of the shortcomings of maximum likelihood estimation
 is beyond the scope of this documentation, but let us plot the
 mechanstic model output for the inferred parameters to confirm that
@@ -208,8 +208,9 @@ measurements do not uniquely define the data-generating parameters of a
 probabilistic model. The
 maximum likelihood estimates *can* therefore be far away from the
 data-generating parameters just because the realisation of the measurement
-noise happens to favour different parameter values than the data-generating
-ones (in this example the maximum likelihood estimates are clearly quite good).
+noise happens to make other parameter values seem more likely than the
+data-generating values (in this example the maximum likelihood estimates are
+clearly quite good).
 In other words, a finite number of measurements
 leaves uncertainty about the model parameters, a.k.a. *parametric uncertainty*.
 While for real-world measurements the notion of
@@ -254,16 +255,17 @@ to the :class:`chi.LogLikelihood` using :meth:`chi.LogPosterior.__call__`
     -8.096007012665059
 
 For details on how to define a :class:`chi.LogPosterior` and
-many other details concerning log-posetriors in chi, we refer to section
+many other details concerning log-posteriors in chi, we refer to section
 :doc:`log_posterior`.
 
 While the :class:`chi.LogPosterior` allows us to evaluate the log-posterior
 up to the constant term for different parameter values it does not yet tell us
 how the posterior distribution of likely parameter values looks like.
-This distribution can be inferred from a :class:`chi.LogPosterior` using MCMC
-sampling algorithms. Below we will use the implementation of Haario
-and Bardenet's Adaptive Covariance Matrix Marcov Chain Monte Carlo algorithm,
-:class:`pints.HaarioBardenetACMC`, to infer the posterior distribution
+This distribution can be inferred from a :class:`chi.LogPosterior` using, e.g.
+Markvo Chain Monte Carlo (MCMC) sampling algorithms. Below we will use Pints_'
+implementation of Haario and Bardenet's Adaptive Covariance Matrix MCMC
+algorithm, :class:`pints.HaarioBardenetACMC`, to infer the posterior
+distribution
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 435-439
@@ -292,11 +294,15 @@ data-generating parameters. For measurements of many biological systems this
 is, however, a too naïve assumption, as measurements are often taken from
 different, non-identical entities, ranging from measurements across
 cells to measurements across patients. In these cases, it is well established
-that differences between individual entities may lead to inter-individual
-variability in the measurements. A natural extension of the modelling framework
-to capture this additional source of variability is to assume that differences
+that differences between individual entities may lead to additional variability
+in the measurements that cannot be attributed to measurement noise.
+To separate this inter-individual variability from measurement noise, we need
+to extend our modelling framework.
+A natural extension is to assume that differences
 across individuals can be modelled by different data-generating parameter
-values for each individual
+values for each individual. Below we illustrate how inter-individual
+variability may mainifest in measurements for 3 patients with different
+data-generating parameters
 
 .. literalinclude:: code/1_simulation_2.py
     :lines: 303-378
@@ -329,9 +335,13 @@ a composite of fixed effects :math:`\mu` and random effects :math:`\eta`
 Here, :math:`\mu _{\psi}` and :math:`\mu _{\sigma}` are constants that model
 the typical parameter values across individuals, and
 :math:`\eta _{\psi}` and :math:`\eta _{\sigma}` are random variables that
-model the inter-individual differences. While the mixed-effects picture can
+model the inter-individual differences.
+Note that this assumes that the data-generating parameters of individuals
+follow a probabilistic distribution, and that any given individual is just a
+random sample from this distribution.
+While the mixed-effects picture can
 be useful to develop some intuition for population models, an alternative
-approach is to focus on the distribution of model parameters that is
+picture is to focus on the distribution of parameters that is
 defined by the mixed-effects model
 
 .. math::
@@ -347,13 +357,13 @@ representation of non-linear mixed effects modelling and the approaches are
 equivalent).
 In the remainder, we will for notational ease include :math:`\sigma` in the
 definition of
-:math:`\psi`, i.e. :math:`(\psi , \sigma) \rightarrow \psi`. To make the
-hierarchy between the model parameters explicit we will refer to
+:math:`\psi`, i.e. :math:`(\psi , \sigma) \rightarrow \psi`. We will also make
+the hierarchy between the model parameters explicit by refering to
 :math:`\psi` as bottom-level or individual parameters and
 to :math:`\theta` as top-level or population parameters.
 
-We can now construct a data-generating model that explicitly models
-inter-individual variability in measurements
+With the notion of a population model, we can now construct a data-generating
+model that explicitly models inter-individual variability in measurements
 
 .. math::
     p(y, \psi | \theta , t) = p(y | \psi , t)\, p(\psi | \theta),
@@ -405,7 +415,9 @@ In chi we can define this population model from instances of
 :class:`chi.PooledModel` and :class:`chi.LogNormalModel` using
 :class:`chi.ComposedPopulationModel`. From the population model we can then
 simulate the distribution of the individual parameters in the population via
-sampling
+sampling. Below we have chosen the values of the population parameters
+:math:`\theta` such that the 3 patients from above could have feasibly been
+sampled from the population distribution
 
 .. literalinclude:: code/1_simulation_2.py
     :lines: 396-477
@@ -414,10 +426,12 @@ sampling
    :file: images/1_simulation_7.html
 
 The dashed lines illustrate the elimination rates of the 3 simulated patients
-above. We omit plotting the other patient parameters as they are all the same
+from above and the grey distributions illustrate the distirbution of
+patient parameters in the population. We omit plotting the amount, volume and
+noise parameters of the 3 patients as they are all the same
 and uniquely defined by the population distribution.
 
-The distribution of drug concentration measurements in the population
+The distribution of possible drug concentration measurements in the population
 can be simulated by measuring the drug concentration for each sampled set of
 individual parameters, i.e by simulating measurements for the simulated
 patients. Below we will illustrate the 5th to 95th percentile
@@ -431,7 +445,7 @@ patients from above
    :file: images/1_simulation_8.html
 
 For details on how to implement a :class:`chi.PopulationModel` and
-many other details concerning the population models in chi, we refer to
+many other details concerning population models in chi, we refer to
 section :doc:`population_model`.
 
 Hierarchical inference
