@@ -41,21 +41,17 @@ class HierarchicalLogLikelihood(object):
     :math:`\psi_i = \{ \psi _{ik}\}`.
     We use :math:`i` to index individuals, :math:`j` to index measurements for
     an individual and :math:`k` to index the bottom-level parameters.
-    :math:`\theta _k` are the population parameters associated with the
-    :math:`k^{\text{th}}` bottom-level parameter.
+    :math:`\theta _k = \{ \theta _{kr} \}` are the population parameters
+    associated with the :math:`k^{\text{th}}` bottom-level parameter.
 
     :param log_likelihoods: A list of log-likelihoods which are
         defined on the same parameter space with dimension ``n_parameters``.
     :type log_likelihoods: list[LogLikelihood] of length ``n_ids``
     :param population_models: A population model of dimension ``n_parameters``.
     :type population_models: PopulationModel
-    :param covariates: An array-like object of dimension :math:`(n, c)` with
-        :math:`c` covariates for each of the :math:`n` log-likelihoods.
-        By default, all covariates inform all
-        :class:`PopulationCovariateModel`s.
-        An explicit mapping of the covariates can also beprovided with
-        ``covariate_map``.
-    :type covariates: np.ndarray of shape (n, c), optional
+    :param covariates: A 2-dimensional array of with the
+        individual's covariates of shape ``(n_ids, n_cov)``.
+    :type covariates: np.ndarray of shape ``(n_ids, n_cov)``, optional
     """
     def __init__(
             self, log_likelihoods, population_model, covariates=None):
@@ -314,32 +310,9 @@ class HierarchicalLogLikelihood(object):
 
     def compute_pointwise_ll(self, parameters, per_individual=True):
         r"""
-        Returns the pointwise log-likelihood scores of the parameters for each
+        Returns the pointwise log-likelihood scores of the parameters for
+        each
         observation.
-
-        The pointwise log-likelihood for an hierarchical model can be
-        straightforwardly defined when each observation is treated as one
-        "point"
-
-        .. math::
-            L(\Psi , \theta | x^{\text{obs}}_{i}) =
-                \sum _n \log p(x^{\text{obs}}_{in} | \psi _i )
-                + \log p(\psi _i | \theta ) ,
-
-        where the sum runs over all :math:`N_i` observations of individual
-        :math:`i`.
-
-        Alternatively, the pointwise log-likelihoods may be computed per
-        observation point, assuming that the population contribution can
-        be uniformly attributed to each observation
-
-        .. math::
-            L(\Psi , \theta | x^{\text{obs}}_{in}) =
-                \log p(x^{\text{obs}}_{in} | \psi _i )
-                + \log p(\psi _i | \theta ) / N_i .
-
-        Setting the flag ``per_individual`` to ``True`` or ``False`` switches
-        between the two modi.
 
         :param parameters: A list of parameter values.
         :type parameters: list, numpy.ndarray
@@ -347,13 +320,38 @@ class HierarchicalLogLikelihood(object):
             scores are computed per individual or per observation.
         :type per_individual: bool, optional
         """
+        # NOTE: Some thoughts on how to do it
+        # The pointwise log-likelihood for an hierarchical model can be
+        # straightforwardly defined when each observation is treated as one
+        # "point"
+
+        # .. math::
+        #     L(\Psi , \theta | x^{\text{obs}}_{i}) =
+        #         \sum _n \log p(x^{\text{obs}}_{in} | \psi _i )
+        #         + \log p(\psi _i | \theta ) ,
+
+        # where the sum runs over all :math:`N_i` observations of individual
+        # :math:`i`.
+
+        # Alternatively, the pointwise log-likelihoods may be computed per
+        # observation point, assuming that the population contribution can
+        # be uniformly attributed to each observation
+
+        # .. math::
+        #     L(\Psi , \theta | x^{\text{obs}}_{in}) =
+        #         \log p(x^{\text{obs}}_{in} | \psi _i )
+        #         + \log p(\psi _i | \theta ) / N_i .
+
+        # Setting the flag ``per_individual`` to ``True`` or ``False`` switches
+        # between the two modi.
         raise NotImplementedError
         # TODO: Implement for covariate model
         # TODO: Think again whether this pointwise log-likelihood
         # is really meaningful, e.g. when computing LOO.
         if np.any(self._uses_eta):
             raise NotImplementedError(
-                'This method is not implemented for CovariatePopulationModels.'
+                'This method is not implemented for '
+                'CovariatePopulationModels.'
             )
 
         # Transform parameters to numpy array
@@ -573,7 +571,7 @@ class HierarchicalLogLikelihood(object):
 
 class HierarchicalLogPosterior(pints.LogPDF):
     r"""
-    A log-posterior constructed from a hierarchical log-likelihood
+    A hierarchical log-posterior is defined by a hierarchical log-likelihood
     and a log-prior for the population (or top-level) parameters.
 
     The log-posterior takes an instance of a
@@ -581,16 +579,15 @@ class HierarchicalLogPosterior(pints.LogPDF):
     :class:`pints.LogPrior` of the same dimensionality
     as population (or top-level) parameters in the log-likelihood.
 
-    Formally the log-posterior is given by the sum of the input log-likelihood
-    :math:`L(\Psi , \theta | X ^{\text{obs}})` and the input log-prior
-    :math:`\log p(\theta )` up to an additive constant
+    Formally the log-posterior is defined as
 
     .. math::
-        \log p(\Psi , \theta | X ^{\text{obs}}) \sim
-        L(\Psi , \theta | X ^{\text{obs}}) + \log p(\theta ),
+        \log p(\Psi , \theta | X ^{\text{obs}}) =
+            \log p(\mathcal{D}, \Psi | \theta) + \log p(\theta ) +
+            \text{constant},
 
     where :math:`\Psi` are the bottom-level parameters, :math:`\theta` are the
-    top-level parameters and :math:`X ^{\text{obs}}` are the observations, see
+    top-level parameters and :math:`\mathcal{D}` is the data, see
     :class:`HierarchicalLogLikelihood`.
 
     Extends :class:`pints.LogPDF`.
@@ -600,72 +597,6 @@ class HierarchicalLogPosterior(pints.LogPDF):
     :type log_likelihood: HierarchicalLogLikelihood
     :param log_prior: A log-prior for the population (or top-level) parameters.
     :type log_prior: pints.LogPrior
-
-    Example
-    -------
-
-    ::
-
-        import chi
-        import pints
-
-        # Define mechanistic and error model
-        sbml_file = chi.ModelLibrary().tumour_growth_inhibition_model_koch()
-        mechanistic_model = chi.PharmacodynamicModel(sbml_file)
-        error_model = chi.ConstantAndMultiplicativeGaussianErrorModel()
-
-        # Define observations
-        observations_1 = [1, 2, 3, 4]
-        observations_2 = [1.5, 3.2, 2.8, 3]
-        times = [0, 0.5, 1, 2]
-
-        # Define log-likelihoods
-        log_likelihood_1 = chi.LogLikelihood(
-            mechanistic_model,
-            error_model,
-            observations_1,
-            times)
-        log_likelihood_2 = chi.LogLikelihood(
-            mechanistic_model,
-            error_model,
-            observations_2,
-            times)
-
-        # Define population models
-        population_models = [
-            chi.LogNormalModel(),
-            chi.PooledModel(),
-            chi.HeterogeneousModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel()]
-
-        # Create hierarchical log-likelihood
-        hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
-            log_likelihoods=[log_likelihood_1, log_likelihood_2],
-            population_models=population_models)
-
-        # Define log-prior
-        log_prior = pints.ComposedLogPrior(
-            pints.LogNormalLogPrior(1, 1),
-            pints.LogNormalLogPrior(1, 1),
-            pints.LogNormalLogPrior(1, 1),
-            pints.LogNormalLogPrior(1, 1),
-            pints.LogNormalLogPrior(1, 1),
-            pints.LogNormalLogPrior(1, 1),
-            pints.LogNormalLogPrior(1, 1),
-            pints.HalfCauchyLogPrior(0, 1),
-            pints.HalfCauchyLogPrior(0, 1))
-
-        # Create hierarchical log-posterior
-        log_posterior = chi.HierarchicalLogPosterior(
-            log_likelihood=hierarch_log_likelihood,
-            log_prior=log_prior)
-
-        # Compute log-posterior score
-        parameters = [1] * 11
-        score = log_posterior(parameters)  # -22.354236950040455
     """
     def __init__(self, log_likelihood, log_prior):
         # Check inputs
@@ -712,36 +643,30 @@ class HierarchicalLogPosterior(pints.LogPDF):
         """
         Creates a mask that can be used to mask for the top level
         parameters.
+
+        Uses that bottom-level parameters (uncluding IDs) have unique names,
+        and that all population parameters are top-level.
         """
-        # Create conatainer with all False
-        # (False for not top-level)
-        top_level_mask = np.zeros(shape=self._n_parameters, dtype=bool)
+        # Get names of heterogenously modelled parameters
+        n_pop = self._log_likelihood.get_population_model().n_parameters()
+        top_parameters = self._log_likelihood.get_parameter_names(
+            exclude_bottom_level=True, include_ids=True)
+        n_top = len(top_parameters)
+        hetero_names = top_parameters[:n_top-n_pop]
 
-        # Flip entries to true if top-level parameter
-        start = 0
-        n_ids = self._log_likelihood.n_log_likelihoods()
-        population_models = self._log_likelihood.get_population_models()
-        for pop_model in population_models:
-            # Get number of hierarchical parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
+        # Find indices of heterogenously modelled parameters
+        parameter_names = self._log_likelihood.get_parameter_names(
+            include_ids=True)
+        indices = []
+        for idn, name in enumerate(parameter_names):
+            if name in hetero_names:
+                indices.append(idn)
 
-            if isinstance(pop_model, chi.HeterogeneousModel):
-                # For heterogeneous models the individual parameters are the
-                # top-level parameters
-                end = start + n_indiv
-                top_level_mask[start: end] = ~top_level_mask[start: end]
+        # Append indices of population paramters
+        n_parameters = self._log_likelihood.n_parameters()
+        indices += list(range(n_parameters-n_pop, n_parameters))
 
-            # Add the population parameters as top-level parameters
-            # (Heterogeneous model has 0 population parameters)
-            start += n_indiv
-            end = start + n_pop
-            top_level_mask[start: end] = ~top_level_mask[start: end]
-
-            # Shift start to end
-            start = end
-
-        # Store mask
-        self._top_level_mask = top_level_mask
+        self._top_level_mask = np.array(indices)
 
     def evaluateS1(self, parameters):
         """

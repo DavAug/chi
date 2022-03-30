@@ -1059,20 +1059,16 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
                 model, error_models, observations, times)]
 
         # Create population models
-        population_models = [
-            chi.PooledModel(),
-            chi.PooledModel(),
+        population_model = chi.ComposedPopulationModel([
+            chi.PooledModel(n_dim=2),
             chi.LogNormalModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel()]
+            chi.PooledModel(n_dim=4)])
 
         # Create hierarchical log-likelihood
         cls.hierarch_log_likelihood = chi.HierarchicalLogLikelihood(
-            log_likelihoods, population_models)
+            log_likelihoods, population_model)
 
         # Define log-prior
         cls.log_prior = pints.ComposedLogPrior(
@@ -1116,7 +1112,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
     def test_call(self):
         # Test case I: Check score contributions add appropriately
         all_params = np.arange(start=1, stop=14, step=1)
-        top_params = [1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        top_params = [2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
         ref_score = self.hierarch_log_likelihood(all_params) + \
             self.log_prior(top_params)
         score = self.log_posterior(all_params)
@@ -1131,16 +1127,16 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
     def test_evaluateS1(self):
         # Test case I: Check score contributions add appropriately
         all_params = np.arange(start=1, stop=14, step=1)
-        top_params = [1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        top_params = [2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
         ref_score1, ref_sens1 = self.hierarch_log_likelihood.evaluateS1(
             all_params)
         ref_score2, ref_sens2 = self.log_prior.evaluateS1(top_params)
         ref_score = ref_score1 + ref_score2
         ref_sens = [
-            ref_sens1[0] + ref_sens2[0],
-            ref_sens1[1] + ref_sens2[1],
+            ref_sens1[0],
+            ref_sens1[1] + ref_sens2[0],
             ref_sens1[2],
-            ref_sens1[3],
+            ref_sens1[3] + ref_sens2[1],
             ref_sens1[4] + ref_sens2[2],
             ref_sens1[5] + ref_sens2[3],
             ref_sens1[6] + ref_sens2[4],
@@ -1187,15 +1183,15 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         ids = self.log_posterior.get_id()
 
         self.assertEqual(len(ids), 13)
-        self.assertIsNone(ids[0])
-        self.assertIsNone(ids[1])
-        self.assertEqual(ids[2], 'automatic-id-1')
-        self.assertEqual(ids[3], 'automatic-id-2')
+        self.assertEqual(ids[0], 'Log-likelihood 1')
+        self.assertEqual(ids[1], 'Log-likelihood 1')
+        self.assertEqual(ids[2], 'Log-likelihood 2')
+        self.assertEqual(ids[3], 'Log-likelihood 2')
         self.assertIsNone(ids[4])
         self.assertIsNone(ids[5])
         self.assertIsNone(ids[6])
-        self.assertEqual(ids[7], 'automatic-id-1')
-        self.assertEqual(ids[8], 'automatic-id-2')
+        self.assertIsNone(ids[7])
+        self.assertIsNone(ids[8])
         self.assertIsNone(ids[9])
         self.assertIsNone(ids[10])
         self.assertIsNone(ids[11])
@@ -1206,92 +1202,112 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         parameter_names = self.log_posterior.get_parameter_names()
 
         self.assertEqual(len(parameter_names), 13)
-        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
-        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
+        self.assertEqual(parameter_names[0], 'central.size')
+        self.assertEqual(parameter_names[1], 'myokit.elimination_rate')
         self.assertEqual(parameter_names[2], 'central.size')
-        self.assertEqual(parameter_names[3], 'central.size')
-        self.assertEqual(parameter_names[4], 'Mean log central.size')
-        self.assertEqual(parameter_names[5], 'Std. log central.size')
-        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
-        self.assertEqual(parameter_names[7], 'myokit.elimination_rate')
-        self.assertEqual(parameter_names[8], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[3], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[5], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[6], 'Log mean Dim. 1')
+        self.assertEqual(parameter_names[7], 'Log std. Dim. 1')
+        self.assertEqual(parameter_names[8], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[9], 'Pooled central.drug_amount Sigma base')
+            parameter_names[9], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[10], 'Pooled central.drug_amount Sigma rel.')
+            parameter_names[10], 'Pooled Dim. 2')
         self.assertEqual(
-            parameter_names[11], 'Pooled dose.drug_amount Sigma base')
+            parameter_names[11], 'Pooled Dim. 3')
         self.assertEqual(
-            parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
+            parameter_names[12], 'Pooled Dim. 4')
+
+        self.assertEqual(len(parameter_names), 13)
+        self.assertEqual(parameter_names[0], 'central.size')
+        self.assertEqual(parameter_names[1], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[2], 'central.size')
+        self.assertEqual(parameter_names[3], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[5], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[6], 'Log mean Dim. 1')
+        self.assertEqual(parameter_names[7], 'Log std. Dim. 1')
+        self.assertEqual(parameter_names[8], 'Pooled Dim. 1')
+        self.assertEqual(
+            parameter_names[9], 'Pooled Dim. 1')
+        self.assertEqual(
+            parameter_names[10], 'Pooled Dim. 2')
+        self.assertEqual(
+            parameter_names[11], 'Pooled Dim. 3')
+        self.assertEqual(
+            parameter_names[12], 'Pooled Dim. 4')
 
         # Test case II: Exclude bottom-level
         parameter_names = self.log_posterior.get_parameter_names(
             exclude_bottom_level=True)
 
         self.assertEqual(len(parameter_names), 11)
-        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
-        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
-        self.assertEqual(parameter_names[2], 'Mean log central.size')
-        self.assertEqual(parameter_names[3], 'Std. log central.size')
-        self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
-        self.assertEqual(parameter_names[5], 'myokit.elimination_rate')
-        self.assertEqual(parameter_names[6], 'myokit.elimination_rate')
         self.assertEqual(
-            parameter_names[7], 'Pooled central.drug_amount Sigma base')
+            parameter_names[0], 'myokit.elimination_rate')
         self.assertEqual(
-            parameter_names[8], 'Pooled central.drug_amount Sigma rel.')
+            parameter_names[1], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[4], 'Log mean Dim. 1')
+        self.assertEqual(parameter_names[5], 'Log std. Dim. 1')
+        self.assertEqual(parameter_names[6], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[9], 'Pooled dose.drug_amount Sigma base')
+            parameter_names[7], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[10], 'Pooled dose.drug_amount Sigma rel.')
+            parameter_names[8], 'Pooled Dim. 2')
+        self.assertEqual(
+            parameter_names[9], 'Pooled Dim. 3')
+        self.assertEqual(
+            parameter_names[10], 'Pooled Dim. 4')
 
         # Test case III: with ids
         parameter_names = self.log_posterior.get_parameter_names(
             include_ids=True)
 
         self.assertEqual(len(parameter_names), 13)
-        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
-        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
-        self.assertEqual(parameter_names[2], 'automatic-id-1 central.size')
-        self.assertEqual(parameter_names[3], 'automatic-id-2 central.size')
-        self.assertEqual(parameter_names[4], 'Mean log central.size')
-        self.assertEqual(parameter_names[5], 'Std. log central.size')
-        self.assertEqual(parameter_names[6], 'Pooled dose.absorption_rate')
+        self.assertEqual(parameter_names[0], 'Log-likelihood 1 central.size')
         self.assertEqual(
-            parameter_names[7], 'automatic-id-1 myokit.elimination_rate')
+            parameter_names[1], 'Log-likelihood 1 myokit.elimination_rate')
+        self.assertEqual(parameter_names[2], 'Log-likelihood 2 central.size')
         self.assertEqual(
-            parameter_names[8], 'automatic-id-2 myokit.elimination_rate')
+            parameter_names[3], 'Log-likelihood 2 myokit.elimination_rate')
+        self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[5], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[6], 'Log mean Dim. 1')
+        self.assertEqual(parameter_names[7], 'Log std. Dim. 1')
+        self.assertEqual(parameter_names[8], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[9], 'Pooled central.drug_amount Sigma base')
+            parameter_names[9], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[10], 'Pooled central.drug_amount Sigma rel.')
+            parameter_names[10], 'Pooled Dim. 2')
         self.assertEqual(
-            parameter_names[11], 'Pooled dose.drug_amount Sigma base')
+            parameter_names[11], 'Pooled Dim. 3')
         self.assertEqual(
-            parameter_names[12], 'Pooled dose.drug_amount Sigma rel.')
+            parameter_names[12], 'Pooled Dim. 4')
 
         # Test case IV: Exclude bottom-level with IDs
         parameter_names = self.log_posterior.get_parameter_names(
             exclude_bottom_level=True, include_ids=True)
 
-        self.assertEqual(len(parameter_names), 11)
-        self.assertEqual(parameter_names[0], 'Pooled central.drug_amount')
-        self.assertEqual(parameter_names[1], 'Pooled dose.drug_amount')
-        self.assertEqual(parameter_names[2], 'Mean log central.size')
-        self.assertEqual(parameter_names[3], 'Std. log central.size')
-        self.assertEqual(parameter_names[4], 'Pooled dose.absorption_rate')
         self.assertEqual(
-            parameter_names[5], 'automatic-id-1 myokit.elimination_rate')
+            parameter_names[0], 'Log-likelihood 1 myokit.elimination_rate')
         self.assertEqual(
-            parameter_names[6], 'automatic-id-2 myokit.elimination_rate')
+            parameter_names[1], 'Log-likelihood 2 myokit.elimination_rate')
+        self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[4], 'Log mean Dim. 1')
+        self.assertEqual(parameter_names[5], 'Log std. Dim. 1')
+        self.assertEqual(parameter_names[6], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[7], 'Pooled central.drug_amount Sigma base')
+            parameter_names[7], 'Pooled Dim. 1')
         self.assertEqual(
-            parameter_names[8], 'Pooled central.drug_amount Sigma rel.')
+            parameter_names[8], 'Pooled Dim. 2')
         self.assertEqual(
-            parameter_names[9], 'Pooled dose.drug_amount Sigma base')
+            parameter_names[9], 'Pooled Dim. 3')
         self.assertEqual(
-            parameter_names[10], 'Pooled dose.drug_amount Sigma rel.')
+            parameter_names[10], 'Pooled Dim. 4')
 
     def test_n_parameters(self):
         # Test case I: All parameters
