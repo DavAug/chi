@@ -36,11 +36,12 @@ class TestComposedPopulationModel(unittest.TestCase):
             chi.GaussianModel(),
             chi.LogNormalLinearCovariateModel(n_covariates=1),
             dim_names=['Dim. 2'])
+        cls.pop_model5 = chi.HeterogeneousModel(dim_names=['Dim. 3'])
         cls.pop_model_prime = chi.ComposedPopulationModel(
             population_models=[
                 cls.pop_model1,
                 cls.pop_model4,
-                cls.pop_model3])
+                cls.pop_model5])
 
     def test_bad_instantiation(self):
         pop_models = ['bad', 'type']
@@ -147,16 +148,17 @@ class TestComposedPopulationModel(unittest.TestCase):
 
         # Test case II: covariate model
         n_ids, n_dim = (6, 3)
+        self.pop_model_prime.set_n_ids(n_ids)
         psis = np.ones(shape=(n_ids, n_dim))
-        parameters = np.arange(6)
-        parameters[-1] = 1
+        parameters = np.arange(11)
+        parameters[5:] = 1
         ref_score = \
             self.pop_model1.compute_log_likelihood(
                 parameters[:2], psis[:, 0]) \
             + self.pop_model4.compute_log_likelihood(
                 parameters[2:5], psis[:, 1]) \
-            + self.pop_model3.compute_log_likelihood(
-                parameters[5], psis[:, 2])
+            + self.pop_model5.compute_log_likelihood(
+                parameters[5:], psis[:, 2])
         score = self.pop_model_prime.compute_log_likelihood(parameters, psis)
         self.assertAlmostEqual(score, ref_score)
 
@@ -212,16 +214,17 @@ class TestComposedPopulationModel(unittest.TestCase):
 
         # Test case II: covariate model
         n_ids, n_dim = (6, 3)
+        self.pop_model_prime.set_n_ids(n_ids)
         psis = np.ones(shape=(n_ids, n_dim))
-        parameters = np.arange(6)
-        parameters[-1] = 1
+        parameters = np.arange(11)
+        parameters[5:] = 1
 
         s1, ref_sens1 = self.pop_model1.compute_sensitivities(
             parameters[:2], psis[:, 0])
         s2, ref_sens2 = self.pop_model4.compute_sensitivities(
             parameters[2:5], psis[:, 1])
-        s3, ref_sens3 = self.pop_model3.compute_sensitivities(
-            parameters[5], psis[:, 2])
+        s3, ref_sens3 = self.pop_model5.compute_sensitivities(
+            parameters[5:], psis[:, 2])
         ref_score = s1 + s2 + s3
         score, sens = self.pop_model_prime.compute_sensitivities(
             parameters, psis)
@@ -252,6 +255,11 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(sens[21], ref_sens2[7])
         self.assertEqual(sens[22], ref_sens2[8])
         self.assertEqual(sens[23], ref_sens3[6])
+        self.assertEqual(sens[24], ref_sens3[7])
+        self.assertEqual(sens[25], ref_sens3[8])
+        self.assertEqual(sens[26], ref_sens3[9])
+        self.assertEqual(sens[27], ref_sens3[10])
+        self.assertEqual(sens[28], ref_sens3[11])
 
     def test_get_covariate_names(self):
         # Test case I: no covariates
@@ -276,6 +284,7 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(names[6], 'Pooled Dim. 4')
 
         # Test case II
+        self.pop_model_prime.set_n_ids(1)
         names = self.pop_model_prime.get_parameter_names()
         self.assertEqual(len(names), 6)
         self.assertEqual(names[0], 'Mean Dim. 1')
@@ -283,7 +292,7 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(names[2], 'Base log mean Dim. 2')
         self.assertEqual(names[3], 'Log std. Dim. 2')
         self.assertEqual(names[4], 'Shift Covariate 1 Dim. 2')
-        self.assertEqual(names[5], 'Pooled Dim. 4')
+        self.assertEqual(names[5], 'ID 1 Dim. 3')
 
     def test_n_hierarchical_parameters(self):
         # Test case I.1
@@ -315,12 +324,16 @@ class TestComposedPopulationModel(unittest.TestCase):
 
         # Test case I.2
         n_ids = 10
+        self.pop_model_prime.set_n_ids(n_ids)
         n_dim = self.pop_model_prime.n_dim()
         n_parameters = self.pop_model_prime.n_parameters()
         n_bottom, n_top = self.pop_model_prime.n_hierarchical_parameters(n_ids)
 
         self.assertEqual(n_bottom, n_ids * (n_dim - 1))
         self.assertEqual(n_top, n_parameters)
+
+        # Reset n_ids again
+        self.pop_model_prime.set_n_ids(1)
 
     def test_n_parameters(self):
         # Test case I
@@ -1627,80 +1640,148 @@ class TestHeterogeneousModel(unittest.TestCase):
     def setUpClass(cls):
         cls.pop_model = chi.HeterogeneousModel()
 
+    def test_bad_instantiation(self):
+        with self.assertRaisesRegex(ValueError, 'The number of modelled'):
+            chi.HeterogeneousModel(n_ids=0)
+
     def test_compute_log_likelihood(self):
-        # For efficiency the input is actually not checked, and 0 is returned
-        # regardless
-        parameters = 'some parameters'
-        observations = 'some observations'
+        # Test I: n_ids=1
+        parameters = [1]
+        observations = [1]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
 
-    def test_compute_pointwise_ll(self):
-        # Test case I: Only the number of observations determines how many 0s
-        # are returned
-        # Test case I.1
-        parameters = [1]
-        observations = [0, 1, 1, 1]
-        scores = self.pop_model.compute_pointwise_ll(
-            parameters, observations)
-        self.assertEqual(len(scores), 4)
-        self.assertEqual(scores[0], 0)
-        self.assertEqual(scores[1], 0)
-        self.assertEqual(scores[2], 0)
-        self.assertEqual(scores[3], 0)
+        # Test II: n_ids=5, dim=2
+        n_ids = 5
+        n_dim = 2
+        pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
+        parameters = np.arange(n_ids * n_dim)
+        observations = parameters.reshape(n_ids, n_dim)
+        score = pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, 0)
 
-        # Test case I.2
-        parameters = [1]
-        observations = [1, 2, 1, 10, 1]
-        scores = self.pop_model.compute_pointwise_ll(
-            parameters, observations)
-        self.assertEqual(len(scores), 5)
-        self.assertEqual(scores[0], 0)
-        self.assertEqual(scores[1], 0)
-        self.assertEqual(scores[2], 0)
-        self.assertEqual(scores[3], 0)
-        self.assertEqual(scores[4], 0)
+        # Test III: inf for unequal params
+        parameters = np.ones(n_ids * n_dim)
+        score = pop_model.compute_log_likelihood(parameters, observations)
+        self.assertTrue(np.isinf(score))
+
+    def test_compute_pointwise_ll(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.pop_model.compute_pointwise_ll('some', 'input')
 
     def test_compute_sensitivities(self):
-        # For efficiency the input is actually not checked, and 0 is returned
-        # regardless
-        parameters = 'some parameters'
-        observations = ['some', 'observations']
+        # Test I: n_ids=1
+        parameters = [1]
+        observations = [1]
         score, sens = self.pop_model.compute_sensitivities(
             parameters, observations)
         self.assertEqual(score, 0)
         self.assertEqual(len(sens), 2)
-        self.assertEqual(sens[0], 0)
-        self.assertEqual(sens[1], 0)
+        self.assertTrue(np.all(sens == 0))
+
+        # Test II: n_ids=5, dim=2
+        n_ids = 5
+        n_dim = 2
+        pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
+        parameters = np.arange(n_ids * n_dim)
+        observations = parameters.reshape(n_ids, n_dim)
+        score, sens = pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, 0)
+        self.assertEqual(len(sens), 20)
+        self.assertTrue(np.all(sens == 0))
+
+        # Test III: inf for unequal params
+        parameters = np.ones(n_ids * n_dim)
+        score, sens = pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertTrue(np.isinf(score))
+        self.assertEqual(len(sens), 20)
+        self.assertTrue(np.all(np.isinf(sens)))
 
     def test_get_parameter_names(self):
-        self.assertEqual(len(self.pop_model.get_parameter_names()), 0)
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'ID 1 Dim. 1')
+
+        n_ids = 3
+        n_dim = 2
+        pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
+        names = pop_model.get_parameter_names()
+        self.assertEqual(len(names), 6)
+        self.assertEqual(names[0], 'ID 1 Dim. 1')
+        self.assertEqual(names[1], 'ID 1 Dim. 2')
+        self.assertEqual(names[2], 'ID 2 Dim. 1')
+        self.assertEqual(names[3], 'ID 2 Dim. 2')
+        self.assertEqual(names[4], 'ID 3 Dim. 1')
+        self.assertEqual(names[5], 'ID 3 Dim. 2')
+
+        names = pop_model.get_parameter_names(exclude_dim_names=True)
+        self.assertEqual(len(names), 6)
+        self.assertEqual(names[0], 'ID 1')
+        self.assertEqual(names[1], 'ID 1')
+        self.assertEqual(names[2], 'ID 2')
+        self.assertEqual(names[3], 'ID 2')
+        self.assertEqual(names[4], 'ID 3')
+        self.assertEqual(names[5], 'ID 3')
 
     def test_n_hierarchical_parameters(self):
         n_ids = 10
         n_hierachical_params = self.pop_model.n_hierarchical_parameters(n_ids)
 
         self.assertEqual(len(n_hierachical_params), 2)
-        self.assertEqual(n_hierachical_params[0], n_ids)
-        self.assertEqual(n_hierachical_params[1], 0)
+        self.assertEqual(n_hierachical_params[0], 0)
+        self.assertEqual(n_hierachical_params[1], n_ids)
 
     def test_n_parameters(self):
-        self.assertEqual(self.pop_model.n_parameters(), 0)
+        self.assertEqual(self.pop_model.n_parameters(), 1)
 
     def test_sample(self):
-        with self.assertRaisesRegex(NotImplementedError, ''):
-            self.pop_model.sample('some params')
+        # Test I: n_ids = 1, n_dim = 1
+        parameters = [4]
+        n_samples = 1
+        samples = self.pop_model.sample(parameters, n_samples=n_samples)
+        self.assertEqual(samples.shape, (n_samples, 1))
+        self.assertTrue(np.all(samples == parameters[0]))
 
-    def test_set_get_parameter_names(self):
-        # Check default name
-        name = self.pop_model.get_parameter_names()
-        self.assertIsNone(name)
+        n_samples = 3
+        samples = self.pop_model.sample(parameters, n_samples=n_samples)
+        self.assertEqual(samples.shape, (n_samples, 1))
+        self.assertTrue(np.all(samples == parameters[0]))
 
-        # Set name
-        name = ['some name']
-        self.pop_model.set_parameter_names(name)
+        # Test I: n_ids = 3, n_dim = 2
+        n_ids = 3
+        n_dim = 2
+        pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
+        parameters = np.arange(n_ids * n_dim)
+        n_samples = 1
+        samples = pop_model.sample(parameters, n_samples=n_samples)
+        self.assertEqual(samples.shape, (n_samples, n_dim))
+
+        n_samples = 3
+        samples = pop_model.sample(parameters, n_samples=n_samples)
+        self.assertEqual(samples.shape, (n_samples, n_dim))
+
+    def test_set_n_ids(self):
+        n_ids = 10
+        self.pop_model.set_n_ids(n_ids)
+        self.assertEqual(self.pop_model.n_ids(), n_ids)
+
+        # Reset
+        self.pop_model.set_n_ids(1)
+
+    def test_set_parameter_names(self):
+        names = ['some name']
+        self.pop_model.set_parameter_names(names)
         names = self.pop_model.get_parameter_names()
-        self.assertIsNone(names)
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'some name Dim. 1')
+
+        # Reset name
+        self.pop_model.set_parameter_names(None)
+        names = self.pop_model.get_parameter_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'ID 1 Dim. 1')
 
 
 class TestLogNormalModel(unittest.TestCase):

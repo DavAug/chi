@@ -142,6 +142,15 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
+    def n_ids(self):
+        """
+        Returns the number of modelled individuals.
+
+        If the behaviour of the population model does not change with the
+        number of modelled individuals 0 is returned.
+        """
+        return 0
+
     def n_parameters(self):
         """
         Returns the number of parameters of the population model.
@@ -207,6 +216,20 @@ class PopulationModel(object):
 
         self._dim_names = [str(label) for label in names]
 
+    def set_n_ids(self, n_ids):
+        """
+        Sets the number of modelled individuals.
+
+        The behaviour of most population models is the same for any number of
+        individuals, in which case ``n_ids`` is ignored. However, for some
+        models, e.g. :class:`HeterogeneousModel` the behaviour changes with
+        ``n_ids``.
+
+        :param n_ids: Number of individuals.
+        :type n_ids: int
+        """
+        return None
+
     def set_parameter_names(self, names=None):
         """
         Sets the names of the population model parameters.
@@ -253,6 +276,7 @@ class ComposedPopulationModel(PopulationModel):
 
         # Get properties of population models
         n_dim = 0
+        n_ids = 0
         n_parameters = 0
         n_covariates = 0
         transforms_psi = []
@@ -265,10 +289,16 @@ class ComposedPopulationModel(PopulationModel):
                     [idp, needs_cov, n_dim, n_parameters])
             if needs_cov:
                 n_covariates += pop_model.n_covariates()
+            if (n_ids > 0) and (n_ids != pop_model.n_ids()):
+                raise ValueError(
+                    'All population models must model the same number of '
+                    'individuals.')
+            n_ids = pop_model.n_ids()
             n_dim += pop_model.n_dim()
             n_parameters += pop_model.n_parameters()
 
         self._n_dim = n_dim
+        self._n_ids = n_ids
         self._n_parameters = n_parameters
         self._n_covariates = n_covariates
         self._transforms_psi = True if len(transforms_psi) > 0 else False
@@ -691,6 +721,32 @@ class ComposedPopulationModel(PopulationModel):
             end_dim = current_dim + pop_model.n_dim()
             pop_model.set_dim_names(names[current_dim:end_dim])
             current_dim = end_dim
+
+    def set_n_ids(self, n_ids):
+        """
+        Sets the number of modelled individuals.
+
+        The behaviour of most population models is the same for any number of
+        individuals, in which case ``n_ids`` is ignored. However, for some
+        models, e.g. :class:`HeterogeneousModel` the behaviour changes with
+        ``n_ids``.
+
+        :param n_ids: Number of individuals.
+        :type n_ids: int
+        """
+        # Check cheap option first: Behaviour is not changed by input
+        n_ids = int(n_ids)
+        if (self._n_ids == 0) or (n_ids == self._n_ids):
+            return None
+
+        n_parameters = 0
+        for pop_model in self._population_models:
+            pop_model.set_n_ids(n_ids)
+            n_parameters += pop_model.n_parameters()
+
+        # Update n_ids and n_parameters
+        self._n_ids = n_ids
+        self._n_parameters = n_parameters
 
     def set_parameter_names(self, names=None):
         """
@@ -1450,37 +1506,53 @@ class HeterogeneousModel(PopulationModel):
 
     Extends :class:`PopulationModel`.
 
+    .. note::
+        Heterogeneous population models are special: the number of parameters
+        depends on the number of modelled individuals.
+
     :param n_dim: The dimensionality of the population model.
     :type n_dim: int, optional
     :param dim_names: Optional names of the population dimensions.
     :type dim_names: List[str], optional
+    :param n_ids: Number of modelled individuals.
+    :type n_ids: int, optional
     """
 
-    def __init__(self, n_dim=1, dim_names=None):
+    def __init__(self, n_dim=1, dim_names=None, n_ids=1):
         super(HeterogeneousModel, self).__init__(n_dim, dim_names)
-
-        # Set number of parameters
-        self._n_parameters = 0
-
-        # Set default parameter names
-        self._parameter_names = []
+        self._n_ids = 0  # This is a temporary dummy value
+        self.set_n_ids(n_ids)
 
     def compute_log_likelihood(self, parameters, observations):
-        """
+        r"""
         Returns the log-likelihood of the population model parameters.
 
-        A heterogenous population model imposes no restrictions on the
-        individuals, as a result the log-likelihood score is zero irrespective
-        of the model parameters.
+        A heterogenous population model is formally equivalent to a
+        multi-dimensional delta-distribution, where each individual parameter
+        is determined by a separate delta-distribution.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
+        :type observations: np.ndarray of shape (n_ids, n_dim)
+        :returns: Log-likelihood of individual parameters and population
+            parameters.
+        :rtype: float
         """
+        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            parameters = parameters.reshape(self._n_ids, self._n_dim)
+
+        # Return -inf if any of the observations do not equal the heterogenous
+        # parameters
+        mask = observations != parameters
+        if np.any(mask):
+            return -np.inf
+
+        # Otherwise return 0
         return 0
 
     def compute_pointwise_ll(self, parameters, observations):
@@ -1500,30 +1572,57 @@ class HeterogeneousModel(PopulationModel):
             An array-like object with the observations of the individuals. Each
             entry is assumed to belong to one individual.
         """
-        return np.zeros(shape=len(observations))
+        raise NotImplementedError
 
     def compute_sensitivities(self, parameters, observations):
         r"""
         Returns the log-likelihood of the population parameters and its
         sensitivities w.r.t. the parameters and the observations.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,)
+        :param observations: "Observations" of the individuals. Typically
+            refers to the values of a mechanistic model parameter for each
+            individual.
+        :type observations: np.ndarray of shape (n_ids, n_dim)
+        :returns: Log-likelihood and its sensitivity to individual parameters
+            as well as population parameters.
+        :rtype: Tuple[float, np.ndarray of shape (n_ids * n_dim + p,)]
         """
-        n_observations = len(observations)
-        return 0, np.zeros(shape=n_observations * self._n_dim)
+        observations = np.asarray(observations)
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            parameters = parameters.reshape(self._n_ids, self._n_dim)
 
-    def get_parameter_names(self, *args, **kwargs):
+        # Return -inf if any of the observations does not equal the
+        # heterogenous parameters
+        mask = observations != parameters
+        if np.any(mask):
+            return -np.inf, np.full(
+                shape=2 * self._n_ids * self._n_dim, fill_value=np.inf)
+
+        # Otherwise return 0
+        return 0, np.zeros(shape=2 * self._n_ids * self._n_dim)
+
+    def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the name of the the population model parameters. If name were
         not set, defaults are returned.
+
+        :param exclude_dim_names: A boolean flag that indicates whether the
+            dimension name is appended to the parameter name.
+        :type exclude_dim_names: bool, optional
         """
-        return self._parameter_names
+        if exclude_dim_names:
+            return copy.copy(self._parameter_names)
+
+        # Append dimension names
+        names = []
+        for name_id, name in enumerate(self._parameter_names):
+            current_dim = name_id % self._n_dim
+            names += [name + ' ' + self._dim_names[current_dim]]
+
+        return names
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -1539,13 +1638,80 @@ class HeterogeneousModel(PopulationModel):
         """
         n_ids = int(n_ids)
 
-        return (n_ids * self._n_dim, self._n_parameters)
+        return (0, n_ids * self._n_dim)
+
+    def n_ids(self):
+        """
+        Returns the number of modelled individuals.
+
+        If the behaviour of the population model does not change with the
+        number of modelled individuals 0 is returned.
+        """
+        return self._n_ids
 
     def n_parameters(self):
         """
         Returns the number of parameters of the population model.
         """
         return self._n_parameters
+
+    def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
+        r"""
+        Returns random samples from the population distribution.
+
+        The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
+
+        For ``n_samples > 1`` the samples are randomly drawn from the ``n_ids``
+        individuals.
+
+        :param parameters: Parameters of the population model.
+        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :param n_samples: Number of samples. If ``None``, one sample is
+            returned.
+        :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
+        """
+        parameters = np.asarray(parameters)
+        if parameters.ndim != 2:
+            parameters = parameters.reshape(self._n_ids, self._n_dim)
+
+        # Randomly sample from n_ids
+        ids = np.arange(self._n_ids)
+        rng = np.random.default_rng(seed=seed)
+        n_samples = n_samples if n_samples else 1
+        parameters = parameters[
+            rng.choice(ids, size=n_samples, replace=True)]
+
+        return parameters
+
+    def set_n_ids(self, n_ids):
+        """
+        Sets the number of modelled individuals.
+
+        The behaviour of most population models is the same for any number of
+        individuals, in which case ``n_ids`` is ignored. However, for some
+        models, e.g. :class:`HeterogeneousModel` the behaviour changes with
+        ``n_ids``.
+
+        :param n_ids: Number of individuals.
+        :type n_ids: int
+        """
+        n_ids = int(n_ids)
+
+        if n_ids < 1:
+            raise ValueError(
+                'The number of modelled individuals needs to be greater or '
+                'equal to 1.')
+
+        if n_ids == self._n_ids:
+            return None
+
+        self._n_ids = n_ids
+        self._n_parameters = self._n_ids * self._n_dim
+        self._parameter_names = []
+        for _id in range(self._n_ids):
+            self._parameter_names += ['ID %d' % (_id + 1)] * self._n_dim
 
     def set_parameter_names(self, names=None):
         r"""
@@ -1556,8 +1722,18 @@ class HeterogeneousModel(PopulationModel):
             reset to defaults.
         :type names: List[str]
         """
-        # Model has no population parameters.
-        return None
+        if names is None:
+            # Reset names to defaults
+            self._parameter_names = []
+            for _id in range(self._n_ids):
+                self._parameter_names += ['ID %d' % (_id + 1)] * self._n_dim
+            return None
+
+        if len(names) != self._n_parameters:
+            raise ValueError(
+                'Length of names does not match the number of parameters.')
+
+        self._parameter_names = [str(label) for label in names]
 
 
 class LogNormalModel(PopulationModel):
