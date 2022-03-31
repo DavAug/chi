@@ -196,13 +196,11 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         ref_pop_model = chi.LogNormalModel()
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
-        pop_params = [10, 1, 0.2, 1, 1, 1, 1, 2, 1.2]
+        pop_params = [10, 1, 0.2, 1, 1, 3, 2, 1, 1, 2, 1.2]
 
         parameters = \
             indiv_parameters_1[2:3] + \
-            indiv_parameters_1[4:5] + \
             indiv_parameters_2[2:3] + \
-            indiv_parameters_2[4:5] + \
             pop_params
 
         score = \
@@ -230,22 +228,12 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
-        pop_params = [10, 1, 0.2, 1, 1, 1, 1, 2, 1.2]
+        pop_params = [10, 1, 0.2, 1, 1, 3, 2, 1, 1, 2, 1.2]
 
-        parameters = [
-            indiv_parameters_1[0],
-            indiv_parameters_1[1],
-            indiv_parameters_1[2],
-            indiv_parameters_2[2],
-            pop_params[0],
-            pop_params[1],
-            indiv_parameters_1[3],
-            indiv_parameters_1[4],
-            indiv_parameters_2[4],
-            indiv_parameters_1[5],
-            indiv_parameters_1[6],
-            indiv_parameters_1[7],
-            indiv_parameters_1[8]]
+        parameters = \
+            indiv_parameters_1[2:3] + \
+            indiv_parameters_2[2:3] + \
+            pop_params
 
         self.assertEqual(self.hierarchical_model(parameters), -np.inf)
 
@@ -617,13 +605,13 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         ref_pop_model = chi.LogNormalModel()
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
-        pop_params = [0.2, 1]
+        pop_params = [10, 1, 0.2, 1, 1, 3, 2, 1, 1, 2, 1.2]
 
         parameters = \
-            [0.1, 3, 0.2, 2] + [10, 1] + pop_params + [1, 1, 1, 2, 1.2]
+            [0.1, 0.2] + pop_params
 
         ref_s1, ref_sens1 = ref_pop_model.compute_sensitivities(
-                parameters=pop_params,
+                parameters=pop_params[2:4],
                 observations=[0.1, 0.2])
         ref_s2, ref_sens2 = self.log_likelihoods[0].evaluateS1(
             indiv_parameters_1)
@@ -633,14 +621,14 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         ref_score = ref_s1 + ref_s2 + ref_s3
         ref_sens = [
             ref_sens1[0] + ref_sens2[2],
-            ref_sens2[4],
             ref_sens1[1] + ref_sens3[2],
-            ref_sens3[4],
             ref_sens2[0] + ref_sens3[0],
             ref_sens2[1] + ref_sens3[1],
             ref_sens1[2],
             ref_sens1[3],
             ref_sens2[3] + ref_sens3[3],
+            ref_sens2[4],
+            ref_sens3[4],
             ref_sens2[5] + ref_sens3[5],
             ref_sens2[6] + ref_sens3[6],
             ref_sens2[7] + ref_sens3[7],
@@ -836,9 +824,9 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertEqual(len(ids), 13)
         self.assertEqual(ids[0], 'Log-likelihood 1')
-        self.assertEqual(ids[1], 'Log-likelihood 1')
-        self.assertEqual(ids[2], 'Log-likelihood 2')
-        self.assertEqual(ids[3], 'Log-likelihood 2')
+        self.assertEqual(ids[1], 'Log-likelihood 2')
+        self.assertIsNone(ids[2])
+        self.assertIsNone(ids[3])
         self.assertIsNone(ids[4])
         self.assertIsNone(ids[5])
         self.assertIsNone(ids[6])
@@ -873,14 +861,14 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertEqual(len(parameter_names), 13)
         self.assertEqual(parameter_names[0], 'central.size')
-        self.assertEqual(parameter_names[1], 'myokit.elimination_rate')
-        self.assertEqual(parameter_names[2], 'central.size')
-        self.assertEqual(parameter_names[3], 'myokit.elimination_rate')
-        self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[5], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[6], 'Log mean Dim. 3')
-        self.assertEqual(parameter_names[7], 'Log std. Dim. 3')
-        self.assertEqual(parameter_names[8], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[1], 'central.size')
+        self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[4], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[5], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[6], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[7], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[8], 'ID 2 Dim. 5')
         self.assertEqual(
             parameter_names[9], 'Pooled Dim. 6')
         self.assertEqual(
@@ -895,15 +883,13 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
             exclude_bottom_level=True)
 
         self.assertEqual(len(parameter_names), 11)
-        self.assertEqual(
-            parameter_names[0], 'myokit.elimination_rate')
-        self.assertEqual(
-            parameter_names[1], 'myokit.elimination_rate')
-        self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[4], 'Log mean Dim. 3')
-        self.assertEqual(parameter_names[5], 'Log std. Dim. 3')
-        self.assertEqual(parameter_names[6], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[0], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[1], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[2], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[3], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[4], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[5], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[6], 'ID 2 Dim. 5')
         self.assertEqual(
             parameter_names[7], 'Pooled Dim. 6')
         self.assertEqual(
@@ -919,16 +905,14 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertEqual(len(parameter_names), 13)
         self.assertEqual(parameter_names[0], 'Log-likelihood 1 central.size')
-        self.assertEqual(
-            parameter_names[1], 'Log-likelihood 1 myokit.elimination_rate')
-        self.assertEqual(parameter_names[2], 'Log-likelihood 2 central.size')
-        self.assertEqual(
-            parameter_names[3], 'Log-likelihood 2 myokit.elimination_rate')
-        self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[5], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[6], 'Log mean Dim. 3')
-        self.assertEqual(parameter_names[7], 'Log std. Dim. 3')
-        self.assertEqual(parameter_names[8], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[1], 'Log-likelihood 2 central.size')
+        self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[4], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[5], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[6], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[7], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[8], 'ID 2 Dim. 5')
         self.assertEqual(
             parameter_names[9], 'Pooled Dim. 6')
         self.assertEqual(
@@ -942,15 +926,13 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         parameter_names = self.hierarchical_model.get_parameter_names(
             exclude_bottom_level=True, include_ids=True)
 
-        self.assertEqual(
-            parameter_names[0], 'Log-likelihood 1 myokit.elimination_rate')
-        self.assertEqual(
-            parameter_names[1], 'Log-likelihood 2 myokit.elimination_rate')
-        self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[4], 'Log mean Dim. 3')
-        self.assertEqual(parameter_names[5], 'Log std. Dim. 3')
-        self.assertEqual(parameter_names[6], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[0], 'Pooled Dim. 1')
+        self.assertEqual(parameter_names[1], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[2], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[3], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[4], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[5], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[6], 'ID 2 Dim. 5')
         self.assertEqual(
             parameter_names[7], 'Pooled Dim. 6')
         self.assertEqual(

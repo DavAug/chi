@@ -272,11 +272,21 @@ class ComposedPopulationModel(PopulationModel):
                 raise TypeError(
                     'The population models have to be instances of '
                     'chi.PopulationModel.')
+
+        # Check that number of modelled individuals is compatible
+        n_ids = 0
+        for pop_model in population_models:
+            if (n_ids > 0) and (pop_model.n_ids() > 0) and (
+                    n_ids != pop_model.n_ids()):
+                raise ValueError(
+                    'All population models must model the same number of '
+                    'individuals.')
+            n_ids = n_ids if n_ids > 0 else pop_model.n_ids()
         self._population_models = population_models
+        self._n_ids = n_ids
 
         # Get properties of population models
         n_dim = 0
-        n_ids = 0
         n_parameters = 0
         n_covariates = 0
         transforms_psi = []
@@ -289,16 +299,10 @@ class ComposedPopulationModel(PopulationModel):
                     [idp, needs_cov, n_dim, n_parameters])
             if needs_cov:
                 n_covariates += pop_model.n_covariates()
-            if (n_ids > 0) and (n_ids != pop_model.n_ids()):
-                raise ValueError(
-                    'All population models must model the same number of '
-                    'individuals.')
-            n_ids = pop_model.n_ids()
             n_dim += pop_model.n_dim()
             n_parameters += pop_model.n_parameters()
 
         self._n_dim = n_dim
-        self._n_ids = n_ids
         self._n_parameters = n_parameters
         self._n_covariates = n_covariates
         self._transforms_psi = True if len(transforms_psi) > 0 else False

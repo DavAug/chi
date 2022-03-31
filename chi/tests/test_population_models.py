@@ -48,6 +48,11 @@ class TestComposedPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'The population models have'):
             chi.ComposedPopulationModel(pop_models)
 
+        pop_models = [
+            chi.HeterogeneousModel(n_ids=3), chi.HeterogeneousModel(n_ids=2)]
+        with self.assertRaisesRegex(ValueError, 'All population models must'):
+            chi.ComposedPopulationModel(pop_models)
+
     def test_compute_individual_parameters(self):
         # Test case I: no covariate model
         n_ids, n_dim = (6, 4)
