@@ -620,77 +620,30 @@ class HierarchicalLogPosterior(pints.LogPDF):
                 'The log-prior has to be an instance of a pints.LogPrior.')
 
         # Check dimensions
-        n_top_parameters = log_likelihood.n_parameters(
+        n_top = log_likelihood.n_parameters(
             exclude_bottom_level=True)
-        if log_prior.n_parameters() != n_top_parameters:
+        if log_prior.n_parameters() != n_top:
             raise ValueError(
                 'The log-prior has to have as many parameters as population '
                 'parameters in the log-likelihood. There are '
-                '<' + str(n_top_parameters) + '> population parameters.')
+                '<' + str(n_top) + '> population parameters.')
 
         # Store prior and log_likelihood, as well as number of parameters
         self._log_prior = log_prior
         self._log_likelihood = log_likelihood
         self._n_parameters = log_likelihood.n_parameters()
-
-        # Create mask for top-level parameters
-        self._create_top_level_mask()
+        self._n_bottom = self._n_parameters - n_top
 
     def __call__(self, parameters):
         # Convert parameters
         parameters = np.asarray(parameters)
 
         # Evaluate log-prior first, assuming this is very cheap
-        score = self._log_prior(parameters[self._top_level_mask])
+        score = self._log_prior(parameters[self._n_bottom:])
         if np.isinf(score):
             return score
 
         return score + self._log_likelihood(parameters)
-
-    def _create_top_level_mask(self):
-        """
-        Creates a mask that can be used to mask for the top level
-        parameters.
-
-        Uses that bottom-level parameters can only be top-level parameters
-        when they are heterogeneously modelled,
-        and that all population parameters are top-level.
-        """
-        # Enumerate bottom-level parameters
-        n_ids = self._log_likelihood.n_log_likelihoods()
-        n_dim = self._log_likelihood.get_population_model().n_dim()
-        pop_models = self._log_likelihood.get_population_model(
-            ).get_population_models()
-        current_dim = 0
-        n_pooled_dim = 0
-        n_hetero_dims = []
-        for pop_model in pop_models:
-            end_dim = current_dim + pop_model.n_dim()
-            if isinstance(pop_model, chi.PooledModel):
-                n_pooled_dim += pop_model.n_dim()
-                continue
-            if isinstance(pop_model, chi.HeterogeneousModel):
-                n_hetero_dims.append([current_dim, end_dim])
-            current_dim = end_dim
-        bottom_parameters = np.arange(
-            n_ids*(n_dim-n_pooled_dim)).reshape(n_ids, n_dim-n_pooled_dim)
-
-        # Keep indices of heterogeneously modelled parameters
-        bottom_params = []
-        for info in n_hetero_dims:
-            start_dim, end_dim = info
-            bottom_params.append(bottom_parameters[:, start_dim:end_dim])
-        bottom_parameters = bottom_params
-        if len(bottom_parameters) > 0:
-            bottom_parameters = np.hstack(bottom_parameters)
-
-        # Append indices of population paramters
-        n_pop = self._log_likelihood.get_population_model().n_parameters()
-        n_parameters = self._log_likelihood.n_parameters()
-        pop_parameters = np.arange(n_parameters-n_pop, n_parameters)
-
-        self._top_level_mask = np.hstack(
-            [bottom_parameters, pop_parameters]).astype(int)
 
     def evaluateS1(self, parameters):
         """
@@ -704,8 +657,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
         parameters = np.asarray(parameters)
 
         # Evaluate log-prior first, assuming this is very cheap
-        score, sens = self._log_prior.evaluateS1(
-            parameters[self._top_level_mask])
+        score, sens = self._log_prior.evaluateS1(parameters[self._n_bottom:])
 
         if np.isinf(score):
             return score, np.full(shape=len(parameters), fill_value=np.inf)
@@ -715,7 +667,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
             parameters)
 
         score += ll_score
-        sensitivities[self._top_level_mask] += sens
+        sensitivities[self._n_bottom:] += sens
 
         return score, sensitivities
 
@@ -760,12 +712,6 @@ class HierarchicalLogPosterior(pints.LogPDF):
             exclude_bottom_level, include_ids)
 
         return names
-
-    def get_top_parameter_loc(self):
-        """
-        Returns indices of top-level parameters.
-        """
-        return self._top_level_mask.copy()
 
     def n_parameters(self, exclude_bottom_level=False):
         """
