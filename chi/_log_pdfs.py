@@ -107,8 +107,8 @@ class HierarchicalLogLikelihood(object):
         # n_parameters, because heterogeneous parameters are counted twice.
         n_hetero_dim = \
             np.sum([dims[1] - dims[0] for dims in self._hetero_dims])
-        self._n_top = \
-            self._n_ids * n_hetero_dim + self._population_model.n_parameters()
+        self._n_top = int(
+            self._n_ids * n_hetero_dim + self._population_model.n_parameters())
         self._n_bottom = \
             self._n_parameters - self._population_model.n_parameters()
 
@@ -509,8 +509,7 @@ class HierarchicalLogLikelihood(object):
         names = n
 
         # Make copies of bottom parameters and append top parameters
-        n_copies = self._n_bottom // self._n_ids
-        names = names * n_copies
+        names = names * self._n_ids
         names += self._population_model.get_parameter_names()
 
         if include_ids:
@@ -644,29 +643,45 @@ class HierarchicalLogPosterior(pints.LogPDF):
         Creates a mask that can be used to mask for the top level
         parameters.
 
-        Uses that bottom-level parameters (uncluding IDs) have unique names,
+        Uses that bottom-level parameters can only be top-level parameters
+        when they are heterogeneously modelled,
         and that all population parameters are top-level.
         """
-        # Get names of heterogenously modelled parameters
-        n_pop = self._log_likelihood.get_population_model().n_parameters()
-        top_parameters = self._log_likelihood.get_parameter_names(
-            exclude_bottom_level=True, include_ids=True)
-        n_top = len(top_parameters)
-        hetero_names = top_parameters[:n_top-n_pop]
+        # Enumerate bottom-level parameters
+        n_ids = self._log_likelihood.n_log_likelihoods()
+        n_dim = self._log_likelihood.get_population_model().n_dim()
+        pop_models = self._log_likelihood.get_population_model(
+            ).get_population_models()
+        current_dim = 0
+        n_pooled_dim = 0
+        n_hetero_dims = []
+        for pop_model in pop_models:
+            end_dim = current_dim + pop_model.n_dim()
+            if isinstance(pop_model, chi.PooledModel):
+                n_pooled_dim += pop_model.n_dim()
+                continue
+            if isinstance(pop_model, chi.HeterogeneousModel):
+                n_hetero_dims.append([current_dim, end_dim])
+            current_dim = end_dim
+        bottom_parameters = np.arange(
+            n_ids*(n_dim-n_pooled_dim)).reshape(n_ids, n_dim-n_pooled_dim)
 
-        # Find indices of heterogenously modelled parameters
-        parameter_names = self._log_likelihood.get_parameter_names(
-            include_ids=True)
-        indices = []
-        for idn, name in enumerate(parameter_names):
-            if name in hetero_names:
-                indices.append(idn)
+        # Keep indices of heterogeneously modelled parameters
+        bottom_params = []
+        for info in n_hetero_dims:
+            start_dim, end_dim = info
+            bottom_params.append(bottom_parameters[:, start_dim:end_dim])
+        bottom_parameters = bottom_params
+        if len(bottom_parameters) > 0:
+            bottom_parameters = np.hstack(bottom_parameters)
 
         # Append indices of population paramters
+        n_pop = self._log_likelihood.get_population_model().n_parameters()
         n_parameters = self._log_likelihood.n_parameters()
-        indices += list(range(n_parameters-n_pop, n_parameters))
+        pop_parameters = np.arange(n_parameters-n_pop, n_parameters)
 
-        self._top_level_mask = np.array(indices)
+        self._top_level_mask = np.hstack(
+            [bottom_parameters, pop_parameters]).astype(int)
 
     def evaluateS1(self, parameters):
         """
@@ -707,12 +722,16 @@ class HierarchicalLogPosterior(pints.LogPDF):
         """
         return self._log_prior
 
-    def get_id(self):
+    def get_id(self, unique=False):
         """
         Returns the ids of the log-posterior's parameters. If the ID is
         ``None`` corresponding parameter is defined on the population level.
+
+        :param unique: A boolean flag which indicates whether each ID is only
+            returned once, or whether the IDs of all paramaters are returned.
+        :type unique: bool, optional
         """
-        return self._log_likelihood.get_id()
+        return self._log_likelihood.get_id(unique)
 
     def get_parameter_names(
             self, exclude_bottom_level=False, include_ids=False):
@@ -1208,7 +1227,7 @@ class LogLikelihood(pints.LogPDF):
         # Update names and number of parameters
         self._set_number_and_parameter_names()
 
-    def get_id(self):
+    def get_id(self, *args, **kwargs):
         """
         Returns the ID of the log-likelihood. If not set, ``None`` is returned.
 
@@ -1433,7 +1452,7 @@ class LogPosterior(pints.LogPDF):
 
         return names
 
-    def n_parameters(self):
+    def n_parameters(self, *args, **kwargs):
         """
         Returns the number of parameters of the posterior.
         """
