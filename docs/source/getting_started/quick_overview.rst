@@ -305,7 +305,7 @@ variability may mainifest in measurements for 3 patients with different
 data-generating parameters
 
 .. literalinclude:: code/1_simulation_2.py
-    :lines: 303-378
+    :lines: 586-673
 
 .. raw:: html
    :file: images/1_simulation_6.html
@@ -420,7 +420,7 @@ sampling. Below we have chosen the values of the population parameters
 sampled from the population distribution
 
 .. literalinclude:: code/1_simulation_2.py
-    :lines: 396-477
+    :lines: 680-802
 
 .. raw:: html
    :file: images/1_simulation_7.html
@@ -439,7 +439,7 @@ range of the population distribution together with the measurements of the 3
 patients from above
 
 .. literalinclude:: code/1_simulation_2.py
-    :lines: 484-535
+    :lines: 807-858
 
 .. raw:: html
    :file: images/1_simulation_8.html
@@ -451,11 +451,103 @@ section :doc:`population_model`.
 Hierarchical inference
 **********************
 
-While the simulation of population models is interesting in its own right,
-especially when it is crucial to understand the variation
-of the modelled dynamics across individuals, we initially motivated the
-construction of a population model as a necessity for inference when
-measurements come from different, non-identical entities and we nevertheless
-want to estimate the data-generating parameters of all entities.
+The simulation of population models is interesting in its own right
+and may, for example, be used to understand the inter-individual variation of
+the modelled dynamics once estimates for the population
+parameters exist.
+However, as claimed earlier, the population model also allows us to infer
+parameters from measurements that originate from different, non-identical
+entities.
+In particular, the population model allows us to define a hierarchical
+log-posterior from
+which we can estimate the individual parameters and the population parameters,
+simultaneously. To this end, let us first define the hierarchical
+log-likelihood which is a straightforward extension of the above introduced
+log-likelihood
 
-The population model allows us ...
+.. math::
+    \log p(\mathcal{D}, \Psi | \theta) =
+        \sum _i \log p(\mathcal{D} _i | \psi _i)
+        + \sum _i \log p(\psi _i | \theta).
+
+Here, :math:`\mathcal{D}=\{\mathcal{D}_i\}` are the data and
+:math:`\mathcal{D}_i = \{(y_{ij}, t_{ij})\}` are the measurements of
+individual :math:`i`. Just like in section 1.4, we use :math:`j` to index
+measurement events. :math:`\Psi = \{ \psi _i \}` denotes the
+bottom-level parameters across all individuals with :math:`\psi _i` being the
+parameters of individual :math:`i`. Thus, the hierarchical
+log-likelihood has two contributions: 1. a contribution from the cumulative
+log-likelihood of the bottom-level parameters to describe the
+observations; and 2. a
+contribution from the log-likelihood of the population parameters to describe
+the distribution of the bottom-level parameters.
+In chi a hierarchical log-likelihood may be
+defined using :class:`chi.HierarchicalLogLikelihood` with a list of
+bottom-level :class:`chi.LogLikelihood` instances and a
+:class:`chi.PopulationModel`.
+
+.. literalinclude:: code/1_simulation_2.py
+    :lines: 865-876
+
+The hierarchical log-likelihood is a function of both :math:`\Psi`
+and :math:`\theta`, so in principle we could find maximum likelihood estimates
+by maximising :math:`\log p(\mathcal{D}, \Psi | \theta)`, just like in section
+1.4.
+However, maximising
+:math:`\log p(\mathcal{D}, \Psi | \theta)` will in general not find estimates
+of the data-generating :math:`\Psi` and :math:`\theta` for
+reasons that we cannot throughly discuss in this overview. Observe, however,
+that the 2. term of the hierarchical log-likelihood receives larger
+contributions for narrow population distributions.
+This introduces a bias towards understimating the population variance
+wich affects the estimates of the population parameters.
+In a addition the individual parameters will be biased away from the
+data-generating parameters towards the modes of the population distribution
+(a.k.a. shrinkage).
+
+A partial remedy for these shortcomings is Bayesian inference, where
+analogously to above we can use Bayes' rule to define a hierarchical
+log-posterior
+
+.. math::
+    \log p(\Psi , \theta | \mathcal{D}) =
+        \log p(\mathcal{D}, \Psi | \theta) + \log p(\theta ) 
+        + \text{constant},
+
+where :math:`\log p(\theta )` is the log-prior of the population parameters.
+The posterior distribution :math:`p(\Psi , \theta | \mathcal{D})` suffers
+from the same biases as the hierarchical log-likelihood, however because we
+infer a *distribution* of likely parameters, the data-generating parameters
+will be captured by the posterior distribution (as long as the prior
+distribution is appropriate).
+
+In chi we can define a hierarchical log-posterior
+using :class:`chi.HierarchicalLogPosterior` which takes a
+:class:`chi.HierarchicalLogLikelihood` and a :class:`chi.LogPrior` as inputs.
+The posterior distribution can then be inferred using e.g. MCMC sampling, just
+like in section 1.4.2.
+Below we infer the parameters of the 3 patients from above using hierarchical
+inference and compare the posteriors to the data-generating parameters.
+
+.. literalinclude:: code/1_simulation_2.py
+    :lines: 880-1062
+
+.. raw:: html
+   :file: images/1_simulation_9.html
+
+In addition to the data-generating parameters of the patients, the hierarchical
+inference also provides estimates for the population-level parameters.
+Below we only illsutrate the log mean and log standard deviation of the
+elimination rate in the population, because the other parameters are pooled and
+therefore the population parameters are equivalent to the bottom-level
+parameters.
+
+.. literalinclude:: code/1_simulation_2.py
+    :lines: 1067-1122
+
+.. raw:: html
+   :file: images/1_simulation_10.html
+
+Note that in this case the posteriors of :math:`\mu _{k_e}` and
+:math:`\sigma _{k_e}` are largely dominated by the prior distribution as 3
+patients are not informative enough to influence the posterior significantly.
