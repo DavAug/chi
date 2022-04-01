@@ -655,6 +655,13 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(sens[11], ref_sens[11])
         self.assertEqual(sens[12], ref_sens[12])
 
+        # Use a model that neither used pooled not heterogen. models
+        model = chi.HierarchicalLogLikelihood(
+            self.log_likelihoods, chi.LogNormalModel(n_dim=9))
+
+        # Compute score and sensitivities with hierarchical model
+        score, sens = model.evaluateS1(np.ones(model.n_parameters()))
+
         # Test case V: Infinite log-pdf from population model
         # Reminder of population model
         # cls.population_models = [
@@ -1149,7 +1156,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(sens[12], ref_sens[12])
 
         # Test case II: Check exception for inf prior score
-        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        parameters = [0, 1, 2, 3, 4, 5, np.inf, 7, 8, 9, 10, 11, 12]
         score, _ = self.log_posterior.evaluateS1(parameters)
         self.assertEqual(score, -np.inf)
 
@@ -1763,6 +1770,10 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(len(n_obs), 2)
         self.assertEqual(n_obs[0], 4)
         self.assertEqual(n_obs[1], 3)
+
+    def test_set_id(self):
+        self.log_likelihood.set_id(1)
+        self.assertEqual(self.log_likelihood.get_id(), '1')
 
 
 class TestLogPosterior(unittest.TestCase):

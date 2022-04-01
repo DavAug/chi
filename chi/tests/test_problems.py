@@ -191,6 +191,13 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[1], 'Log mean Sigma rel.')
         self.assertEqual(param_names[2], 'Log std. Sigma rel.')
 
+        # Unfix all paramaters
+        name_value_dict = dict({
+            'ID 1 myokit.lambda_0': None,
+            'ID 3 myokit.lambda_0': None,
+            'Pooled Sigma base': None})
+        problem.fix_parameters(name_value_dict)
+
         # Test case II: PKPD model
         # Fix model parameters
         name_value_dict = dict({
@@ -519,6 +526,10 @@ class TestProblemModellingController(unittest.TestCase):
     def test_get_log_posterior_bad_input(self):
         problem = chi.ProblemModellingController(
             self.pd_model, self.error_model)
+
+        # No data has been set
+        with self.assertRaisesRegex(ValueError, 'The data has not been set.'):
+            problem.get_log_posterior()
 
         # No log-prior has been set
         problem.set_data(
@@ -932,6 +943,10 @@ class TestProblemModellingController(unittest.TestCase):
         pop_model = chi.ComposedPopulationModel([cov_pop_model] * 7)
         problem.set_population_model(pop_model)
         covariate_dict = {'Sex': 'Age'}
+        problem.set_data(self.data, output_observable_dict, covariate_dict)
+
+        # Set data after fixing a parameter
+        problem.fix_parameters({'Base log mean Sigma rel.': 12})
         problem.set_data(self.data, output_observable_dict, covariate_dict)
 
     def test_set_data_bad_input(self):

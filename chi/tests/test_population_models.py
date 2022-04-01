@@ -2714,9 +2714,15 @@ class TestPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.compute_sensitivities(parameters, observations)
 
+    def test_get_covariate_names(self):
+        self.assertEqual(len(self.pop_model.get_covariate_names()), 0)
+
     def test_get_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.get_parameter_names()
+
+    def test_n_covariates(self):
+        self.assertEqual(self.pop_model.n_covariates(), 0)
 
     def test_n_dim(self):
         pop_model = chi.PopulationModel(n_dim=1, dim_names=None)

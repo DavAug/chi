@@ -609,7 +609,7 @@ class TestInferenceController(unittest.TestCase):
         log_posterior = chi.LogPosterior(cls.log_likelihood, cls.log_prior)
 
         # Set up optmisation controller
-        cls.controller = chi.InferenceController(log_posterior)
+        cls.controller = chi.InferenceController(log_posterior, seed=1)
 
         cls.n_ids = 1
         cls.n_params = 7
@@ -951,7 +951,8 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(divergent_iters, 'false')
 
         # Case II: Hierarchical model
-        sampler = chi.SamplingController(self.hierarchical_posterior)
+        sampler = chi.SamplingController(self.hierarchical_posterior, seed=1)
+        sampler.set_sampler(pints.HamiltonianMCMC)
 
         # Set evaluator to sequential, because otherwise codecov
         # complains that posterior was never evaluated.
@@ -961,7 +962,7 @@ class TestSamplingController(unittest.TestCase):
         sampler.set_n_runs(3)
         n_parameters = self.hierarchical_posterior.n_parameters()
         sampler._initial_params = np.ones(shape=(3, n_parameters))
-        result = sampler.run(n_iterations=20)
+        result = sampler.run(n_iterations=2, hyperparameters=[2, 0.1])
 
         dimensions = list(result.dims)
         self.assertEqual(len(dimensions), 3)
@@ -1007,7 +1008,7 @@ class TestSamplingController(unittest.TestCase):
 
         attrs = result.attrs
         divergent_iters = attrs['divergent iterations']
-        self.assertEqual(divergent_iters, 'false')
+        self.assertEqual(divergent_iters, 'true')
 
     def test_set_sampler(self):
         sampler = chi.SamplingController(self.log_posterior_id_40)

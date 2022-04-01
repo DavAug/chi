@@ -365,59 +365,59 @@ class HierarchicalLogLikelihood(object):
         # TODO: Implement for covariate model
         # TODO: Think again whether this pointwise log-likelihood
         # is really meaningful, e.g. when computing LOO.
-        if np.any(self._uses_eta):
-            raise NotImplementedError(
-                'This method is not implemented for '
-                'CovariatePopulationModels.'
-            )
+        # if np.any(self._uses_eta):
+        #     raise NotImplementedError(
+        #         'This method is not implemented for '
+        #         'CovariatePopulationModels.'
+        #     )
 
-        # Transform parameters to numpy array
-        parameters = np.asarray(parameters)
+        # # Transform parameters to numpy array
+        # parameters = np.asarray(parameters)
 
-        # Compute population model scores of individuals
-        start = 0
-        pop_scores = np.zeros(shape=self._n_ids)
-        for pop_model in self._population_models:
-            # Get number of individual and population level parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
+        # # Compute population model scores of individuals
+        # start = 0
+        # pop_scores = np.zeros(shape=self._n_ids)
+        # for pop_model in self._population_models:
+        #     # Get number of individual and population level parameters
+        #     n_indiv, n_pop = pop_model.n_hierarchical_parameters(self._n_ids)
 
-            # Get parameter ranges
-            end_indiv = start + n_indiv
-            end_pop = end_indiv + n_pop
+        #     # Get parameter ranges
+        #     end_indiv = start + n_indiv
+        #     end_pop = end_indiv + n_pop
 
-            # Add score, if individual parameters exist
-            if n_indiv > 0:
-                pop_scores += pop_model.compute_pointwise_ll(
-                    parameters=parameters[end_indiv:end_pop],
-                    observations=parameters[start:end_indiv])
+        #     # Add score, if individual parameters exist
+        #     if n_indiv > 0:
+        #         pop_scores += pop_model.compute_pointwise_ll(
+        #             parameters=parameters[end_indiv:end_pop],
+        #             observations=parameters[start:end_indiv])
 
-            # Shift start index
-            start = end_pop
+        #     # Shift start index
+        #     start = end_pop
 
-        if per_individual is True:
-            # Compute aggregated individual likelihoods
-            pw_log_likelihoods = pop_scores
-            for index, log_likelihood in enumerate(self._log_likelihoods):
-                # Compute scores for each observation
-                pw_log_likelihoods[index] += log_likelihood(
-                    parameters[self._indiv_params[index]])
+        # if per_individual is True:
+        #     # Compute aggregated individual likelihoods
+        #     pw_log_likelihoods = pop_scores
+        #     for index, log_likelihood in enumerate(self._log_likelihoods):
+        #         # Compute scores for each observation
+        #         pw_log_likelihoods[index] += log_likelihood(
+        #             parameters[self._indiv_params[index]])
 
-            return pw_log_likelihoods
+        #     return pw_log_likelihoods
 
-        # Evaluate individual likelihoods pointwise
-        pw_log_likelihoods = []
-        for index, log_likelihood in enumerate(self._log_likelihoods):
-            # Compute scores for each observation
-            scores = log_likelihood.compute_pointwise_ll(
-                parameters[self._indiv_params[index]])
+        # # Evaluate individual likelihoods pointwise
+        # pw_log_likelihoods = []
+        # for index, log_likelihood in enumerate(self._log_likelihoods):
+        #     # Compute scores for each observation
+        #     scores = log_likelihood.compute_pointwise_ll(
+        #         parameters[self._indiv_params[index]])
 
-            # Add population contribution
-            scores += pop_scores[index] / len(scores)
+        #     # Add population contribution
+        #     scores += pop_scores[index] / len(scores)
 
-            # Safe scores
-            pw_log_likelihoods.append(scores)
+        #     # Safe scores
+        #     pw_log_likelihoods.append(scores)
 
-        return np.hstack(pw_log_likelihoods)
+        # return np.hstack(pw_log_likelihoods)
 
     def evaluateS1(self, parameters):
         """
@@ -1412,12 +1412,6 @@ class LogPosterior(pints.LogPDF):
         names = self._log_likelihood.get_parameter_names()
 
         return names
-
-    def get_top_parameter_loc(self):
-        """
-        Returns indices of top-level parameters.
-        """
-        return np.arange(self._n_parameters, dtype=int)
 
     def n_parameters(self, *args, **kwargs):
         """
