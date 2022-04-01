@@ -461,15 +461,16 @@ class InferenceController(object):
         initial_params[:, n_bottom:] = log_prior.sample(self._n_runs)
 
         # Sample bottom-level parameters
-        self._sample_population(initial_params, n_bottom)
-        self._initial_params = initial_params
+        initial_params = self._sample_population(initial_params, n_bottom)
+
+        return initial_params
 
     def _sample_population(self, initial_params, n_bottom):
         """
         Samples population for initial population model parameters.
         """
         if n_bottom == 0:
-            return None
+            return initial_params
 
         # Get number of likelihoods and population models
         population_model = \
@@ -505,6 +506,8 @@ class InferenceController(object):
 
         initial_params[:, :n_bottom] = np.vstack(bottom_parameters)
 
+        return initial_params
+
     def set_n_runs(self, n_runs):
         """
         Sets the number of times the inference routine is run.
@@ -514,7 +517,7 @@ class InferenceController(object):
         self._n_runs = int(n_runs)
 
         # Sample initial parameters from log-prior
-        self._sample_initial_parameters()
+        self._initial_params = self._sample_initial_parameters()
 
     def set_parallel_evaluation(self, run_in_parallel):
         """
