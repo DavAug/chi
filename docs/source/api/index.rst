@@ -33,7 +33,6 @@ Summary of all functions and classes in chi
     chi.ConstantAndMultiplicativeGaussianErrorModel
     chi.CovariateModel
     chi.ErrorModel
-    chi.GaussianErrorModel
     chi.library.DataLibrary
     chi.library.ModelLibrary
     chi.LogLikelihood
@@ -44,6 +43,7 @@ Summary of all functions and classes in chi
     chi.HeterogeneousModel
     chi.HierarchicalLogLikelihood
     chi.HierarchicalLogPosterior
+    chi.GaussianErrorModel
     chi.GaussianModel
     chi.InferenceController
     chi.MechanisticModel

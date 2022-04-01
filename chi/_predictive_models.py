@@ -229,7 +229,7 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
 
     def sample(
             self, times, n_samples=None, individual=None, seed=None,
-            include_regimen=False, covariates=None, covariate_map=None):
+            include_regimen=False, covariates=None):
         """
         Samples "measurements" of the biomarkers from the posterior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -247,20 +247,16 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
         :param individual: The ID of the modelled individual. If
             ``None``, either the first ID or the population is simulated.
         :type individual: str, optional
-        :param seed: A seed for the pseudo-random number generator.
-        :type seed: int
+        :param seed: Seed for the pseudo-random number generator.
+        :type seed: int or :class:`numpy.random.Generator`, optional
         :param include_regimen: A boolean flag which determines whether the
-            information about the dosing regimen is included.
+            dosing regimen information is included in the output. Only possible
+            when ``return_df=True``.
         :type include_regimen: bool, optional
-        :param covariates: An array-like object with covariates of length c.
-            Covariates are only relevant when CovariatePopulationModels are
-            used.
-        :type covariates: List or np.ndarray, optional
-        :param covariate_map: A nested list of length n_population_models with
-            indices that reference the relevant covariates for each population
-            model. By default, it is assumed that all covariates are relevant
-            for all population models.
-        :type covariate_map: List[List[int]], optional
+        :param covariates: Values for the covariates. If ``None``, default
+            is assumed defined by the :class:`CovariateModel`.
+        :type covariates: np.ndarray of shape ``(n_cov, 1)``, optional
+        :rtype: :class:`pandas.DataFrame`
         """
         # Make sure n_samples is an integer
         if n_samples is None:
@@ -268,16 +264,8 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
         n_samples = int(n_samples)
 
         # Check individual for population model
-        is_population_pred_model = isinstance(
-            self._predictive_model, chi.PopulationPredictiveModel)
-        if is_population_pred_model:
-            if individual is not None:
-                raise ValueError(
-                    "Individual ID's cannot be selected for a "
-                    "chi.PopulationPredictiveModel. To model an "
-                    "individual create a chi.PosteriorPredictiveModel "
-                    "with a chi.PredictiveModel.")
-
+        if isinstance(self._predictive_model, chi.PopulationPredictiveModel):
+            individual = None
         # Check individual for individual predictive model
         else:
             ids = self._posterior.individual
@@ -315,16 +303,8 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             except (ValueError, KeyError):
                 # If individual dimension does not exist, the parameter must
                 # be a population parameter.
-                samples = self._posterior[
+                posterior[:, param_id] = self._posterior[
                     parameter].dropna(dim='draw').values.flatten()
-                try:
-                    posterior[:, param_id] = samples
-                except ValueError:
-                    # HeterogenousModel will have n_ids times too many samples
-                    # -> Sample IDs randomly
-                    target = n_chains * n_draws
-                    now = len(samples)
-                    posterior[:, param_id] = samples[rng.choice(now, target)]
 
         # Create container for samples
         container = pd.DataFrame(
@@ -340,13 +320,9 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             parameters = rng.choice(posterior)
 
             # Sample from predictive model
-            if is_population_pred_model:
-                sample = self._predictive_model.sample(
-                    parameters, times, n_samples, rng, return_df=False,
-                    covariates=covariates, covariate_map=covariate_map)
-            else:
-                sample = self._predictive_model.sample(
-                    parameters, times, n_samples, rng, return_df=False)
+            sample = self._predictive_model.sample(
+                parameters, times, n_samples, rng, return_df=False,
+                covariates=covariates)
 
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):
@@ -411,6 +387,8 @@ class PredictiveModel(object):
                 'The mechanistic model has to be an instance of a '
                 'chi.MechanisticModel.')
 
+        error_models = \
+            error_models if isinstance(error_models, list) else [error_models]
         for error_model in error_models:
             if not isinstance(
                     error_model, (chi.ErrorModel, chi.ReducedErrorModel)):
@@ -687,7 +665,7 @@ class PredictiveModel(object):
 
     def sample(
             self, parameters, times, n_samples=None, seed=None,
-            return_df=True, include_regimen=False):
+            return_df=True, include_regimen=False, *args, **kwargs):
         """
         Samples "measurements" of the biomarkers from the predictive model and
         returns them in form of a :class:`pandas.DataFrame` or a
@@ -867,152 +845,39 @@ class PopulationPredictiveModel(PredictiveModel):
     ----------
     predictive_model
         An instance of a :class:`PredictiveModel`.
-    population_models
-        A list of :class:`PopulationModel` instances, one for each predictive
-        model parameter.
-    params
-        A list of the model parameters, which maps the population models to the
-        predictive model parameters. If ``None``, the population models are
-        assumed to be listed in the same order as the model parameters.
+    population_model
+        An instance of a :class:`PopulationModel`.
     """
 
-    def __init__(self, predictive_model, population_models, params=None):
+    def __init__(self, predictive_model, population_model):
         # Check inputs
         if not isinstance(predictive_model, chi.PredictiveModel):
             raise TypeError(
-                'The predictive model has to be an instance of a '
+                'The predictive model has to be an instance of '
                 'chi.PredictiveModel.')
-
-        for pop_model in population_models:
-            if not isinstance(pop_model, chi.PopulationModel):
-                raise TypeError(
-                    'All population models have to be instances of a '
-                    'chi.PopulationModel.')
+        if not isinstance(population_model, chi.PopulationModel):
+            raise TypeError(
+                'The population model has to be an instance of '
+                'chi.PopulationModel.')
 
         # Get number and names of non-population predictive model
         n_parameters = predictive_model.n_parameters()
-        parameter_names = predictive_model.get_parameter_names()
 
         # Check that there is one population model for each model parameter
-        if len(population_models) != n_parameters:
+        if population_model.n_dim() != n_parameters:
             raise ValueError(
-                'One population model has to be provided for each of the '
-                '<' + str(n_parameters) + '> mechanistic model-error '
-                'model parameters.')
+                'The dimension of the population model has to be the same as '
+                'the number of predictive model parameters.')
 
-        # Sort population models according to model parameters
-        if params is not None:
-            # Check that params has the right length, and the correct
-            # parameter names
-            if len(params) != n_parameters:
-                raise ValueError(
-                    'Params does not have the correct length. Params is '
-                    'expected to contain all model parameter names.')
-
-            if sorted(parameter_names) != sorted(params):
-                raise ValueError(
-                    'The parameter names in <params> have to coincide with '
-                    'the parameter names of the non-populational predictive '
-                    'model parameters <' + str(parameter_names) + '>.')
-
-            # Sort population models
-            pop_models = ['Place holder'] * n_parameters
-            for param_id, name in enumerate(params):
-                index = parameter_names.index(name)
-                pop_models[index] = population_models[param_id]
-
-            population_models = pop_models
-
-        # Remember predictive model and population models
+        # Remember predictive model and population model
         self._predictive_model = predictive_model
-        self._population_models = [
-            copy.copy(pop_model) for pop_model in population_models]
-
-        # Set number and names of model parameters
-        self._set_population_parameter_names()
-        self._set_number_and_parameter_names()
-
-    def _check_covariate_map(self, covariates, covariate_map):
-        """
-        Checks that the covariate map can be used mask the covariates.
-        """
-        n_covariates = len(covariates)
-        n_population_models = len(self._population_models)
-
-        # Constuct identity map, if no map is provided
-        if covariate_map is None:
-            covariate_map = [np.arange(n_covariates)] * n_population_models
-
-            return covariate_map
-
-        # Check that covariate map can be used to index covariates
-        if len(covariate_map) != n_population_models:
-            raise ValueError(
-                'The covariate map has to be of length n_population_models.')
-
-        # Check that indices in covariate map do not exceed lenth of covariate
-        # list
-        max_index = np.max(np.hstack(covariate_map))
-        if max_index >= n_covariates:
-            raise IndexError(
-                'The covariate map exceeds the length of the covariates.')
-
-        return covariate_map
-
-    def _set_population_parameter_names(self):
-        """
-        Sets the names of the population model parameters.
-
-        For chi.HeterogeneousModel the bottom-level parameter is used
-        as model parameter name.
-        """
-        # Get predictive model parameters
-        bottom_parameter_names = self._predictive_model.get_parameter_names()
-
-        # Construct model parameter names
-        for param_id, pop_model in enumerate(self._population_models):
-            # Get original population parameters
-            pop_model.set_parameter_names(None)
-            pop_params = pop_model.get_parameter_names()
-
-            # Construct parameter names
-            bottom_name = bottom_parameter_names[param_id]
-            if pop_params is not None:
-                names = [name + ' ' + bottom_name for name in pop_params]
-            else:
-                # If the population model has no parameter names,
-                # we keep the bottom name
-                names = [bottom_name]
-
-            # Update population model parameter names
-            pop_model.set_parameter_names(names)
-
-    def _set_number_and_parameter_names(self):
-        """
-        Updates the number and names of the free model parameters.
-        """
-        # Construct model parameter names
-        parameter_names = []
-        for pop_model in self._population_models:
-            # Get population parameter
-            pop_params = pop_model.get_parameter_names()
-            parameter_names += pop_params
-
-        # Update number and names
-        self._parameter_names = parameter_names
-        self._n_parameters = len(self._parameter_names)
+        self._population_model = population_model
 
     def fix_parameters(self, name_value_dict):
         """
         Fixes the value of model parameters, and effectively removes them as a
         parameter from the model. Fixing the value of a parameter at ``None``,
         sets the parameter free again.
-
-        .. note:
-            Parameters modelled by a :class:`HeterogeneousModel` cannot be
-            fixed on the population level. If you would like to fix the
-            associated parameter, fix it in the corresponding
-            :class:`PredictiveModel`.
 
         Parameters
         ----------
@@ -1028,29 +893,19 @@ class PopulationPredictiveModel(PredictiveModel):
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
 
-        # Get population models
-        pop_models = self._population_models
-
         # Convert models to reduced models
-        for model_id, pop_model in enumerate(pop_models):
-            if not isinstance(pop_model, chi.ReducedPopulationModel):
-                pop_models[model_id] = chi.ReducedPopulationModel(pop_model)
+        pop_model = self._population_model
+        if not isinstance(pop_model, chi.ReducedPopulationModel):
+            pop_model = chi.ReducedPopulationModel(pop_model)
 
         # Fix model parameters
-        for pop_model in pop_models:
-            pop_model.fix_parameters(name_value_dict)
+        pop_model.fix_parameters(name_value_dict)
 
-        # If no parameters are fixed, get original model back
-        for model_id, pop_model in enumerate(pop_models):
-            if pop_model.n_fixed_parameters() == 0:
-                pop_model = pop_model.get_population_model()
-                pop_models[model_id] = pop_model
+        if pop_model.n_fixed_parameters() == 0:
+            pop_model = pop_model.get_population_model()
 
         # Safe reduced models
-        self._population_models = pop_models
-
-        # Update names and number of parameters
-        self._set_number_and_parameter_names()
+        self._population_model = pop_model
 
     def get_dosing_regimen(self, final_time=None):
         """
@@ -1098,43 +953,21 @@ class PopulationPredictiveModel(PredictiveModel):
         """
         Returns the parameter names of the predictive model.
         """
-        return copy.copy(self._parameter_names)
-
-    def get_submodels(self):
-        """
-        Returns the submodels of the predictive model in form of a dictionary.
-        """
-        # Get submodels from predictive model
-        submodels = self._predictive_model.get_submodels()
-
-        # Get original models
-        pop_models = []
-        for pop_model in self._population_models:
-            # Get original population model
-            if isinstance(pop_model, chi.ReducedPopulationModel):
-                pop_model = pop_model.get_population_model()
-
-            pop_models.append(pop_model)
-
-        submodels['Population models'] = pop_models
-
-        return submodels
+        return self._population_model.get_parameter_names()
 
     def n_parameters(self):
         """
         Returns the number of parameters of the predictive model.
         """
-        return self._n_parameters
+        return self._population_model.n_parameters()
 
     def sample(
             self, parameters, times, n_samples=None, seed=None, return_df=True,
-            include_regimen=False, covariates=None, covariate_map=None):
+            include_regimen=False, covariates=None):
         """
-        Samples "measurements" of the biomarkers from virtual "patients" and
-        returns them in form of a :class:`pandas.DataFrame` or a
-        :class:`numpy.ndarray`.
+        Samples measurements of the observables from virtual patients.
 
-        Virtual patients are sampled from the population models in form of
+        Virtual patients are sampled from the population model in form of
         predictive model parameters. Those parameters are then used to sample
         virtual measurements from the predictive model. For each virtual
         patient one measurement is performed at each of the provided time
@@ -1143,157 +976,105 @@ class PopulationPredictiveModel(PredictiveModel):
         The number of virtual patients that is being measured can be specified
         with ``n_samples``.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameter values of the predictive
-            model.
-        times
-            An array-like object with times at which the virtual "measurements"
-            are performed.
-        n_samples
-            The number of virtual "patients" that are measured at each
-            time point. If ``None`` the biomarkers are measured only for one
-            patient.
-        seed
-            A seed for the pseudo-random number generator or a
-            :class:`numpy.random.Generator`.
-        return_df
-            A boolean flag which determines whether the output is returned as a
-            :class:`pandas.DataFrame` or a :class:`numpy.ndarray`. If ``False``
-            the samples are returned as a numpy array of shape
-            ``(n_outputs, n_times, n_samples)``.
-        include_regimen
-            A boolean flag which determines whether the dosing regimen
-            information is included in the output. If the samples are returned
-            as a :class:`numpy.ndarray`, the dosing information is not
-            included.
-        covariates
-            A list with covariates of length c. Covariates are only relevant
-            when CovariatePopulationModels are used.
-        covariate_map
-            A nested list of length n_population_models with indices that
-            reference the relevant covariates for each population model.
-            By default, it is assumed that all covariates are relevant for all
-            population models.
+        :param parameters: Population model parameters.
+        :type parameters: np.ndarry of shape ``(n_parameters,)``
+        :param times: Measurement time points.
+        :type times: np.ndarray of shape ``(n_times,)``
+        :param n_samples: Number of virtual patients.
+        :type n_samples: int, optional
+        :param seed: Seed for the pseudo-random number generator.
+        :type seed: int or :class:`numpy.random.Generator`, optional
+        :param return_df: A boolean flag which determines whether the output is
+            returned as a :class:`pandas.DataFrame` or a
+            :class:`numpy.ndarray`.
+        :type return_df: bool, optional
+        :param include_regimen: A boolean flag which determines whether the
+            dosing regimen information is included in the output. Only possible
+            when ``return_df=True``.
+        :type include_regimen: bool, optional
+        :param covariates: Values for the covariates. If ``None``, default
+            is assumed defined by the :class:`CovariateModel`.
+        :type covariates: np.ndarray of shape ``(n_cov, 1)``, optional
+        :rtype: :class:`pandas.DataFrame` or np.ndarray of shape
+            ``(n_outputs, n_times, n_samples)``
         """
         # Check inputs
         parameters = np.asarray(parameters)
-        if len(parameters) != self._n_parameters:
+        if len(parameters) != self.n_parameters():
             raise ValueError(
                 'The length of parameters does not match n_parameters.')
 
-        if n_samples is None:
+        # Make sure n_cov is 2 dimensional
+        if covariates is not None:
+            covariates = np.asarray(covariates)
+            covariates = covariates.reshape(len(covariates), 1)
+
+        if not n_samples:
             n_samples = 1
         n_samples = int(n_samples)
 
-        if covariates is not None:
-            covariates = np.array(covariates)
-            covariate_map = self._check_covariate_map(
-                covariates, covariate_map)
-
-        # Create container for "virtual patients"
-        n_parameters = self._predictive_model.n_parameters()
-        patients = np.empty(shape=(n_samples, n_parameters))
-
         # Sample individuals from population model
-        start = 0
-        for pid, pop_model in enumerate(self._population_models):
-            # If heterogenous model, use input parameter for all patients
-            if isinstance(pop_model, chi.HeterogeneousModel):
-                patients[:, pid] = parameters[start]
-
-                # Increment population parameter counter and continue to next
-                # iteration
-                start += 1
-                continue
-
-            # Get range of relevant population parameters
-            end = start + pop_model.n_parameters()
-
-            # Sample patient parameters
-            cov = covariates[covariate_map[pid]] if covariate_map else None
-            if pop_model.transforms_individual_parameters():
-                patients[:, pid] = pop_model.sample(
-                    parameters=parameters[start:end], n_samples=n_samples,
-                    seed=seed, covariates=cov,
-                    return_psi=True)
-            else:
-                patients[:, pid] = pop_model.sample(
-                    parameters=parameters[start:end], n_samples=n_samples,
-                    seed=seed)
-
-            # Increment population parameter counter
-            start = end
+        patients = self._population_model.sample(
+            parameters, n_samples, seed, covariates=covariates)
 
         # Create numpy container for samples (measurements of virtual patients)
         n_outputs = self._predictive_model.get_n_outputs()
         n_times = len(times)
-        container = np.empty(shape=(n_outputs, n_times, n_samples))
+        measurements = np.empty(shape=(n_outputs, n_times, n_samples))
 
         # Sample measurements for each patient
         times = np.sort(times)
         for patient_id, patient in enumerate(patients):
-            sample = self._predictive_model.sample(
-                parameters=patient, times=times, seed=seed, return_df=False)
-            container[..., patient_id] = sample[..., 0]
+            measurements[..., patient_id] = self._predictive_model.sample(
+                parameters=patient, times=times, seed=seed, return_df=False
+                )[..., 0]
 
         if return_df is False:
             # Return samples in numpy array format
-            return container
+            return measurements
 
         # Structure samples in a pandas.DataFrame
-        output_names = self._predictive_model.get_output_names()
+        # (Exploit how .flatten() arranges measurements)
+        names = self._predictive_model.get_output_names()
+        output_names = []
+        for name in names:
+            output_names += [name] * (n_times * n_samples)
+        times = np.broadcast_to(
+            times[np.newaxis, :, np.newaxis],
+            shape=(n_outputs, n_times, n_samples)).flatten()
         sample_ids = np.arange(start=1, stop=n_samples+1)
-        samples = pd.DataFrame(
-            columns=['ID', 'Time', 'Observable', 'Value'])
-
-        # Fill in all samples at a specific time point at once
-        for output_id, name in enumerate(output_names):
-            for time_id, time in enumerate(times):
-                samples = pd.concat([samples, pd.DataFrame({
-                    'ID': sample_ids,
-                    'Time': time,
-                    'Observable': name,
-                    'Value': container[output_id, time_id, :]})])
+        sample_ids = np.broadcast_to(
+            sample_ids[np.newaxis, np.newaxis, :],
+            shape=(n_outputs, n_times, n_samples)).flatten()
+        measurements = pd.DataFrame({
+            'ID': sample_ids,
+            'Time': times,
+            'Observable': output_names,
+            'Value': measurements.flatten()})
 
         # Append covariates, if used
         if covariates is not None:
-            cov_names = []
-            for pop_model in self._population_models:
-                try:
-                    cov_names.append(pop_model.get_covariate_names())
-                except AttributeError:
-                    continue
-
-            # Keep each name only once
-            covariate_map = np.hstack(covariate_map)
-            cov_names = np.hstack(cov_names)
-            n_covariates = len(covariates)
-            covariate_names = []
-            for idc in range(n_covariates):
-                index = np.where(covariate_map == idc)[0][0]
-                name = cov_names[index]
-                covariate_names.append(name)
-
-            # Append to dataframe
-            for idc, covariate in enumerate(covariate_names):
-                samples = pd.concat([samples, pd.DataFrame({
+            names = self._population_model.get_covariate_names()
+            sample_ids = np.arange(start=1, stop=n_samples+1)
+            for idc, covariate in enumerate(names):
+                measurements = pd.concat([measurements, pd.DataFrame({
                     'ID': sample_ids,
                     'Time': np.nan,
                     'Observable': covariate,
                     'Value': covariates[idc]})])
 
         # Add dosing regimen information, if set
-        final_time = np.max(times)
-        regimen = self.get_dosing_regimen(final_time)
-        if (regimen is not None) and (include_regimen is True):
-            # Add dosing regimen for each sample
-            for _id in sample_ids:
-                regimen['ID'] = _id
-                samples = pd.concat([samples, regimen])
+        if include_regimen:
+            final_time = np.max(times)
+            regimen = self.get_dosing_regimen(final_time)
+            if regimen is not None:
+                # Add dosing regimen for each sample
+                sample_ids = np.arange(start=1, stop=n_samples+1)
+                for _id in sample_ids:
+                    regimen['ID'] = _id
+                    measurements = pd.concat([measurements, regimen])
 
-        return samples
+        return measurements
 
     def set_dosing_regimen(
             self, dose, start, duration=0.01, period=None, num=None):
@@ -1378,7 +1159,7 @@ class PriorPredictiveModel(AveragedPredictiveModel):
 
     def sample(
             self, times, n_samples=None, seed=None, include_regimen=False,
-            covariates=None, covariate_map=None):
+            covariates=None):
         """
         Samples "measurements" of the biomarkers from the prior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -1387,27 +1168,22 @@ class PriorPredictiveModel(AveragedPredictiveModel):
         log-prior. These paramaters are then used to sample from the predictive
         model.
 
-        :param times: An array-like object with times at which the virtual
-            "measurements" are performed.
-        :type times: List or np.ndarray.
+        :param times: Times for the virtual "measurements".
+        :type times: list, numpy.ndarray of shape (n,)
         :param n_samples: The number of virtual "measurements" that are
             performed at each time point. If ``None`` the biomarkers are
             measured only once at each time point.
         :type n_samples: int, optional
-        :param seed: A seed for the pseudo-random number generator.
-        :type seed: int, optional
+        :param seed: Seed for the pseudo-random number generator.
+        :type seed: int or :class:`numpy.random.Generator`, optional
         :param include_regimen: A boolean flag which determines whether the
-            information about the dosing regimen is included.
+            dosing regimen information is included in the output. Only possible
+            when ``return_df=True``.
         :type include_regimen: bool, optional
-        :param covariates: An array-like object with covariates of length c.
-            Covariates are only relevant when CovariatePopulationModels are
-            used.
-        :type covariates: List or np.ndarray, optional
-        :param covariate_map: A nested list of length n_population_models with
-            indices that reference the relevant covariates for each population
-            model. By default, it is assumed that all covariates are relevant
-            for all population models.
-        :type covariate_map: List[List[int]], optional
+        :param covariates: Values for the covariates. If ``None``, default
+            is assumed defined by the :class:`CovariateModel`.
+        :type covariates: np.ndarray of shape ``(n_cov, 1)``, optional
+        :rtype: :class:`pandas.DataFrame`
         """
         # Make sure n_samples is an integer
         if n_samples is None:
@@ -1446,15 +1222,9 @@ class PriorPredictiveModel(AveragedPredictiveModel):
                 seed = base_seed + sample_id
 
             # Sample from predictive model
-            is_pop_pred_model = isinstance(
-                self._predictive_model, chi.PopulationPredictiveModel)
-            if is_pop_pred_model:
-                sample = self._predictive_model.sample(
-                    parameters, times, n_samples, seed, return_df=False,
-                    covariates=covariates, covariate_map=covariate_map)
-            else:
-                sample = self._predictive_model.sample(
-                    parameters, times, n_samples, seed, return_df=False)
+            sample = self._predictive_model.sample(
+                parameters, times, n_samples, seed, return_df=False,
+                covariates=covariates)
 
             # Append samples to dataframe
             for output_id, name in enumerate(outputs):

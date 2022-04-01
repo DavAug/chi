@@ -157,48 +157,46 @@ class TestProblemModellingController(unittest.TestCase):
             'myokit.kappa': 1,
             'myokit.lambda_1': 2})
         problem.fix_parameters(name_value_dict)
-        problem.set_population_model(
-            pop_models=[
-                chi.HeterogeneousModel(),
-                chi.PooledModel(),
-                chi.LogNormalModel()])
+        problem.set_population_model(chi.ComposedPopulationModel([
+            chi.HeterogeneousModel(),
+            chi.PooledModel(),
+            chi.LogNormalModel()]))
         problem.set_data(
             self.data,
             output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
 
         n_ids = 3
-        self.assertEqual(problem.get_n_parameters(), 2 * n_ids + 1 + 2)
+        self.assertEqual(problem.get_n_parameters(), n_ids + 1 + 2)
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 9)
-        self.assertEqual(param_names[0], 'ID 0: myokit.lambda_0')
-        self.assertEqual(param_names[1], 'ID 1: myokit.lambda_0')
-        self.assertEqual(param_names[2], 'ID 2: myokit.lambda_0')
+        self.assertEqual(len(param_names), 6)
+        self.assertEqual(param_names[0], 'ID 1 myokit.lambda_0')
+        self.assertEqual(param_names[1], 'ID 2 myokit.lambda_0')
+        self.assertEqual(param_names[2], 'ID 3 myokit.lambda_0')
         self.assertEqual(param_names[3], 'Pooled Sigma base')
-        self.assertEqual(param_names[4], 'ID 0: Sigma rel.')
-        self.assertEqual(param_names[5], 'ID 1: Sigma rel.')
-        self.assertEqual(param_names[6], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[7], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[8], 'Std. log Sigma rel.')
+        self.assertEqual(param_names[4], 'Log mean Sigma rel.')
+        self.assertEqual(param_names[5], 'Log std. Sigma rel.')
 
         # Fix parameters after setting a population model
         # (Only population models can be fixed)
         name_value_dict = dict({
-            'ID 1: myokit.lambda_0': 1,
-            'ID 2: myokit.lambda_0': 4,
+            'ID 1 myokit.lambda_0': 1,
+            'ID 3 myokit.lambda_0': 4,
             'Pooled Sigma base': 2})
         problem.fix_parameters(name_value_dict)
 
         # self.assertEqual(problem.get_n_parameters(), 8)
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 8)
-        self.assertEqual(param_names[0], 'ID 0: myokit.lambda_0')
-        self.assertEqual(param_names[1], 'ID 1: myokit.lambda_0')
-        self.assertEqual(param_names[2], 'ID 2: myokit.lambda_0')
-        self.assertEqual(param_names[3], 'ID 0: Sigma rel.')
-        self.assertEqual(param_names[4], 'ID 1: Sigma rel.')
-        self.assertEqual(param_names[5], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[6], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[7], 'Std. log Sigma rel.')
+        self.assertEqual(len(param_names), 3)
+        self.assertEqual(param_names[0], 'ID 2 myokit.lambda_0')
+        self.assertEqual(param_names[1], 'Log mean Sigma rel.')
+        self.assertEqual(param_names[2], 'Log std. Sigma rel.')
+
+        # Unfix all paramaters
+        name_value_dict = dict({
+            'ID 1 myokit.lambda_0': None,
+            'ID 3 myokit.lambda_0': None,
+            'Pooled Sigma base': None})
+        problem.fix_parameters(name_value_dict)
 
         # Test case II: PKPD model
         # Fix model parameters
@@ -280,19 +278,12 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(len(names), 0)
 
         # I.2: Population model but no covariate population model
-        pop_models = [chi.PooledModel()] * 7
-        problem.set_population_model(pop_models)
+        pop_model = chi.PooledModel(n_dim=7)
+        problem.set_population_model(pop_model)
         names = problem.get_covariate_names()
         self.assertEqual(len(names), 0)
-        names = problem.get_covariate_names(unique=False)
-        self.assertEqual(len(names), 7)
-        self.assertEqual(names[0], [])
-        self.assertEqual(names[1], [])
-        self.assertEqual(names[2], [])
-        self.assertEqual(names[3], [])
-        self.assertEqual(names[3], [])
-        self.assertEqual(names[3], [])
-        self.assertEqual(names[3], [])
+        names = problem.get_covariate_names()
+        self.assertEqual(len(names), 0)
 
         # I.3: With covariate models
         cov_pop_model1 = chi.CovariatePopulationModel(
@@ -305,7 +296,7 @@ class TestProblemModellingController(unittest.TestCase):
             chi.LogNormalLinearCovariateModel(n_covariates=3)
         )
         cov_pop_model2.set_covariate_names(['SNP', 'Age', 'Height'])
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             cov_pop_model1,
             chi.PooledModel(),
@@ -313,23 +304,17 @@ class TestProblemModellingController(unittest.TestCase):
             cov_pop_model1,
             chi.PooledModel(),
             chi.PooledModel()
-        ]
-        problem.set_population_model(pop_models)
+        ])
+        problem.set_population_model(pop_model)
         names = problem.get_covariate_names()
-        self.assertEqual(len(names), 4)
+        self.assertEqual(len(names), 7)
         self.assertEqual(names[0], 'Age')
         self.assertEqual(names[1], 'Sex')
         self.assertEqual(names[2], 'SNP')
-        self.assertEqual(names[3], 'Height')
-        names = problem.get_covariate_names(unique=False)
-        self.assertEqual(len(names), 7)
-        self.assertEqual(names[0], [])
-        self.assertEqual(names[1], ['Age', 'Sex'])
-        self.assertEqual(names[2], [])
-        self.assertEqual(names[3], ['SNP', 'Age', 'Height'])
-        self.assertEqual(names[4], ['Age', 'Sex'])
-        self.assertEqual(names[5], [])
-        self.assertEqual(names[6], [])
+        self.assertEqual(names[3], 'Age')
+        self.assertEqual(names[4], 'Height')
+        self.assertEqual(names[5], 'Age')
+        self.assertEqual(names[6], 'Sex')
 
     def test_get_dosing_regimens(self):
         # Test case I: PD problem
@@ -386,68 +371,52 @@ class TestProblemModellingController(unittest.TestCase):
         problem.set_data(
             self.data,
             output_observable_dict={'myokit.tumour_volume': 'IL 6'})
-        problem.set_log_prior([
-            pints.HalfCauchyLogPrior(0, 1)]*7)
+        problem.set_log_prior(pints.ComposedLogPrior(*[
+            pints.HalfCauchyLogPrior(0, 1)]*7))
 
-        # Get all posteriors
-        posteriors = problem.get_log_posterior()
-
-        self.assertEqual(len(posteriors), 2)
-        self.assertEqual(posteriors[0].n_parameters(), 7)
-        self.assertEqual(posteriors[0].get_id(), 'ID 0')
-        self.assertEqual(posteriors[1].n_parameters(), 7)
-        self.assertEqual(posteriors[1].get_id(), 'ID 1')
+        # Get posterior without specifying the ID
+        posterior = problem.get_log_posterior()
+        self.assertEqual(posterior.n_parameters(), 7)
+        self.assertEqual(posterior.get_id(), '0')
 
         # Set data that has measurements for all IDs
         problem.set_data(
             self.data,
             output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
-        problem.set_log_prior([
-            pints.HalfCauchyLogPrior(0, 1)]*7)
+        problem.set_log_prior(pints.ComposedLogPrior(*[
+            pints.HalfCauchyLogPrior(0, 1)]*7))
 
-        # Get all posteriors
-        posteriors = problem.get_log_posterior()
-
-        self.assertEqual(len(posteriors), 3)
-        self.assertEqual(posteriors[0].n_parameters(), 7)
-        self.assertEqual(posteriors[0].get_id(), 'ID 0')
-        self.assertEqual(posteriors[1].n_parameters(), 7)
-        self.assertEqual(posteriors[1].get_id(), 'ID 1')
-        self.assertEqual(posteriors[2].n_parameters(), 7)
-        self.assertEqual(posteriors[2].get_id(), 'ID 2')
+        # Get posterior without specifying the ID
+        posterior = problem.get_log_posterior()
+        self.assertEqual(posterior.n_parameters(), 7)
+        self.assertEqual(posterior.get_id(), '0')
 
         # Get only one posterior
         posterior = problem.get_log_posterior(individual='0')
 
         self.assertIsInstance(posterior, chi.LogPosterior)
         self.assertEqual(posterior.n_parameters(), 7)
-        self.assertEqual(posterior.get_id(), 'ID 0')
+        self.assertEqual(posterior.get_id(), '0')
 
         # Test case II: Fix some parameters
         name_value_dict = dict({
             'myokit.drug_concentration': 0,
             'myokit.kappa': 1})
         problem.fix_parameters(name_value_dict)
-        problem.set_log_prior([
-            pints.HalfCauchyLogPrior(0, 1)]*5)
+        problem.set_log_prior(pints.ComposedLogPrior(*[
+            pints.HalfCauchyLogPrior(0, 1)]*5))
 
         # Get all posteriors
-        posteriors = problem.get_log_posterior()
-
-        self.assertEqual(len(posteriors), 3)
-        self.assertEqual(posteriors[0].n_parameters(), 5)
-        self.assertEqual(posteriors[0].get_id(), 'ID 0')
-        self.assertEqual(posteriors[1].n_parameters(), 5)
-        self.assertEqual(posteriors[1].get_id(), 'ID 1')
-        self.assertEqual(posteriors[2].n_parameters(), 5)
-        self.assertEqual(posteriors[2].get_id(), 'ID 2')
+        posterior = problem.get_log_posterior()
+        self.assertEqual(posterior.n_parameters(), 5)
+        self.assertEqual(posterior.get_id(), '0')
 
         # Get only one posterior
         posterior = problem.get_log_posterior(individual='1')
 
         self.assertIsInstance(posterior, chi.LogPosterior)
         self.assertEqual(posterior.n_parameters(), 5)
-        self.assertEqual(posterior.get_id(), 'ID 1')
+        self.assertEqual(posterior.get_id(), '1')
 
         # Set a population model
         cov_pop_model = chi.CovariatePopulationModel(
@@ -455,15 +424,15 @@ class TestProblemModellingController(unittest.TestCase):
             chi.LogNormalLinearCovariateModel(n_covariates=1)
         )
         cov_pop_model.set_covariate_names(['Age'], True)
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            cov_pop_model]
-        problem.set_population_model(pop_models)
-        problem.set_log_prior([
-            pints.HalfCauchyLogPrior(0, 1)]*9)
+            cov_pop_model])
+        problem.set_population_model(pop_model)
+        problem.set_log_prior(pints.ComposedLogPrior(*[
+            pints.HalfCauchyLogPrior(0, 1)]*9))
         posterior = problem.get_log_posterior()
 
         self.assertIsInstance(posterior, chi.HierarchicalLogPosterior)
@@ -474,27 +443,27 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(len(names), 12)
         self.assertEqual(len(ids), 12)
 
-        self.assertEqual(names[0], 'Pooled myokit.tumour_volume')
-        self.assertIsNone(ids[0])
-        self.assertEqual(names[1], 'myokit.lambda_0')
-        self.assertEqual(ids[1], 'ID 0')
-        self.assertEqual(names[2], 'myokit.lambda_0')
-        self.assertEqual(ids[2], 'ID 1')
-        self.assertEqual(names[3], 'myokit.lambda_0')
-        self.assertEqual(ids[3], 'ID 2')
-        self.assertEqual(names[4], 'Pooled myokit.lambda_1')
+        self.assertEqual(names[0], 'Sigma rel.')
+        self.assertEqual(ids[0], '0')
+        self.assertEqual(names[1], 'Sigma rel.')
+        self.assertEqual(ids[1], '1')
+        self.assertEqual(names[2], 'Sigma rel.')
+        self.assertEqual(ids[2], '2')
+        self.assertEqual(names[3], 'Pooled myokit.tumour_volume')
+        self.assertIsNone(ids[3])
+        self.assertEqual(names[4], 'ID 1 myokit.lambda_0')
         self.assertIsNone(ids[4])
-        self.assertEqual(names[5], 'Pooled Sigma base')
+        self.assertEqual(names[5], 'ID 2 myokit.lambda_0')
         self.assertIsNone(ids[5])
-        self.assertEqual(names[6], 'Sigma rel. Eta')
-        self.assertEqual(ids[6], 'ID 0')
-        self.assertEqual(names[7], 'Sigma rel. Eta')
-        self.assertEqual(ids[7], 'ID 1')
-        self.assertEqual(names[8], 'Sigma rel. Eta')
-        self.assertEqual(ids[8], 'ID 2')
-        self.assertEqual(names[9], 'Base mean log Sigma rel.')
+        self.assertEqual(names[6], 'ID 3 myokit.lambda_0')
+        self.assertIsNone(ids[6])
+        self.assertEqual(names[7], 'Pooled myokit.lambda_1')
+        self.assertIsNone(ids[7])
+        self.assertEqual(names[8], 'Pooled Sigma base')
+        self.assertIsNone(ids[8])
+        self.assertEqual(names[9], 'Base log mean Sigma rel.')
         self.assertIsNone(ids[9])
-        self.assertEqual(names[10], 'Std. log Sigma rel.')
+        self.assertEqual(names[10], 'Log std. Sigma rel.')
         self.assertIsNone(ids[10])
         self.assertEqual(names[11], 'Shift Age Sigma rel.')
         self.assertIsNone(ids[11])
@@ -511,27 +480,27 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(len(names), 12)
         self.assertEqual(len(ids), 12)
 
-        self.assertEqual(names[0], 'Pooled myokit.tumour_volume')
-        self.assertIsNone(ids[0])
-        self.assertEqual(names[1], 'myokit.lambda_0')
-        self.assertEqual(ids[1], 'ID 0')
-        self.assertEqual(names[2], 'myokit.lambda_0')
-        self.assertEqual(ids[2], 'ID 1')
-        self.assertEqual(names[3], 'myokit.lambda_0')
-        self.assertEqual(ids[3], 'ID 2')
-        self.assertEqual(names[4], 'Pooled myokit.lambda_1')
+        self.assertEqual(names[0], 'Sigma rel.')
+        self.assertEqual(ids[0], '0')
+        self.assertEqual(names[1], 'Sigma rel.')
+        self.assertEqual(ids[1], '1')
+        self.assertEqual(names[2], 'Sigma rel.')
+        self.assertEqual(ids[2], '2')
+        self.assertEqual(names[3], 'Pooled myokit.tumour_volume')
+        self.assertIsNone(ids[3])
+        self.assertEqual(names[4], 'ID 1 myokit.lambda_0')
         self.assertIsNone(ids[4])
-        self.assertEqual(names[5], 'Pooled Sigma base')
+        self.assertEqual(names[5], 'ID 2 myokit.lambda_0')
         self.assertIsNone(ids[5])
-        self.assertEqual(names[6], 'Sigma rel. Eta')
-        self.assertEqual(ids[6], 'ID 0')
-        self.assertEqual(names[7], 'Sigma rel. Eta')
-        self.assertEqual(ids[7], 'ID 1')
-        self.assertEqual(names[8], 'Sigma rel. Eta')
-        self.assertEqual(ids[8], 'ID 2')
-        self.assertEqual(names[9], 'Base mean log Sigma rel.')
+        self.assertEqual(names[6], 'ID 3 myokit.lambda_0')
+        self.assertIsNone(ids[6])
+        self.assertEqual(names[7], 'Pooled myokit.lambda_1')
+        self.assertIsNone(ids[7])
+        self.assertEqual(names[8], 'Pooled Sigma base')
+        self.assertIsNone(ids[8])
+        self.assertEqual(names[9], 'Base log mean Sigma rel.')
         self.assertIsNone(ids[9])
-        self.assertEqual(names[10], 'Std. log Sigma rel.')
+        self.assertEqual(names[10], 'Log std. Sigma rel.')
         self.assertIsNone(ids[10])
         self.assertEqual(names[11], 'Shift Age Sigma rel.')
         self.assertIsNone(ids[11])
@@ -546,23 +515,21 @@ class TestProblemModellingController(unittest.TestCase):
             output_observable_dict={
                 'central.drug_concentration': 'IL 6',
                 'myokit.tumour_volume': 'Tumour volume'})
-        problem.set_log_prior([
-            pints.HalfCauchyLogPrior(0, 1)]*11)
+        problem.set_log_prior(pints.ComposedLogPrior(*[
+            pints.HalfCauchyLogPrior(0, 1)]*11))
 
         # Get all posteriors
-        posteriors = problem.get_log_posterior()
+        posterior = problem.get_log_posterior()
+        self.assertEqual(posterior.n_parameters(), 11)
+        self.assertEqual(posterior.get_id(), '0')
 
-        self.assertEqual(len(posteriors), 3)
-        self.assertEqual(posteriors[0].n_parameters(), 11)
-        self.assertEqual(posteriors[0].get_id(), 'ID 0')
-        self.assertEqual(posteriors[1].n_parameters(), 11)
-        self.assertEqual(posteriors[1].get_id(), 'ID 1')
-        self.assertEqual(posteriors[2].n_parameters(), 11)
-        self.assertEqual(posteriors[2].get_id(), 'ID 2')
-
-    def test_get_log_posteriors_bad_input(self):
+    def test_get_log_posterior_bad_input(self):
         problem = chi.ProblemModellingController(
             self.pd_model, self.error_model)
+
+        # No data has been set
+        with self.assertRaisesRegex(ValueError, 'The data has not been set.'):
+            problem.get_log_posterior()
 
         # No log-prior has been set
         problem.set_data(
@@ -574,7 +541,8 @@ class TestProblemModellingController(unittest.TestCase):
 
         # The selected individual does not exist
         individual = 'Not existent'
-        problem.set_log_prior([pints.HalfCauchyLogPrior(0, 1)]*7)
+        problem.set_log_prior(pints.ComposedLogPrior(*[
+            pints.HalfCauchyLogPrior(0, 1)]*7))
 
         with self.assertRaisesRegex(ValueError, 'The individual cannot'):
             problem.get_log_posterior(individual)
@@ -592,45 +560,33 @@ class TestProblemModellingController(unittest.TestCase):
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 7)
 
-        # Test exclude bottom-level model True
-        n_parameters = problem.get_n_parameters(exclude_bottom_level=True)
-        self.assertEqual(n_parameters, 7)
-
         # Test case I.2: Population model
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
             chi.LogNormalModel(),
-            chi.LogNormalModel()]
-        problem.set_population_model(pop_models)
+            chi.LogNormalModel()])
+        problem.set_population_model(pop_model)
         n_parameters = problem.get_n_parameters()
-        self.assertEqual(n_parameters, 8)
+        self.assertEqual(n_parameters, 9)
 
         # Test exclude population model True
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 7)
-
-        # Test exclude bottom-level model True
-        n_parameters = problem.get_n_parameters(exclude_bottom_level=True)
-        self.assertEqual(n_parameters, 8)
 
         # Test case I.3: Set data
         problem.set_data(
             self.data,
             output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
         n_parameters = problem.get_n_parameters()
-        self.assertEqual(n_parameters, 17)
+        self.assertEqual(n_parameters, 11)
 
         # Test exclude population model True
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 7)
-
-        # Test exclude bottom-level model True
-        n_parameters = problem.get_n_parameters(exclude_bottom_level=True)
-        self.assertEqual(n_parameters, 11)
 
         # Test case II: PKPD model
         # Test case II.1: No population model
@@ -644,12 +600,8 @@ class TestProblemModellingController(unittest.TestCase):
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 11)
 
-        # Test exclude bottom-level model True
-        n_parameters = problem.get_n_parameters(exclude_bottom_level=True)
-        self.assertEqual(n_parameters, 11)
-
         # Test case II.2: Population model
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -660,18 +612,14 @@ class TestProblemModellingController(unittest.TestCase):
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            chi.PooledModel()]
-        problem.set_population_model(pop_models)
+            chi.PooledModel()])
+        problem.set_population_model(pop_model)
         n_parameters = problem.get_n_parameters()
-        self.assertEqual(n_parameters, 12)
+        self.assertEqual(n_parameters, 13)
 
         # Test exclude population model True
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 11)
-
-        # Test exclude bottom-level model True
-        n_parameters = problem.get_n_parameters(exclude_bottom_level=True)
-        self.assertEqual(n_parameters, 12)
 
         # Test case II.3: Set data
         problem.set_data(
@@ -680,15 +628,11 @@ class TestProblemModellingController(unittest.TestCase):
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'})
         n_parameters = problem.get_n_parameters()
-        self.assertEqual(n_parameters, 21)
+        self.assertEqual(n_parameters, 15)
 
         # Test exclude population model True
         n_parameters = problem.get_n_parameters(exclude_pop_model=True)
         self.assertEqual(n_parameters, 11)
-
-        # Test exclude bottom-level model True
-        n_parameters = problem.get_n_parameters(exclude_bottom_level=True)
-        self.assertEqual(n_parameters, 15)
 
     def test_get_parameter_names(self):
         # Test case I: PD model
@@ -718,39 +662,29 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[5], 'Sigma base')
         self.assertEqual(param_names[6], 'Sigma rel.')
 
-        # Check that also works with exclude bottom-level flag
-        param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 7)
-        self.assertEqual(param_names[0], 'myokit.tumour_volume')
-        self.assertEqual(param_names[1], 'myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'myokit.kappa')
-        self.assertEqual(param_names[3], 'myokit.lambda_0')
-        self.assertEqual(param_names[4], 'myokit.lambda_1')
-        self.assertEqual(param_names[5], 'Sigma base')
-        self.assertEqual(param_names[6], 'Sigma rel.')
-
         # Test case I.2: Population model
         cov_population_model = chi.CovariatePopulationModel(
             chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
             cov_population_model,
-            chi.LogNormalModel()]
-        problem.set_population_model(pop_models)
+            chi.LogNormalModel()])
+        problem.set_population_model(pop_model)
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 8)
+        self.assertEqual(len(param_names), 9)
         self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'Pooled myokit.lambda_0')
-        self.assertEqual(param_names[3], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[4], 'Base mean log Sigma base')
-        self.assertEqual(param_names[5], 'Std. log Sigma base')
-        self.assertEqual(param_names[6], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[7], 'Std. log Sigma rel.')
+        self.assertEqual(param_names[2], 'ID 1 myokit.kappa')
+        self.assertEqual(param_names[3], 'Pooled myokit.lambda_0')
+        self.assertEqual(param_names[4], 'Pooled myokit.lambda_1')
+        self.assertEqual(param_names[5], 'Base log mean Sigma base')
+        self.assertEqual(param_names[6], 'Log std. Sigma base')
+        self.assertEqual(param_names[7], 'Log mean Sigma rel.')
+        self.assertEqual(param_names[8], 'Log std. Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -762,42 +696,24 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[4], 'myokit.lambda_1')
         self.assertEqual(param_names[5], 'Sigma base')
         self.assertEqual(param_names[6], 'Sigma rel.')
-
-        # Test exclude bottom-level True
-        param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 8)
-        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'Pooled myokit.lambda_0')
-        self.assertEqual(param_names[3], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[4], 'Base mean log Sigma base')
-        self.assertEqual(param_names[5], 'Std. log Sigma base')
-        self.assertEqual(param_names[6], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[7], 'Std. log Sigma rel.')
 
         # Test case I.3: Set data
         problem.set_data(
             self.data,
             output_observable_dict={'myokit.tumour_volume': 'Tumour volume'})
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 17)
+        self.assertEqual(len(param_names), 11)
         self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
-        self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
-        self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
+        self.assertEqual(param_names[2], 'ID 1 myokit.kappa')
+        self.assertEqual(param_names[3], 'ID 2 myokit.kappa')
+        self.assertEqual(param_names[4], 'ID 3 myokit.kappa')
         self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[7], 'ID 0: Sigma base Eta')
-        self.assertEqual(param_names[8], 'ID 1: Sigma base Eta')
-        self.assertEqual(param_names[9], 'ID 2: Sigma base Eta')
-        self.assertEqual(param_names[10], 'Base mean log Sigma base')
-        self.assertEqual(param_names[11], 'Std. log Sigma base')
-        self.assertEqual(param_names[12], 'ID 0: Sigma rel.')
-        self.assertEqual(param_names[13], 'ID 1: Sigma rel.')
-        self.assertEqual(param_names[14], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[15], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[16], 'Std. log Sigma rel.')
+        self.assertEqual(param_names[7], 'Base log mean Sigma base')
+        self.assertEqual(param_names[8], 'Log std. Sigma base')
+        self.assertEqual(param_names[9], 'Log mean Sigma rel.')
+        self.assertEqual(param_names[10], 'Log std. Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -809,21 +725,6 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[4], 'myokit.lambda_1')
         self.assertEqual(param_names[5], 'Sigma base')
         self.assertEqual(param_names[6], 'Sigma rel.')
-
-        # Test exclude bottom-level True
-        param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 11)
-        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
-        self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
-        self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
-        self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
-        self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[7], 'Base mean log Sigma base')
-        self.assertEqual(param_names[8], 'Std. log Sigma base')
-        self.assertEqual(param_names[9], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[10], 'Std. log Sigma rel.')
 
         # Test case II: PKPD model
         problem = chi.ProblemModellingController(
@@ -864,30 +765,13 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
         self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
 
-        # Test exclude population model True
-        param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 11)
-        self.assertEqual(param_names[0], 'central.drug_amount')
-        self.assertEqual(param_names[1], 'myokit.tumour_volume')
-        self.assertEqual(param_names[2], 'central.size')
-        self.assertEqual(param_names[3], 'myokit.critical_volume')
-        self.assertEqual(param_names[4], 'myokit.elimination_rate')
-        self.assertEqual(param_names[5], 'myokit.kappa')
-        self.assertEqual(param_names[6], 'myokit.lambda')
-        self.assertEqual(
-            param_names[7], 'central.drug_concentration Sigma base')
-        self.assertEqual(
-            param_names[8], 'central.drug_concentration Sigma rel.')
-        self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
-        self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
-
         # Test case II.2: Population model
         cov_pop_model = chi.CovariatePopulationModel(
             chi.GaussianModel(),
             chi.LogNormalLinearCovariateModel(n_covariates=1)
         )
         cov_pop_model.set_covariate_names(['Age'], True)
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -898,31 +782,32 @@ class TestProblemModellingController(unittest.TestCase):
             chi.PooledModel(),
             cov_pop_model,
             chi.PooledModel(),
-            chi.PooledModel()]
-        problem.set_population_model(pop_models)
+            chi.PooledModel()])
+        problem.set_population_model(pop_model)
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 14)
+        self.assertEqual(len(param_names), 15)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[2], 'Pooled myokit.critical_volume')
-        self.assertEqual(param_names[3], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[4], 'Mean log myokit.kappa')
-        self.assertEqual(param_names[5], 'Std. log myokit.kappa')
-        self.assertEqual(param_names[6], 'Mean log myokit.lambda')
-        self.assertEqual(param_names[7], 'Std. log myokit.lambda')
+        self.assertEqual(param_names[2], 'ID 1 central.size')
+        self.assertEqual(param_names[3], 'Pooled myokit.critical_volume')
+        self.assertEqual(param_names[4], 'Pooled myokit.elimination_rate')
+        self.assertEqual(param_names[5], 'Log mean myokit.kappa')
+        self.assertEqual(param_names[6], 'Log std. myokit.kappa')
+        self.assertEqual(param_names[7], 'Log mean myokit.lambda')
+        self.assertEqual(param_names[8], 'Log std. myokit.lambda')
         self.assertEqual(
-            param_names[8], 'Pooled central.drug_concentration Sigma base')
+            param_names[9], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
-            param_names[9],
-            'Base mean log central.drug_concentration Sigma rel.')
+            param_names[10],
+            'Base log mean central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[10], 'Std. log central.drug_concentration Sigma rel.')
+            param_names[11], 'Log std. central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[11], 'Shift Age central.drug_concentration Sigma rel.')
+            param_names[12], 'Shift Age central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[12], 'Pooled myokit.tumour_volume Sigma base')
+            param_names[13], 'Pooled myokit.tumour_volume Sigma base')
         self.assertEqual(
-            param_names[13], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[14], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -940,31 +825,6 @@ class TestProblemModellingController(unittest.TestCase):
             param_names[8], 'central.drug_concentration Sigma rel.')
         self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
         self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
-
-        # Test exclude bottom-level True
-        param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 14)
-        self.assertEqual(param_names[0], 'Pooled central.drug_amount')
-        self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[2], 'Pooled myokit.critical_volume')
-        self.assertEqual(param_names[3], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[4], 'Mean log myokit.kappa')
-        self.assertEqual(param_names[5], 'Std. log myokit.kappa')
-        self.assertEqual(param_names[6], 'Mean log myokit.lambda')
-        self.assertEqual(param_names[7], 'Std. log myokit.lambda')
-        self.assertEqual(
-            param_names[8], 'Pooled central.drug_concentration Sigma base')
-        self.assertEqual(
-            param_names[9],
-            'Base mean log central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[10], 'Std. log central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[11], 'Shift Age central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[12], 'Pooled myokit.tumour_volume Sigma base')
-        self.assertEqual(
-            param_names[13], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test case II.3: Set data
         problem.set_data(
@@ -973,46 +833,31 @@ class TestProblemModellingController(unittest.TestCase):
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'})
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 26)
+        self.assertEqual(len(param_names), 17)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[2], 'ID 0: central.size')
-        self.assertEqual(param_names[3], 'ID 1: central.size')
-        self.assertEqual(param_names[4], 'ID 2: central.size')
+        self.assertEqual(param_names[2], 'ID 1 central.size')
+        self.assertEqual(param_names[3], 'ID 2 central.size')
+        self.assertEqual(param_names[4], 'ID 3 central.size')
         self.assertEqual(param_names[5], 'Pooled myokit.critical_volume')
         self.assertEqual(param_names[6], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[7], 'ID 0: myokit.kappa')
-        self.assertEqual(param_names[8], 'ID 1: myokit.kappa')
-        self.assertEqual(param_names[9], 'ID 2: myokit.kappa')
-        self.assertEqual(param_names[10], 'Mean log myokit.kappa')
-        self.assertEqual(param_names[11], 'Std. log myokit.kappa')
-        self.assertEqual(param_names[12], 'ID 0: myokit.lambda')
-        self.assertEqual(param_names[13], 'ID 1: myokit.lambda')
-        self.assertEqual(param_names[14], 'ID 2: myokit.lambda')
-        self.assertEqual(param_names[15], 'Mean log myokit.lambda')
-        self.assertEqual(param_names[16], 'Std. log myokit.lambda')
+        self.assertEqual(param_names[7], 'Log mean myokit.kappa')
+        self.assertEqual(param_names[8], 'Log std. myokit.kappa')
+        self.assertEqual(param_names[9], 'Log mean myokit.lambda')
+        self.assertEqual(param_names[10], 'Log std. myokit.lambda')
         self.assertEqual(
-            param_names[17], 'Pooled central.drug_concentration Sigma base')
+            param_names[11], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
-            param_names[18],
-            'ID 0: central.drug_concentration Sigma rel. Eta')
+            param_names[12],
+            'Base log mean central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[19],
-            'ID 1: central.drug_concentration Sigma rel. Eta')
+            param_names[13], 'Log std. central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[20],
-            'ID 2: central.drug_concentration Sigma rel. Eta')
+            param_names[14], 'Shift Age central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[21],
-            'Base mean log central.drug_concentration Sigma rel.')
+            param_names[15], 'Pooled myokit.tumour_volume Sigma base')
         self.assertEqual(
-            param_names[22], 'Std. log central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[23], 'Shift Age central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[24], 'Pooled myokit.tumour_volume Sigma base')
-        self.assertEqual(
-            param_names[25], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[16], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -1030,34 +875,6 @@ class TestProblemModellingController(unittest.TestCase):
             param_names[8], 'central.drug_concentration Sigma rel.')
         self.assertEqual(param_names[9], 'myokit.tumour_volume Sigma base')
         self.assertEqual(param_names[10], 'myokit.tumour_volume Sigma rel.')
-
-        # Test exclude bottom-level True
-        param_names = problem.get_parameter_names(exclude_bottom_level=True)
-        self.assertEqual(len(param_names), 17)
-        self.assertEqual(param_names[0], 'Pooled central.drug_amount')
-        self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[2], 'ID 0: central.size')
-        self.assertEqual(param_names[3], 'ID 1: central.size')
-        self.assertEqual(param_names[4], 'ID 2: central.size')
-        self.assertEqual(param_names[5], 'Pooled myokit.critical_volume')
-        self.assertEqual(param_names[6], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[7], 'Mean log myokit.kappa')
-        self.assertEqual(param_names[8], 'Std. log myokit.kappa')
-        self.assertEqual(param_names[9], 'Mean log myokit.lambda')
-        self.assertEqual(param_names[10], 'Std. log myokit.lambda')
-        self.assertEqual(
-            param_names[11], 'Pooled central.drug_concentration Sigma base')
-        self.assertEqual(
-            param_names[12],
-            'Base mean log central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[13], 'Std. log central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[14], 'Shift Age central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[15], 'Pooled myokit.tumour_volume Sigma base')
-        self.assertEqual(
-            param_names[16], 'Pooled myokit.tumour_volume Sigma rel.')
 
     def test_get_predictive_model(self):
         # Test case I: PD model
@@ -1068,30 +885,18 @@ class TestProblemModellingController(unittest.TestCase):
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
-        # Exclude population model
-        predictive_model = problem.get_predictive_model(
-            exclude_pop_model=True)
-        self.assertIsInstance(predictive_model, chi.PredictiveModel)
-
         # Test case I.2: Population model
-        problem.set_population_model([
+        problem.set_population_model(chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
             chi.LogNormalModel(),
-            chi.LogNormalModel()])
+            chi.LogNormalModel()]))
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(
             predictive_model, chi.PopulationPredictiveModel)
-
-        # Exclude population model
-        predictive_model = problem.get_predictive_model(
-            exclude_pop_model=True)
-        self.assertNotIsInstance(
-            predictive_model, chi.PopulationPredictiveModel)
-        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
         # Test case II: PKPD model
         problem = chi.ProblemModellingController(
@@ -1101,13 +906,8 @@ class TestProblemModellingController(unittest.TestCase):
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
-        # Exclude population model
-        predictive_model = problem.get_predictive_model(
-            exclude_pop_model=True)
-        self.assertIsInstance(predictive_model, chi.PredictiveModel)
-
         # Test case II.2: Population model
-        problem.set_population_model([
+        problem.set_population_model(chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -1118,17 +918,10 @@ class TestProblemModellingController(unittest.TestCase):
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            chi.PooledModel()])
+            chi.PooledModel()]))
         predictive_model = problem.get_predictive_model()
         self.assertIsInstance(
             predictive_model, chi.PopulationPredictiveModel)
-
-        # Exclude population model
-        predictive_model = problem.get_predictive_model(
-            exclude_pop_model=True)
-        self.assertNotIsInstance(
-            predictive_model, chi.PopulationPredictiveModel)
-        self.assertIsInstance(predictive_model, chi.PredictiveModel)
 
     def test_set_data(self):
         # Set data with explicit output-observable map
@@ -1147,9 +940,13 @@ class TestProblemModellingController(unittest.TestCase):
             chi.LogNormalLinearCovariateModel(n_covariates=1)
         )
         cov_pop_model.set_covariate_names(['Sex'], True)
-        pop_models = [cov_pop_model] * 7
-        problem.set_population_model(pop_models)
+        pop_model = chi.ComposedPopulationModel([cov_pop_model] * 7)
+        problem.set_population_model(pop_model)
         covariate_dict = {'Sex': 'Age'}
+        problem.set_data(self.data, output_observable_dict, covariate_dict)
+
+        # Set data after fixing a parameter
+        problem.fix_parameters({'Base log mean Sigma rel.': 12})
         problem.set_data(self.data, output_observable_dict, covariate_dict)
 
     def test_set_data_bad_input(self):
@@ -1216,8 +1013,9 @@ class TestProblemModellingController(unittest.TestCase):
             chi.LogNormalLinearCovariateModel(n_covariates=1)
         )
         cov_pop_model2.set_covariate_names(['Sex'], True)
-        pop_models = [cov_pop_model1] * 4 + [cov_pop_model2] * 3
-        problem.set_population_model(pop_models)
+        pop_model = chi.ComposedPopulationModel(
+            [cov_pop_model1] * 4 + [cov_pop_model2] * 3)
+        problem.set_population_model(pop_model)
         output_observable_dict = {'myokit.tumour_volume': 'Tumour volume'}
         covariate_dict = {'Age': 'Age', 'Something': 'else'}
         with self.assertRaisesRegex(ValueError, 'The covariate <Sex> could'):
@@ -1238,8 +1036,8 @@ class TestProblemModellingController(unittest.TestCase):
         data = self.data.copy()
         mask = (data.ID == 1) | (data.Observable == 'Age')
         data.loc[mask, 'Value'] = np.nan
-        pop_models = [cov_pop_model1] * 7
-        problem.set_population_model(pop_models)
+        pop_model = chi.ComposedPopulationModel([cov_pop_model1] * 7)
+        problem.set_population_model(pop_model)
         with self.assertRaisesRegex(ValueError, 'There are either 0 or more'):
             problem.set_data(
                 data,
@@ -1249,8 +1047,8 @@ class TestProblemModellingController(unittest.TestCase):
         data = self.data.copy()
         mask = data.Observable == 'Age'
         data.loc[mask, 'ID'] = 0
-        pop_models = [cov_pop_model1] * 7
-        problem.set_population_model(pop_models)
+        pop_model = chi.ComposedPopulationModel([cov_pop_model1] * 7)
+        problem.set_population_model(pop_model)
         with self.assertRaisesRegex(ValueError, 'There are either 0 or more'):
             problem.set_data(
                 data,
@@ -1261,21 +1059,9 @@ class TestProblemModellingController(unittest.TestCase):
         problem = chi.ProblemModellingController(
             self.pd_model, self.error_model)
         problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
-        log_priors = [pints.HalfCauchyLogPrior(0, 1)] * 7
-
-        # Map priors to parameters automatically
-        problem.set_log_prior(log_priors)
-
-        # Specify prior parameter map explicitly
-        param_names = [
-            'myokit.kappa',
-            'Sigma base',
-            'Sigma rel.',
-            'myokit.tumour_volume',
-            'myokit.lambda_1',
-            'myokit.drug_concentration',
-            'myokit.lambda_0']
-        problem.set_log_prior(log_priors, param_names)
+        log_prior = pints.ComposedLogPrior(
+            *[pints.HalfCauchyLogPrior(0, 1)] * 7)
+        problem.set_log_prior(log_prior)
 
     def test_set_log_prior_bad_input(self):
         problem = chi.ProblemModellingController(
@@ -1287,97 +1073,29 @@ class TestProblemModellingController(unittest.TestCase):
 
         # Wrong log-prior type
         problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
-        log_priors = ['Wrong', 'type']
-        with self.assertRaisesRegex(ValueError, 'All marginal log-priors'):
-            problem.set_log_prior(log_priors)
+        log_prior = 'Wrong type'
+        with self.assertRaisesRegex(ValueError, 'The log-prior has to be an'):
+            problem.set_log_prior(log_prior)
 
         # Number of log priors does not match number of parameters
-        log_priors = [
-            pints.GaussianLogPrior(0, 1), pints.HalfCauchyLogPrior(0, 1)]
-        with self.assertRaisesRegex(ValueError, 'One marginal log-prior'):
-            problem.set_log_prior(log_priors)
-
-        # Dimensionality of joint log-pior does not match number of parameters
-        prior = pints.ComposedLogPrior(
-            pints.GaussianLogPrior(0, 1), pints.GaussianLogPrior(0, 1))
-        log_priors = [
-            prior,
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1),
-            pints.UniformLogPrior(0, 1)]
-        with self.assertRaisesRegex(ValueError, 'The joint log-prior'):
-            problem.set_log_prior(log_priors)
-
-        # Specified parameter names do not match the model parameters
-        params = ['wrong', 'params']
-        log_priors = [pints.HalfCauchyLogPrior(0, 1)] * 7
-        with self.assertRaisesRegex(ValueError, 'The specified parameter'):
-            problem.set_log_prior(log_priors, params)
+        log_prior = pints.ComposedLogPrior(
+            pints.GaussianLogPrior(0, 1), pints.HalfCauchyLogPrior(0, 1))
+        with self.assertRaisesRegex(ValueError, 'The dimension of the log-'):
+            problem.set_log_prior(log_prior)
 
     def test_set_population_model(self):
         # Test case I: PD model
         problem = chi.ProblemModellingController(
             self.pd_model, self.error_model)
         problem.set_data(self.data, {'myokit.tumour_volume': 'Tumour volume'})
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            chi.LogNormalModel()]
-
-        # Test case I.1: Don't specify order
-        problem.set_population_model(pop_models)
-
-        self.assertEqual(problem.get_n_parameters(), 13)
-        param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 13)
-        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
-        self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
-        self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
-        self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
-        self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[7], 'Pooled Sigma base')
-        self.assertEqual(param_names[8], 'ID 0: Sigma rel.')
-        self.assertEqual(param_names[9], 'ID 1: Sigma rel.')
-        self.assertEqual(param_names[10], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[11], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[12], 'Std. log Sigma rel.')
-
-        # Test case I.2: Specify order
-        parameter_names = [
-            'Sigma base',
-            'myokit.drug_concentration',
-            'myokit.lambda_1',
-            'myokit.kappa',
-            'myokit.tumour_volume',
-            'Sigma rel.',
-            'myokit.lambda_0']
-        problem.set_population_model(pop_models, parameter_names)
-
-        self.assertEqual(problem.get_n_parameters(), 13)
-        param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 13)
-        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'Pooled myokit.kappa')
-        self.assertEqual(param_names[3], 'ID 0: myokit.lambda_0')
-        self.assertEqual(param_names[4], 'ID 1: myokit.lambda_0')
-        self.assertEqual(param_names[5], 'ID 2: myokit.lambda_0')
-        self.assertEqual(param_names[6], 'Mean log myokit.lambda_0')
-        self.assertEqual(param_names[7], 'Std. log myokit.lambda_0')
-        self.assertEqual(param_names[8], 'ID 0: myokit.lambda_1')
-        self.assertEqual(param_names[9], 'ID 1: myokit.lambda_1')
-        self.assertEqual(param_names[10], 'ID 2: myokit.lambda_1')
-        self.assertEqual(param_names[11], 'Pooled Sigma base')
-        self.assertEqual(param_names[12], 'Pooled Sigma rel.')
+            chi.LogNormalModel()])
 
         # Test case I.3: With covariates
         cov_pop_model = chi.CovariatePopulationModel(
@@ -1385,37 +1103,15 @@ class TestProblemModellingController(unittest.TestCase):
             chi.LogNormalLinearCovariateModel(n_covariates=1)
         )
         cov_pop_model.set_covariate_names(['Age'], True)
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             cov_pop_model,
             chi.PooledModel(),
-            chi.LogNormalModel()]
-        problem.set_population_model(pop_models)
-
-        self.assertEqual(problem.get_n_parameters(), 18)
-        param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 18)
-        self.assertEqual(param_names[0], 'Pooled myokit.tumour_volume')
-        self.assertEqual(param_names[1], 'Pooled myokit.drug_concentration')
-        self.assertEqual(param_names[2], 'ID 0: myokit.kappa')
-        self.assertEqual(param_names[3], 'ID 1: myokit.kappa')
-        self.assertEqual(param_names[4], 'ID 2: myokit.kappa')
-        self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
-        self.assertEqual(param_names[6], 'ID 0: myokit.lambda_1 Eta')
-        self.assertEqual(param_names[7], 'ID 1: myokit.lambda_1 Eta')
-        self.assertEqual(param_names[8], 'ID 2: myokit.lambda_1 Eta')
-        self.assertEqual(param_names[9], 'Base mean log myokit.lambda_1')
-        self.assertEqual(param_names[10], 'Std. log myokit.lambda_1')
-        self.assertEqual(param_names[11], 'Shift Age myokit.lambda_1')
-        self.assertEqual(param_names[12], 'Pooled Sigma base')
-        self.assertEqual(param_names[13], 'ID 0: Sigma rel.')
-        self.assertEqual(param_names[14], 'ID 1: Sigma rel.')
-        self.assertEqual(param_names[15], 'ID 2: Sigma rel.')
-        self.assertEqual(param_names[16], 'Mean log Sigma rel.')
-        self.assertEqual(param_names[17], 'Std. log Sigma rel.')
+            chi.LogNormalModel()])
+        problem.set_population_model(pop_model)
 
         # Test case II: PKPD model
         problem = chi.ProblemModellingController(
@@ -1425,7 +1121,7 @@ class TestProblemModellingController(unittest.TestCase):
             output_observable_dict={
                 'central.drug_concentration': 'IL 6',
                 'myokit.tumour_volume': 'Tumour volume'})
-        pop_models = [
+        pop_model = chi.ComposedPopulationModel([
             chi.LogNormalModel(),
             chi.LogNormalModel(),
             chi.LogNormalModel(),
@@ -1436,91 +1132,21 @@ class TestProblemModellingController(unittest.TestCase):
             chi.PooledModel(),
             chi.LogNormalModel(),
             chi.PooledModel(),
-            chi.LogNormalModel()]
+            chi.LogNormalModel()])
 
         # Test case I.1: Don't specify order
-        problem.set_population_model(pop_models)
-
-        self.assertEqual(problem.get_n_parameters(), 33)
-        param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 33)
-        self.assertEqual(param_names[0], 'ID 0: central.drug_amount')
-        self.assertEqual(param_names[1], 'ID 1: central.drug_amount')
-        self.assertEqual(param_names[2], 'ID 2: central.drug_amount')
-        self.assertEqual(param_names[3], 'Mean log central.drug_amount')
-        self.assertEqual(param_names[4], 'Std. log central.drug_amount')
-        self.assertEqual(param_names[5], 'ID 0: myokit.tumour_volume')
-        self.assertEqual(param_names[6], 'ID 1: myokit.tumour_volume')
-        self.assertEqual(param_names[7], 'ID 2: myokit.tumour_volume')
-        self.assertEqual(param_names[8], 'Mean log myokit.tumour_volume')
-        self.assertEqual(param_names[9], 'Std. log myokit.tumour_volume')
-        self.assertEqual(param_names[10], 'ID 0: central.size')
-        self.assertEqual(param_names[11], 'ID 1: central.size')
-        self.assertEqual(param_names[12], 'ID 2: central.size')
-        self.assertEqual(param_names[13], 'Mean log central.size')
-        self.assertEqual(param_names[14], 'Std. log central.size')
-        self.assertEqual(param_names[15], 'Pooled myokit.critical_volume')
-        self.assertEqual(param_names[16], 'Pooled myokit.elimination_rate')
-        self.assertEqual(param_names[17], 'ID 0: myokit.kappa')
-        self.assertEqual(param_names[18], 'ID 1: myokit.kappa')
-        self.assertEqual(param_names[19], 'ID 2: myokit.kappa')
-        self.assertEqual(param_names[20], 'Pooled myokit.lambda')
-        self.assertEqual(
-            param_names[21], 'Pooled central.drug_concentration Sigma base')
-        self.assertEqual(
-            param_names[22], 'ID 0: central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[23], 'ID 1: central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[24], 'ID 2: central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[25], 'Mean log central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[26], 'Std. log central.drug_concentration Sigma rel.')
-        self.assertEqual(
-            param_names[27], 'Pooled myokit.tumour_volume Sigma base')
-        self.assertEqual(
-            param_names[28], 'ID 0: myokit.tumour_volume Sigma rel.')
-        self.assertEqual(
-            param_names[29], 'ID 1: myokit.tumour_volume Sigma rel.')
-        self.assertEqual(
-            param_names[30], 'ID 2: myokit.tumour_volume Sigma rel.')
-        self.assertEqual(
-            param_names[31], 'Mean log myokit.tumour_volume Sigma rel.')
-        self.assertEqual(
-            param_names[32], 'Std. log myokit.tumour_volume Sigma rel.')
+        problem.set_population_model(pop_model)
 
     def test_set_population_model_bad_input(self):
         # Population models have the wrong type
-        pop_models = ['bad', 'type']
-        with self.assertRaisesRegex(TypeError, 'The population models'):
-            self.pd_problem.set_population_model(pop_models)
+        pop_model = 'bad type'
+        with self.assertRaisesRegex(TypeError, 'The population model has'):
+            self.pd_problem.set_population_model(pop_model)
 
         # Number of population models is not correct
-        pop_models = [chi.PooledModel()]
-        with self.assertRaisesRegex(ValueError, 'The number of population'):
-            self.pd_problem.set_population_model(pop_models)
-
-        # Specified parameter names do not coincide with model
-        pop_models = [chi.PooledModel()] * 7
-        parameter_names = ['wrong names'] * 7
-        with self.assertRaisesRegex(ValueError, 'The parameter names'):
-            self.pd_problem.set_population_model(pop_models, parameter_names)
-
-        # User is warned that data is reset as a result of unclear covariate
-        # mapping
-        self.pd_problem.set_data(
-            self.data,
-            output_observable_dict={
-                'central.drug_concentration': 'IL 6',
-                'myokit.tumour_volume': 'Tumour volume'})
-        cov_pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=1)
-        )
-        pop_models = [cov_pop_model] * 7
-        with self.assertWarns(UserWarning):
-            self.pd_problem.set_population_model(pop_models)
+        pop_model = chi.PooledModel()
+        with self.assertRaisesRegex(ValueError, 'The dimension of the'):
+            self.pd_problem.set_population_model(pop_model)
 
 
 if __name__ == '__main__':

@@ -124,7 +124,7 @@ if args.test:
     import pints
 
     # Run optimisation
-    initial_parameters = [9, 3, 5, 1]
+    initial_parameters = [9, 3, 5, 1]  # Starting point of optimisation
     parameters_mle, score = pints.optimise(
         log_likelihood, initial_parameters, method=pints.CMAES)
     # End 5.
@@ -434,6 +434,7 @@ score_2 = log_posterior(true_parameters)
 # Start 8.
 # Run inference
 controller = chi.SamplingController(log_posterior)
+controller.set_sampler(pints.HaarioBardenetACMC)
 n_iterations = 5000
 posterior_samples = controller.run(n_iterations)
 # End 8.

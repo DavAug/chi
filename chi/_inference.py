@@ -5,8 +5,6 @@
 # full license details.
 #
 
-import warnings
-
 import arviz as az
 import numpy as np
 import pandas as pd
@@ -17,9 +15,10 @@ import xarray as xr
 import chi
 
 
+# TODO: Revisit pointwise log-likelihood evaluation for population models
 def _compute_hierarchical_pointwise_log_likelihood(
         log_likelihood, posterior, chain_coords, draw_coords,
-        per_individual, show_chain_progress_bar):
+        per_individual, show_chain_progress_bar):  # pragma: no cover
     """
     Computes the pointwise log-likelihoods for each sample in the
     posterior for a hierarchical model.
@@ -76,7 +75,7 @@ def _compute_hierarchical_pointwise_log_likelihood(
 
 def _compute_individual_pointwise_log_likelihood(
         log_likelihood, posterior, chain_coords, draw_coords,
-        show_chain_progress_bar):
+        show_chain_progress_bar):  # pragma: no cover
     """
     Computes the pointwise log-likelihoods for each sample in the
     posterior for a non-hierarchical model.
@@ -114,7 +113,8 @@ def _compute_individual_pointwise_log_likelihood(
 
 
 def _check_parameters(
-        log_likelihood, posterior_samples, param_map, is_hierarchical):
+        log_likelihood, posterior_samples, param_map,
+        is_hierarchical):  # pragma: no cover
     """
     Checks that all log-likelihood parameters can be found in the
     posterior.
@@ -181,7 +181,7 @@ def _check_parameters(
     return model_names, top_parameters
 
 
-def _filter_top_parameters(top_parameters):
+def _filter_top_parameters(top_parameters):  # pragma: no cover
     """
     Filter heterogenously modelled top parameters from the list.
 
@@ -218,7 +218,8 @@ def _filter_top_parameters(top_parameters):
 
 
 def _format_posterior(
-        parameter_names, top_parameters, posterior_samples, ids):
+        parameter_names, top_parameters, posterior_samples,
+        ids):  # pragma: no cover
     """
     Formats the dataset into a numpy array of shape
     (n_iterations, n_parameters), such that looping through the iterations
@@ -269,7 +270,7 @@ def _format_posterior(
 def compute_pointwise_loglikelihood(
         log_likelihood, posterior_samples, individual=None, param_map=None,
         per_individual=True, return_inference_data=False,
-        show_chain_progress_bar=False):
+        show_chain_progress_bar=False):  # pragma: no cover
     """
     Computes the pointwise log-likelihood for each observation and each
     parameter sample from the posterior distribution.
@@ -408,63 +409,36 @@ class InferenceController(object):
     """
     A base class for inference controllers.
 
-    Parameters
-    ----------
-
-    log_posterior
-        An instance of a :class:`LogPosterior` or a list of
-        :class:`LogPosterior` instances. If multiple log-posteriors are
-        provided, they have to be defined on the same parameter space.
+    :param log_posterior: The log-posterior from which is sampled.
+    :type log_posterior: chi.LogPosterior, chi.HierarchicalLogPosterior
+    :param seed: Seed for the random initialisation. Initial points are sampled
+        from the log-prior.
+    :type seed: int, optional
     """
 
-    def __init__(self, log_posterior):
+    def __init__(self, log_posterior, seed=None):
         super(InferenceController, self).__init__()
 
         # Convert log-posterior to a list of log-posteriors
-        try:
-            log_posteriors = list(log_posterior)
-        except TypeError:
-            # If log-posterior cannot be converted to a list, it likely means
-            # that there is only one log-posterior
-            log_posteriors = [log_posterior]
-
-        for log_posterior in log_posteriors:
-            if not isinstance(
-                    log_posterior,
-                    (chi.LogPosterior, chi.HierarchicalLogPosterior)):
-                raise ValueError(
-                    'The log-posterior has to be an instance of a '
-                    'chi.LogPosterior or a '
-                    'chi.HierarchicalLogPosterior')
+        if not isinstance(
+                log_posterior,
+                (chi.LogPosterior, chi.HierarchicalLogPosterior)):
+            raise ValueError(
+                'The log-posterior has to be an instance of a '
+                'chi.LogPosterior or a '
+                'chi.HierarchicalLogPosterior')
 
         # Check that the log-posteriors have the same number of parameters
-        n_parameters = log_posteriors[0].n_parameters()
-        for log_posterior in log_posteriors:
-            if log_posterior.n_parameters() != n_parameters:
-                raise ValueError(
-                    'All log-posteriors have to be defined on the same '
-                    'parameter space.')
-
-        self._log_posteriors = log_posteriors
-        self._log_prior = self._log_posteriors[0].get_log_prior()
+        self._log_posterior = log_posterior
 
         # Set defaults
         self._n_runs = 5
         self._parallel_evaluation = True
         self._transform = None
-
-        # Get parameter names and number of parameters
-        self._parameters = list(
-            self._log_posteriors[0].get_parameter_names())
-        self._n_parameters = self._log_posteriors[0].n_parameters()
+        self._seed = seed
 
         # Sample initial parameters from log-prior
-        n_posteriors = len(self._log_posteriors)
-        self._initial_params = np.empty(shape=(
-            n_posteriors,
-            self._n_runs,
-            self._n_parameters))
-        self._sample_initial_parameters()
+        self._initial_params = self._sample_initial_parameters()
 
     def _sample_initial_parameters(self):
         """
@@ -476,80 +450,63 @@ class InferenceController(object):
         numerical instabilities from starting off with very bad initial
         parameters.
         """
-        for index, log_posterior in enumerate(self._log_posteriors):
-            # Construct a mask for the top-level parameters
-            mask = np.ones(shape=self._n_parameters, dtype=bool)
-            all_parameters = log_posterior.get_parameter_names()
-            try:
-                top_parameters = log_posterior.get_parameter_names(
-                    exclude_bottom_level=True)
-            except TypeError:
-                # Flag does not exist for non-hierarchical log-posteriors
-                top_parameters = all_parameters
+        n_parameters = self._log_posterior.n_parameters()
+        initial_params = np.empty(shape=(self._n_runs, n_parameters))
 
-            for param_id, parameter in enumerate(all_parameters):
-                if parameter not in top_parameters:
-                    # Flip mask entry to False
-                    mask[param_id] = False
+        # Sample initial values for top-level parameters
+        np.random.seed(self._seed)
+        log_prior = self._log_posterior.get_log_prior()
+        n_top = log_prior.n_parameters()
+        n_bottom = n_parameters - n_top
+        initial_params[:, n_bottom:] = log_prior.sample(self._n_runs)
 
-            # Sample initial top-level parameters from prior
-            initial_params = self._initial_params[index]
-            initial_params[:, mask] = self._log_prior.sample(
-                self._n_runs)
+        # Sample bottom-level parameters
+        initial_params = self._sample_population(initial_params, n_bottom)
 
-            # Sample initial population, if model is hierarchical
-            if isinstance(log_posterior, chi.HierarchicalLogPosterior):
-                self._initial_params[index] = self._sample_population(
-                        index, log_posterior, mask)
+        return initial_params
 
-    def _sample_population(self, index, log_posterior, mask):
+    def _sample_population(self, initial_params, n_bottom):
         """
         Samples population for initial population model parameters.
-
-        index: The index of the log-posterior
-        log-posterior: The HierarchcalLogPosterior
-        mask: A boolean mask which carries True for top-level parameters
-            and False for bottom-level parameters.
         """
+        if n_bottom == 0:
+            return initial_params
+
         # Get number of likelihoods and population models
-        log_likelihood = log_posterior.get_log_likelihood()
-        n_ids = log_likelihood.n_log_likelihoods()
-        population_models = log_likelihood.get_population_models()
+        population_model = \
+            self._log_posterior.get_log_likelihood().get_population_model()
 
-        # Create container for samples
-        # (with the population parameter samples)
-        container = self._initial_params[index]
+        # Sample individual parameters
+        n_ids = self._log_posterior.get_log_likelihood().n_log_likelihoods()
+        bottom_parameters = []
+        for run_id in range(self._n_runs):
+            # Translate seed, so random samples are not correlated
+            seed = self._seed
+            if seed is not None:
+                seed += 1
+            bottom_parameters.append(population_model.sample(
+                parameters=initial_params[run_id, n_bottom:],
+                n_samples=n_ids, seed=seed))
 
-        # Sample individuals from population model for each run
-        start_index = 0
-        for pop_model in population_models:
-            # Get number of individual and population parameters
-            n_indiv, n_pop = pop_model.n_hierarchical_parameters(n_ids)
-
-            # If number of bottom-level parameters is 0, skip to next iteration
-            end_index = start_index + n_indiv
-            if (n_indiv == 0) or np.alltrue(mask[start_index:end_index]):
-                # Shift start index by total number of hierarchical parameters
-                start_index += n_indiv + n_pop
+        # Remove pooled dimensions
+        # (Pooled and heterogen. dimensions do not count as bottom parameters)
+        dims = []
+        current_dim = 0
+        for pop_model in population_model.get_population_models():
+            n_dim = pop_model.n_dim()
+            if isinstance(
+                    pop_model, (chi.PooledModel, chi.HeterogeneousModel)):
+                current_dim += n_dim
                 continue
+            end_dim = current_dim + n_dim
+            dims += list(range(current_dim, end_dim))
+            current_dim = end_dim
+        for idx, bottom_params in enumerate(bottom_parameters):
+            bottom_parameters[idx] = bottom_params[:, dims].flatten()
 
-            # Get population parameters
-            # (always trailing parameters in a population model)
-            start = start_index + n_indiv
-            end = start + n_pop
-            pop_parameters = self._initial_params[index, :, start:end]
+        initial_params[:, :n_bottom] = np.vstack(bottom_parameters)
 
-            # Substitude individual parameters by population samples
-            start = start_index
-            end = start + n_indiv
-            for run_id, pop_params in enumerate(pop_parameters):
-                sample = pop_model.sample(pop_params, n_indiv)
-                container[run_id, start:end] = sample
-
-            # Shift start_index by total number of hierarchical parameters
-            start_index += n_indiv + n_pop
-
-        return container
+        return initial_params
 
     def set_n_runs(self, n_runs):
         """
@@ -560,11 +517,7 @@ class InferenceController(object):
         self._n_runs = int(n_runs)
 
         # Sample initial parameters from log-prior
-        self._initial_params = np.empty(shape=(
-            len(self._log_posteriors),
-            self._n_runs,
-            self._n_parameters))
-        self._sample_initial_parameters()
+        self._initial_params = self._sample_initial_parameters()
 
     def set_parallel_evaluation(self, run_in_parallel):
         """
@@ -601,7 +554,7 @@ class InferenceController(object):
         if not isinstance(transform, pints.Transformation):
             raise ValueError(
                 'Transform has to be an instance of `pints.Transformation`.')
-        if transform.n_parameters() != self._n_parameters:
+        if transform.n_parameters() != self._log_posterior.n_parameters():
             raise ValueError(
                 'The dimensionality of the transform does not match the '
                 'dimensionality of the log-posterior.')
@@ -622,24 +575,22 @@ class OptimisationController(InferenceController):
 
     Extends :class:`InferenceController`.
 
-    Parameters
-    ----------
-
-    log_posterior
-        An instance of a :class:`LogPosterior` or a list of
-        :class:`LogPosterior` instances. If multiple log-posteriors are
-        provided, they have to be defined on the same parameter space.
+    :param log_posterior: The log-posterior from which is sampled.
+    :type log_posterior: chi.LogPosterior, chi.HierarchicalLogPosterior
+    :param seed: Seed for the random initialisation. Initial points are sampled
+        from the log-prior.
+    :type seed: int
     """
 
-    def __init__(self, log_posterior):
-        super(OptimisationController, self).__init__(log_posterior)
+    def __init__(self, log_posterior, seed=None):
+        super(OptimisationController, self).__init__(log_posterior, seed)
 
         # Set default optimiser
         self._optimiser = pints.CMAES
 
     def run(
-            self, n_max_iterations=10000, show_id_progress_bar=False,
-            show_run_progress_bar=False, log_to_screen=False):
+            self, n_max_iterations=10000, show_run_progress_bar=False,
+            log_to_screen=False):
         """
         Runs the optimisation and returns the maximum a posteriori probability
         parameter estimates in from of a :class:`pandas.DataFrame` with the
@@ -656,9 +607,6 @@ class OptimisationController(InferenceController):
             The maximal number of optimisation iterations to find the MAP
             estimates for each log-posterior. By default the maximal number
             of iterations is set to 10000.
-        show_id_progress_bar
-            A boolean flag which indicates whether a progress bar for looping
-            through the individual log-posteriors is displayed.
         show_run_progress_bar
             A boolean flag which indicates whether a progress bar for looping
             through the optimisation runs is displayed.
@@ -674,47 +622,38 @@ class OptimisationController(InferenceController):
         # Initialise intermediate container for individual runs
         run_result = pd.DataFrame(
             columns=['ID', 'Parameter', 'Estimate', 'Score', 'Run'])
-        run_result['Parameter'] = self._parameters
+        run_result['Parameter'] = self._log_posterior.get_parameter_names()
 
-        # Get posterior
-        for posterior_id, log_posterior in enumerate(tqdm(
-                self._log_posteriors, disable=not show_id_progress_bar)):
-            individual_result = pd.DataFrame(
-                columns=['ID', 'Parameter', 'Estimate', 'Score', 'Run'])
+        # Set ID of individual (or IDs of parameters, if hierarchical)
+        run_result['ID'] = self._log_posterior.get_id()
 
-            # Set ID of individual (or IDs of parameters, if hierarchical)
-            run_result['ID'] = log_posterior.get_id()
+        # Run optimisation multiple times
+        for run_id in tqdm(
+                range(self._n_runs), disable=not show_run_progress_bar):
+            opt = pints.OptimisationController(
+                function=self._log_posterior,
+                x0=self._initial_params[run_id, :],
+                method=self._optimiser,
+                transformation=self._transform)
 
-            # Run optimisation multiple times
-            for run_id in tqdm(
-                    range(self._n_runs), disable=not show_run_progress_bar):
-                opt = pints.OptimisationController(
-                    function=log_posterior,
-                    x0=self._initial_params[posterior_id, run_id, :],
-                    method=self._optimiser,
-                    transformation=self._transform)
+            # Configure optimisation routine
+            opt.set_log_to_screen(log_to_screen)
+            opt.set_max_iterations(iterations=n_max_iterations)
+            opt.set_parallel(self._parallel_evaluation)
 
-                # Configure optimisation routine
-                opt.set_log_to_screen(log_to_screen)
-                opt.set_max_iterations(iterations=n_max_iterations)
-                opt.set_parallel(self._parallel_evaluation)
+            # Find optimal parameters
+            try:
+                estimates, score = opt.run()
+            except Exception:
+                # If inference breaks fill estimates with nan
+                estimates = [np.nan] * self._log_posterior.n_parameters()
+                score = np.nan
 
-                # Find optimal parameters
-                try:
-                    estimates, score = opt.run()
-                except Exception:
-                    # If inference breaks fill estimates with nan
-                    estimates = [np.nan] * self._n_parameters
-                    score = np.nan
-
-                # Save estimates and score of runs
-                run_result['Estimate'] = estimates
-                run_result['Score'] = score
-                run_result['Run'] = run_id + 1
-                individual_result = individual_result.append(run_result)
-
-            # Save runs for individual
-            result = result.append(individual_result)
+            # Save estimates and score of runs
+            run_result['Estimate'] = estimates
+            run_result['Score'] = score
+            run_result['Run'] = run_id + 1
+            result = pd.concat([result, run_result])
 
         return result
 
@@ -742,15 +681,21 @@ class SamplingController(InferenceController):
     parallel using :class:`pints.ParallelEvaluator`.
 
     Extends :class:`InferenceController`.
+
+    :param log_posterior: The log-posterior from which is sampled.
+    :type log_posterior: chi.LogPosterior, chi.HierarchicalLogPosterior
+    :param seed: Seed for the random initialisation. Initial points are sampled
+        from the log-prior.
+    :type seed: int
     """
 
-    def __init__(self, log_posterior):
-        super(SamplingController, self).__init__(log_posterior)
+    def __init__(self, log_posterior, seed=None):
+        super(SamplingController, self).__init__(log_posterior, seed)
 
         # Set default sampler
         self._sampler = pints.HaarioBardenetACMC
 
-    def _format_chains(self, chains, names, ids, divergent_iters):
+    def _format_chains(self, chains, names, ids, n_bottom, divergent_iters):
         """
         Formats the chains generated by pints in shape of
         (n_chains, n_iterations, n_parameters) to a xarray.Dataset, where
@@ -761,27 +706,14 @@ class SamplingController(InferenceController):
         Note that the naming of the dimensions matter for ArviZ so we call
         the dimensions (chain, draw, individual) (the last dimension
         is not set by ArviZ).
-
-        Parameters
-        ----------
-        chains
-            np.ndarray in shape (n_chains, n_iterations, n_parameters)
-        names
-            List of length n_parameters. Names may not be unique
-        ids
-            Str or list of str of length n_parameters. IDs are ``None`` for
-            population parameters.
-        divergent_iters
-            A list of lists with the iterations at which divergent
-            trajectories occured, or None
         """
         # Broadcast IDs to length of names, if posterior has only one ID
         if (not ids) or isinstance(ids, str):
-            ids = [ids] * len(names)
+            ids = [ids]
 
         # Convert names and ids to numpy arrays
-        ids = np.asarray(ids)
-        names = np.asarray(names)
+        ids = np.array(ids)
+        names = np.array(names)
 
         # Get the coordinates for the chains and draws
         n_chains, n_draws, _ = chains.shape
@@ -789,73 +721,42 @@ class SamplingController(InferenceController):
         draw_coords = list(range(n_draws))
 
         # Sort samples of parameters into xarrays
+        # Start with bottom-level parameters and then top-level parameters
         container = {}
-        parameter_names = np.unique(names)
-        for parameter in parameter_names:
+        parameter_names = names[:n_bottom]
+        bottom_chains = chains[:, :, :n_bottom]
+        for parameter in np.unique(parameter_names):
             # Get IDs and chains associated to parameter
-            mask = names == parameter
-            parameter_ids = ids[mask]
-            parameter_chains = chains[:, :, mask]
+            mask = parameter_names == parameter
+            container[parameter] = xr.DataArray(
+                data=bottom_chains[:, :, mask],
+                dims=['chain', 'draw', 'individual'],
+                coords={
+                    'chain': chain_coords,
+                    'draw': draw_coords,
+                    'individual': ids})
 
-            # If parameter is a population parameter (ID is None), save xarray
-            # without individual dimension.
-            is_population_param = (
-                len(parameter_ids) == 1) and (parameter_ids[0] is None)
-            if is_population_param is True:
-                parameter_chains = xr.DataArray(
-                    data=parameter_chains[:, :, 0],
-                    dims=['chain', 'draw'],
-                    coords={'chain': chain_coords, 'draw': draw_coords})
+        # Add population parameters
+        parameter_names = names[n_bottom:]
+        top_chains = chains[:, :, n_bottom:]
+        for idp, parameter in enumerate(parameter_names):
+            container[parameter] = xr.DataArray(
+                data=top_chains[:, :, idp],
+                dims=['chain', 'draw'],
+                coords={'chain': chain_coords, 'draw': draw_coords})
 
-            # The parameter is a bottom-level parameter, so individual
-            # information is important
-            else:
-                parameter_chains = xr.DataArray(
-                    data=parameter_chains,
-                    dims=['chain', 'draw', 'individual'],
-                    coords={
-                        'chain': chain_coords,
-                        'draw': draw_coords,
-                        'individual': list(parameter_ids)})
-
-            # Add DataArray to container
-            container[parameter] = parameter_chains
-            if divergent_iters is None:
-                attrs = {'divergent iterations': 'false'}
-            else:
-                attrs = {
-                    'divergent iterations chain %d' % idx: iters
-                    for idx, iters in enumerate(divergent_iters)}
-                attrs['divergent iterations'] = 'true'
+        # Add information about divergent iterations
+        attrs = {'divergent iterations': 'false'}
+        if divergent_iters:
+            attrs['divergent iterations'] = 'true'
+            for idx, iters in enumerate(divergent_iters):
+                attrs['divergent iterations chain %d' % idx] = iters
 
         return xr.Dataset(container, attrs=attrs)
 
-    def _get_id_parameter_pairs(self, log_posterior):
-        """
-        Returns a zipped list of ID (pop_prefix), and parameter name pairs.
-
-        Posteriors that are not derived from a HierarchicalLoglikelihood carry
-        typically only a single ID (the ID of the individual they are
-        modelling). In that case all parameters are assigned with the same ID.
-
-        For posteriors that are derived from a HierarchicalLoglikelihood it
-        often makes sense to label the parameters with different IDs. These ID
-        parameter name pairs are reconstructed here.
-        """
-        # Get IDs and parameter names
-        ids = log_posterior.get_id()
-        parameters = log_posterior.get_parameter_names()
-
-        # If IDs is only one ID, expand to list of length n_parameters
-        if not isinstance(ids, list):
-            n_parameters = len(parameters)
-            ids = [ids] * n_parameters
-
-        return zip(ids, parameters)
-
     def run(
             self, n_iterations=10000, hyperparameters=None,
-            show_progress_bar=False, log_to_screen=False):
+            log_to_screen=False):
         """
         Runs the sampling routine and returns the sampled parameter values in
         form of a :class:`xarray.Dataset` with :class:`xarray.DataArray`
@@ -874,176 +775,51 @@ class SamplingController(InferenceController):
         :param hyperparameters: A list of hyperparameters for the sampling
             method. If ``None`` the default hyperparameters are set.
         :type hyperparameters: list[float], optional
-        :param show_progress_bar: A boolean flag which indicates for how
-            many posteriors the inference has been completed.
-        :type show_progress_bar: bool, optional
         :param log_to_screen: A boolean flag which can be used to print
             the progress of the runs to the screen. The progress is printed
             every 500 iterations.
         :type log_to_screen: bool, optional
         """
-        # Sample from the individual log_posteriors
-        posterior_samples = []
-        for posterior_id, log_posterior in enumerate(tqdm(
-                self._log_posteriors, disable=not show_progress_bar)):
-            # Set up sampler
-            sampler = pints.MCMCController(
-                log_pdf=log_posterior,
-                chains=self._n_runs,
-                x0=self._initial_params[posterior_id, ...],
-                method=self._sampler,
-                transformation=self._transform)
+        # Set up sampler
+        sampler = pints.MCMCController(
+            log_pdf=self._log_posterior,
+            chains=self._n_runs,
+            x0=self._initial_params,
+            method=self._sampler,
+            transformation=self._transform)
 
-            # Configure sampling routine
-            sampler.set_log_to_screen(log_to_screen)
-            sampler.set_log_interval(iters=20, warm_up=3)
-            sampler.set_max_iterations(iterations=n_iterations)
-            sampler.set_parallel(self._parallel_evaluation)
+        # Configure sampling routine
+        sampler.set_log_to_screen(log_to_screen)
+        sampler.set_log_interval(iters=20, warm_up=3)
+        sampler.set_max_iterations(iterations=n_iterations)
+        sampler.set_parallel(self._parallel_evaluation)
 
-            if hyperparameters is not None:
-                for s in sampler.samplers():
-                    s.set_hyper_parameters(hyperparameters)
+        if hyperparameters:
+            for s in sampler.samplers():
+                s.set_hyper_parameters(hyperparameters)
 
-            # Run sampling routine
-            chains = sampler.run()
+        # Run sampling routine
+        chains = sampler.run()
 
-            # If Hamiltonian Monte Carlo, get number of divergent
-            # iterations
-            divergent_iters = None
-            if issubclass(
-                    self._sampler, (pints.HamiltonianMCMC, pints.NoUTurnMCMC)):
-                divergent_iters = [
-                    s.divergent_iterations() for s in sampler.samplers()]
+        # If Hamiltonian Monte Carlo, get number of divergent
+        # iterations
+        divergent_iters = None
+        if issubclass(
+                self._sampler, (pints.HamiltonianMCMC, pints.NoUTurnMCMC)):
+            divergent_iters = [
+                s.divergent_iterations() for s in sampler.samplers()]
 
-            # Format chains
-            names = self._parameters
-            ids = log_posterior.get_id()
-            chains = self._format_chains(
-                chains, names, ids, divergent_iters)
+        # Format chains
+        names = self._log_posterior.get_parameter_names()
+        ids = self._log_posterior.get_id(unique=True)
+        n_bottom = self._log_posterior.n_parameters()
+        if isinstance(self._log_posterior, chi.HierarchicalLogPosterior):
+            n_bottom -= self._log_posterior.get_log_likelihood(
+                ).get_population_model().n_parameters()
+        chains = self._format_chains(
+            chains, names, ids, n_bottom, divergent_iters)
 
-            # Append chains to container
-            posterior_samples.append(chains)
-
-        # If only one posterior is run, remove padding list
-        if len(posterior_samples) == 1:
-            return posterior_samples[0]
-
-        return posterior_samples
-
-    def set_initial_parameters(
-            self, data, id_key='ID', param_key='Parameter', est_key='Estimate',
-            score_key='Score', run_key='Run'):
-        """
-        Sets the initial parameter values of the MCMC runs to the parameter set
-        with the maximal a posteriori probability across a number of parameter
-        sets.
-
-        This method is intended to be used in conjunction with the results of
-        the :class:`OptimisationController`.
-
-        It expects a :class:`pandas.DataFrame` with the columns 'ID',
-        'Parameter', 'Estimate', 'Score' and 'Run'. The maximum a posteriori
-        probability values across all estimates is determined and used as
-        initial point for the MCMC runs.
-
-        If multiple parameter sets assume the maximal a posteriori probability
-        value, a parameter set is drawn randomly from them.
-
-        Parameters
-        ----------
-        data
-            A :class:`pandas.DataFrame` with the parameter estimates in form of
-            a parameter, estimate and score column.
-        id_key
-            Key label of the :class:`DataFrame` which specifies the individual
-            ID column. Defaults to ``'ID'``.
-        param_key
-            Key label of the :class:`DataFrame` which specifies the parameter
-            name column. Defaults to ``'Parameter'``.
-        est_key
-            Key label of the :class:`DataFrame` which specifies the parameter
-            estimate column. Defaults to ``'Estimate'``.
-        score_key
-            Key label of the :class:`DataFrame` which specifies the score
-            estimate column. The score refers to the maximum a posteriori
-            probability associated with the estimate. Defaults to ``'Score'``.
-        run_key
-            Key label of the :class:`DataFrame` which specifies the
-            optimisation run column. Defaults to ``'Run'``.
-        """
-        # Check input format
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError(
-                'Data has to be pandas.DataFrame.')
-
-        for key in [id_key, param_key, est_key, score_key, run_key]:
-            if key not in data.keys():
-                raise ValueError(
-                    'Data does not have the key <' + str(key) + '>.')
-
-        # Convert dataframe IDs and parameter names to strings
-        data = data.astype({id_key: str, param_key: str})
-
-        # Get posterior IDs (one posterior may have multiple IDs, one
-        # for each parameter)
-        for index, log_posterior in enumerate(self._log_posteriors):
-
-            # Get MAP for each parameter of log_posterior
-            for prefix, parameter in self._get_id_parameter_pairs(
-                    log_posterior):
-
-                # Get estimates for ID (prefix)
-                mask = data[id_key] == prefix
-                individual_data = data[mask]
-
-                # If ID (prefix) doesn't exist, move on to next iteration
-                if individual_data.empty:
-                    warnings.warn(
-                        'The log-posterior ID <' + str(prefix) + '> could not'
-                        ' be identified in the dataset, and was therefore '
-                        'not set to a specific value.')
-
-                    continue
-
-                # Among estimates for this ID (prefix), get the relevant
-                # parameter
-                mask = individual_data[param_key] == parameter
-                individual_data = individual_data[mask]
-
-                # If parameter with this ID (prefix) doesn't exist, move on to
-                # next iteration
-                if individual_data.empty:
-                    warnings.warn(
-                        'The parameter <' + str(parameter) + '> with ID '
-                        '<' + str(prefix) + '> could not be identified in the '
-                        'dataset, and was therefore not set to a specific '
-                        'value.')
-
-                    continue
-
-                # Get estimates with maximum a posteriori probability
-                max_prob = individual_data[score_key].max()
-                mask = individual_data[score_key] == max_prob
-                individual_data = individual_data[mask]
-
-                # Find a unique set of parameter values
-                runs = individual_data[run_key].unique()
-                selected_param_set = np.random.choice(runs)
-                mask = individual_data[run_key] == selected_param_set
-                individual_data = individual_data[mask]
-
-                # Create mask for parameter position in log-posterior
-                ids = log_posterior.get_id()
-                if not isinstance(ids, list):
-                    n_parameters = len(self._parameters)
-                    ids = [ids] * n_parameters
-                id_mask = np.array(ids) == prefix
-                param_mask = np.array(self._parameters) == parameter
-                mask = id_mask & param_mask
-
-                # Set initial parameters across runs to map estimate
-                map_estimate = individual_data[est_key].to_numpy()
-                self._initial_params[index, :, mask] = map_estimate
+        return chains
 
     def set_sampler(self, sampler):
         """

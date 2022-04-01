@@ -240,7 +240,7 @@ class LogNormalLinearCovariateModel(CovariateModel):
         # Set default names
         self._covariate_names = [
             'Covariate %d' % int(c + 1) for c in range(self._n_covariates)]
-        self._parameter_names = ['Base mean log', 'Std. log'] + [
+        self._parameter_names = ['Base log mean', 'Log std.'] + [
             'Shift %s' % n for n in self._covariate_names]
 
     def check_compatibility(self, population_model):
@@ -412,7 +412,7 @@ class LogNormalLinearCovariateModel(CovariateModel):
         if names is None:
             # Reset names to defaults
             covariate_names = self.get_covariate_names()
-            self._parameter_names = ['Base mean log', 'Std. log'] + [
+            self._parameter_names = ['Base log mean', 'Log std.'] + [
                 'Shift %s' % name for name in covariate_names]
             return None
 

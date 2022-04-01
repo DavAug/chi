@@ -24,3 +24,4 @@ instructions please refer to the README_.
     log_likelihood
     log_posterior
     mcmc_sampling
+    population_model
