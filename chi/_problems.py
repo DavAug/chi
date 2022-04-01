@@ -294,17 +294,13 @@ class ProblemModellingController(object):
             times.append(temp_df[self._time_key].to_numpy())
             observations.append(temp_df[self._value_key].to_numpy())
 
-        # Count outputs that were measured
-        # TODO: copy mechanistic model and update model outputs.
-        # (Useful for e.g. control group and dose group training)
-        n_measured_outputs = 0
-        for output_measurements in observations:
-            if len(output_measurements) > 0:
-                n_measured_outputs += 1
-
-        # If no outputs were measured, do not construct a likelihood
-        if n_measured_outputs == 0:
-            return None
+        # # Count outputs that were measured
+        # # TODO: copy mechanistic model and update model outputs.
+        # # (Useful for e.g. control group and dose group training)
+        # n_measured_outputs = 0
+        # for output_measurements in observations:
+        #     if len(output_measurements) > 0:
+        #         n_measured_outputs += 1
 
         # Create log-likelihood and set ID to individual
         log_likelihood = chi.LogLikelihood(
