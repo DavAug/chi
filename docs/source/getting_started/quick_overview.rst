@@ -31,14 +31,14 @@ Simulating a mechanistic model
 
 Using the 1-compartment pharmacokinetic model from chi's model library,
 simulation of the model simply involves specifying the set of model parameters
-:math:`\psi = (a_0, v, k_e)` and the time points of interest
+:math:`\psi = (a_0, v, k_e)` and the time points of interest.
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 285-301
 
 The simulation returns a :class:`numpy.ndarray` with the simulated drug
 concentrations at the specified times
-:math:`[c(t=0), c(t=0.2), c(t=0.5), c(t=0.6), c(t=1)]`
+:math:`[c(t=0), c(t=0.2), c(t=0.5), c(t=0.6), c(t=1)]`.
 
 .. code-block:: bash
 
@@ -46,9 +46,10 @@ concentrations at the specified times
     array([[5.        , 4.09359579, 3.03157658, 2.74324885, 1.83903834]])
 
 The simulation results are of shape ``(n_outputs, n_times)`` which in this case
-is ``(1, 5)`` because we simuated the drug concentration for 5 different times.
+is ``(1, 5)`` because we simuated the drug concentration for 5 different time
+points.
 For details on how to implement your own :class:`chi.MechanisticModel` and
-many other details concerning the mechanistic models in chi, we refer to
+many other details concerning mechanistic models in chi, we refer to
 section :doc:`mechanistic_model`.
 
 Visualisation of the simulation
@@ -105,15 +106,15 @@ Inference of model parameters
 While the simulation of mechanistic model outputs and measurements is an
 interesting feature of chi in its own right, the inference of model parameters
 from real-world measurements is arguably even more interesting. In this
-overview, we will use the simulated measurements from above to infer the model
+overview, we will use the simulated measurements from above to infer model
 parameters, but in practice the simulated measurements may be straightforwardly
 replaced by real-world measurements.
 
-Inference in chi leverages the fact that the modelled measurements :math:`y`
-follow a distribution that is defined by the mechanistic model and the
-error model. In the case of a Gaussian error model, as in the previous example,
-the distribution of the measurements is also a Gaussian distribution whose mean
-is equal to the mechanistic model output
+Inference in chi leverages the fact that the mechanistic model and the
+error model define a distribution for the modelled measurements :math:`y`.
+In the case of a Gaussian error model, as in the previous example,
+the distribution of the measurements is (yet again) a Gaussian distribution
+whose mean is equal to the mechanistic model output
 
 .. math::
     p(y | \psi , \sigma , t) = \mathcal{N}\left(
@@ -156,7 +157,7 @@ many other details concerning log-likelihoods in chi, we refer to section
 Maximum likelihood estimation
 -----------------------------
 
-A popular approach to infer the model parameters that best describe the
+A popular approach to infer model parameters that best describe the
 measurements is to find the parameter values that maximise the log-likelihood,
 a.k.a. maximum likelihood estimation
 
@@ -188,8 +189,8 @@ which may seem surprising at first. How can
 a different set of parameters be more likely to describe the measurements than
 the set of parameters that generated the measurements?
 A thorough discussion of the shortcomings of maximum likelihood estimation
-is beyond the scope of this documentation, but let us plot the
-mechanstic model output for the inferred parameters to confirm that
+is beyond the scope of this overview, but let us plot the
+mechanistic model output for the inferred parameters to confirm that
 the inferred model is indeed marginally closer to the measurements
 
 .. literalinclude:: code/1_simulation_1.py
@@ -261,17 +262,17 @@ many other details concerning log-posteriors in chi, we refer to section
 While the :class:`chi.LogPosterior` allows us to evaluate the log-posterior
 up to the constant term for different parameter values it does not yet tell us
 how the posterior distribution of likely parameter values looks like.
-This distribution can be inferred from a :class:`chi.LogPosterior` using, e.g.
-Markvo Chain Monte Carlo (MCMC) sampling algorithms. Below we will use Pints_'
+This distribution can be inferred from a :class:`chi.LogPosterior` using e.g.
+Markov Chain Monte Carlo (MCMC) sampling algorithms. Below we will use Pints_'
 implementation of Haario and Bardenet's Adaptive Covariance Matrix MCMC
 algorithm, :class:`pints.HaarioBardenetACMC`, to infer the posterior
-distribution
+distribution.
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 435-439
 
 The inferred posterior distributions can now be compared to the data-generating
-parameters
+parameters.
 
 .. literalinclude:: code/1_simulation_1.py
     :lines: 443-552
@@ -289,8 +290,8 @@ Simulating a population model
 Above we have seen how chi may be used to infer model parameters from
 measurements. To this end, we assumed that measurements originate
 from a data-generating process that is approximated by a mechanistic model,
-an associated error model and a unique set of model parameters - the
-data-generating parameters. For measurements of many biological systems this
+an associated error model and a set of data-generating parameters.
+For measurements of many biological systems this
 is, however, a too naïve assumption, as measurements are often taken from
 different, non-identical entities, ranging from measurements across
 cells to measurements across patients. In these cases, it is well established
@@ -301,8 +302,8 @@ to extend our modelling framework.
 A natural extension is to assume that differences
 across individuals can be modelled by different data-generating parameter
 values for each individual. Below we illustrate how inter-individual
-variability may mainifest in measurements for 3 patients with different
-data-generating parameters
+variability may mainifest in measurements from 3 patients with different
+data-generating parameters.
 
 .. literalinclude:: code/1_simulation_2.py
     :lines: 586-673
@@ -417,7 +418,7 @@ In chi we can define this population model from instances of
 simulate the distribution of the individual parameters in the population via
 sampling. Below we have chosen the values of the population parameters
 :math:`\theta` such that the 3 patients from above could have feasibly been
-sampled from the population distribution
+sampled from the population distribution.
 
 .. literalinclude:: code/1_simulation_2.py
     :lines: 680-802
@@ -431,12 +432,13 @@ patient parameters in the population. We omit plotting the amount, volume and
 noise parameters of the 3 patients as they are all the same
 and uniquely defined by the population distribution.
 
-The distribution of possible drug concentration measurements in the population
-can be simulated by measuring the drug concentration for each sampled set of
-individual parameters, i.e by simulating measurements for the simulated
+The inter-individual variability of drug concentration measurements in the
+population can be simulated by measuring the drug concentration for each
+sampled set of
+individual parameters, i.e. by simulating measurements for the simulated
 patients. Below we will illustrate the 5th to 95th percentile
 range of the population distribution together with the measurements of the 3
-patients from above
+patients from above.
 
 .. literalinclude:: code/1_simulation_2.py
     :lines: 807-858
@@ -496,14 +498,19 @@ by maximising :math:`\log p(\mathcal{D}, \Psi | \theta)`, just like in section
 However, maximising
 :math:`\log p(\mathcal{D}, \Psi | \theta)` will in general not find estimates
 of the data-generating :math:`\Psi` and :math:`\theta` for
-reasons that we cannot throughly discuss in this overview. Observe, however,
+reasons that deserve a more thorough discussion than possible in this overview.
+Observe, however,
 that the 2. term of the hierarchical log-likelihood receives larger
 contributions for narrow population distributions.
 This introduces a bias towards understimating the population variance
-wich affects the estimates of the population parameters.
-In a addition the individual parameters will be biased away from the
+which affects the estimates of the population parameters.
+In addition the individual parameters will be biased away from the
 data-generating parameters towards the modes of the population distribution
 (a.k.a. shrinkage).
+In some cases these biases are not a concern, especially when the
+measurements leave very little uncertainty about the
+bottom-level parameters.
+In general, they will, however, influence the inference results.
 
 A partial remedy for these shortcomings is Bayesian inference, where
 analogously to above we can use Bayes' rule to define a hierarchical
@@ -515,11 +522,11 @@ log-posterior
         + \text{constant},
 
 where :math:`\log p(\theta )` is the log-prior of the population parameters.
-The posterior distribution :math:`p(\Psi , \theta | \mathcal{D})` suffers
-from the same biases as the hierarchical log-likelihood, however because we
-infer a *distribution* of likely parameters, the data-generating parameters
-will be captured by the posterior distribution (as long as the prior
-distribution is appropriate).
+The posterior distribution :math:`p(\Psi , \theta | \mathcal{D})` is able
+to mitigate the biases of the hierarchical log-likelihood by inferring a
+distribution of likely parameters. This will not remove the biases entirely, but it will
+make sure that the data-generating parameters are captured by the posterior
+distribution (as long as the prior choice is appropriate).
 
 In chi we can define a hierarchical log-posterior
 using :class:`chi.HierarchicalLogPosterior` which takes a
@@ -537,7 +544,7 @@ inference and compare the posteriors to the data-generating parameters.
 
 In addition to the data-generating parameters of the patients, the hierarchical
 inference also provides estimates for the population-level parameters.
-Below we only illsutrate the log mean and log standard deviation of the
+Below we only illustrate the log mean and the log standard deviation of the
 elimination rate in the population, because the other parameters are pooled and
 therefore the population parameters are equivalent to the bottom-level
 parameters.
@@ -550,4 +557,19 @@ parameters.
 
 Note that in this case the posteriors of :math:`\mu _{k_e}` and
 :math:`\sigma _{k_e}` are largely dominated by the prior distribution as 3
-patients are not informative enough to influence the posterior significantly.
+patients are not informative enough to influence the posterior distribution
+significantly.
+
+This concludes the quick overview of chi. You now know how to use chi to
+simulate mechanistic model outputs, measurements and population models. You
+also know how to use chi to infer model parameters using maximum likelihood
+estimation or Bayesian inference, and you know how to use chi to do
+hierarchical inference. There are a few things that the quick overview has not
+touched on. The two most interesting things
+being: 1. the :class:`chi.ProblemModellingController` which is a convenience
+class that helps you to build your models more easiliy, especially when
+measurement times and dosing regimens vary across individuals; 2. the
+:class:`CovariatePopulationModel` which allows you to define population models
+where some of the inter-individual is explained by covariates.
+
+We hope you enjoyed this overview and have fun working with chi!
