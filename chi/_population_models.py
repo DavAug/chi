@@ -309,6 +309,14 @@ class ComposedPopulationModel(PopulationModel):
         self._transform_psi_models = transforms_psi
         self._needs_covariates = needs_covariates
 
+        # Make sure that models have unique parameter names
+        # (if not enumerate dimensions to make them unique in most cases)
+        names = self.get_parameter_names()
+        if len(np.unique(names)) != len(names):
+            dim_names = [
+                'Dim. %d' % (dim_id + 1) for dim_id in range(self._n_dim)]
+            self.set_dim_names(dim_names)
+
     def compute_individual_parameters(
             self, parameters, eta, covariates=None):
         r"""
