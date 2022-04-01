@@ -754,29 +754,6 @@ class SamplingController(InferenceController):
 
         return xr.Dataset(container, attrs=attrs)
 
-    def _get_id_parameter_pairs(self, log_posterior):
-        """
-        Returns a zipped list of ID (pop_prefix), and parameter name pairs.
-
-        Posteriors that are not derived from a HierarchicalLoglikelihood carry
-        typically only a single ID (the ID of the individual they are
-        modelling). In that case all parameters are assigned with the same ID.
-
-        For posteriors that are derived from a HierarchicalLoglikelihood it
-        often makes sense to label the parameters with different IDs. These ID
-        parameter name pairs are reconstructed here.
-        """
-        # Get IDs and parameter names
-        ids = log_posterior.get_id()
-        parameters = log_posterior.get_parameter_names()
-
-        # If IDs is only one ID, expand to list of length n_parameters
-        if not isinstance(ids, list):
-            n_parameters = len(parameters)
-            ids = [ids] * n_parameters
-
-        return zip(ids, parameters)
-
     def run(
             self, n_iterations=10000, hyperparameters=None,
             log_to_screen=False):

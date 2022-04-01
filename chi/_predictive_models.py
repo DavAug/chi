@@ -303,16 +303,8 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             except (ValueError, KeyError):
                 # If individual dimension does not exist, the parameter must
                 # be a population parameter.
-                samples = self._posterior[
+                posterior[:, param_id] = self._posterior[
                     parameter].dropna(dim='draw').values.flatten()
-                try:
-                    posterior[:, param_id] = samples
-                except ValueError:
-                    # HeterogenousModel will have n_ids times too many samples
-                    # -> Sample IDs randomly
-                    target = n_chains * n_draws
-                    now = len(samples)
-                    posterior[:, param_id] = samples[rng.choice(now, target)]
 
         # Create container for samples
         container = pd.DataFrame(

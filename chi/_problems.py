@@ -405,31 +405,6 @@ class ProblemModellingController(object):
                 # Set new parameter names
                 error_model.set_parameter_names(names)
 
-    def _set_population_model_parameter_names(self):
-        """
-        Resets the population model parameter names and appends the individual
-        parameter names.
-        """
-        # Get individual parameter names
-        parameter_names = self.get_parameter_names(exclude_pop_model=True)
-
-        # Construct population parameter names
-        for param_id, pop_model in enumerate(self._population_models):
-            # Get mechanistic/error model parameter name
-            name = parameter_names[param_id]
-
-            # Create names for population-level parameters
-            if pop_model.n_parameters() > 0:
-                # Get original parameter names
-                pop_model.set_parameter_names()
-                pop_names = pop_model.get_parameter_names()
-
-                # Append individual names and rename population model
-                # parameters
-                names = [
-                    '%s %s' % (pop_prefix, name) for pop_prefix in pop_names]
-                pop_model.set_parameter_names(names)
-
     def fix_parameters(self, name_value_dict):
         """
         Fixes the value of model parameters, and effectively removes them as a
