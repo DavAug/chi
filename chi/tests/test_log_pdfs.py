@@ -960,26 +960,26 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
         self.assertEqual(parameter_names[5], 'Base log mean Dim. 2')
         self.assertEqual(parameter_names[6], 'Log std. Dim. 2')
-        self.assertEqual(parameter_names[7], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[8], 'Pooled Dim. 2')
+        self.assertEqual(parameter_names[7], 'Pooled Dim. 3')
+        self.assertEqual(parameter_names[8], 'Pooled Dim. 4')
         self.assertEqual(
-            parameter_names[9], 'Pooled Dim. 3')
+            parameter_names[9], 'Pooled Dim. 5')
         self.assertEqual(
-            parameter_names[10], 'Pooled Dim. 4')
+            parameter_names[10], 'Pooled Dim. 6')
         self.assertEqual(
-            parameter_names[11], 'Pooled Dim. 5')
+            parameter_names[11], 'Pooled Dim. 7')
         self.assertEqual(
-            parameter_names[12], 'Pooled Dim. 6')
+            parameter_names[12], 'Pooled Dim. 8')
         self.assertEqual(
-            parameter_names[13], 'Base log mean Dim. 1')
+            parameter_names[13], 'Base log mean Dim. 9')
         self.assertEqual(
-            parameter_names[14], 'Log std. Dim. 1')
+            parameter_names[14], 'Log std. Dim. 9')
         self.assertEqual(
             parameter_names[15],
-            'Shift Covariate 1 Dim. 1')
+            'Shift Covariate 1 Dim. 9')
         self.assertEqual(
             parameter_names[16],
-            'Shift Covariate 2 Dim. 1')
+            'Shift Covariate 2 Dim. 9')
 
     def test_get_population_models(self):
         pop_model = self.hierarchical_model.get_population_model()
@@ -1188,38 +1188,38 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'central.size')
         self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
         self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[4], 'Log mean Dim. 1')
-        self.assertEqual(parameter_names[5], 'Log std. Dim. 1')
-        self.assertEqual(parameter_names[6], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[7], 'ID 1 Dim. 1')
-        self.assertEqual(parameter_names[8], 'ID 2 Dim. 1')
+        self.assertEqual(parameter_names[4], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[5], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[6], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[7], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[8], 'ID 2 Dim. 5')
         self.assertEqual(
-            parameter_names[9], 'Pooled Dim. 1')
+            parameter_names[9], 'Pooled Dim. 6')
         self.assertEqual(
-            parameter_names[10], 'Pooled Dim. 2')
+            parameter_names[10], 'Pooled Dim. 7')
         self.assertEqual(
-            parameter_names[11], 'Pooled Dim. 3')
+            parameter_names[11], 'Pooled Dim. 8')
         self.assertEqual(
-            parameter_names[12], 'Pooled Dim. 4')
+            parameter_names[12], 'Pooled Dim. 9')
 
         self.assertEqual(len(parameter_names), 13)
         self.assertEqual(parameter_names[0], 'central.size')
         self.assertEqual(parameter_names[1], 'central.size')
         self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
         self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[4], 'Log mean Dim. 1')
-        self.assertEqual(parameter_names[5], 'Log std. Dim. 1')
-        self.assertEqual(parameter_names[6], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[7], 'ID 1 Dim. 1')
-        self.assertEqual(parameter_names[8], 'ID 2 Dim. 1')
+        self.assertEqual(parameter_names[4], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[5], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[6], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[7], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[8], 'ID 2 Dim. 5')
         self.assertEqual(
-            parameter_names[9], 'Pooled Dim. 1')
+            parameter_names[9], 'Pooled Dim. 6')
         self.assertEqual(
-            parameter_names[10], 'Pooled Dim. 2')
+            parameter_names[10], 'Pooled Dim. 7')
         self.assertEqual(
-            parameter_names[11], 'Pooled Dim. 3')
+            parameter_names[11], 'Pooled Dim. 8')
         self.assertEqual(
-            parameter_names[12], 'Pooled Dim. 4')
+            parameter_names[12], 'Pooled Dim. 9')
 
         # Test case II: Exclude bottom-level
         parameter_names = self.log_posterior.get_parameter_names(
@@ -1228,19 +1228,19 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(len(parameter_names), 11)
         self.assertEqual(parameter_names[0], 'Pooled Dim. 1')
         self.assertEqual(parameter_names[1], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[2], 'Log mean Dim. 1')
-        self.assertEqual(parameter_names[3], 'Log std. Dim. 1')
-        self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[5], 'ID 1 Dim. 1')
-        self.assertEqual(parameter_names[6], 'ID 2 Dim. 1')
+        self.assertEqual(parameter_names[2], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[3], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[4], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[5], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[6], 'ID 2 Dim. 5')
         self.assertEqual(
-            parameter_names[7], 'Pooled Dim. 1')
+            parameter_names[7], 'Pooled Dim. 6')
         self.assertEqual(
-            parameter_names[8], 'Pooled Dim. 2')
+            parameter_names[8], 'Pooled Dim. 7')
         self.assertEqual(
-            parameter_names[9], 'Pooled Dim. 3')
+            parameter_names[9], 'Pooled Dim. 8')
         self.assertEqual(
-            parameter_names[10], 'Pooled Dim. 4')
+            parameter_names[10], 'Pooled Dim. 9')
 
         # Test case III: with ids
         parameter_names = self.log_posterior.get_parameter_names(
@@ -1251,19 +1251,19 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'Log-likelihood 2 central.size')
         self.assertEqual(parameter_names[2], 'Pooled Dim. 1')
         self.assertEqual(parameter_names[3], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[4], 'Log mean Dim. 1')
-        self.assertEqual(parameter_names[5], 'Log std. Dim. 1')
-        self.assertEqual(parameter_names[6], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[7], 'ID 1 Dim. 1')
-        self.assertEqual(parameter_names[8], 'ID 2 Dim. 1')
+        self.assertEqual(parameter_names[4], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[5], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[6], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[7], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[8], 'ID 2 Dim. 5')
         self.assertEqual(
-            parameter_names[9], 'Pooled Dim. 1')
+            parameter_names[9], 'Pooled Dim. 6')
         self.assertEqual(
-            parameter_names[10], 'Pooled Dim. 2')
+            parameter_names[10], 'Pooled Dim. 7')
         self.assertEqual(
-            parameter_names[11], 'Pooled Dim. 3')
+            parameter_names[11], 'Pooled Dim. 8')
         self.assertEqual(
-            parameter_names[12], 'Pooled Dim. 4')
+            parameter_names[12], 'Pooled Dim. 9')
 
         # Test case IV: Exclude bottom-level with IDs
         parameter_names = self.log_posterior.get_parameter_names(
@@ -1271,19 +1271,19 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
 
         self.assertEqual(parameter_names[0], 'Pooled Dim. 1')
         self.assertEqual(parameter_names[1], 'Pooled Dim. 2')
-        self.assertEqual(parameter_names[2], 'Log mean Dim. 1')
-        self.assertEqual(parameter_names[3], 'Log std. Dim. 1')
-        self.assertEqual(parameter_names[4], 'Pooled Dim. 1')
-        self.assertEqual(parameter_names[5], 'ID 1 Dim. 1')
-        self.assertEqual(parameter_names[6], 'ID 2 Dim. 1')
+        self.assertEqual(parameter_names[2], 'Log mean Dim. 3')
+        self.assertEqual(parameter_names[3], 'Log std. Dim. 3')
+        self.assertEqual(parameter_names[4], 'Pooled Dim. 4')
+        self.assertEqual(parameter_names[5], 'ID 1 Dim. 5')
+        self.assertEqual(parameter_names[6], 'ID 2 Dim. 5')
         self.assertEqual(
-            parameter_names[7], 'Pooled Dim. 1')
+            parameter_names[7], 'Pooled Dim. 6')
         self.assertEqual(
-            parameter_names[8], 'Pooled Dim. 2')
+            parameter_names[8], 'Pooled Dim. 7')
         self.assertEqual(
-            parameter_names[9], 'Pooled Dim. 3')
+            parameter_names[9], 'Pooled Dim. 8')
         self.assertEqual(
-            parameter_names[10], 'Pooled Dim. 4')
+            parameter_names[10], 'Pooled Dim. 9')
 
     def test_n_parameters(self):
         # Test case I: All parameters
@@ -1694,7 +1694,7 @@ class TestLogLikelihood(unittest.TestCase):
         # Test case II: Set ID
         _id = '123'
         self.log_likelihood.set_id(_id)
-        self.assertEqual(self.log_likelihood.get_id(), 'ID ' + _id)
+        self.assertEqual(self.log_likelihood.get_id(), _id)
 
     def test_get_submodels(self):
         # Test case I: no fixed parameters
@@ -1843,7 +1843,7 @@ class TestLogPosterior(unittest.TestCase):
     def test_get_id(self):
         # Test case I: Non-trivial IDs
         _id = self.log_posterior.get_id()
-        self.assertEqual(_id, 'ID 42')
+        self.assertEqual(_id, '42')
 
     def test_get_log_likelihood(self):
         log_likelihood = self.log_posterior.get_log_likelihood()
