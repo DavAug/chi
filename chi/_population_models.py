@@ -961,15 +961,15 @@ class CovariatePopulationModel(PopulationModel):
         :rtype: np.ndarray of length (n,)
         """
         raise NotImplementedError
-        # Compute population parameters
-        parameters = self._covariate_model.compute_population_parameters(
-            parameters)
+        # # Compute population parameters
+        # parameters = self._covariate_model.compute_population_parameters(
+        #     parameters)
 
-        # Compute log-likelihood
-        score = self._population_model.compute_pointwise_ll(
-            parameters, observations)
+        # # Compute log-likelihood
+        # score = self._population_model.compute_pointwise_ll(
+        #     parameters, observations)
 
-        return score
+        # return score
 
     def compute_sensitivities(self, parameters, observations):
         r"""
@@ -1202,7 +1202,7 @@ class GaussianModel(PopulationModel):
         self._parameter_names = ['Mean'] * self._n_dim + ['Std.'] * self._n_dim
 
     @staticmethod
-    def _compute_log_likelihood(mus, vars, observations):
+    def _compute_log_likelihood(mus, vars, observations):  # pragma: no cover
         r"""
         Calculates the log-likelihood.
 
@@ -1324,8 +1324,7 @@ class GaussianModel(PopulationModel):
         sigmas = parameters[1]
         vars = sigmas**2
 
-        eps = 1E-12
-        if np.any(sigmas <= 0) or np.any(vars <= eps):
+        if np.any(sigmas <= 0):
             # The std. of the Gaussian distribution is strictly positive
             return -np.inf
 
@@ -2516,16 +2515,16 @@ class ReducedPopulationModel(PopulationModel):
         # log-likelihood makes sense for hierarchical models.
         # Also needs to be adapted to match multi-dimensional API.
         raise NotImplementedError
-        # Get fixed parameter values
-        if self._fixed_params_mask is not None:
-            self._fixed_params_values[~self._fixed_params_mask] = parameters
-            parameters = self._fixed_params_values
+        # # Get fixed parameter values
+        # if self._fixed_params_mask is not None:
+        #     self._fixed_params_values[~self._fixed_params_mask] = parameters
+        #     parameters = self._fixed_params_values
 
-        # Compute log-likelihood
-        scores = self._population_model.compute_pointwise_ll(
-            parameters, observations)
+        # # Compute log-likelihood
+        # scores = self._population_model.compute_pointwise_ll(
+        #     parameters, observations)
 
-        return scores
+        # return scores
 
     def compute_sensitivities(self, parameters, observations):
         """
@@ -2578,10 +2577,6 @@ class ReducedPopulationModel(PopulationModel):
             raise ValueError(
                 'The name-value dictionary has to be convertable to a python '
                 'dictionary.')
-
-        # If population model does not have model parameters, break here
-        if self._n_parameters == 0:
-            return None
 
         # If no model parameters have been fixed before, instantiate a mask
         # and values
@@ -2642,10 +2637,7 @@ class ReducedPopulationModel(PopulationModel):
         """
         Returns the number of covariates.
         """
-        try:
-            return self._population_model.n_covariates()
-        except AttributeError:
-            return 0
+        return self._population_model.n_covariates()
 
     def n_hierarchical_parameters(self, n_ids):
         """
@@ -3024,15 +3016,15 @@ class TruncatedGaussianModel(PopulationModel):
         # log-likelihood makes sense for hierarchical models.
         # Also needs to be adapted to match multi-dimensional API.
         raise NotImplementedError
-        observations = np.asarray(observations)
-        mean, std = parameters
+        # observations = np.asarray(observations)
+        # mean, std = parameters
 
-        if (mean <= 0) or (std <= 0):
-            # The mean and std. of the Gaussian distribution are
-            # strictly positive if truncated at zero
-            return np.full(shape=len(observations), fill_value=-np.inf)
+        # if (mean <= 0) or (std <= 0):
+        #     # The mean and std. of the Gaussian distribution are
+        #     # strictly positive if truncated at zero
+        #     return np.full(shape=len(observations), fill_value=-np.inf)
 
-        return self._compute_pointwise_ll(mean, std, observations)
+        # return self._compute_pointwise_ll(mean, std, observations)
 
     def compute_sensitivities(self, parameters, observations):
         r"""

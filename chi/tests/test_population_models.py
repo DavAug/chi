@@ -167,6 +167,10 @@ class TestComposedPopulationModel(unittest.TestCase):
         score = self.pop_model_prime.compute_log_likelihood(parameters, psis)
         self.assertAlmostEqual(score, ref_score)
 
+    def test_compute_pointwise_ll(self):
+        with self.assertRaisesRegex(NotImplementedError, None):
+            self.pop_model.compute_pointwise_ll('some', 'input')
+
     def test_compute_sensitivities(self):
         # Test case I: no covariate model
         n_ids, n_dim = (6, 4)
@@ -525,6 +529,13 @@ class TestCovariatePopulationModel(unittest.TestCase):
                 chi.GaussianModel(),
                 cov_model)
 
+        # Multi-dimensional population model
+        pop_model = chi.GaussianModel(n_dim=2)
+        with self.assertRaisesRegex(ValueError, 'Only 1-dimensional pop'):
+            chi.CovariatePopulationModel(
+                pop_model,
+                chi.LogNormalLinearCovariateModel())
+
     def test_compute_individual_parameters(self):
         # Test case I: Model that is independent of covariates
         # Test case I.1
@@ -877,6 +888,12 @@ class TestCovariatePopulationModel(unittest.TestCase):
             'Base log mean Dim. 1', 'Log std. Dim. 1',
             'Shift Covariate 1 Dim. 1', 'Shift Covariate 2 Dim. 1']
         self.assertEqual(self.cpop_model2.get_parameter_names(), names)
+
+        # Exclude dim names
+        names = ['Base log mean', 'Log std.']
+        self.assertEqual(
+            self.cpop_model.get_parameter_names(exclude_dim_names=True),
+            names)
 
     def test_n_hierarchical_parameters(self):
         # Test case I:
@@ -1558,6 +1575,11 @@ class TestGaussianModel(unittest.TestCase):
         names = ['Mean Dim. 1', 'Mean Dim. 2', 'Std. Dim. 1', 'Std. Dim. 2']
         self.assertEqual(pop_model.get_parameter_names(), names)
 
+        # Exclude dis
+        names = ['Mean', 'Std.']
+        self.assertEqual(
+            self.pop_model.get_parameter_names(exclude_dim_names=True), names)
+
     def test_n_hierarchical_parameters(self):
         n_ids = 10
         n_hierarchical_params = self.pop_model.n_hierarchical_parameters(n_ids)
@@ -1772,6 +1794,9 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.pop_model.set_n_ids(n_ids)
         self.assertEqual(self.pop_model.n_ids(), n_ids)
 
+        # Set n_ids again
+        self.pop_model.set_n_ids(n_ids)
+
         # Reset
         self.pop_model.set_n_ids(1)
 
@@ -1787,6 +1812,11 @@ class TestHeterogeneousModel(unittest.TestCase):
         names = self.pop_model.get_parameter_names()
         self.assertEqual(len(names), 1)
         self.assertEqual(names[0], 'ID 1 Dim. 1')
+
+    def test_set_parameter_names_bad_input(self):
+        names = ['some', 'name']
+        with self.assertRaisesRegex(ValueError, 'Length of names'):
+            self.pop_model.set_parameter_names(names)
 
 
 class TestLogNormalModel(unittest.TestCase):
@@ -2436,8 +2466,11 @@ class TestLogNormalModel(unittest.TestCase):
 
     def test_get_parameter_names(self):
         names = ['Log mean Dim. 1', 'Log std. Dim. 1']
-
         self.assertEqual(self.pop_model.get_parameter_names(), names)
+
+        names = ['Log mean', 'Log std.']
+        self.assertEqual(
+            self.pop_model.get_parameter_names(exclude_dim_names=True), names)
 
     def test_n_hierarchical_parameters(self):
         n_ids = 10
@@ -2622,8 +2655,11 @@ class TestPooledModel(unittest.TestCase):
 
     def test_get_parameter_names(self):
         names = ['Pooled Dim. 1']
-
         self.assertEqual(self.pop_model.get_parameter_names(), names)
+
+        names = ['Pooled']
+        self.assertEqual(
+            self.pop_model.get_parameter_names(exclude_dim_names=True), names)
 
     def test_n_hierarchical_parameters(self):
         n_ids = 10
@@ -3858,8 +3894,11 @@ class TestTruncatedGaussianModel(unittest.TestCase):
 
     def test_get_parameter_names(self):
         names = ['Mu Dim. 1', 'Sigma Dim. 1']
-
         self.assertEqual(self.pop_model.get_parameter_names(), names)
+
+        names = ['Mu', 'Sigma']
+        self.assertEqual(
+            self.pop_model.get_parameter_names(exclude_dim_names=True), names)
 
     def test_n_hierarchical_parameters(self):
         n_ids = 10

@@ -1772,7 +1772,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(n_obs[1], 3)
 
     def test_set_id(self):
-        self.log_likelihood.set_id(1)
+        self.log_likelihood.set_id(1.12)
         self.assertEqual(self.log_likelihood.get_id(), '1')
 
 
