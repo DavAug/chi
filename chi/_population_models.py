@@ -98,6 +98,13 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
+    def get_covariate_names(self):
+        """
+        Returns the names of the covariates. If name is
+        not set, defaults are returned.
+        """
+        return []
+
     def get_dim_names(self):
         """
         Returns the names of the dimensions.
@@ -141,6 +148,12 @@ class PopulationModel(object):
             Number of individuals.
         """
         raise NotImplementedError
+
+    def n_covariates(self):
+        """
+        Returns the number of covariates.
+        """
+        return 0
 
     def n_ids(self):
         """
@@ -2602,10 +2615,7 @@ class ReducedPopulationModel(PopulationModel):
         Returns the names of the covariates. If name is
         not set, defaults are returned.
         """
-        try:
-            return self._population_model.get_covariate_names()
-        except AttributeError:
-            return []
+        return self._population_model.get_covariate_names()
 
     def get_parameter_names(self, exclude_dim_names=False):
         """

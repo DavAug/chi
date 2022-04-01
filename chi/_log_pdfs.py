@@ -1396,7 +1396,7 @@ class LogPosterior(pints.LogPDF):
         """
         return self._log_prior
 
-    def get_id(self):
+    def get_id(self, *args, **kwargs):
         """
         Returns the id of the log-posterior. If no id is set, ``None`` is
         returned.
