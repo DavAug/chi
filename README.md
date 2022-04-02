@@ -39,14 +39,14 @@ brew install sundials
 pip install chi-drm
 ```
 
-### Usage
  You can now use chi's functionality by importing it
  ```python
 import chi
  ```
+ 
+ ### Tutorials
 
- Tutorials and more detailed explanations on how to use chi are currently
- being developed.
+ Tutorials and more detailed explanations on how to use chi can be found in the [documentation's getting started](https://chi.readthedocs.io/en/latest/getting_started/index.html) section.
  
 ## Citation
 
