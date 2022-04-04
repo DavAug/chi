@@ -104,7 +104,7 @@ class PopulationFilter(object):
 
         :param order: An array with indices that orders the observations along
             thetime dimension.
-        :type order: np.ndarray of shape ``(n_times, )``
+        :type order: np.ndarray of shape ``(n_times,)``
         """
         order = np.asarray(order)
         if len(order) != self._n_times:
@@ -116,8 +116,43 @@ class PopulationFilter(object):
 
 
 class GaussianPopulationFilter(PopulationFilter):
-    """
+    r"""
     Implements a Gaussian population filter.
+
+    A Gaussian population filter approximates the distribution of snapshot
+    snapshot measurements at time point :math:`t_j` by a Gaussian distribution
+    whose mean and variance are estimated from simulated
+    measurements
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ij} \log \mathcal{N} (y_{ij} | \mu _j, \sigma ^2_j),
+
+    where the mean :math:`\mu _j` and the variance are given by the empirical
+    estimates
+
+    .. math::
+        \mu _j = \frac{1}{n_s} \sum _{s=1}^{n_s} \tilde{y}_{sj}
+        \quad \text{and} \quad
+        \sigma ^2 _j = \frac{1}{n_s-1} \sum _{s=1}^{n_s} \left(
+            \tilde{y}_{sj} - \mu _j \right) ^2.
+
+    Here, we use :math:`i` to index measured individuals from the dataset,
+    :math:`j` to index measurement time points and :math:`s` to index simulated
+    measurements. :math:`n_s` denotes the number of simulated measurements per
+    time point.
+
+    For multiple measured observables the above expression can be
+    straightforwardly extended to
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ijr} \log \mathcal{N} (y_{ijr} | \mu _{jr}, \sigma ^2_{jr}),
+
+    where :math:`r` indexed observables and :math:`\mu _{jr}` and
+    :math:`\sigma^2 _{jr}` are the empirical mean and variance over the
+    simulated measurements of the observable :math:`r` at time point
+    :math:`t_j`.
 
     Extends :class:`PopulationFilter`
 

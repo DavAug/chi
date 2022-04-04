@@ -19,6 +19,7 @@ used to explore chi's functionality in a more structured way.
     log_pdfs
     mechanistic_models
     plots/index
+    population_filters
     population_models
     predictive_models
     problems

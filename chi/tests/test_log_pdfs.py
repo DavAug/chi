@@ -15,6 +15,111 @@ import chi
 from chi.library import ModelLibrary
 
 
+class ToyExponentialModel(chi.MechanisticModel):
+    """
+    A toy mechanistic model for testing.
+    """
+    def __init__(self):
+        super(ToyExponentialModel, self).__init__()
+
+        self._has_sensitivities = False
+
+    def enable_sensitivities(self, enabled, parameter_names=None):
+        r"""
+        Enables the computation of the model output sensitivities to the model
+        parameters if set to ``True``.
+
+        The sensitivities of the model outputs are defined as the partial
+        derviatives of the ouputs :math:`\bar{y}` with respect to the model
+        parameters :math:`\psi`
+
+        .. math:
+            \frac{\del \bar{y}}{\del \psi}.
+
+        :param enabled: A boolean flag which enables (``True``) / disables
+            (``False``) the computation of sensitivities.
+        :type enabled: bool
+        """
+        self._has_sensitivities = bool(enabled)
+
+    def has_sensitivities(self):
+        """
+        Returns a boolean indicating whether sensitivities have been enabled.
+        """
+        return self._has_sensitivities
+
+    def n_outputs(self):
+        """
+        Returns the number of output dimensions.
+
+        By default this is the number of states.
+        """
+        return 1
+
+    def n_parameters(self):
+        """
+        Returns the number of parameters in the model.
+
+        Parameters of the model are initial state values and structural
+        parameter values.
+        """
+        return 2
+
+    def outputs(self):
+        """
+        Returns the output names of the model.
+        """
+        return ['Count']
+
+    def parameters(self):
+        """
+        Returns the parameter names of the model.
+        """
+        return ['Initial count', 'Growth rate']
+
+    def simulate(self, parameters, times):
+        """
+        Returns the numerical solution of the model outputs (and optionally
+        the sensitivites) for the specified parameters and times.
+
+        The model outputs are returned as a 2 dimensional NumPy array of shape
+        ``(n_outputs, n_times)``. If sensitivities are enabled, a tuple is
+        returned with the NumPy array of the model outputs and a NumPy array of
+        the sensitivities of shape ``(n_times, n_outputs, n_parameters)``.
+
+        :param parameters: An array-like object with values for the model
+            parameters.
+        :type parameters: list, numpy.ndarray
+        :param times: An array-like object with time points at which the output
+            values are returned.
+        :type times: list, numpy.ndarray
+
+        :rtype: np.ndarray of shape (n_outputs, n_times) or
+            (n_times, n_outputs, n_parameters)
+        """
+        y0, growth_rate = parameters
+        times = np.asarray(times)
+
+        # Solve model
+        y = y0 * np.exp(growth_rate * times)
+
+        if not self._has_sensitivities:
+            return y[np.newaxis, :]
+
+        sensitivities = np.empty(shape=(len(times), 1, 2))
+        sensitivities[:, 0, 0] = np.exp(growth_rate * times)
+        sensitivities[:, 0, 1] = times * y
+
+        return y[np.newaxis, :], sensitivities
+
+    def supports_dosing(self):
+        """
+        Returns a boolean whether dose administration with
+        :meth:`PKPDModel.set_dosing_regimen` is supported by the model.
+        """
+        return False
+
+
 class TestHierarchicalLogLikelihood(unittest.TestCase):
     """
     Tests the chi.HierarchicalLogLikelihood class.
@@ -1872,6 +1977,736 @@ class TestLogPosterior(unittest.TestCase):
         self.assertEqual(parameter_names[4], 'myokit.lambda_1')
         self.assertEqual(parameter_names[5], 'Sigma base')
         self.assertEqual(parameter_names[6], 'Sigma rel.')
+
+
+class TestPopulationFilterLogPosterior(unittest.TestCase):
+    """
+    Tests the chi.PopulationFilterLogPosterior class.
+    """
+    @classmethod
+    def setUpClass(cls):
+        observations = np.array([
+            [[1, 2, np.nan, 5]],
+            [[0.1, 2, 4, 3]],
+            [[np.nan, 3, 2, np.nan]],
+            [[0, 20, 13, -4]],
+            [[21, 0.2, 8, 4]],
+            [[0.1, 0.2, 0.3, 0.4]]])
+        population_filter = chi.GaussianPopulationFilter(observations)
+        times = np.array([1, 2, 3, 4])
+        mechanistic_model = ToyExponentialModel()
+        population_model = chi.LogNormalModel(n_dim=2)
+        n_samples = 3
+
+        # Test case I: Fixed sigma, Gaussian error
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1)
+        )
+        sigma = 1
+        error_on_log_scale = False
+        cls.log_posterior1 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
+        # Test case II: Fixed sigma, log-normal error
+        sigma = 1
+        error_on_log_scale = True
+        cls.log_posterior2 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
+        # Test case III: free sigma, Gaussian error
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1)
+        )
+        sigma = None
+        error_on_log_scale = False
+        cls.log_posterior3 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
+        # Test case IV: free sigma, log-normal error
+        sigma = None
+        error_on_log_scale = True
+        cls.log_posterior4 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
+    def test_bad_instantiation(self):
+        observations = np.array([
+            [[1, 2, np.nan, 5]],
+            [[0.1, 2, 4, 3]],
+            [[np.nan, 3, 2, np.nan]],
+            [[0, 20, 13, -4]],
+            [[21, 0.2, 8, 4]],
+            [[0.1, 0.2, 0.3, 0.4]]])
+        population_filter = chi.GaussianPopulationFilter(observations)
+        times = np.array([1, 2, 3, 4])
+        mechanistic_model = ToyExponentialModel()
+        population_model = chi.LogNormalModel(n_dim=2)
+
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1)
+        )
+
+        # Population filter has the wrong type
+        p = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The population filter has to'):
+            chi.PopulationFilterLogPosterior(
+                p, times, mechanistic_model,
+                population_model, log_prior)
+
+        # Times are not unique
+        t = np.array([1, 1, 2, 3, 4])
+        with self.assertRaisesRegex(ValueError, 'The measurement times in'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, t, mechanistic_model,
+                population_model, log_prior)
+
+        # Times and observations do not match
+        t = np.array([1, 2, 3, 4, 5])
+        with self.assertRaisesRegex(ValueError, 'The length of times does'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, t, mechanistic_model,
+                population_model, log_prior)
+
+        # Mechanistic model has the wrong type
+        m = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The mechanistic model has to'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, m,
+                population_model, log_prior)
+
+        # Mechanistic model has the wrong number of outputs
+        p = chi.GaussianPopulationFilter(np.ones(shape=(1, 2, 4)))
+        with self.assertRaisesRegex(ValueError, 'The number of mechanistic'):
+            chi.PopulationFilterLogPosterior(
+                p, times, mechanistic_model,
+                population_model, log_prior)
+
+        # Population model has the wrong type
+        p = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The population model has to'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                p, log_prior)
+
+        # Population model has the wrong dimensionality
+        p = chi.PooledModel(n_dim=10)
+        with self.assertRaisesRegex(ValueError, 'The number of population'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                p, log_prior)
+
+        # The number of sigmas does not match the number of model outputs
+        sigma = [1, 2, 3]
+        with self.assertRaisesRegex(ValueError, 'One sigma for each obs'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                population_model, log_prior, sigma=sigma)
+
+        # Sigma has negative elements
+        sigma = -1
+        with self.assertRaisesRegex(ValueError, 'The elements of sigma'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                population_model, log_prior, sigma=sigma)
+
+        # Log-prior has the wrong type
+        p = 'wrong type'
+        with self.assertRaisesRegex(TypeError, 'The log-prior has to'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                population_model, p)
+
+        # Log-prior has the wrong dimensionality
+        with self.assertRaisesRegex(ValueError, 'The dimensionality of'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                population_model, log_prior)
+
+        # Number of samples is zero or negative
+        with self.assertRaisesRegex(ValueError, 'The number of samples of'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                population_model, log_prior, sigma=1, n_samples=0)
+
+        # Number of samples is zero or negative
+        with self.assertRaisesRegex(ValueError, 'The number of samples of'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                population_model, log_prior, sigma=1, n_samples=-10)
+
+    def test_call(self):
+        # Test case I: fixed sigma and Gaussian error model
+        # Test case I.1: log-prior returns infinity
+        parameters = np.ones(22) * -1
+        score = self.log_posterior1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case I.2: population model returns infinity
+        parameters[:4] = 1
+        score = self.log_posterior1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case I.3: finite score for valid parameters
+        parameters = np.linspace(0.1, 1, num=22)
+        score = self.log_posterior1(parameters)
+        self.assertFalse(np.isinf(score))
+
+        # Test case II: fixed sigma and log-normal error model
+        # Test case II.1: log-prior returns infinity
+        parameters = np.ones(22) * -1
+        score = self.log_posterior2(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case II.2: population model returns infinity
+        parameters[:4] = 1
+        score = self.log_posterior2(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case II.3: finite score for valid parameters
+        parameters = np.linspace(0.1, 1, num=22)
+        score = self.log_posterior2(parameters)
+        self.assertFalse(np.isinf(score))
+
+        # Test case III: free sigma and Gaussian error model
+        # Test case III.1: log-prior returns infinity
+        parameters = np.ones(23) * -1
+        score = self.log_posterior3(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case III.2: population model returns infinity
+        parameters[:4] = 1
+        score = self.log_posterior3(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case III.3: finite score for valid parameters
+        parameters = np.linspace(0.1, 1, num=23)
+        score = self.log_posterior3(parameters)
+        self.assertFalse(np.isinf(score))
+
+        # Test case IV: free sigma and log-normal error model
+        # Test case IV.1: log-prior returns infinity
+        parameters = np.ones(23) * -1
+        score = self.log_posterior4(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case IV.2: population model returns infinity
+        parameters[:4] = 1
+        score = self.log_posterior4(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case IV.3: finite score for valid parameters
+        parameters = np.linspace(0.1, 1, num=23)
+        score = self.log_posterior4(parameters)
+        self.assertFalse(np.isinf(score))
+
+    def test_sensitivities(self):
+        # Test case I: fixed sigma and Gaussian error model
+        # Test case I.1: log-prior returns infinity
+        parameters = np.ones(22) * -1
+        score, _ = self.log_posterior1.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case I.2: population model returns infinity
+        parameters[:4] = 1
+        score, _ = self.log_posterior1.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case I.3: finite difference check for valid parameters
+        parameters = np.linspace(0.1, 1, num=22)
+        epsilon = 0.00001
+        ref_sens = []
+        ref_score = self.log_posterior1(parameters)
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.log_posterior1(low),
+                    ref_score,
+                    self.log_posterior1(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.log_posterior1.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertEqual(len(sens), 22)
+        self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
+        self.assertAlmostEqual(sens[1], ref_sens[1], places=4)
+        self.assertAlmostEqual(sens[2], ref_sens[2], places=4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], places=4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], places=4)
+        self.assertAlmostEqual(sens[5], ref_sens[5], places=4)
+        self.assertAlmostEqual(sens[6], ref_sens[6], places=4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], places=4)
+        self.assertAlmostEqual(sens[8], ref_sens[8], places=4)
+        self.assertAlmostEqual(sens[9], ref_sens[9], places=4)
+        self.assertAlmostEqual(sens[10], ref_sens[10], places=4)
+        self.assertAlmostEqual(sens[11], ref_sens[11], places=4)
+        self.assertAlmostEqual(sens[12], ref_sens[12], places=4)
+        self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
+        self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
+        self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+        self.assertAlmostEqual(sens[16], ref_sens[16], places=4)
+        self.assertAlmostEqual(sens[17], ref_sens[17], places=4)
+        self.assertAlmostEqual(sens[18], ref_sens[18], places=4)
+        self.assertAlmostEqual(sens[19], ref_sens[19], places=4)
+        self.assertAlmostEqual(sens[20], ref_sens[20], places=4)
+        self.assertAlmostEqual(sens[21], ref_sens[21], places=4)
+
+        # Test case II: fixed sigma and log-normal error model
+        # Test case II.1: log-prior returns infinity
+        parameters = np.ones(22) * -1
+        score, _ = self.log_posterior2.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case II.2: population model returns infinity
+        parameters[:4] = 1
+        score, _ = self.log_posterior2.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case II.3: finite difference check for valid parameters
+        parameters = np.linspace(0.1, 1, num=22)
+        epsilon = 0.00001
+        ref_sens = []
+        ref_score = self.log_posterior2(parameters)
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.log_posterior2(low),
+                    ref_score,
+                    self.log_posterior2(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.log_posterior2.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertEqual(len(sens), 22)
+        self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
+        self.assertAlmostEqual(sens[1], ref_sens[1], places=4)
+        self.assertAlmostEqual(sens[2], ref_sens[2], places=4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], places=4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], places=4)
+        self.assertAlmostEqual(sens[5], ref_sens[5], places=4)
+        self.assertAlmostEqual(sens[6], ref_sens[6], places=4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], places=4)
+        self.assertAlmostEqual(sens[8], ref_sens[8], places=4)
+        self.assertAlmostEqual(sens[9], ref_sens[9], places=4)
+        self.assertAlmostEqual(sens[10], ref_sens[10], places=4)
+        self.assertAlmostEqual(sens[11], ref_sens[11], places=4)
+        self.assertAlmostEqual(sens[12], ref_sens[12], places=4)
+        self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
+        self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
+        self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+        self.assertAlmostEqual(sens[16], ref_sens[16], places=4)
+        self.assertAlmostEqual(sens[17], ref_sens[17], places=4)
+        self.assertAlmostEqual(sens[18], ref_sens[18], places=4)
+        self.assertAlmostEqual(sens[19], ref_sens[19], places=4)
+        self.assertAlmostEqual(sens[20], ref_sens[20], places=4)
+        self.assertAlmostEqual(sens[21], ref_sens[21], places=4)
+
+        # Test case III: free sigma and Gaussian error model
+        # Test case III.1: log-prior returns infinity
+        parameters = np.ones(23) * -1
+        score, _ = self.log_posterior3.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case III.2: population model returns infinity
+        parameters[:4] = 1
+        score, _ = self.log_posterior3.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case III.3: finite difference check for valid parameters
+        parameters = np.linspace(0.1, 1, num=23)
+        epsilon = 0.000001
+        ref_sens = []
+        ref_score = self.log_posterior3(parameters)
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.log_posterior3(low),
+                    ref_score,
+                    self.log_posterior3(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.log_posterior3.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertEqual(len(sens), 23)
+        self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
+        self.assertAlmostEqual(sens[1], ref_sens[1], places=4)
+        self.assertAlmostEqual(sens[2], ref_sens[2], places=4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], places=4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], places=4)
+        self.assertAlmostEqual(sens[5], ref_sens[5], places=4)
+        self.assertAlmostEqual(sens[6], ref_sens[6], places=4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], places=4)
+        self.assertAlmostEqual(sens[8], ref_sens[8], places=4)
+        self.assertAlmostEqual(sens[9], ref_sens[9], places=4)
+        self.assertAlmostEqual(sens[10], ref_sens[10], places=4)
+        self.assertAlmostEqual(sens[11], ref_sens[11], places=4)
+        self.assertAlmostEqual(sens[12], ref_sens[12], places=4)
+        self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
+        self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
+        self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+        self.assertAlmostEqual(sens[16], ref_sens[16], places=4)
+        self.assertAlmostEqual(sens[17], ref_sens[17], places=4)
+        self.assertAlmostEqual(sens[18], ref_sens[18], places=4)
+        self.assertAlmostEqual(sens[19], ref_sens[19], places=4)
+        self.assertAlmostEqual(sens[20], ref_sens[20], places=4)
+        self.assertAlmostEqual(sens[21], ref_sens[21], places=4)
+        self.assertAlmostEqual(sens[22], ref_sens[22], places=4)
+
+        # Test case IV: free sigma and log-normal error model
+        # Test case IV.1: log-prior returns infinity
+        parameters = np.ones(23) * -1
+        score, _ = self.log_posterior4.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case IV.2: population model returns infinity
+        parameters[:4] = 1
+        score, _ = self.log_posterior4.evaluateS1(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case IV.3: finite difference check for valid parameters
+        parameters = np.linspace(0.1, 1, num=23)
+        epsilon = 0.000001
+        ref_sens = []
+        ref_score = self.log_posterior4(parameters)
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.log_posterior4(low),
+                    ref_score,
+                    self.log_posterior4(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.log_posterior4.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertEqual(len(sens), 23)
+        self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
+        self.assertAlmostEqual(sens[1], ref_sens[1], places=4)
+        self.assertAlmostEqual(sens[2], ref_sens[2], places=4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], places=4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], places=4)
+        self.assertAlmostEqual(sens[5], ref_sens[5], places=4)
+        self.assertAlmostEqual(sens[6], ref_sens[6], places=4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], places=4)
+        self.assertAlmostEqual(sens[8], ref_sens[8], places=4)
+        self.assertAlmostEqual(sens[9], ref_sens[9], places=4)
+        self.assertAlmostEqual(sens[10], ref_sens[10], places=4)
+        self.assertAlmostEqual(sens[11], ref_sens[11], places=4)
+        self.assertAlmostEqual(sens[12], ref_sens[12], places=4)
+        self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
+        self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
+        self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+        self.assertAlmostEqual(sens[16], ref_sens[16], places=4)
+        self.assertAlmostEqual(sens[17], ref_sens[17], places=4)
+        self.assertAlmostEqual(sens[18], ref_sens[18], places=4)
+        self.assertAlmostEqual(sens[19], ref_sens[19], places=4)
+        self.assertAlmostEqual(sens[20], ref_sens[20], places=4)
+        self.assertAlmostEqual(sens[21], ref_sens[21], places=4)
+        self.assertAlmostEqual(sens[22], ref_sens[22], places=4)
+
+    def test_get_log_likelihood(self):
+        self.assertIsInstance(
+            self.log_posterior1.get_log_likelihood(), chi.PopulationFilter)
+
+    def test_get_log_prior(self):
+        self.assertIsInstance(
+            self.log_posterior1.get_log_prior(), pints.LogPrior)
+
+    def test_get_id(self):
+        ids = self.log_posterior1.get_id()
+        self.assertEqual(len(ids), 22)
+        self.assertIsNone(ids[0])
+        self.assertIsNone(ids[1])
+        self.assertIsNone(ids[2])
+        self.assertIsNone(ids[3])
+        self.assertEqual(ids[4], 'Sim. 1')
+        self.assertEqual(ids[5], 'Sim. 1')
+        self.assertEqual(ids[6], 'Sim. 2')
+        self.assertEqual(ids[7], 'Sim. 2')
+        self.assertEqual(ids[8], 'Sim. 3')
+        self.assertEqual(ids[9], 'Sim. 3')
+        self.assertEqual(ids[10], 'Sim. 1')
+        self.assertEqual(ids[11], 'Sim. 1')
+        self.assertEqual(ids[12], 'Sim. 1')
+        self.assertEqual(ids[13], 'Sim. 1')
+        self.assertEqual(ids[14], 'Sim. 2')
+        self.assertEqual(ids[15], 'Sim. 2')
+        self.assertEqual(ids[16], 'Sim. 2')
+        self.assertEqual(ids[17], 'Sim. 2')
+        self.assertEqual(ids[18], 'Sim. 3')
+        self.assertEqual(ids[19], 'Sim. 3')
+        self.assertEqual(ids[20], 'Sim. 3')
+        self.assertEqual(ids[21], 'Sim. 3')
+
+        ids = self.log_posterior1.get_id(unique=True)
+        self.assertEqual(len(ids), 4)
+        self.assertIsNone(ids[0])
+        self.assertEqual(ids[1], 'Sim. 1')
+        self.assertEqual(ids[2], 'Sim. 2')
+        self.assertEqual(ids[3], 'Sim. 3')
+
+        ids = self.log_posterior3.get_id()
+        self.assertEqual(len(ids), 23)
+        self.assertIsNone(ids[0])
+        self.assertIsNone(ids[1])
+        self.assertIsNone(ids[2])
+        self.assertIsNone(ids[3])
+        self.assertIsNone(ids[4])
+        self.assertEqual(ids[5], 'Sim. 1')
+        self.assertEqual(ids[6], 'Sim. 1')
+        self.assertEqual(ids[7], 'Sim. 2')
+        self.assertEqual(ids[8], 'Sim. 2')
+        self.assertEqual(ids[9], 'Sim. 3')
+        self.assertEqual(ids[10], 'Sim. 3')
+        self.assertEqual(ids[11], 'Sim. 1')
+        self.assertEqual(ids[12], 'Sim. 1')
+        self.assertEqual(ids[13], 'Sim. 1')
+        self.assertEqual(ids[14], 'Sim. 1')
+        self.assertEqual(ids[15], 'Sim. 2')
+        self.assertEqual(ids[16], 'Sim. 2')
+        self.assertEqual(ids[17], 'Sim. 2')
+        self.assertEqual(ids[18], 'Sim. 2')
+        self.assertEqual(ids[19], 'Sim. 3')
+        self.assertEqual(ids[20], 'Sim. 3')
+        self.assertEqual(ids[21], 'Sim. 3')
+        self.assertEqual(ids[22], 'Sim. 3')
+
+        ids = self.log_posterior3.get_id(unique=True)
+        self.assertEqual(len(ids), 4)
+        self.assertIsNone(ids[0])
+        self.assertEqual(ids[1], 'Sim. 1')
+        self.assertEqual(ids[2], 'Sim. 2')
+        self.assertEqual(ids[3], 'Sim. 3')
+
+    def test_get_parameter_names(self):
+        names = self.log_posterior1.get_parameter_names()
+        self.assertEqual(len(names), 22)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+        self.assertEqual(names[4], 'Initial count')
+        self.assertEqual(names[5], 'Growth rate')
+        self.assertEqual(names[6], 'Initial count')
+        self.assertEqual(names[7], 'Growth rate')
+        self.assertEqual(names[8], 'Initial count')
+        self.assertEqual(names[9], 'Growth rate')
+        self.assertEqual(names[10], 'Epsilon time 1')
+        self.assertEqual(names[11], 'Epsilon time 2')
+        self.assertEqual(names[12], 'Epsilon time 3')
+        self.assertEqual(names[13], 'Epsilon time 4')
+        self.assertEqual(names[14], 'Epsilon time 1')
+        self.assertEqual(names[15], 'Epsilon time 2')
+        self.assertEqual(names[16], 'Epsilon time 3')
+        self.assertEqual(names[17], 'Epsilon time 4')
+        self.assertEqual(names[18], 'Epsilon time 1')
+        self.assertEqual(names[19], 'Epsilon time 2')
+        self.assertEqual(names[20], 'Epsilon time 3')
+        self.assertEqual(names[21], 'Epsilon time 4')
+
+        names = self.log_posterior1.get_parameter_names(
+            exclude_bottom_level=True)
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+
+        names = self.log_posterior1.get_parameter_names(
+            include_ids=True)
+        self.assertEqual(len(names), 22)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+        self.assertEqual(names[4], 'Sim. 1 Initial count')
+        self.assertEqual(names[5], 'Sim. 1 Growth rate')
+        self.assertEqual(names[6], 'Sim. 2 Initial count')
+        self.assertEqual(names[7], 'Sim. 2 Growth rate')
+        self.assertEqual(names[8], 'Sim. 3 Initial count')
+        self.assertEqual(names[9], 'Sim. 3 Growth rate')
+        self.assertEqual(names[10], 'Sim. 1 Epsilon time 1')
+        self.assertEqual(names[11], 'Sim. 1 Epsilon time 2')
+        self.assertEqual(names[12], 'Sim. 1 Epsilon time 3')
+        self.assertEqual(names[13], 'Sim. 1 Epsilon time 4')
+        self.assertEqual(names[14], 'Sim. 2 Epsilon time 1')
+        self.assertEqual(names[15], 'Sim. 2 Epsilon time 2')
+        self.assertEqual(names[16], 'Sim. 2 Epsilon time 3')
+        self.assertEqual(names[17], 'Sim. 2 Epsilon time 4')
+        self.assertEqual(names[18], 'Sim. 3 Epsilon time 1')
+        self.assertEqual(names[19], 'Sim. 3 Epsilon time 2')
+        self.assertEqual(names[20], 'Sim. 3 Epsilon time 3')
+        self.assertEqual(names[21], 'Sim. 3 Epsilon time 4')
+
+        names = self.log_posterior1.get_parameter_names(
+            exclude_bottom_level=True, include_ids=True)
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+
+        names = self.log_posterior3.get_parameter_names()
+        self.assertEqual(len(names), 23)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+        self.assertEqual(names[4], 'Sigma Count')
+        self.assertEqual(names[5], 'Initial count')
+        self.assertEqual(names[6], 'Growth rate')
+        self.assertEqual(names[7], 'Initial count')
+        self.assertEqual(names[8], 'Growth rate')
+        self.assertEqual(names[9], 'Initial count')
+        self.assertEqual(names[10], 'Growth rate')
+        self.assertEqual(names[11], 'Epsilon time 1')
+        self.assertEqual(names[12], 'Epsilon time 2')
+        self.assertEqual(names[13], 'Epsilon time 3')
+        self.assertEqual(names[14], 'Epsilon time 4')
+        self.assertEqual(names[15], 'Epsilon time 1')
+        self.assertEqual(names[16], 'Epsilon time 2')
+        self.assertEqual(names[17], 'Epsilon time 3')
+        self.assertEqual(names[18], 'Epsilon time 4')
+        self.assertEqual(names[19], 'Epsilon time 1')
+        self.assertEqual(names[20], 'Epsilon time 2')
+        self.assertEqual(names[21], 'Epsilon time 3')
+        self.assertEqual(names[22], 'Epsilon time 4')
+
+        names = self.log_posterior3.get_parameter_names(
+            exclude_bottom_level=True)
+        self.assertEqual(len(names), 5)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+        self.assertEqual(names[4], 'Sigma Count')
+
+        names = self.log_posterior3.get_parameter_names(
+            include_ids=True)
+        self.assertEqual(len(names), 23)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+        self.assertEqual(names[4], 'Sigma Count')
+        self.assertEqual(names[5], 'Sim. 1 Initial count')
+        self.assertEqual(names[6], 'Sim. 1 Growth rate')
+        self.assertEqual(names[7], 'Sim. 2 Initial count')
+        self.assertEqual(names[8], 'Sim. 2 Growth rate')
+        self.assertEqual(names[9], 'Sim. 3 Initial count')
+        self.assertEqual(names[10], 'Sim. 3 Growth rate')
+        self.assertEqual(names[11], 'Sim. 1 Epsilon time 1')
+        self.assertEqual(names[12], 'Sim. 1 Epsilon time 2')
+        self.assertEqual(names[13], 'Sim. 1 Epsilon time 3')
+        self.assertEqual(names[14], 'Sim. 1 Epsilon time 4')
+        self.assertEqual(names[15], 'Sim. 2 Epsilon time 1')
+        self.assertEqual(names[16], 'Sim. 2 Epsilon time 2')
+        self.assertEqual(names[17], 'Sim. 2 Epsilon time 3')
+        self.assertEqual(names[18], 'Sim. 2 Epsilon time 4')
+        self.assertEqual(names[19], 'Sim. 3 Epsilon time 1')
+        self.assertEqual(names[20], 'Sim. 3 Epsilon time 2')
+        self.assertEqual(names[21], 'Sim. 3 Epsilon time 3')
+        self.assertEqual(names[22], 'Sim. 3 Epsilon time 4')
+
+        names = self.log_posterior3.get_parameter_names(
+            exclude_bottom_level=True, include_ids=True)
+        self.assertEqual(len(names), 5)
+        self.assertEqual(names[0], 'Log mean Initial count')
+        self.assertEqual(names[1], 'Log mean Growth rate')
+        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[3], 'Log std. Growth rate')
+        self.assertEqual(names[4], 'Sigma Count')
+
+    def test_n_parameters(self):
+        self.assertEqual(self.log_posterior1.n_parameters(), 22)
+        self.assertEqual(
+            self.log_posterior1.n_parameters(exclude_bottom_level=True), 4)
+        self.assertEqual(self.log_posterior3.n_parameters(), 23)
+        self.assertEqual(
+            self.log_posterior3.n_parameters(exclude_bottom_level=True), 5)
 
 
 class TestReducedLogPDF(unittest.TestCase):
