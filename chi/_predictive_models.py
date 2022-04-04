@@ -1013,6 +1013,9 @@ class PopulationPredictiveModel(PredictiveModel):
             n_samples = 1
         n_samples = int(n_samples)
 
+        if seed is not None:
+            seed = np.random.default_rng(seed)
+
         # Sample individuals from population model
         patients = self._population_model.sample(
             parameters, n_samples, seed, covariates=covariates)
