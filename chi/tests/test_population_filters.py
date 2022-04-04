@@ -20,7 +20,7 @@ class TestPopulationFilter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         observations = np.empty((2, 3, 4))
-        cls._filter = chi.PopulationFilter(observations)
+        cls.filter = chi.PopulationFilter(observations)
 
     def test_bad_instantiation(self):
         # Observations are not 3 dimensional
@@ -30,11 +30,29 @@ class TestPopulationFilter(unittest.TestCase):
 
     def test_compute_log_likelihood(self):
         with self.assertRaisesRegex(NotImplementedError, None):
-            self._filter.compute_log_likelihood('some input')
+            self.filter.compute_log_likelihood('some input')
 
     def test_compute_sensitivities(self):
         with self.assertRaisesRegex(NotImplementedError, None):
-            self._filter.compute_sensitivities('some input')
+            self.filter.compute_sensitivities('some input')
+
+    def test_n_times(self):
+        self.assertEqual(self.filter.n_times(), 4)
+
+    def test_sort_times(self):
+        order = np.array([0, 1, 2, 3])
+        self.filter.sort_times(order)
+
+    def test_sort_times_bad_input(self):
+        # Wrong length
+        order = np.array([0, 1, 2])
+        with self.assertRaisesRegex(ValueError, 'Order has to be of'):
+            self.filter.sort_times(order)
+
+        # Non-unique entries
+        order = np.array([0, 1, 2, 2])
+        with self.assertRaisesRegex(ValueError, 'Order has to contain'):
+            self.filter.sort_times(order)
 
 
 class TestGaussianPopulationFilter(unittest.TestCase):
@@ -52,8 +70,6 @@ class TestGaussianPopulationFilter(unittest.TestCase):
         observations = np.array([
             [[1, 2, np.nan, 5], [0.1, 2, 4, 3], [np.nan, 3, 2, np.nan]],
             [[0, 20, 13, -4], [21, 0.2, 8, 4], [0.1, 0.2, 0.3, 0.4]]])
-        mask = np.isnan(observations)
-        observations = np.ma.array(observations, mask=mask)
         cls.filter2 = chi.GaussianPopulationFilter(observations)
 
     def test_compute_log_likelihood(self):

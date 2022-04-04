@@ -85,6 +85,29 @@ class PopulationFilter(object):
         """
         raise NotImplementedError
 
+    def n_times(self):
+        """
+        Returns the number of measurement times.
+        """
+        return self._n_times
+
+    def sort_times(self, order):
+        """
+        Sorts the observations along the time dimension according to the
+        provided indices.
+
+        :param order: An array with indices that orders the observations along
+            thetime dimension.
+        :type order: np.ndarray of shape ``(n_times, )``
+        """
+        order = np.asarray(order)
+        if len(order) != self._n_times:
+            raise ValueError('Order has to be of length n_times.')
+        if len(order) != len(np.unique(order)):
+            raise ValueError('Order has to contain n_times unique elements.')
+
+        self._observations = self._observations[:, :, order]
+
 
 class GaussianPopulationFilter(PopulationFilter):
     """
