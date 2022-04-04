@@ -41,6 +41,11 @@ from ._inference import (  # noqa
     SamplingController
 )
 
+from ._population_filters import (  # noqa
+    PopulationFilter,
+    GaussianPopulationFilter
+)
+
 from ._population_models import (  # noqa
     ComposedPopulationModel,
     CovariatePopulationModel,
