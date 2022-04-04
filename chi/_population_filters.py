@@ -85,9 +85,15 @@ class PopulationFilter(object):
         """
         raise NotImplementedError
 
+    def n_observables(self):
+        """
+        Returns the number of observables in the dataset.
+        """
+        return self._n_observables
+
     def n_times(self):
         """
-        Returns the number of measurement times.
+        Returns the number of measurement times in the dataset.
         """
         return self._n_times
 

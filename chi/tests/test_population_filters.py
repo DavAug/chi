@@ -36,6 +36,9 @@ class TestPopulationFilter(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, None):
             self.filter.compute_sensitivities('some input')
 
+    def test_n_observables(self):
+        self.assertEqual(self.filter.n_observables(), 3)
+
     def test_n_times(self):
         self.assertEqual(self.filter.n_times(), 4)
 
