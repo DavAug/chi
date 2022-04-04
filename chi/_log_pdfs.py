@@ -1434,15 +1434,15 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
     a mechanistic model, an error model, a population model and the data
 
     .. math::
-        \log p(\theta , \tilde{\Psi}, \tilde{Y} | \mathcal{D}) =
+        \log p(\theta , \tilde{\Psi}, \tilde{Y} | \mathcal{D}) =&
             \sum _{ij} \log p (y_{ij} | \tilde{Y}_j) +
             \sum _{sj} \log p (\tilde{y}_{sj} | \tilde{\psi}_s, t_j) +
-            \sum _{sk} \log p (\tilde{psi}_{sk} | \theta _k) +
-            \sum _{k} \log p (\theta _k) + \mathrm{constant}.
+            \sum _{sk} \log p (\tilde{\psi}_{sk} | \theta _k)& \\
+            &+ \sum _{k} \log p (\theta _k) + \mathrm{constant}.&
 
     The first term is the population filter contribution which estimates the
     log-likelihood of simulated measurements,
-    :math:`\tilde{Y}_j = \{ \tilde{y}_{sj}\}`, at time
+    :math:`\tilde{Y}_j = \{ \tilde{y}_{sj}\}`, at the time points
     :math:`t_j` to come from the same distribution as the observations,
     :math:`Y_j = \{ y_{ij}\}`. Here, :math:`s` indexes a simulated individual
     and :math:`i` indexes an individual from the dataset.
