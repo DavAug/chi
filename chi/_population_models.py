@@ -458,11 +458,11 @@ class ComposedPopulationModel(PopulationModel):
         Returns the log-likelihood of the population model parameters.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,)
+        :type parameters: np.ndarray of shape ``(p,)``
         :param observations: "Observations" of the individuals. Typically
             refers to the values of a mechanistic model parameter for each
             individual.
-        :type observations: np.ndarray of shape (n, n_dim)
+        :type observations: np.ndarray of shape ``(n, n_dim)``
         :returns: Log-likelihood of individual parameters and population
             parameters.
         :rtype: float
@@ -491,14 +491,14 @@ class ComposedPopulationModel(PopulationModel):
         each observation.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p, n_dim)
+        :type parameters: np.ndarray of shape ``(p, n_dim)``
         :param observations: "Observations" of the individuals. Typically
             refers to the values of a mechanistic model parameter for each
             individual.
-        :type observations: np.ndarray of shape (n, n_dim)
+        :type observations: np.ndarray of shape ``(n, n_dim)``
         :returns: Log-likelihoods for each individual parameter for population
             parameters.
-        :rtype: np.ndarray of length (n, n_dim)
+        :rtype: np.ndarray of length ``(n, n_dim)``
         """
         raise NotImplementedError
 
@@ -509,18 +509,18 @@ class ComposedPopulationModel(PopulationModel):
 
         The sensitivities are returned as a 1-dimensional array
 
-        ..math::
-            (\psi _1, \ldots , \psi _n, \theta _1, \dlots , \theta _k).
+        .. math::
+            (\psi _1, \ldots , \psi _n, \theta _1, \ldots , \theta _k).
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,)
+        :type parameters: np.ndarray of shape ``(p,)``
         :param observations: "Observations" of the individuals. Typically
             refers to the values of a mechanistic model parameter for each
             individual.
-        :type observations: np.ndarray of shape (n, n_dim)
+        :type observations: np.ndarray of shape ``(n, n_dim)``
         :returns: Log-likelihood and its sensitivity to individual parameters
             as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
+        :rtype: Tuple[float, np.ndarray of shape ``(n * n_dim + p,)``]
         """
         observations = np.asarray(observations)
         parameters = np.asarray(parameters)
