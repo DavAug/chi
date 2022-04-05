@@ -1404,6 +1404,24 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
             exclude_bottom_level=True)
         self.assertEqual(n_parameters, 11)
 
+    def test_sample_initial_parameters(self):
+        # Bad input
+        n_samples = 0
+        with self.assertRaisesRegex(ValueError, 'The number of samples has'):
+            self.log_posterior.sample_initial_parameters(n_samples=n_samples)
+
+        samples = self.log_posterior.sample_initial_parameters()
+        self.assertEqual(samples.shape, (1, 13))
+
+        n_samples = 10
+        samples = self.log_posterior.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 13))
+
+        seed = 3
+        samples = self.log_posterior.sample_initial_parameters(seed=seed)
+        self.assertEqual(samples.shape, (1, 13))
+
 
 class TestLogLikelihood(unittest.TestCase):
     """
@@ -1970,6 +1988,19 @@ class TestLogPosterior(unittest.TestCase):
         self.assertEqual(parameter_names[4], 'myokit.lambda_1')
         self.assertEqual(parameter_names[5], 'Sigma base')
         self.assertEqual(parameter_names[6], 'Sigma rel.')
+
+    def test_sample_initial_parameters(self):
+        samples = self.log_posterior.sample_initial_parameters()
+        self.assertEqual(samples.shape, (1, 7))
+
+        n_samples = 10
+        samples = self.log_posterior.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 7))
+
+        seed = 3
+        samples = self.log_posterior.sample_initial_parameters(seed=seed)
+        self.assertEqual(samples.shape, (1, 7))
 
 
 class TestPopulationFilterLogPosterior(unittest.TestCase):
@@ -2701,67 +2732,24 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertEqual(
             self.log_posterior3.n_parameters(exclude_bottom_level=True), 5)
 
+    def test_sample_initial_parameters(self):
+        # Bad input
+        n_samples = 0
+        with self.assertRaisesRegex(ValueError, 'The number of samples has'):
+            self.log_posterior1.sample_initial_parameters(n_samples=n_samples)
 
-class TestReducedLogPDF(unittest.TestCase):
-    """
-    Tests the chi.ReducedLogPDF class.
-    """
+        samples = self.log_posterior1.sample_initial_parameters()
+        self.assertEqual(samples.shape, (1, 22))
 
-    @classmethod
-    def setUpClass(cls):
-        # Create test data
-        times = [1, 2, 3, 4, 5]
-        values = [1, 2, 3, 4, 5]
+        n_samples = 10
+        samples = self.log_posterior1.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 22))
 
-        # Set up inverse problem
-        model = ModelLibrary().tumour_growth_inhibition_model_koch()
-        error_model = chi.GaussianErrorModel()
-        cls.log_likelihood = chi.LogLikelihood(
-            model, error_model, values, times)
-        cls.mask = [True, False, False, True, False, True]
-        cls.values = [11, 12, 13]
-        cls.reduced_log_pdf = chi.ReducedLogPDF(
-            cls.log_likelihood, cls.mask, cls.values)
-
-    def test_bad_input(self):
-        # Wrong log-pdf
-        log_pdf = 'Bad type'
-
-        with self.assertRaisesRegex(ValueError, 'The log-pdf has to'):
-            chi.ReducedLogPDF(log_pdf, self.mask, self.values)
-
-        # Mask is not as long as the number of parameyers
-        mask = [True, True]
-
-        with self.assertRaisesRegex(ValueError, 'Length of mask has to'):
-            chi.ReducedLogPDF(self.log_likelihood, mask, self.values)
-
-        # Mask is not boolean
-        mask = ['yes', 'no', 'yes', 'yes', 'yes', 'yes']
-
-        with self.assertRaisesRegex(ValueError, 'Mask has to be a'):
-            chi.ReducedLogPDF(self.log_likelihood, mask, self.values)
-
-        # There are not as many input values as fixed parameters
-        values = [1]
-
-        with self.assertRaisesRegex(ValueError, 'There have to be'):
-            chi.ReducedLogPDF(self.log_likelihood, self.mask, values)
-
-    def test_call(self):
-        parameters = np.array([11, 1, 1, 12, 1, 13])
-        reduced_params = parameters[~np.array(self.mask)]
-
-        self.assertEqual(
-            self.reduced_log_pdf(reduced_params),
-            self.log_likelihood(parameters))
-
-    def test_n_parameters(self):
-        before = self.log_likelihood.n_parameters()
-        n_fixed = np.sum(self.mask)
-
-        self.assertEqual(
-            self.reduced_log_pdf.n_parameters(), before - n_fixed)
+        seed = 3
+        samples = self.log_posterior1.sample_initial_parameters(seed=seed)
+        self.assertEqual(samples.shape, (1, 22))
+        print(samples)
 
 
 if __name__ == '__main__':

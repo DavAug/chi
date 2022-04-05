@@ -18,7 +18,6 @@ Functional classes
 - :class:`LogLikelihood`
 - :class:`LogPosterior`
 - :class:`PopulationFilterLogPosterior`
-- :class:`ReducedLogPDF`
 
 Detailed API
 ^^^^^^^^^^^^
@@ -39,6 +38,3 @@ Detailed API
 .. autoclass:: PopulationFilterLogPosterior
     :members:
     :inherited-members:
-
-.. autoclass:: ReducedLogPDF
-    :members:

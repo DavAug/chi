@@ -24,8 +24,7 @@ from ._log_pdfs import (  # noqa
     HierarchicalLogPosterior,
     LogLikelihood,
     LogPosterior,
-    PopulationFilterLogPosterior,
-    ReducedLogPDF
+    PopulationFilterLogPosterior
 )
 
 from ._mechanistic_models import (  # noqa
