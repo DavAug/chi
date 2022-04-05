@@ -67,7 +67,6 @@ Summary of all functions and classes in chi
     chi.PredictiveModel
     chi.PriorPredictiveModel
     chi.ProblemModellingController
-    chi.ReducedLogPDF
     chi.ReducedMechanisticModel
     chi.ReducedPopulationModel
     chi.SamplingController
