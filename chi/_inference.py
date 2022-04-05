@@ -492,7 +492,11 @@ class InferenceController(object):
         # (Pooled and heterogen. dimensions do not count as bottom parameters)
         dims = []
         current_dim = 0
-        for pop_model in population_model.get_population_models():
+        try:
+            pop_models = population_model.get_population_models()
+        except AttributeError:
+            pop_models = [population_model]
+        for pop_model in pop_models:
             n_dim = pop_model.n_dim()
             if isinstance(
                     pop_model, (chi.PooledModel, chi.HeterogeneousModel)):
