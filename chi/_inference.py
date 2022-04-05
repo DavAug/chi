@@ -748,8 +748,8 @@ class SamplingController(InferenceController):
         ids = self._log_posterior.get_id(unique=True)
         n_bottom = self._log_posterior.n_parameters()
         if isinstance(self._log_posterior, chi.HierarchicalLogPosterior):
-            n_bottom -= self._log_posterior.get_log_likelihood(
-                ).get_population_model().n_parameters()
+            n_bottom -= \
+                self._log_posterior.get_population_model().n_parameters()
         chains = self._format_chains(
             chains, names, ids, n_bottom, divergent_iters)
 
