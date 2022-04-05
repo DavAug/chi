@@ -2091,6 +2091,71 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             n_samples=n_samples
         )
 
+        # Test case V: all pooled
+        population_model = chi.PooledModel(n_dim=2)
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1)
+        )
+        sigma = 1
+        error_on_log_scale = False
+        cls.log_posterior5 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
+        # Test case VI: all heterogen.
+        population_model = chi.HeterogeneousModel(n_dim=2)
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.1, 0.1)
+        )
+        sigma = 1
+        error_on_log_scale = False
+        cls.log_posterior6 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
+        # Test case VII: mix
+        population_model = chi.ComposedPopulationModel([
+            chi.HeterogeneousModel(),
+            chi.PooledModel()])
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+        )
+        sigma = 1
+        error_on_log_scale = False
+        cls.log_posterior7 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
     def test_bad_instantiation(self):
         observations = np.array([
             [[1, 2, np.nan, 5]],
@@ -2262,6 +2327,24 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         # Test case IV.3: finite score for valid parameters
         parameters = np.linspace(0.1, 1, num=23)
         score = self.log_posterior4(parameters)
+        self.assertFalse(np.isinf(score))
+
+        # Test case V: Fully pooled never works with Gaussian population filter
+        parameters = np.ones(14)
+        score = self.log_posterior5(parameters)
+        self.assertTrue(np.isinf(score))
+
+        # Test case VI: All heterogen.
+        parameters = np.ones(18)
+        parameters[2:4] = 2
+        parameters[4:6] = 3
+        score = self.log_posterior6(parameters)
+        self.assertFalse(np.isinf(score))
+
+        # Test case VII: mixed.
+        parameters = np.ones(16)
+        parameters[:3] = np.arange(3, 6)
+        score = self.log_posterior7(parameters)
         self.assertFalse(np.isinf(score))
 
     def test_sensitivities(self):
@@ -2511,6 +2594,106 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertAlmostEqual(sens[21], ref_sens[21], places=4)
         self.assertAlmostEqual(sens[22], ref_sens[22], places=4)
 
+        # Test case V: Fully pooled never works with Gaussian population filter
+        parameters = np.ones(14)
+        score, sens = self.log_posterior5.evaluateS1(parameters)
+
+        self.assertTrue(np.isinf(score))
+        self.assertEqual(len(sens), 14)
+
+        # Test case VI: All heterogen.
+        parameters = np.ones(18)
+        parameters[2:4] = 2
+        parameters[4:6] = 3
+        epsilon = 0.00001
+        ref_sens = []
+        ref_score = self.log_posterior6(parameters)
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.log_posterior6(low),
+                    ref_score,
+                    self.log_posterior6(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.log_posterior6.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertEqual(len(sens), 18)
+        self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
+        self.assertAlmostEqual(sens[1], ref_sens[1], places=4)
+        self.assertAlmostEqual(sens[2], ref_sens[2], places=4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], places=4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], places=4)
+        self.assertAlmostEqual(sens[5], ref_sens[5], places=4)
+        self.assertAlmostEqual(sens[6], ref_sens[6], places=4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], places=4)
+        self.assertAlmostEqual(sens[8], ref_sens[8], places=4)
+        self.assertAlmostEqual(sens[9], ref_sens[9], places=4)
+        self.assertAlmostEqual(sens[10], ref_sens[10], places=4)
+        self.assertAlmostEqual(sens[11], ref_sens[11], places=4)
+        self.assertAlmostEqual(sens[12], ref_sens[12], places=4)
+        self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
+        self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
+        self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+        self.assertAlmostEqual(sens[16], ref_sens[16], places=4)
+        self.assertAlmostEqual(sens[17], ref_sens[17], places=4)
+
+        # Test case VII: mixed
+        parameters = np.ones(16)
+        parameters[:3] = np.arange(3, 6)
+        epsilon = 0.00001
+        ref_sens = []
+        ref_score = self.log_posterior7(parameters)
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.log_posterior7(low),
+                    ref_score,
+                    self.log_posterior7(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.log_posterior7.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertEqual(len(sens), 16)
+        self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
+        self.assertAlmostEqual(sens[1], ref_sens[1], places=4)
+        self.assertAlmostEqual(sens[2], ref_sens[2], places=4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], places=4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], places=4)
+        self.assertAlmostEqual(sens[5], ref_sens[5], places=4)
+        self.assertAlmostEqual(sens[6], ref_sens[6], places=4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], places=4)
+        self.assertAlmostEqual(sens[8], ref_sens[8], places=4)
+        self.assertAlmostEqual(sens[9], ref_sens[9], places=4)
+        self.assertAlmostEqual(sens[10], ref_sens[10], places=4)
+        self.assertAlmostEqual(sens[11], ref_sens[11], places=4)
+        self.assertAlmostEqual(sens[12], ref_sens[12], places=4)
+        self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
+        self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
+        self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+
     def test_get_log_likelihood(self):
         self.assertIsInstance(
             self.log_posterior1.get_log_likelihood(), chi.PopulationFilter)
@@ -2749,7 +2932,6 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         seed = 3
         samples = self.log_posterior1.sample_initial_parameters(seed=seed)
         self.assertEqual(samples.shape, (1, 22))
-        print(samples)
 
 
 if __name__ == '__main__':

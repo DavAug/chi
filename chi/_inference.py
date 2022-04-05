@@ -438,79 +438,8 @@ class InferenceController(object):
         self._seed = seed
 
         # Sample initial parameters from log-prior
-        self._initial_params = self._sample_initial_parameters()
-
-    def _sample_initial_parameters(self):
-        """
-        Sample initial parameter values for inference runs from prior.
-
-        If the underlying model has a hierarchical structure, the population
-        model parameters are randomly sampled from the prior, and the
-        individual parameters from the resulting population models. This avoids
-        numerical instabilities from starting off with very bad initial
-        parameters.
-        """
-        n_parameters = self._log_posterior.n_parameters()
-        initial_params = np.empty(shape=(self._n_runs, n_parameters))
-
-        # Sample initial values for top-level parameters
-        np.random.seed(self._seed)
-        log_prior = self._log_posterior.get_log_prior()
-        n_top = log_prior.n_parameters()
-        n_bottom = n_parameters - n_top
-        initial_params[:, n_bottom:] = log_prior.sample(self._n_runs)
-
-        # Sample bottom-level parameters
-        initial_params = self._sample_population(initial_params, n_bottom)
-
-        return initial_params
-
-    def _sample_population(self, initial_params, n_bottom):
-        """
-        Samples population for initial population model parameters.
-        """
-        if n_bottom == 0:
-            return initial_params
-
-        # Get number of likelihoods and population models
-        population_model = \
-            self._log_posterior.get_population_model()
-
-        # Sample individual parameters
-        n_ids = self._log_posterior.n_ids()
-        bottom_parameters = []
-        for run_id in range(self._n_runs):
-            # Translate seed, so random samples are not correlated
-            seed = self._seed
-            if seed is not None:
-                seed += 1
-            bottom_parameters.append(population_model.sample(
-                parameters=initial_params[run_id, n_bottom:],
-                n_samples=n_ids, seed=seed))
-
-        # Remove pooled dimensions
-        # (Pooled and heterogen. dimensions do not count as bottom parameters)
-        dims = []
-        current_dim = 0
-        try:
-            pop_models = population_model.get_population_models()
-        except AttributeError:
-            pop_models = [population_model]
-        for pop_model in pop_models:
-            n_dim = pop_model.n_dim()
-            if isinstance(
-                    pop_model, (chi.PooledModel, chi.HeterogeneousModel)):
-                current_dim += n_dim
-                continue
-            end_dim = current_dim + n_dim
-            dims += list(range(current_dim, end_dim))
-            current_dim = end_dim
-        for idx, bottom_params in enumerate(bottom_parameters):
-            bottom_parameters[idx] = bottom_params[:, dims].flatten()
-
-        initial_params[:, :n_bottom] = np.vstack(bottom_parameters)
-
-        return initial_params
+        self._initial_params = self._log_posterior.sample_initial_parameters(
+            n_samples=self._n_runs, seed=self._seed)
 
     def set_n_runs(self, n_runs):
         """
@@ -521,7 +450,8 @@ class InferenceController(object):
         self._n_runs = int(n_runs)
 
         # Sample initial parameters from log-prior
-        self._initial_params = self._sample_initial_parameters()
+        self._initial_params = self._log_posterior.sample_initial_parameters(
+            n_samples=self._n_runs, seed=self._seed)
 
     def set_parallel_evaluation(self, run_in_parallel):
         """

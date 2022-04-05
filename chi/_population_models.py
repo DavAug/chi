@@ -34,6 +34,7 @@ class PopulationModel(object):
                 'The dimension of the population model has to be greater or '
                 'equal to 1.')
         self._n_dim = int(n_dim)
+        self._n_hierarchical_dim = self._n_dim
         self._transforms_psi = False
         self._needs_covariates = False
 
@@ -127,6 +128,16 @@ class PopulationModel(object):
         Returns the dimensionality of the population model.
         """
         return self._n_dim
+
+    def n_hierarchical_dim(self):
+        """
+        Returns the number of parameter dimensions whose samples are not
+        deterministically defined by the population parameters.
+
+        I.e. the number of dimensions minus the number of pooled and
+        heterogeneously modelled dimensions.
+        """
+        return self._n_hierarchical_dim
 
     def needs_covariates(self):
         """
@@ -303,6 +314,7 @@ class ComposedPopulationModel(PopulationModel):
         n_parameters = 0
         n_covariates = 0
         transforms_psi = []
+        n_hierarchical_dim = 0
         needs_covariates = False
         for idp, pop_model in enumerate(self._population_models):
             needs_cov = pop_model.needs_covariates()
@@ -313,9 +325,11 @@ class ComposedPopulationModel(PopulationModel):
             if needs_cov:
                 n_covariates += pop_model.n_covariates()
             n_dim += pop_model.n_dim()
+            n_hierarchical_dim += pop_model.n_hierarchical_dim()
             n_parameters += pop_model.n_parameters()
 
         self._n_dim = n_dim
+        self._n_hierarchical_dim = n_hierarchical_dim
         self._n_parameters = n_parameters
         self._n_covariates = n_covariates
         self._transforms_psi = True if len(transforms_psi) > 0 else False
@@ -873,6 +887,7 @@ class CovariatePopulationModel(PopulationModel):
         self._needs_covariates = \
             True if self._covariate_model.n_covariates() > 0 else False
         self._n_dim = self._population_model.n_dim()
+        self._n_hierarchical_dim = self._population_model.n_hierarchical_dim()
         if (not dim_names) or (len(dim_names) != 1):
             dim_names = self._population_model.get_dim_names()
         self._dim_names = dim_names
@@ -1545,6 +1560,7 @@ class HeterogeneousModel(PopulationModel):
     def __init__(self, n_dim=1, dim_names=None, n_ids=1):
         super(HeterogeneousModel, self).__init__(n_dim, dim_names)
         self._n_ids = 0  # This is a temporary dummy value
+        self._n_hierarchical_dim = 0
         self.set_n_ids(n_ids)
 
     def compute_log_likelihood(self, parameters, observations):
@@ -2183,6 +2199,9 @@ class PooledModel(PopulationModel):
         # Set number of parameters
         self._n_parameters = self._n_dim
 
+        # Set number of hierarchical dimensions
+        self._n_hierarchical_dim = 0
+
         # Set default parameter names
         self._parameter_names = ['Pooled'] * self._n_dim
 
@@ -2407,6 +2426,8 @@ class ReducedPopulationModel(PopulationModel):
         self._fixed_params_mask = None
         self._fixed_params_values = None
         self._n_parameters = population_model.n_parameters()
+        self._n_dim = population_model.n_dim()
+        self._n_hierarchical_dim = population_model.n_hierarchical_dim()
 
     def compute_individual_parameters(
             self, parameters, eta, covariates=None):

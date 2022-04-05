@@ -163,6 +163,19 @@ class GaussianPopulationFilter(PopulationFilter):
     def __init__(self, observations):
         super().__init__(observations)
 
+    def _compute_log_likelihood(self, mu, var):
+        """
+        Returns the log-likelihood.
+
+        mu of shape (1, n_observables, n_times)
+        var of shape (1, n_observables, n_times)
+        """
+        score = -np.sum(
+            np.log(2*np.pi) + np.log(var)
+            + (self._observations - mu)**2 / var) / 2
+
+        return score
+
     def compute_log_likelihood(self, simulated_obs):
         """
         Returns the log-likelihood of the simulated observations with respect
@@ -176,9 +189,9 @@ class GaussianPopulationFilter(PopulationFilter):
         mu = np.mean(simulated_obs, axis=0)[np.newaxis, ...]
         var = np.var(simulated_obs, ddof=1, axis=0)[np.newaxis, ...]
 
-        score = -np.sum(
-            np.log(2*np.pi) + np.log(var)
-            + (self._observations - mu)**2 / var) / 2
+        score = self._compute_log_likelihood(mu, var)
+        if np.ma.is_masked(score):
+            return -np.inf
 
         return score
 
@@ -197,9 +210,9 @@ class GaussianPopulationFilter(PopulationFilter):
         mu = np.mean(simulated_obs, axis=0)[np.newaxis, ...]
         var = np.var(simulated_obs, ddof=1, axis=0)[np.newaxis, ...]
 
-        score = -np.sum(
-            np.log(2*np.pi) + np.log(var)
-            + (self._observations - mu)**2 / var) / 2
+        score = self._compute_log_likelihood(mu, var)
+        if np.ma.is_masked(score):
+            return -np.inf, np.empty(simulated_obs.shape)
 
         # Compute sensitivities
         # dscore/dsim = dscore/dmu dmu/dsim + dscore/dvar dvar/dsim

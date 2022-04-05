@@ -1536,25 +1536,26 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
 
     where the data :math:`\mathcal{D} = \{ (Y_j , t_j)\}` are measurements
-    across individuals :math:`Y_j = \{ y_{ij} \}` at time points :math:`t_j`.
-    The first term in the expression above is the population filter
+    over time with :math:`Y_j = \{ y_{ij} \}` denoting the measurements at time
+    point :math:`t_j` across individuals.
+    Here, we use :math:`i` to index individuals from the dataset.
+    The first term of the log-posterior is the population filter
     contribution which estimates the log-likelihood that the simulated
     measurements, :math:`\tilde{Y}_j = \{ \tilde{y}_{sj}\}`, come from the same
     distribution as the measurements, :math:`Y_j`.
     The quality of the log-likelihood estimate is subject to the
     appropriateness of the population filter [ref]. We use :math:`s` to index
-    simulated individuals and :math:`i` to index individuals from the dataset.
+    simulated individuals.
     The second term of the log-posterior is the
     log-likelihood of the simulated parameters
     :math:`\tilde{\Psi} = \{ \tilde{\psi} _s\}`
     with respect to the simulated measurements. Each simulated parameter
     corresponds to a simulated individual.
-    Th log-likelihood of the simulated parameters of an individual is defined
+    The log-likelihood of a set of simulated parameters is defined
     by the mechanistic model and the error model, as well as the simulated
     measurements for that individual.
-    The third term is the contribution from the
-    log-likelihood of the population parameters
-    :math:`\theta = \{ \theta _k \}` to govern the distribution of the
+    The third term is the log-likelihood that the population parameters
+    :math:`\theta = \{ \theta _k \}` govern the distribution of the
     individual parameters. The final contribution is from the log-prior
     of the population parameters.
 
@@ -1581,7 +1582,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
     :type log_prior: pints.LogPrior
     :param sigma: Standard deviation of the Gaussian error model. If ``None``
         the parameter is inferred from the data.
-    :type sigma: List[float] of length ``(n_observables)``, optional
+    :type sigma: List[float] of length ``n_observables``, optional
     :param error_on_log_scale: A boolean flag indicating whether the error
         model models the residuals of the mechanistic model directly or on
         a log scale.
@@ -1639,7 +1640,16 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                 'Population models that transform the individual parameters '
                 'are currently not supported. This feature will be added in a '
                 'future release.')
-        self._population_model = population_model
+        self._population_model = copy.deepcopy(population_model)
+
+        n_samples = int(n_samples)
+        if n_samples <= 0:
+            raise ValueError(
+                'The number of samples of the population filter has to be '
+                'greater than zero.')
+        self._n_samples = n_samples
+
+        self._population_model.set_n_ids(self._n_samples)
         self._n_hdim = self._population_model.n_hierarchical_dim()
         self._n_top = self._population_model.n_parameters()
         self._population_model.set_dim_names(mechanistic_model.parameters())
@@ -1682,13 +1692,6 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                 'number of population parameters. The population parameters '
                 'are <' + str(names) + '>.')
         self._log_prior = log_prior
-
-        n_samples = int(n_samples)
-        if n_samples <= 0:
-            raise ValueError(
-                'The number of samples of the population filter has to be '
-                'greater than zero.')
-        self._n_samples = n_samples
 
         self._error_on_log_scale = bool(error_on_log_scale)
         self._top_names = names
@@ -1838,14 +1841,13 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             return sensitivities
 
         # Get population parameter sensitvitities
-        sens = np.empty(shape=self._n_parameters)
+        sens = np.zeros(shape=self._n_parameters)
         sens[:self._n_top] = sensitivities[:self._n_top]
 
         # Check for quick solution 2: all parameters heterogen.
         if self._n_heterogen_dim == n_dim:
             # Add contributions from bottom-level parameters
-            # (Population sens. are actually zero, so we can just replace them)
-            sens = sensitivities[self._n_top:]
+            sens += sensitivities[self._n_top:]
             return sens
 
         # Get epsilon parameter sensitvitities
@@ -1856,8 +1858,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         if self._n_pooled_dim == n_dim:
             # Add contributions from bottom-level parameters
             # (Population sens. are actually zero, so we can just replace them)
-            sens[:self._n_top] = np.sum(
-                sensitivities[self._n_top:self._end_bottom].reshape(
+            sens[:self._n_top] += np.sum(
+                sensitivities[self._n_top:end_bottom].reshape(
                     self._n_samples, n_dim),
                 axis=0)
             return sens
@@ -1874,10 +1876,10 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                 bottom_sensitivities[:, current_dim:start_dim]
             # Fill special dims
             if is_pooled:
-                sens[start_top:end_top] = \
+                sens[start_top:end_top] += \
                     np.sum(bottom_sensitivities[:, start_dim:end_dim], axis=0)
             else:
-                sens[start_top:end_top] = \
+                sens[start_top:end_top] += \
                     bottom_sensitivities[:, start_dim:end_dim].flatten()
             current_dim = end_dim
             shift += end_dim - start_dim
@@ -1958,10 +1960,9 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             # Sigma is not fixed
             sigma = parameters[n_pop:self._n_top].reshape(
                 1, self._n_observables, 1)
-        end_bottom = self._n_top + self._n_samples * self._n_hdim
-        bottom_parameters = parameters[self._n_top:end_bottom].reshape(
+        bottom_parameters = parameters[self._n_top:self._end_bottom].reshape(
             self._n_samples, self._n_hdim)
-        epsilon = parameters[end_bottom:].reshape(
+        epsilon = parameters[self._end_bottom:].reshape(
             self._n_samples, self._n_observables, self._n_times)
 
         # Initialise sensitivities as if all dimensions were hierarchical
@@ -2197,7 +2198,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         if n_samples <= 0:
             raise ValueError('The number of samples has to be at least 1.')
 
-        initial_params = np.zeros(shape=(n_samples, self._n_parameters))
+        initial_params = np.empty(shape=(n_samples, self._n_parameters))
 
         # Sample initial values for top-level parameters
         np.random.seed(seed)
@@ -2211,9 +2212,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
         # Sample bottom-level parameters
         bottom_parameters = []
-        population_model = self._log_likelihood.get_population_model()
         for sample_id in range(n_samples):
-            bottom_parameters.append(population_model.sample(
+            bottom_parameters.append(self._population_model.sample(
                 parameters=initial_params[sample_id, :self._n_top],
                 n_samples=self._n_samples, seed=rng))
 
@@ -2222,9 +2222,9 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         dims = []
         current_dim = 0
         try:
-            pop_models = population_model.get_population_models()
+            pop_models = self._population_model.get_population_models()
         except AttributeError:
-            pop_models = [population_model]
+            pop_models = [self._population_model]
         for pop_model in pop_models:
             n_dim = pop_model.n_dim()
             if pop_model.n_hierarchical_dim == 0:
@@ -2241,6 +2241,6 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
         # Sample epsilons
         initial_params[:, self._end_bottom:] = rng.normal(
-            loc=0, scale=1, size=n_samples)
+            loc=0, scale=1, size=(n_samples, self._n_samples * self._n_times))
 
         return initial_params
