@@ -683,6 +683,12 @@ class HierarchicalLogPosterior(pints.LogPDF):
         """
         return self._log_prior
 
+    def get_population_model(self):
+        """
+        Returns the population model.
+        """
+        return self._log_likelihood.get_population_model()
+
     def get_id(self, unique=False):
         """
         Returns the ids of the log-posterior's parameters. If the ID is
@@ -712,6 +718,12 @@ class HierarchicalLogPosterior(pints.LogPDF):
             exclude_bottom_level, include_ids)
 
         return names
+
+    def n_ids(self):
+        """
+        Returns the number of modelled individuals.
+        """
+        return self._log_likelihood.n_log_likelihoods()
 
     def n_parameters(self, exclude_bottom_level=False):
         """
@@ -1427,8 +1439,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
     Population filter log-posteriors can be used to approximate hierarchical
     log-posteriors when exact hierarchical inference becomes numerically
-    intractable. The canonical use case for population filter inference is the
-    inference from time series snapshot data.
+    intractable. The canonical application of population filter inference is
+    the inference from time series snapshot data.
 
     The population filter log-posterior is defined by a population filter,
     a mechanistic model, an error model, a population model and the data
@@ -1438,19 +1450,27 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             \sum _{ij} \log p (y_{ij} | \tilde{Y}_j) +
             \sum _{sj} \log p (\tilde{y}_{sj} | \tilde{\psi}_s, t_j) +
             \sum _{sk} \log p (\tilde{\psi}_{sk} | \theta _k)& \\
-            &+ \sum _{k} \log p (\theta _k) + \mathrm{constant}.&
+            &+ \sum _{k} \log p (\theta _k) + \mathrm{constant},&
 
-    The first term is the population filter contribution which estimates the
-    log-likelihood of simulated measurements,
-    :math:`\tilde{Y}_j = \{ \tilde{y}_{sj}\}`, at the time points
-    :math:`t_j` to come from the same distribution as the observations,
-    :math:`Y_j = \{ y_{ij}\}`. Here, :math:`s` indexes a simulated individual
-    and :math:`i` indexes an individual from the dataset.
-    The second term is the contribution from the
-    log-likelihood of the simulated individual parameters
-    :math:`\tilde{\Psi} = \{ \tilde{\psi} _s\}` for the simulated
-    measurements. This log-likelihood is defined by the mechanistic
-    model and the error model. The third term is the contribution from the
+
+    where the data :math:`\mathcal{D} = \{ (Y_j , t_j)\}` are measurements
+    across individuals :math:`Y_j = \{ y_{ij} \}` at time points :math:`t_j`.
+    The first term in the expression above is the population filter
+    contribution which estimates the log-likelihood that the simulated
+    measurements, :math:`\tilde{Y}_j = \{ \tilde{y}_{sj}\}`, come from the same
+    distribution as the measurements, :math:`Y_j`.
+    The quality of the log-likelihood estimate is subject to the
+    appropriateness of the population filter [ref]. We use :math:`s` to index
+    simulated individuals and :math:`i` to index individuals from the dataset.
+    The second term of the log-posterior is the
+    log-likelihood of the simulated parameters
+    :math:`\tilde{\Psi} = \{ \tilde{\psi} _s\}`
+    with respect to the simulated measurements. Each simulated parameter
+    corresponds to a simulated individual.
+    Th log-likelihood of the simulated parameters of an individual is defined
+    by the mechanistic model and the error model, as well as the simulated
+    measurements for that individual.
+    The third term is the contribution from the
     log-likelihood of the population parameters
     :math:`\theta = \{ \theta _k \}` to govern the distribution of the
     individual parameters. The final contribution is from the log-prior
@@ -1855,6 +1875,12 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
         return names
 
+    def get_population_model(self):
+        """
+        Returns the population model.
+        """
+        return self._population_model
+
     def n_parameters(self, exclude_bottom_level=False):
         """
         Returns the number of parameters.
@@ -1871,6 +1897,12 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         n_bottom = self._mechanistic_model.n_parameters()
 
         return n_parameters + self._n_samples * (n_bottom + self._n_times)
+
+    def n_ids(self):
+        """
+        Returns the number of modelled individuals.
+        """
+        return self._n_samples
 
 
 class ReducedLogPDF(pints.LogPDF):

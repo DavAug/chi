@@ -112,13 +112,6 @@ class ToyExponentialModel(chi.MechanisticModel):
 
         return y[np.newaxis, :], sensitivities
 
-    def supports_dosing(self):
-        """
-        Returns a boolean whether dose administration with
-        :meth:`PKPDModel.set_dosing_regimen` is supported by the model.
-        """
-        return False
-
 
 class TestHierarchicalLogLikelihood(unittest.TestCase):
     """

@@ -474,10 +474,10 @@ class InferenceController(object):
 
         # Get number of likelihoods and population models
         population_model = \
-            self._log_posterior.get_log_likelihood().get_population_model()
+            self._log_posterior.get_population_model()
 
         # Sample individual parameters
-        n_ids = self._log_posterior.get_log_likelihood().n_log_likelihoods()
+        n_ids = self._log_posterior.n_ids()
         bottom_parameters = []
         for run_id in range(self._n_runs):
             # Translate seed, so random samples are not correlated
