@@ -1483,7 +1483,7 @@ class LogPosterior(pints.LogPDF):
         """
         return self._log_likelihood.get_id()
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, *args, **kwargs):
         """
         Returns the names of the model parameters. By default the parameters
         are enumerated and assigned with the names 'Param #'.
@@ -2089,7 +2089,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         :type unique: bool, optional
         """
         if unique:
-            return [None] + [
+            return [
                 'Sim. %d' % (_id + 1) for _id in range(self._n_samples)]
 
         ids = [None] * self._n_top

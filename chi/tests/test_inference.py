@@ -921,14 +921,9 @@ class TestSamplingController(unittest.TestCase):
         result = sampler.run(n_iterations=20)
 
         dimensions = list(result.dims)
-        self.assertEqual(len(dimensions), 3)
+        self.assertEqual(len(dimensions), 2)
         self.assertEqual(dimensions[0], 'chain')
         self.assertEqual(dimensions[1], 'draw')
-        self.assertEqual(dimensions[2], 'individual')
-
-        ids = result.individual
-        self.assertEqual(len(ids), 1)
-        self.assertEqual(ids[0], '40')
 
         parameters = sorted(list(result.data_vars.keys()))
         self.assertEqual(len(parameters), 7)
