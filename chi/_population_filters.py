@@ -40,7 +40,7 @@ class PopulationFilter(object):
     into the format ``(n_ids, n_observables, n_times)``. The missing values
     will be filtered internally.
 
-    :param observations: Snapshot measurements.
+    :param observations: Measurements.
     :type observations: np.ndarray of shape
         ``(n_ids, n_observables, n_times)``
     """
@@ -64,7 +64,7 @@ class PopulationFilter(object):
         Returns the log-likelihood of the simulated observations with respect
         to the data and filter.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: float
@@ -77,7 +77,7 @@ class PopulationFilter(object):
         to the data and filter, and the sensitivities of the log-likelihood
         with respect to the simulated observations.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: Tuple[float, np.ndarray] where the array has shape
@@ -120,7 +120,7 @@ class GaussianFilter(PopulationFilter):
     Implements a Gaussian population filter.
 
     A Gaussian population filter approximates the distribution of
-    snapshot measurements at time point :math:`t_j` by a Gaussian distribution
+    measurements at time point :math:`t_j` by a Gaussian distribution
     whose mean and variance are estimated from simulated
     measurements
 
@@ -156,7 +156,7 @@ class GaussianFilter(PopulationFilter):
 
     Extends :class:`PopulationFilter`
 
-    :param observations: Snapshot measurements.
+    :param observations: Measurements.
     :type observations: np.ndarray of shape
         ``(n_ids, n_observables, n_times)``
     """
@@ -181,7 +181,7 @@ class GaussianFilter(PopulationFilter):
         Returns the log-likelihood of the simulated observations with respect
         to the data and filter.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: float
@@ -201,7 +201,7 @@ class GaussianFilter(PopulationFilter):
         to the data and filter, and the sensitivities of the log-likelihood
         with respect to the simulated observations.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: Tuple[float, np.ndarray] where the array has shape
@@ -231,12 +231,12 @@ class GaussianKDEFilter(PopulationFilter):
     Implements a Gaussian kernel density estimation population filter.
 
     A Gaussian KDE population filter approximates the distribution of
-    snapshot measurements at time point :math:`t_j` by a Gaussian KDE
+    measurements at time point :math:`t_j` by a Gaussian KDE
     approximation of the simulated measurements. The Gaussian KDE approximation
     is defined by the average over Gaussian probability densities whose means
     are equal to the simulated measurements and the standard deviation (or
     bandwidth) is a hyperparameter. By default the bandwidth is chosen by
-    the an adapted rule of thumb.
+    an adapted rule of thumb.
 
     The log-likelihood of the simulated measurements with respect to the
     measurements and the filter is defined as
@@ -255,7 +255,7 @@ class GaussianKDEFilter(PopulationFilter):
     appropriate bandwidth for each time point :math:`t_j`
 
     .. math::
-        \sigma ^2_j =
+        \sigma _j =
             \left( \frac{4}{3n_s}\right) ^ {1/5}
             \sqrt{\frac{1}{n_j - 1}\sum _i (y_{ij} - \mu _j)^2},
 
@@ -274,12 +274,12 @@ class GaussianKDEFilter(PopulationFilter):
             \mathcal{N} (y_{ijr} | \tilde{y}_{sjr}, \sigma ^2_{jr}) \right),
 
     where :math:`r` indexes observables and
-    :math:`\sigma^2 _{jr}` is the bandwidth for observable :math:`r` at time
+    :math:`\sigma _{jr}` is the bandwidth for observable :math:`r` at time
     point :math:`t_j`.
 
     Extends :class:`PopulationFilter`
 
-    :param observations: Snapshot measurements.
+    :param observations: Measurements.
     :type observations: np.ndarray of shape
         ``(n_ids, n_observables, n_times)``
     :param bandwidth: Bandwidths of the Gaussian kernels for the different time
@@ -325,7 +325,7 @@ class GaussianKDEFilter(PopulationFilter):
         Returns the log-likelihood of the simulated observations with respect
         to the data and filter.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: float
@@ -351,7 +351,7 @@ class GaussianKDEFilter(PopulationFilter):
         to the data and filter, and the sensitivities of the log-likelihood
         with respect to the simulated observations.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: Tuple[float, np.ndarray] where the array has shape
@@ -388,7 +388,7 @@ class LogNormalFilter(PopulationFilter):
     Implements a lognormal population filter.
 
     A lognormal population filter approximates the distribution of
-    snapshot measurements at time point :math:`t_j` by a lognormal distribution
+    measurements at time point :math:`t_j` by a lognormal distribution
     whose location and scale are estimated from simulated
     measurements
 
@@ -425,7 +425,7 @@ class LogNormalFilter(PopulationFilter):
 
     Extends :class:`PopulationFilter`
 
-    :param observations: Snapshot measurements.
+    :param observations: Measurements.
     :type observations: np.ndarray of shape
         ``(n_ids, n_observables, n_times)``
     """
@@ -433,7 +433,7 @@ class LogNormalFilter(PopulationFilter):
         super().__init__(observations)
 
         # Log-transform the observations for later convenience
-        self._log_observations = np.log(self._observations)
+        self._observations = np.log(self._observations)
 
     def _compute_log_likelihood(self, mu, var):
         """
@@ -443,8 +443,8 @@ class LogNormalFilter(PopulationFilter):
         var of shape (1, n_observables, n_times)
         """
         score = -np.sum(
-            np.log(2*np.pi) + np.log(var) + self._log_observations
-            + (self._log_observations - mu)**2 / var) / 2
+            np.log(2*np.pi) + np.log(var) + self._observations
+            + (self._observations - mu)**2 / var) / 2
 
         return score
 
@@ -453,7 +453,7 @@ class LogNormalFilter(PopulationFilter):
         Returns the log-likelihood of the simulated observations with respect
         to the data and filter.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: float
@@ -474,7 +474,7 @@ class LogNormalFilter(PopulationFilter):
         to the data and filter, and the sensitivities of the log-likelihood
         with respect to the simulated observations.
 
-        :param simulated_obs: Simulated snapshot observations.
+        :param simulated_obs: Simulated measurements.
         :type simulated_obs: np.ndarray of shape
             (n_sim, n_observables, n_times)
         :rtype: Tuple[float, np.ndarray] where the array has shape
@@ -493,12 +493,172 @@ class LogNormalFilter(PopulationFilter):
         # dscore/dsim = dscore/dmu dmu/dsim + dscore/dvar dvar/dsim
         n_sim = len(simulated_obs)
         dscore_dsim = (
-            np.sum((self._log_observations - mu) / var, axis=0) / n_sim
+            np.sum((self._observations - mu) / var, axis=0) / n_sim
             + np.sum(
-                (self._log_observations - mu)**2 / var**2 - 1 / var, axis=0
+                (self._observations - mu)**2 / var**2 - 1 / var, axis=0
             ) / (n_sim - 1) * ((log_simulated_obs - mu) - np.mean(
                 log_simulated_obs - mu, axis=0))
         ) / simulated_obs
+
+        return score, dscore_dsim
+
+
+class LogNormalKDEFilter(PopulationFilter):
+    r"""
+    Implements a lognormal kernel density estimation population filter.
+
+    A lognormal KDE population filter approximates the distribution of
+    measurements at time point :math:`t_j` by a lognormal KDE
+    approximation of the simulated measurements. The lognormal KDE
+    approximation is defined by the average over lognormal probability
+    densities whose locations are equal to the simulated measurements and the
+    scale (or bandwidth) is a hyperparameter. By default the bandwidth is
+    chosen by an adapted rule of thumb.
+
+    The log-likelihood of the simulated measurements with respect to the
+    measurements and the filter is defined as
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ij} \log \left( \frac{1}{n_s} \sum _{s=1}^{n_s}
+            \mathrm{LN} (y_{ij} | \tilde{y}_{sj}, \sigma _j) \right).
+
+    Here, we use :math:`i` to index measured individuals from the dataset,
+    :math:`j` to index measurement time points and :math:`s` to index simulated
+    measurements. :math:`n_s` denotes the number of simulated measurements per
+    time point.
+
+    If ``bandwidth = None``, an adapted rule of thumb is used to estimate an
+    appropriate bandwidth for each time point :math:`t_j`
+
+    .. math::
+        \sigma _j =
+            \left( \frac{4}{3n_s}\right) ^ {1/5}
+            \sqrt{\frac{1}{n_j - 1}\sum _i (\log y_{ij} - \mu _j)^2},
+
+    where :math:`\mu _j = \sum _i \log y_{ij} / n_j` is the empirical mean
+    over the log-measurements and :math:`n_j` is the number of measurements at
+    time :math:`t_j`. Note that this deviates from the standard definition of
+    the rule of thumb, where the empirical variance would be estimated from the
+    simulated measurements.
+
+    For multiple measured observables the above expression can be
+    straightforwardly extended to
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ijr} \log \left( \frac{1}{n_s} \sum _{s=1}^{n_s}
+            \mathrm{LN} (y_{ijr} | \tilde{y}_{sjr}, \sigma _{jr}) \right),
+
+    where :math:`r` indexes observables and
+    :math:`\sigma _{jr}` is the bandwidth for observable :math:`r` at time
+    point :math:`t_j`.
+
+    Extends :class:`PopulationFilter`
+
+    :param observations: Measurements.
+    :type observations: np.ndarray of shape
+        ``(n_ids, n_observables, n_times)``
+    :param bandwidth: Bandwidths of the lognormal kernels for the different
+        time points and observables. By default an adapted rule of thumb is
+        used to determine appropriate bandwidths.
+    :type bandwidth: np.ndarray of shape ``(n_observables, n_times)``, optional
+    """
+    def __init__(self, observations, bandwidth=None):
+        super().__init__(observations)
+
+        # Log-transform and reshape for later convenience
+        self._observations = np.log(self._observations)[np.newaxis, ...]
+
+        # Compute unscaled bandwidth from data
+        # (Only used if bandwidth is None)
+        self._unscaled_bandwidth = np.std(
+            self._observations, ddof=1, axis=1, keepdims=True)
+
+        # Set bandwidth
+        self._bandwidth = None
+        if bandwidth is not None:
+            bandwidth = np.asarray(bandwidth)
+            if bandwidth.shape != (self._n_observables, self._n_times):
+                raise ValueError(
+                    'The bandwidth needs to be of shape '
+                    '(n_observables, n_times).')
+            if np.any(bandwidth <= 0):
+                raise ValueError(
+                    'The elements of the bandwidth need to be positive.')
+            self._bandwidth = bandwidth[np.newaxis, np.newaxis, ...]
+
+        if self._bandwidth is None:
+            if np.ma.is_masked(self._unscaled_bandwidth) or np.any(
+                    self._unscaled_bandwidth == 0):
+                raise ValueError(
+                    'The variance of the data is zero for at least one '
+                    'observable and measurement time point, so the rule of '
+                    'thumb cannot be used to estimate bandwidths. Please '
+                    'provide a bandwidth upon instantiation.')
+
+    def compute_log_likelihood(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter.
+
+        :param simulated_obs: Simulated measurements.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: float
+        """
+        n_sim = len(simulated_obs)
+        simulated_obs = np.asarray(simulated_obs)[:, np.newaxis, :, :]
+        bandwidth = self._bandwidth
+        if bandwidth is None:
+            bandwidth = (4 / 3 / n_sim) ** 0.2 * self._unscaled_bandwidth
+
+        score = np.sum(logsumexp(
+            - (np.log(simulated_obs) - self._observations)**2
+            / bandwidth**2 / 2, axis=0
+            ) - np.log(n_sim) - np.log(2 * np.pi) / 2 - np.log(bandwidth))
+        if np.ma.is_masked(score):
+            return -np.inf
+
+        return score
+
+    def compute_sensitivities(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter, and the sensitivities of the log-likelihood
+        with respect to the simulated observations.
+
+        :param simulated_obs: Simulated measurements.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: Tuple[float, np.ndarray] where the array has shape
+            ``(n_sim, n_observables, n_times)``
+        """
+        n_sim = len(simulated_obs)
+        simulated_obs = np.asarray(simulated_obs)[:, np.newaxis, :, :]
+        log_simulated_obs = np.log(simulated_obs)
+        bandwidth = self._bandwidth
+        if bandwidth is None:
+            bandwidth = (4 / 3 / n_sim) ** 0.2 * self._unscaled_bandwidth
+
+        # Compute log-likelihood
+        scores = \
+            - (log_simulated_obs - self._observations)**2 \
+            / bandwidth**2 / 2
+        score = np.sum(
+            logsumexp(scores, axis=0) - np.log(n_sim) - np.log(2 * np.pi) / 2
+            - np.log(bandwidth))
+        if np.ma.is_masked(score) or np.isnan(score):
+            n_sim, _, n_obs, n_times = simulated_obs.shape
+            return -np.inf, np.empty((n_sim, n_obs, n_times))
+
+        # Compute sensitivities
+        # score = log mean exp scores + constant
+        # dscore/dsim = exp(scores) / sum(exp(scores)) * dscores / dsim
+        dscore_dsim = np.sum(
+            softmax(scores, axis=0)
+            * (self._observations - log_simulated_obs) / bandwidth**2 /
+            simulated_obs, axis=1)
 
         return score, dscore_dsim
 

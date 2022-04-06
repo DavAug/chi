@@ -45,7 +45,8 @@ from ._population_filters import (  # noqa
     PopulationFilter,
     GaussianFilter,
     GaussianKDEFilter,
-    LogNormalFilter
+    LogNormalFilter,
+    LogNormalKDEFilter
 )
 
 from ._population_models import (  # noqa
