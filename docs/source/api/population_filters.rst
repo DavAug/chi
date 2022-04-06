@@ -13,6 +13,7 @@ Functional classes
 
 - :class:`GaussianFilter`
 - :class:`GaussianKDEFilter`
+- :class:`LogNormalFilter`
 
 
 Detailed API
@@ -23,6 +24,10 @@ Detailed API
     :inherited-members:
 
 .. autoclass:: GaussianKDEFilter
+    :members:
+    :inherited-members:
+
+.. autoclass:: LogNormalFilter
     :members:
     :inherited-members:
 

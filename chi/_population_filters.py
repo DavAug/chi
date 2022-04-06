@@ -112,7 +112,7 @@ class PopulationFilter(object):
         if len(order) != len(np.unique(order)):
             raise ValueError('Order has to contain n_times unique elements.')
 
-        self._observations = self._observations[:, :, order]
+        self._observations = self._observations[..., order]
 
 
 class GaussianFilter(PopulationFilter):
@@ -128,8 +128,8 @@ class GaussianFilter(PopulationFilter):
         \log p(\mathcal{D} | \tilde{Y}) =
             \sum _{ij} \log \mathcal{N} (y_{ij} | \mu _j, \sigma ^2_j),
 
-    where the mean :math:`\mu _j` and the variance are given by the empirical
-    estimates
+    where the mean :math:`\mu _j` and the variance :math:`\sigma ^2_j` are
+    given by empirical estimates from the simulated measurements
 
     .. math::
         \mu _j = \frac{1}{n_s} \sum _{s=1}^{n_s} \tilde{y}_{sj}
@@ -186,8 +186,8 @@ class GaussianFilter(PopulationFilter):
             (n_sim, n_observables, n_times)
         :rtype: float
         """
-        mu = np.mean(simulated_obs, axis=0)[np.newaxis, ...]
-        var = np.var(simulated_obs, ddof=1, axis=0)[np.newaxis, ...]
+        mu = np.mean(simulated_obs, axis=0, keepdims=True)
+        var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
 
         score = self._compute_log_likelihood(mu, var)
         if np.ma.is_masked(score):
@@ -207,8 +207,8 @@ class GaussianFilter(PopulationFilter):
         :rtype: Tuple[float, np.ndarray] where the array has shape
             ``(n_sim, n_observables, n_times)``
         """
-        mu = np.mean(simulated_obs, axis=0)[np.newaxis, ...]
-        var = np.var(simulated_obs, ddof=1, axis=0)[np.newaxis, ...]
+        mu = np.mean(simulated_obs, axis=0, keepdims=True)
+        var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
 
         score = self._compute_log_likelihood(mu, var)
         if np.ma.is_masked(score):
@@ -379,6 +379,126 @@ class GaussianKDEFilter(PopulationFilter):
         dscore_dsim = np.sum(
             softmax(scores, axis=0)
             * (self._observations - simulated_obs) / bandwidth**2, axis=1)
+
+        return score, dscore_dsim
+
+
+class LogNormalFilter(PopulationFilter):
+    r"""
+    Implements a lognormal population filter.
+
+    A lognormal population filter approximates the distribution of
+    snapshot measurements at time point :math:`t_j` by a lognormal distribution
+    whose location and scale are estimated from simulated
+    measurements
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ij} \log \mathrm{LN} (y_{ij} | \mu _j, \sigma _j),
+
+    where the location :math:`\mu _j` and the location :math:`\sigma _j` are
+    given by empirical estimates of the log-mean and the log-standard deviation
+    of the simulated measurements
+
+    .. math::
+        \mu _j = \frac{1}{n_s} \sum _{s=1}^{n_s} \log \tilde{y}_{sj}
+        \quad \text{and} \quad
+        \sigma _j = \sqrt{\frac{1}{n_s-1} \sum _{s=1}^{n_s} \left(
+            \log \tilde{y}_{sj} - \mu _j \right) ^2}.
+
+    Here, we use :math:`i` to index measured individuals from the dataset,
+    :math:`j` to index measurement time points and :math:`s` to index simulated
+    measurements. :math:`n_s` denotes the number of simulated measurements per
+    time point.
+
+    For multiple measured observables the above expression can be
+    straightforwardly extended to
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ijr} \log \mathrm{LN} (y_{ijr} | \mu _{jr}, \sigma _{jr}),
+
+    where :math:`r` indexes observables and :math:`\mu _{jr}` and
+    :math:`\sigma _{jr}` are the empirical mean and variance over the
+    simulated log-measurements of the observable :math:`r` at time point
+    :math:`t_j`.
+
+    Extends :class:`PopulationFilter`
+
+    :param observations: Snapshot measurements.
+    :type observations: np.ndarray of shape
+        ``(n_ids, n_observables, n_times)``
+    """
+    def __init__(self, observations):
+        super().__init__(observations)
+
+        # Log-transform the observations for later convenience
+        self._log_observations = np.log(self._observations)
+
+    def _compute_log_likelihood(self, mu, var):
+        """
+        Returns the log-likelihood.
+
+        mu of shape (1, n_observables, n_times)
+        var of shape (1, n_observables, n_times)
+        """
+        score = -np.sum(
+            np.log(2*np.pi) + np.log(var) + self._log_observations
+            + (self._log_observations - mu)**2 / var) / 2
+
+        return score
+
+    def compute_log_likelihood(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter.
+
+        :param simulated_obs: Simulated snapshot observations.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: float
+        """
+        simulated_obs = np.log(simulated_obs)
+        mu = np.mean(simulated_obs, axis=0, keepdims=True)
+        var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
+
+        score = self._compute_log_likelihood(mu, var)
+        if np.ma.is_masked(score):
+            return -np.inf
+
+        return score
+
+    def compute_sensitivities(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter, and the sensitivities of the log-likelihood
+        with respect to the simulated observations.
+
+        :param simulated_obs: Simulated snapshot observations.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: Tuple[float, np.ndarray] where the array has shape
+            ``(n_sim, n_observables, n_times)``
+        """
+        simulated_obs = np.asarray(simulated_obs)
+        log_simulated_obs = np.log(simulated_obs)
+        mu = np.mean(log_simulated_obs, axis=0, keepdims=True)
+        var = np.var(log_simulated_obs, ddof=1, axis=0, keepdims=True)
+
+        score = self._compute_log_likelihood(mu, var)
+        if np.ma.is_masked(score):
+            return -np.inf, np.empty(simulated_obs.shape)
+
+        # Compute sensitivities
+        # dscore/dsim = dscore/dmu dmu/dsim + dscore/dvar dvar/dsim
+        n_sim = len(simulated_obs)
+        dscore_dsim = (
+            np.sum((self._log_observations - mu) / var, axis=0) / n_sim
+            + np.sum(
+                (self._log_observations - mu)**2 / var**2 - 1 / var, axis=0
+            ) / (n_sim - 1) * ((log_simulated_obs - mu) - np.mean(
+                log_simulated_obs - mu, axis=0))
+        ) / simulated_obs
 
         return score, dscore_dsim
 
