@@ -23,7 +23,7 @@ class PopulationFilter(object):
     .. math::
         \log p(Y | \tilde{Y}) = \sum _{ij} \log p(y_{ij} | \tilde{Y}_j ),
 
-    where :math:`\tilde{Y}_j = \{ \tilde{}_{sj} \}` are all simulated
+    where :math:`\tilde{Y}_j = \{ \tilde{y}_{sj} \}` are the simulated
     observations at time point :math:`t_j`.
 
     The measurements are expected to be arranged into a 3 dimensional numpy
@@ -113,6 +113,158 @@ class PopulationFilter(object):
             raise ValueError('Order has to contain n_times unique elements.')
 
         self._observations = self._observations[..., order]
+
+
+class ComposedPopulationFilter(object):
+    r"""
+    A population filter composed of multiple population filters.
+
+    A composed population filter takes a list of population filters and defines
+    the log-likelihood of simulated measurements as the sum over the individual
+    log-likelihoods of the population filters
+
+    .. math::
+        \log p(Y | \tilde{Y}) = \sum _{ij} \log p_j(y_{ij} | \tilde{Y}_j ),
+
+    where :math:`\tilde{Y}_j = \{ \tilde{y}_{sj} \}` are the simulated
+    measurements and :math:`p_j(\cdot | \tilde{Y}_j )` is the population filter
+    at time point :math:`t_j`.
+
+    The input instances of :class:`chi.PopulationFilter` may model
+    multiple time points at once. The measurement times are expected to be
+    ordered according to the concatenated measurement times of the individual
+    population filters.
+
+    Extends :class:`chi.PopulationFilter`.
+
+    :param population_filters: List of population filters.
+    :type population_filters: List[chi.PopulationFilter]
+    """
+    def __init__(self, population_filters):
+        # Check inputs
+        for population_filter in population_filters:
+            if not isinstance(population_filter, PopulationFilter):
+                raise TypeError(
+                    'All population filters have to be instances '
+                    'of chi.PopulationFilter.')
+        # TODO: Enforce that all population filters model the same number of
+        # observables. In future PRs we can think about how to relax this
+        # constraint (might be nice to model different observables at the same
+        # time with different filters).
+        n_observables = population_filters[0].n_observables()
+        for population_filter in population_filters:
+            if population_filter.n_observables() != n_observables:
+                raise ValueError(
+                    'All population filters need to model the same number of '
+                    'observables.')
+        self._population_filters = population_filters
+        self._n_observables = n_observables
+
+        # Get properties
+        self._n_times = np.sum([
+            pop_filter.n_times() for pop_filter in self._population_filters])
+
+        # Defaults
+        self._time_order = None
+        self._time_filter_order = None
+
+    def compute_log_likelihood(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter.
+
+        :param simulated_obs: Simulated measurements.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: float
+        """
+        # Sort simulated observations
+        if self._time_order is not None:
+            simulated_obs = simulated_obs[:, :, self._time_filter_order]
+
+        # Compute score
+        score = 0
+        current_time_id = 0
+        for pop_filter in self._population_filters:
+            end_time_id = current_time_id + pop_filter.n_times()
+            score += pop_filter.compute_log_likelihood(
+                simulated_obs[:, :, current_time_id:end_time_id])
+            current_time_id = end_time_id
+
+        return score
+
+    def compute_sensitivities(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter, and the sensitivities of the log-likelihood
+        with respect to the simulated observations.
+
+        :param simulated_obs: Simulated measurements.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: Tuple[float, np.ndarray] where the array has shape
+            ``(n_sim, n_observables, n_times)``
+        """
+        # Sort simulated observations
+        if self._time_order is not None:
+            simulated_obs = simulated_obs[:, :, self._time_filter_order]
+
+        # Compute score
+        score = 0
+        sensitivities = np.zeros(shape=simulated_obs.shape)
+        current_time_id = 0
+        for pop_filter in self._population_filters:
+            end_time_id = current_time_id + pop_filter.n_times()
+            s, sens = pop_filter.compute_sensitivities(
+                simulated_obs[:, :, current_time_id:end_time_id])
+            score += s
+            sensitivities[:, :, current_time_id:end_time_id] = sens
+            current_time_id = end_time_id
+
+        # Sort sensitivities into input order
+        if self._time_order is not None:
+            sensitivities = sensitivities[:, :, self._time_order]
+
+        return score, sensitivities
+
+    def n_observables(self):
+        """
+        Returns the number of observables in the dataset.
+        """
+        return self._n_observables
+
+    def n_times(self):
+        """
+        Returns the number of measurement times in the dataset.
+        """
+        return self._n_times
+
+    def sort_times(self, order):
+        """
+        Sorts the observations along the time dimension according to the
+        provided indices.
+
+        :param order: An array with indices that orders the observations along
+            thetime dimension.
+        :type order: np.ndarray of shape ``(n_times,)``
+        """
+        order = np.asarray(order)
+        if len(order) != self._n_times:
+            raise ValueError('Order has to be of length n_times.')
+        if len(order) != len(np.unique(order)):
+            raise ValueError('Order has to contain n_times unique elements.')
+
+        # If order doesn't change, ignore input
+        # (This is purely for efficiency of log-likelihood computation)
+        if np.all(order == np.arange(self._n_times)):
+            return None
+
+        # Cannot sort observations directly
+        # (compartmentalised into individual population filters)
+        # So let us remember the order and order simulated measurements
+        # during inference
+        self._time_order = np.copy(order)
+        self._time_filter_order = np.argsort(self._time_order)
 
 
 class GaussianFilter(PopulationFilter):

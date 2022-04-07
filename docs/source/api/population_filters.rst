@@ -11,6 +11,7 @@ Population filters in chi_ can be used for population filter inference.
 Functional classes
 ------------------
 
+- :class:`ComposedPopulationFilter`
 - :class:`GaussianFilter`
 - :class:`GaussianKDEFilter`
 - :class:`LogNormalFilter`
@@ -19,6 +20,10 @@ Functional classes
 
 Detailed API
 ^^^^^^^^^^^^
+
+.. autoclass:: ComposedPopulationFilter
+    :members:
+    :inherited-members:
 
 .. autoclass:: GaussianFilter
     :members:

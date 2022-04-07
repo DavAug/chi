@@ -268,7 +268,8 @@ class PopulationModel(object):
 
 class ComposedPopulationModel(PopulationModel):
     r"""
-    A multi-dimensional composed of mutliple population models.
+    A multi-dimensional population model composed of mutliple population
+    models.
 
     A :class:`ComposedPopulationModel` assumes that its constituent population
     models are independent. The probability density function of the composed

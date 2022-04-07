@@ -43,6 +43,7 @@ from ._inference import (  # noqa
 
 from ._population_filters import (  # noqa
     PopulationFilter,
+    ComposedPopulationFilter,
     GaussianFilter,
     GaussianKDEFilter,
     LogNormalFilter,
