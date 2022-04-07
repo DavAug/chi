@@ -2016,7 +2016,7 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             [[0, 20, 13, -4]],
             [[21, 0.2, 8, 4]],
             [[0.1, 0.2, 0.3, 0.4]]])
-        population_filter = chi.GaussianPopulationFilter(observations)
+        population_filter = chi.GaussianFilter(observations)
         times = np.array([1, 2, 3, 4])
         mechanistic_model = ToyExponentialModel()
         population_model = chi.LogNormalModel(n_dim=2)
@@ -2164,7 +2164,7 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             [[0, 20, 13, -4]],
             [[21, 0.2, 8, 4]],
             [[0.1, 0.2, 0.3, 0.4]]])
-        population_filter = chi.GaussianPopulationFilter(observations)
+        population_filter = chi.GaussianFilter(observations)
         times = np.array([1, 2, 3, 4])
         mechanistic_model = ToyExponentialModel()
         population_model = chi.LogNormalModel(n_dim=2)
@@ -2205,7 +2205,7 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
                 population_model, log_prior)
 
         # Mechanistic model has the wrong number of outputs
-        p = chi.GaussianPopulationFilter(np.ones(shape=(1, 2, 4)))
+        p = chi.GaussianFilter(np.ones(shape=(1, 2, 4)))
         with self.assertRaisesRegex(ValueError, 'The number of mechanistic'):
             chi.PopulationFilterLogPosterior(
                 p, times, mechanistic_model,
@@ -2729,11 +2729,10 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertEqual(ids[21], 'Sim. 3')
 
         ids = self.log_posterior1.get_id(unique=True)
-        self.assertEqual(len(ids), 4)
-        self.assertIsNone(ids[0])
-        self.assertEqual(ids[1], 'Sim. 1')
-        self.assertEqual(ids[2], 'Sim. 2')
-        self.assertEqual(ids[3], 'Sim. 3')
+        self.assertEqual(len(ids), 3)
+        self.assertEqual(ids[0], 'Sim. 1')
+        self.assertEqual(ids[1], 'Sim. 2')
+        self.assertEqual(ids[2], 'Sim. 3')
 
         ids = self.log_posterior3.get_id()
         self.assertEqual(len(ids), 23)
@@ -2762,11 +2761,10 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertEqual(ids[22], 'Sim. 3')
 
         ids = self.log_posterior3.get_id(unique=True)
-        self.assertEqual(len(ids), 4)
-        self.assertIsNone(ids[0])
-        self.assertEqual(ids[1], 'Sim. 1')
-        self.assertEqual(ids[2], 'Sim. 2')
-        self.assertEqual(ids[3], 'Sim. 3')
+        self.assertEqual(len(ids), 3)
+        self.assertEqual(ids[0], 'Sim. 1')
+        self.assertEqual(ids[1], 'Sim. 2')
+        self.assertEqual(ids[2], 'Sim. 3')
 
     def test_get_parameter_names(self):
         names = self.log_posterior1.get_parameter_names()

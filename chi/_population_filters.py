@@ -115,7 +115,7 @@ class PopulationFilter(object):
         self._observations = self._observations[..., order]
 
 
-class ComposedPopulationFilter(object):
+class ComposedPopulationFilter(PopulationFilter):
     r"""
     A population filter composed of multiple population filters.
 

@@ -1753,7 +1753,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         # Add noise contribution
         score += \
             - self._n_samples * self._n_observables * np.log(2 * np.pi) / 2 \
-            - np.sum(np.log(sigma) + epsilon**2 / sigma**2 / 2)
+            - np.sum(epsilon**2) / 2
 
         # Check that mechanistic model has sensitivities disabled
         # (Simply for performance)
@@ -1993,8 +1993,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         # Add noise contribution
         score += \
             - self._n_samples * self._n_observables * np.log(2 * np.pi) / 2 \
-            - np.sum(np.log(sigma) + epsilon**2 / sigma**2 / 2)
-        sensitivities[end_bottom:] = - (epsilon / sigma**2).flatten()
+            - np.sum(epsilon**2) / 2
+        sensitivities[end_bottom:] = -epsilon.flatten()
 
         # Check that mechanistic model has sensitivities enabled
         if not self._mechanistic_model.has_sensitivities():
@@ -2047,10 +2047,6 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         # Add sigma sensitivities, if sigma is not fixed
         # ds_dsigma = derror_model_dsigma + ds_dy * dy_dsigma
         if self._sigma is None:
-            # Error model contribution
-            sensitivities[n_pop:self._n_top] += np.sum(
-                -1 / sigma + epsilon**2 / sigma**3, axis=(0, 2))
-            # Pop. filter contribution
             if self._error_on_log_scale:
                 sensitivities[n_pop:self._n_top] += np.sum(
                     ds_y * epsilon * y, axis=(0, 2))
@@ -2169,9 +2165,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         if exclude_bottom_level:
             return n_parameters
 
-        n_bottom = self._mechanistic_model.n_parameters()
-
-        return n_parameters + self._n_samples * (n_bottom + self._n_times)
+        return self._n_parameters
 
     def n_ids(self):
         """
@@ -2211,10 +2205,11 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         rng = np.random.default_rng(seed=seed)
 
         # Sample bottom-level parameters
+        n_pop = self._population_model.n_parameters()
         bottom_parameters = []
         for sample_id in range(n_samples):
             bottom_parameters.append(self._population_model.sample(
-                parameters=initial_params[sample_id, :self._n_top],
+                parameters=initial_params[sample_id, :n_pop],
                 n_samples=self._n_samples, seed=rng))
 
         # Remove pooled dimensions
@@ -2227,7 +2222,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             pop_models = [self._population_model]
         for pop_model in pop_models:
             n_dim = pop_model.n_dim()
-            if pop_model.n_hierarchical_dim == 0:
+            if pop_model.n_hierarchical_dim() == 0:
                 current_dim += n_dim
                 continue
             end_dim = current_dim + n_dim
