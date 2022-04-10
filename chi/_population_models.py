@@ -2485,28 +2485,26 @@ class PooledModel(PopulationModel):
         self._parameter_names = ['Pooled'] * self._n_dim
 
     def compute_log_likelihood(self, parameters, observations):
-        r"""
-        Returns the unnormalised log-likelihood score of the population model.
-
-        A pooled population model is a delta-distribution centred at the
-        population model parameter. As a result the log-likelihood score
-        is 0, if all individual parameters are equal to the population
-        parameter, and :math:`-\infty` otherwise.
+        """
+        Returns the log-likelihood of the population model parameters.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
-        :param observations: "Observations" of the individuals. Typically
-            refers to the values of a mechanistic model parameter for each
-            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
-        :type observations: np.ndarray of shape (n, n_dim)
-        :returns: Log-likelihood of individual parameters and population
-            parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)``,
+            ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
+        :param observations: Individual model parameters.
+        :type observations: np.ndarray of shape ``(n_ids, n_dim)``
         :rtype: float
         """
         observations = np.asarray(observations)
+        if observations.ndim == 1:
+            observations = observations[:, np.newaxis]
+
         parameters = np.asarray(parameters)
-        if parameters.ndim != 2:
-            parameters = parameters.reshape(1, self._n_dim)
+        if parameters.ndim == 1:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(1, n_parameters, self._n_dim)
+        elif parameters.ndim == 2:
+            parameters = parameters[np.newaxis, ...]
 
         # Return -inf if any of the observations do not equal the pooled
         # parameter
@@ -2550,36 +2548,62 @@ class PooledModel(PopulationModel):
 
         return log_likelihood
 
-    def compute_sensitivities(self, parameters, observations, *args, **kwargs):
+    def compute_sensitivities(
+            self, parameters, observations, flattened=True, dlogp_dpsi=None,
+            *args, **kwargs):
         r"""
-        Returns the log-likelihood of the population parameters and its
-        sensitivities w.r.t. the observations and the parameters.
+        Returns the log-likelihood of the population model parameters and
+        its sensitivity to the population parameters as well as the
+        observations.
+
+        The log-likelihood and sensitivities are returned as a tuple
+        ``(score, deta, dtheta)``.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,)
-        :param observations: "Observations" of the individuals. Typically
-            refers to the values of a mechanistic model parameter for each
-            individual.
-        :type observations: np.ndarray of shape (n, n_dim)
-        :returns: Log-likelihood and its sensitivity to individual parameters
-            as well as population parameters.
-        :rtype: Tuple[float, np.ndarray of shape (n * n_dim + p,)]
+        :type parameters: np.ndarray of shape ``(n_parameters,)``,
+            ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
+        :param observations: Individual model parameters.
+        :type observations: np.ndarray of shape ``(n_ids, n_dim)``
+        :param flattened: Boolean flag that indicates whether the sensitivities
+            w.r.t. the population parameters are returned as 1-dim. array. If
+            ``False`` sensitivities are returned in shape
+            ``(n_ids, n_param_per_dim, n_dim)``.
+        :type flattened: bool, optional
+        :param dlogp_dpsi: The sensitivities of the log-likelihood of the
+            individual parameters.
+        :type dlogp_dpsi: np.ndarray of shape ``(n_ids, n_dim)``,
+            optional
+        :rtype: Tuple[float, np.ndarray of shape ``(n_ids, n_dim)``,
+            np.ndarray of shape ``(n_parameters,)``]
         """
         observations = np.asarray(observations)
+        if observations.ndim == 1:
+            observations = observations[:, np.newaxis]
+
         parameters = np.asarray(parameters)
-        if parameters.ndim != 2:
-            parameters = parameters.reshape(1, self._n_dim)
+        if parameters.ndim == 1:
+            n_parameters = len(parameters) // self._n_dim
+            parameters = parameters.reshape(1, n_parameters, self._n_dim)
+        elif parameters.ndim == 2:
+            parameters = parameters[np.newaxis, ...]
 
         # Return -inf if any of the observations does not equal the pooled
         # parameter
-        n_ids = len(observations)
         mask = observations != parameters
         if np.any(mask):
-            return -np.inf, np.full(
-                shape=(n_ids + 1) * self._n_dim, fill_value=np.inf)
+            dtheta = np.empty(self._n_parameters)
+            if not flattened:
+                dtheta = np.empty((len(observations), 1, self._n_dim))
+            return -np.inf, np.empty(observations.shape), dtheta
 
-        # Otherwise return 0
-        return 0, np.zeros(shape=(n_ids + 1) * self._n_dim)
+        # Otherwise return
+        dpsi = np.zeros(observations.shape)
+        if dlogp_dpsi is not None:
+            dpsi += dlogp_dpsi
+        dtheta = np.zeros(self._n_parameters)
+        if not flattened:
+            dtheta = np.zeros((len(observations), 1, self._n_dim))
+        return 0, dpsi, dtheta
 
     def get_parameter_names(self, exclude_dim_names=False):
         """

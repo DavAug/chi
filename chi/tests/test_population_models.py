@@ -2805,41 +2805,63 @@ class TestPooledModel(unittest.TestCase):
         # Test case I.1
         parameters = [1]
         observations = [0, 1, 1, 1]
-        score, sens = self.pop_model.compute_sensitivities(
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
             parameters, observations)
         self.assertEqual(score, -np.inf)
-        self.assertEqual(len(sens), 5)
-        self.assertEqual(sens[0], np.inf)
-        self.assertEqual(sens[1], np.inf)
-        self.assertEqual(sens[2], np.inf)
-        self.assertEqual(sens[3], np.inf)
-        self.assertEqual(sens[4], np.inf)
-
-        # Test case I.1
-        parameters = [1]
-        observations = [1, 1, 1, 10]
-        score, sens = self.pop_model.compute_sensitivities(
-            parameters, observations)
-        self.assertEqual(score, -np.inf)
-        self.assertEqual(len(sens), 5)
-        self.assertEqual(sens[0], np.inf)
-        self.assertEqual(sens[1], np.inf)
-        self.assertEqual(sens[2], np.inf)
-        self.assertEqual(sens[3], np.inf)
-        self.assertEqual(sens[4], np.inf)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (1,))
 
         # Test case II: all values agree with parameter
         parameters = [1]
         observations = [1, 1, 1, 1]
-        score, sens = self.pop_model.compute_sensitivities(
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
             parameters, observations)
         self.assertEqual(score, 0)
-        self.assertEqual(len(sens), 5)
-        self.assertEqual(sens[0], 0)
-        self.assertEqual(sens[1], 0)
-        self.assertEqual(sens[2], 0)
-        self.assertEqual(sens[3], 0)
-        self.assertEqual(sens[4], 0)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (1,))
+        self.assertEqual(dpsi[0, 0], 0)
+        self.assertEqual(dpsi[1, 0], 0)
+        self.assertEqual(dpsi[2, 0], 0)
+        self.assertEqual(dpsi[3, 0], 0)
+        self.assertEqual(dtheta[0], 0)
+
+        # Test case III: matrix intput
+        parameters = np.ones((1, 1))
+        observations = np.ones((4, 1))
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, 0)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (1,))
+        self.assertEqual(dpsi[0, 0], 0)
+        self.assertEqual(dpsi[1, 0], 0)
+        self.assertEqual(dpsi[2, 0], 0)
+        self.assertEqual(dpsi[3, 0], 0)
+        self.assertEqual(dtheta[0], 0)
+
+        # Test case IV: provide dlogp_dpsi
+        parameters = [1]
+        observations = [1, 1, 1, 1]
+        dlog_dpsi = np.ones((4, 1)) * 2
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, observations, dlogp_dpsi=dlog_dpsi)
+        self.assertEqual(score, 0)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (1,))
+        self.assertEqual(dpsi[0, 0], 2)
+        self.assertEqual(dpsi[1, 0], 2)
+        self.assertEqual(dpsi[2, 0], 2)
+        self.assertEqual(dpsi[3, 0], 2)
+        self.assertEqual(dtheta[0], 0)
+
+        # Test case V: unflattened
+        parameters = [1]
+        observations = [1, 1, 1, 1]
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, observations, flattened=False)
+        self.assertEqual(score, 0)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (4, 1, 1))
 
     def test_get_parameter_names(self):
         names = ['Pooled Dim. 1']
