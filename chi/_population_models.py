@@ -408,6 +408,8 @@ class ComposedPopulationModel(PopulationModel):
         parameters = np.asarray(parameters)
 
         score = 0
+
+        cov = None
         current_dim = 0
         current_param = 0
         current_cov = 0
@@ -493,7 +495,8 @@ class ComposedPopulationModel(PopulationModel):
             s, dp, dt = pop_model.compute_sensitivities(
                 parameters=parameters[current_param:end_param],
                 observations=observations[:, current_dim:end_dim],
-                covariates=cov)
+                covariates=cov,
+                dlogp_dpsi=dlogp_dpsi[:, current_dim:end_dim])
 
             # Add score and sensitivities
             score += s
@@ -1307,11 +1310,16 @@ class GaussianModel(PopulationModel):
 
         mu = parameters[:, 0]
         sigma = parameters[:, 1]
+
+        if np.any(sigma < 0):
+            return np.full(shape=eta.shape, fill_value=np.nan)
+
         psi = mu + sigma * eta
 
         return psi
 
-    def compute_log_likelihood(self, parameters, observations):
+    def compute_log_likelihood(
+            self, parameters, observations, *args, **kwargs):
         """
         Returns the log-likelihood of the population model parameters.
 
@@ -2086,11 +2094,15 @@ class LogNormalModel(PopulationModel):
 
         mu = parameters[:, 0]
         sigma = parameters[:, 1]
+        if np.any(sigma < 0):
+            return np.full(shape=eta.shape, fill_value=np.nan)
+
         psi = np.exp(mu + sigma * eta)
 
         return psi
 
-    def compute_log_likelihood(self, parameters, observations):
+    def compute_log_likelihood(
+            self, parameters, observations, *args, **kwargs):
         """
         Returns the log-likelihood of the population model parameters.
 
@@ -2429,7 +2441,8 @@ class PooledModel(PopulationModel):
         # Set default parameter names
         self._parameter_names = ['Pooled'] * self._n_dim
 
-    def compute_log_likelihood(self, parameters, observations):
+    def compute_log_likelihood(
+            self, parameters, observations, *args, **kwargs):
         """
         Returns the log-likelihood of the population model parameters.
 
@@ -2742,7 +2755,8 @@ class ReducedPopulationModel(PopulationModel):
         return self._population_model.compute_individual_sensitivities(
             parameters, eta, covariates)
 
-    def compute_log_likelihood(self, parameters, observations):
+    def compute_log_likelihood(
+            self, parameters, observations, *args, **kwargs):
         r"""
         Returns the log-likelihood of the population model parameters.
 
@@ -3201,7 +3215,8 @@ class TruncatedGaussianModel(PopulationModel):
 
         return log_likelihood, sensitivities
 
-    def compute_log_likelihood(self, parameters, observations):
+    def compute_log_likelihood(
+            self, parameters, observations, *args, **kwargs):
         r"""
         Returns the log-likelihood of the population model parameters.
 

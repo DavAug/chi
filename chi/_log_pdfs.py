@@ -132,17 +132,17 @@ class HierarchicalLogLikelihood(object):
 
         # Compute population model score
         score = self._population_model.compute_log_likelihood(
-            top_parameters, bottom_parameters)
+            top_parameters, bottom_parameters, covariates=self._covariates)
 
         # Return if values already lead to a rejection
         if np.isinf(score):
             return score
 
         # Transform bottom-level parameters
-        if self._population_model.transforms_individual_parameters():
-            bottom_parameters = \
-                self._population_model.compute_individual_parameters(
-                    top_parameters, bottom_parameters, self._covariates)
+        # Identity, if model does not tranform parameters
+        bottom_parameters = \
+            self._population_model.compute_individual_parameters(
+                top_parameters, bottom_parameters, self._covariates)
 
         # Evaluate individual likelihoods
         for idi, log_likelihood in enumerate(self._log_likelihoods):
@@ -210,44 +210,41 @@ class HierarchicalLogLikelihood(object):
             log_likelihood.set_id(_id)
             ids.append(_id)
 
-    def _remove_duplicates(self, sensitivities):
+    def _collect_sensitivities(self, ds_dbottom, ds_dtop):
         """
         In some sense the reverse of self._reshape_bottom_parameters.
 
         1. Pooled bottom parameters need to be added to population parameter
         2. Heterogeneous bottom parameters need to added to population
             parameters
+
+        ds_dbottom of shape (n_ids, n_dim)
+        ds_dtop of shape (n_top,)
         """
+        sens = np.empty(shape=self._n_parameters)
+        sens[self._n_bottom:] = ds_dtop
         # Check for quick solution 1: no pooled parameters and no heterogeneous
         # parameters
         if (self._n_pooled_dim == 0) and (self._n_hetero_dim == 0):
-            return sensitivities
-
-        # Get population parameter sensitvitities
-        start_pop = self._n_ids * self._n_dim
-        sens = np.empty(shape=self._n_parameters)
-        sens[self._n_bottom:] = sensitivities[start_pop:]
+            sens[:self._n_bottom] = ds_dbottom.flatten()
+            return sens
 
         # Check for quick solution 2: all parameters heterogen.
         if self._n_hetero_dim == self._n_dim:
             # Add contributions from bottom-level parameters
             # (Population sens. are actually zero, so we can just replace them)
-            sens = sensitivities[:start_pop]
+            sens = ds_dbottom.flatten()
             return sens
 
         # Check for quick solution 3: all parameters pooled
         if self._n_pooled_dim == self._n_dim:
             # Add contributions from bottom-level parameters
             # (Population sens. are actually zero, so we can just replace them)
-            sens = np.sum(
-                sensitivities[:start_pop].reshape(self._n_ids, self._n_dim),
-                axis=0)
+            sens = np.sum(ds_dbottom, axis=0)
             return sens
 
         shift = 0
         current_dim = 0
-        bottom_sensitivities = sensitivities[:start_pop].reshape(
-            self._n_ids, self._n_dim)
         bottom_sens = np.empty(shape=(
             self._n_ids,
             self._n_dim - self._n_pooled_dim - self._n_hetero_dim))
@@ -255,19 +252,18 @@ class HierarchicalLogLikelihood(object):
             start_dim, end_dim, start_top, end_top, is_pooled = info
             # Fill leading regular dims
             bottom_sens[:, current_dim-shift:start_dim-shift] = \
-                bottom_sensitivities[:, current_dim:start_dim]
+                ds_dbottom[:, current_dim:start_dim]
             # Fill special dims
             if is_pooled:
-                sens[self._n_bottom+start_top:self._n_bottom+end_top] = \
-                    np.sum(bottom_sensitivities[:, start_dim:end_dim], axis=0)
+                sens[self._n_bottom+start_top:self._n_bottom+end_top] += \
+                    np.sum(ds_dbottom[:, start_dim:end_dim], axis=0)
             else:
-                sens[self._n_bottom+start_top:self._n_bottom+end_top] = \
-                    bottom_sensitivities[:, start_dim:end_dim].flatten()
+                sens[self._n_bottom+start_top:self._n_bottom+end_top] += \
+                    ds_dbottom[:, start_dim:end_dim].flatten()
             current_dim = end_dim
             shift += end_dim - start_dim
         # Fill trailing regular dims
-        bottom_sens[:, current_dim-shift:] = bottom_sensitivities[
-            :, current_dim:]
+        bottom_sens[:, current_dim-shift:] = ds_dbottom[:, current_dim:]
 
         # Add bottom sensitivties
         sens[:self._n_bottom] = bottom_sens.flatten()
@@ -437,40 +433,29 @@ class HierarchicalLogLikelihood(object):
         bottom_parameters = self._reshape_bottom_parameters(
             bottom_parameters, top_parameters)
 
-        # Compute population model score
-        score, sensitivities = self._population_model.compute_sensitivities(
-            top_parameters, bottom_parameters)
-
-        # Return if values already lead to a rejection
-        if np.isinf(score):
-            return score, np.full(shape=self._n_parameters, fill_value=np.inf)
-
-        # Transform bottom-level parameters
-        dpsi = None
-        if self._population_model.transforms_individual_parameters():
-            bottom_parameters, dpsi = \
-                self._population_model.compute_individual_sensitivities(
-                    top_parameters, bottom_parameters, self._covariates)
-            dpsi_deta = dpsi[0]
-            dpsi_dtheta = dpsi[1:]
+        # Make sure bottom parameters are psi
+        # (parameters of the individual log-likelihoods)
+        psi = self._population_model.compute_individual_parameters(
+            top_parameters, bottom_parameters, self._covariates)
 
         # Evaluate individual likelihoods
+        score = 0
+        dlogp_dpsi = np.empty(shape=(self._n_ids, self._n_dim))
         for idi, log_likelihood in enumerate(self._log_likelihoods):
-            l, dl_dpsi = log_likelihood.evaluateS1(bottom_parameters[idi])
-
-            # Collect score and sensitivities
+            l, dl_dpsi = log_likelihood.evaluateS1(psi[idi])
             score += l
-            if dpsi is None:
-                sensitivities[idi*self._n_dim:(idi+1)*self._n_dim] += dl_dpsi
-            else:
-                sensitivities[idi*self._n_dim:(idi+1)*self._n_dim] += \
-                    dl_dpsi * dpsi_deta[idi]
-                sensitivities[self._n_ids*self._n_dim:] += np.sum(
-                    dl_dpsi[np.newaxis, :] * dpsi_dtheta[:, idi, :],
-                    axis=1)
+            dlogp_dpsi[idi] = dl_dpsi
 
-        # Collect sensitivities of pooled parameters
-        sensitivities = self._remove_duplicates(sensitivities)
+        print(dlogp_dpsi)
+        # Compute population model score
+        s, ds_dbottom, ds_dtop = self._population_model.compute_sensitivities(
+            top_parameters, bottom_parameters, covariates=self._covariates,
+            dlogp_dpsi=dlogp_dpsi)
+        score += s
+        print(ds_dbottom)
+
+        # Collect sensitivities
+        sensitivities = self._collect_sensitivities(ds_dbottom, ds_dtop)
 
         return score, sensitivities
 

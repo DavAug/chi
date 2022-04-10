@@ -145,7 +145,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Create population models
         cls.population_model = chi.ComposedPopulationModel([
             chi.PooledModel(n_dim=2, dim_names=['Dim. 1', 'Dim. 2']),
-            chi.LogNormalModel(dim_names=['Dim. 3']),
+            chi.LogNormalModel(dim_names=['Dim. 3'], centered=False),
             chi.PooledModel(dim_names=['Dim. 4']),
             chi.HeterogeneousModel(dim_names=['Dim. 5']),
             chi.PooledModel(
@@ -156,23 +156,24 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         cls.hierarchical_model = chi.HierarchicalLogLikelihood(
             cls.log_likelihoods, cls.population_model)
 
-        # Test case II: Covariate population model
-        cpop_model1 = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=0),
-            dim_names=['Dim. 2'])
-        cpop_model2 = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=2))
-        population_model = chi.ComposedPopulationModel([
-            chi.PooledModel(dim_names=['Dim. 1']),
-            cpop_model1,
-            chi.PooledModel(n_dim=6),
-            cpop_model2
-        ])
-        covariates = np.array([[1, 2], [3, 4]])
-        cls.hierarchical_model3 = chi.HierarchicalLogLikelihood(
-            cls.log_likelihoods, population_model, covariates)
+        # TODO: Covariate models need to be tested again
+        # # Test case II: Covariate population model
+        # cpop_model1 = chi.CovariatePopulationModel(
+        #     chi.GaussianModel(),
+        #     chi.LogNormalLinearCovariateModel(n_covariates=0),
+        #     dim_names=['Dim. 2'])
+        # cpop_model2 = chi.CovariatePopulationModel(
+        #     chi.GaussianModel(),
+        #     chi.LogNormalLinearCovariateModel(n_covariates=2))
+        # population_model = chi.ComposedPopulationModel([
+        #     chi.PooledModel(dim_names=['Dim. 1']),
+        #     cpop_model1,
+        #     chi.PooledModel(n_dim=6),
+        #     cpop_model2
+        # ])
+        # covariates = np.array([[1, 2], [3, 4]])
+        # cls.hierarchical_model3 = chi.HierarchicalLogLikelihood(
+        #     cls.log_likelihoods, population_model, covariates)
 
     def test_bad_instantiation(self):
         # Log-likelihoods are not pints.LogPDF
@@ -291,15 +292,16 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         #     chi.PooledModel()]
 
         # Create reference pop model
-        ref_pop_model = chi.LogNormalModel()
+        ref_pop_model = chi.LogNormalModel(centered=False)
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
         pop_params = [10, 1, 0.2, 1, 1, 3, 2, 1, 1, 2, 1.2]
 
-        parameters = \
-            indiv_parameters_1[2:3] + \
-            indiv_parameters_2[2:3] + \
-            pop_params
+        parameters = [0.1, 0.2] + pop_params
+
+        # Transform the bottom parameters
+        indiv_parameters_1[2] = np.exp(0.2 + 0.1)
+        indiv_parameters_2[2] = np.exp(0.2 + 0.2)
 
         score = \
             ref_pop_model.compute_log_likelihood(
@@ -326,7 +328,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         indiv_parameters_1 = [10, 1, 0, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0, 1, 2, 1, 1, 2, 1.2]
-        pop_params = [10, 1, 0.2, 1, 1, 3, 2, 1, 1, 2, 1.2]
+        pop_params = [10, 1, 0.2, -1, 1, 3, 2, 1, 1, 2, 1.2]
 
         parameters = \
             indiv_parameters_1[2:3] + \
@@ -700,15 +702,17 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         #     chi.PooledModel()]
 
         # Create reference pop model
-        ref_pop_model = chi.LogNormalModel()
+        ref_pop_model = chi.LogNormalModel(centered=False)
         indiv_parameters_1 = [10, 1, 0.1, 1, 3, 1, 1, 2, 1.2]
         indiv_parameters_2 = [10, 1, 0.2, 1, 2, 1, 1, 2, 1.2]
         pop_params = [10, 1, 0.2, 1, 1, 3, 2, 1, 1, 2, 1.2]
 
-        parameters = \
-            [0.1, 0.2] + pop_params
+        parameters = [0.1, 0.2] + pop_params
 
-        ref_s1, ref_sens1 = ref_pop_model.compute_sensitivities(
+        indiv_parameters_1[2] = np.exp(0.2 + 0.1)
+        indiv_parameters_2[2] = np.exp(0.2 + 0.2)
+
+        ref_s1, dpsi1, dtheta1 = ref_pop_model.compute_sensitivities(
                 parameters=pop_params[2:4],
                 observations=[0.1, 0.2])
         ref_s2, ref_sens2 = self.log_likelihoods[0].evaluateS1(
@@ -718,12 +722,12 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         ref_score = ref_s1 + ref_s2 + ref_s3
         ref_sens = [
-            ref_sens1[0] + ref_sens2[2],
-            ref_sens1[1] + ref_sens3[2],
+            dpsi1[0, 0] + ref_sens2[2],
+            dpsi1[1, 0] + ref_sens3[2],
             ref_sens2[0] + ref_sens3[0],
             ref_sens2[1] + ref_sens3[1],
-            ref_sens1[2],
-            ref_sens1[3],
+            dtheta1[0],
+            dtheta1[1],
             ref_sens2[3] + ref_sens3[3],
             ref_sens2[4],
             ref_sens3[4],
@@ -739,19 +743,19 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertFalse(np.any(np.isinf(sens)))
         self.assertAlmostEqual(score, ref_score)
         self.assertEqual(len(sens), 13)
-        self.assertEqual(sens[0], ref_sens[0])
-        self.assertEqual(sens[1], ref_sens[1])
-        self.assertEqual(sens[2], ref_sens[2])
-        self.assertEqual(sens[3], ref_sens[3])
-        self.assertEqual(sens[4], ref_sens[4])
-        self.assertEqual(sens[5], ref_sens[5])
-        self.assertEqual(sens[6], ref_sens[6])
-        self.assertEqual(sens[7], ref_sens[7])
-        self.assertEqual(sens[8], ref_sens[8])
-        self.assertEqual(sens[9], ref_sens[9])
-        self.assertEqual(sens[10], ref_sens[10])
-        self.assertEqual(sens[11], ref_sens[11])
-        self.assertEqual(sens[12], ref_sens[12])
+        self.assertAlmostEqual(sens[0], ref_sens[0])
+        self.assertAlmostEqual(sens[1], ref_sens[1])
+        self.assertAlmostEqual(sens[2], ref_sens[2])
+        self.assertAlmostEqual(sens[3], ref_sens[3])
+        self.assertAlmostEqual(sens[4], ref_sens[4])
+        self.assertAlmostEqual(sens[5], ref_sens[5])
+        self.assertAlmostEqual(sens[6], ref_sens[6])
+        self.assertAlmostEqual(sens[7], ref_sens[7])
+        self.assertAlmostEqual(sens[8], ref_sens[8])
+        self.assertAlmostEqual(sens[9], ref_sens[9])
+        self.assertAlmostEqual(sens[10], ref_sens[10])
+        self.assertAlmostEqual(sens[11], ref_sens[11])
+        self.assertAlmostEqual(sens[12], ref_sens[12])
 
         # Use a model that neither used pooled not heterogen. models
         model = chi.HierarchicalLogLikelihood(
@@ -760,6 +764,7 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         # Compute score and sensitivities with hierarchical model
         score, sens = model.evaluateS1(np.ones(model.n_parameters()))
 
+        # TODO: from here below
         # Test case V: Infinite log-pdf from population model
         # Reminder of population model
         # cls.population_models = [
