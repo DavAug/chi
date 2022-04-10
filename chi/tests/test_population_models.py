@@ -1017,6 +1017,43 @@ class TestGaussianModel(unittest.TestCase):
         cls.pop_model = chi.GaussianModel()
         cls.non_centered = chi.GaussianModel(centered=False)
 
+    def test_compute_individual_parameters(self):
+        # Test case I: centered
+        etas = np.arange(10) * 0.1
+        theta = np.array([0.3, 2])
+        psis = self.pop_model.compute_individual_parameters(theta, etas)
+
+        self.assertEqual(psis.shape, (10, 1))
+        self.assertEqual(etas[0], psis[0, 0])
+        self.assertEqual(etas[1], psis[1, 0])
+        self.assertEqual(etas[2], psis[2, 0])
+        self.assertEqual(etas[3], psis[3, 0])
+        self.assertEqual(etas[4], psis[4, 0])
+        self.assertEqual(etas[5], psis[5, 0])
+        self.assertEqual(etas[6], psis[6, 0])
+        self.assertEqual(etas[7], psis[7, 0])
+        self.assertEqual(etas[8], psis[8, 0])
+        self.assertEqual(etas[9], psis[9, 0])
+
+        # Test case II: non-centered
+        etas = np.arange(10) * 0.1
+        theta = np.array([0.3, 2])
+        psis = self.non_centered.compute_individual_parameters(theta, etas)
+
+        ref_psis = theta[0] + theta[1] * etas
+
+        self.assertEqual(psis.shape, (10, 1))
+        self.assertEqual(ref_psis[0], psis[0, 0])
+        self.assertEqual(ref_psis[1], psis[1, 0])
+        self.assertEqual(ref_psis[2], psis[2, 0])
+        self.assertEqual(ref_psis[3], psis[3, 0])
+        self.assertEqual(ref_psis[4], psis[4, 0])
+        self.assertEqual(ref_psis[5], psis[5, 0])
+        self.assertEqual(ref_psis[6], psis[6, 0])
+        self.assertEqual(ref_psis[7], psis[7, 0])
+        self.assertEqual(ref_psis[8], psis[8, 0])
+        self.assertEqual(ref_psis[9], psis[9, 0])
+
     def test_compute_log_likelihood(self):
         n_ids = 10
 

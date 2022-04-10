@@ -1237,10 +1237,9 @@ class CovariatePopulationModel(PopulationModel):
 
 
 class GaussianModel(PopulationModel):
-    # TODO: Test
     r"""
-    A population model which assumes that model parameters across individuals
-    are distributed according to a Gaussian distribution.
+    A population model which models parameters across individuals
+    with a Gaussian distribution.
 
     A Gaussian population model assumes that a model parameter
     :math:`\psi` varies across individuals such that :math:`\psi` is
@@ -1428,6 +1427,9 @@ class GaussianModel(PopulationModel):
         :type eta: np.ndarray of shape ``(n_ids, n_dim)``
         :rtype: np.ndarray of shape ``(n_ids, n_dim)``
         """
+        eta = np.asarray(eta)
+        if eta.ndim == 1:
+            eta = eta[:, np.newaxis]
         if self._centered:
             return eta
 
