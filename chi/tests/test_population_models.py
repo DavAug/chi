@@ -1295,7 +1295,7 @@ class TestGaussianModel(unittest.TestCase):
         # dmu = 0
         # dsigma = -n_ids
 
-        # Test case I.1: centered
+        # Test case I.1: centered, no dlop_dpsi
         psis = np.ones((n_ids, 1))
         mu = 1
         sigma = 1
@@ -1327,7 +1327,40 @@ class TestGaussianModel(unittest.TestCase):
         self.assertAlmostEqual(dtheta[0], ref_dmu)
         self.assertAlmostEqual(dtheta[1], ref_dsigma)
 
-        # Test case I.2: non-centered (no dlogp/dpsi)
+        # Test case I.2: centered, with dlop_dpsi
+        psis = np.ones((n_ids, 1))
+        mu = 1
+        sigma = 1
+        dlog_dpsi = np.ones((n_ids, 1)) * 2
+
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = dlog_dpsi[0, 0]
+        ref_dmu = 0
+        ref_dsigma = -n_ids
+
+        # Compute log-likelihood and sensitivities
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis, dlogp_dpsi=dlog_dpsi)
+
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
+
+        # Test case I.3: non-centered (no dlogp/dpsi)
         etas = np.zeros(n_ids)
         mu = 1
         sigma = 1
@@ -1342,6 +1375,39 @@ class TestGaussianModel(unittest.TestCase):
         # Compute log-likelihood and sensitivities
         score, deta, dtheta = self.non_centered.compute_sensitivities(
             parameters, etas)
+
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(deta.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(deta[0, 0], ref_detas)
+        self.assertAlmostEqual(deta[1, 0], ref_detas)
+        self.assertAlmostEqual(deta[2, 0], ref_detas)
+        self.assertAlmostEqual(deta[3, 0], ref_detas)
+        self.assertAlmostEqual(deta[4, 0], ref_detas)
+        self.assertAlmostEqual(deta[5, 0], ref_detas)
+        self.assertAlmostEqual(deta[6, 0], ref_detas)
+        self.assertAlmostEqual(deta[7, 0], ref_detas)
+        self.assertAlmostEqual(deta[8, 0], ref_detas)
+        self.assertAlmostEqual(deta[9, 0], ref_detas)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
+
+        # Test case I.4: non-centered (with dlogp/dpsi)
+        etas = np.ones(n_ids)
+        mu = 1
+        sigma = 1
+        dlog_dpsi = np.ones((n_ids, 1)) * 2
+
+        # Compute ref scores
+        parameters = [mu, sigma]
+        ref_ll = self.non_centered.compute_log_likelihood(parameters, etas)
+        ref_detas = sigma * dlog_dpsi[0, 0] - etas[0]
+        ref_dmu = np.sum(1 * dlog_dpsi)
+        ref_dsigma = np.sum(dlog_dpsi)
+
+        # Compute log-likelihood and sensitivities
+        score, deta, dtheta = self.non_centered.compute_sensitivities(
+            parameters, etas, dlogp_dpsi=dlog_dpsi)
 
         self.assertAlmostEqual(score, ref_ll)
         self.assertEqual(deta.shape, (n_ids, 1))
@@ -1454,7 +1520,8 @@ class TestGaussianModel(unittest.TestCase):
                 [
                     self.non_centered.compute_log_likelihood(parameters, low),
                     ref_score,
-                    self.non_centered.compute_log_likelihood(parameters, high)],
+                    self.non_centered.compute_log_likelihood(
+                        parameters, high)],
                 (epsilon))
             ref_deta.append(sens[1])
         ref_dtheta = []
@@ -1614,6 +1681,16 @@ class TestGaussianModel(unittest.TestCase):
 
         self.assertEqual(
             sample.shape, (n_samples, 2))
+
+        # Test IV: sample from non-centered distribution
+        seed = 1
+        parameters = [3, 2]
+        n_samples = 4
+        sample = self.non_centered.sample(
+            parameters, n_samples=n_samples, seed=seed)
+
+        self.assertEqual(
+            sample.shape, (n_samples, 1))
 
     def test_sample_bad_input(self):
         # Too many paramaters
@@ -1821,11 +1898,48 @@ class TestLogNormalModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.pop_model = chi.LogNormalModel()
+        cls.non_centered = chi.LogNormalModel(centered=False)
+
+    def test_compute_individual_parameters(self):
+        # Test case I: centered
+        etas = np.arange(10) * 0.1
+        theta = np.array([0.3, 2])
+        psis = self.pop_model.compute_individual_parameters(theta, etas)
+
+        self.assertEqual(psis.shape, (10, 1))
+        self.assertEqual(etas[0], psis[0, 0])
+        self.assertEqual(etas[1], psis[1, 0])
+        self.assertEqual(etas[2], psis[2, 0])
+        self.assertEqual(etas[3], psis[3, 0])
+        self.assertEqual(etas[4], psis[4, 0])
+        self.assertEqual(etas[5], psis[5, 0])
+        self.assertEqual(etas[6], psis[6, 0])
+        self.assertEqual(etas[7], psis[7, 0])
+        self.assertEqual(etas[8], psis[8, 0])
+        self.assertEqual(etas[9], psis[9, 0])
+
+        # Test case II: non-centered
+        etas = np.arange(10) * 0.1
+        theta = np.array([0.3, 2])
+        psis = self.non_centered.compute_individual_parameters(theta, etas)
+
+        ref_psis = np.exp(theta[0] + theta[1] * etas)
+
+        self.assertEqual(psis.shape, (10, 1))
+        self.assertEqual(ref_psis[0], psis[0, 0])
+        self.assertEqual(ref_psis[1], psis[1, 0])
+        self.assertEqual(ref_psis[2], psis[2, 0])
+        self.assertEqual(ref_psis[3], psis[3, 0])
+        self.assertEqual(ref_psis[4], psis[4, 0])
+        self.assertEqual(ref_psis[5], psis[5, 0])
+        self.assertEqual(ref_psis[6], psis[6, 0])
+        self.assertEqual(ref_psis[7], psis[7, 0])
+        self.assertEqual(ref_psis[8], psis[8, 0])
+        self.assertEqual(ref_psis[9], psis[9, 0])
 
     def test_compute_log_likelihood(self):
         # Hard to test exactly, but at least test some edge cases where
         # loglikelihood is straightforward to compute analytically
-
         n_ids = 10
 
         # Test case I: psis = 1, sigma_log = 1
@@ -1928,6 +2042,57 @@ class TestLogNormalModel(unittest.TestCase):
         parameters = [mu] + [sigma]
         score = self.pop_model.compute_log_likelihood(parameters, psis)
         self.assertEqual(score, -np.inf)
+
+        # Test case V: non-centered parametrisation
+        etas = np.array([1] * n_ids)
+        mu = 10
+        sigma = 15
+        ref_score = - n_ids * np.log(2 * np.pi) / 2 - np.sum(etas**2) / 2
+
+        parameters = [mu, sigma]
+        score = self.non_centered.compute_log_likelihood(parameters, etas)
+        self.assertAlmostEqual(score, ref_score)
+
+        # Test case VI: multi-dimensional input
+        # Test case VI.1: matrix parameters.
+        pop_model = chi.LogNormalModel(n_dim=2)
+        psis = np.arange(10) + 1
+        mu = 10
+        sigma = 15
+        ref_score = \
+            - n_ids * np.log(2 * np.pi) / 2 \
+            - n_ids * np.log(sigma) \
+            - np.sum((np.log(psis) - mu)**2) / (2 * sigma ** 2) \
+            - np.sum(np.log(psis))
+
+        psis = np.vstack([psis, psis]).T
+        parameters = np.array([[mu, mu], [sigma, sigma]])
+        score = pop_model.compute_log_likelihood(parameters, psis)
+        self.assertAlmostEqual(score, 2 * ref_score)
+
+        # Test case VI.2: flat parameters.
+        parameters = np.array([mu, mu, sigma, sigma])
+        score = pop_model.compute_log_likelihood(parameters, psis)
+        self.assertAlmostEqual(score, 2 * ref_score)
+
+        # Test case VI.3: non-centered, matrix parameters.
+        pop_model = chi.LogNormalModel(n_dim=2, centered=False)
+        etas = np.arange(10) * 0.1
+        mu = 10
+        sigma = 15
+        ref_score = \
+            - n_ids * np.log(2 * np.pi) / 2 \
+            - np.sum(etas**2) / 2
+
+        etas = np.vstack([etas, etas]).T
+        parameters = np.array([[mu, mu], [sigma, sigma]])
+        score = pop_model.compute_log_likelihood(parameters, etas)
+        self.assertAlmostEqual(score, 2 * ref_score)
+
+        # Test case VI.4: non-centered, flat parameters.
+        parameters = np.array([mu, mu, sigma, sigma])
+        score = pop_model.compute_log_likelihood(parameters, etas)
+        self.assertAlmostEqual(score, 2 * ref_score)
 
     def test_compute_pointwise_ll(self):
         # TODO:
@@ -2095,191 +2260,151 @@ class TestLogNormalModel(unittest.TestCase):
         ref_dsigma = (mu_log**2 - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis)
 
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_dpsi)
-        self.assertEqual(sens[1], ref_dpsi)
-        self.assertEqual(sens[2], ref_dpsi)
-        self.assertEqual(sens[3], ref_dpsi)
-        self.assertEqual(sens[4], ref_dpsi)
-        self.assertEqual(sens[5], ref_dpsi)
-        self.assertEqual(sens[6], ref_dpsi)
-        self.assertEqual(sens[7], ref_dpsi)
-        self.assertEqual(sens[8], ref_dpsi)
-        self.assertEqual(sens[9], ref_dpsi)
-        self.assertEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
 
-        # Test case I.2:
-        psis = [1] * n_ids
-        mu_log = 5
-        sigma_log = 1
+        n_ids = 10
+
+        # Test case I.2: centered, with dlop_dpsi
+        psis = np.ones((n_ids, 1))
+        mu = 1
+        sigma = 1
+        dlog_dpsi = np.ones((n_ids, 1)) * 2
 
         # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
+        parameters = [mu, sigma]
         ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-        ref_dpsi = -1 + mu_log
+        ref_dpsi = dlog_dpsi[0, 0]
         ref_dmu = -mu_log * n_ids
         ref_dsigma = (mu_log**2 - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis, dlogp_dpsi=dlog_dpsi)
 
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_dpsi)
-        self.assertEqual(sens[1], ref_dpsi)
-        self.assertEqual(sens[2], ref_dpsi)
-        self.assertEqual(sens[3], ref_dpsi)
-        self.assertEqual(sens[4], ref_dpsi)
-        self.assertEqual(sens[5], ref_dpsi)
-        self.assertEqual(sens[6], ref_dpsi)
-        self.assertEqual(sens[7], ref_dpsi)
-        self.assertEqual(sens[8], ref_dpsi)
-        self.assertEqual(sens[9], ref_dpsi)
-        self.assertEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
 
-        # Test case II: psis = 1.
-        # Sensitivities reduce to
-        # dpsi = -1 + mu_log / var_log
-        # dmu = - mu_log / var_log * nids
-        # dsigma = (mu_log^2 / var_log - 1) / std_log * nids
-
-        # Test case II.1:
-        psis = [1] * n_ids
-        mu_log = 1
-        sigma_log = np.exp(2)
+        # Test case I.3: non-centered (no dlogp/dpsi)
+        etas = np.zeros(n_ids)
+        mu = 1
+        sigma = 1
 
         # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-        ref_dpsi = -1 + mu_log / sigma_log**2
-        ref_dmu = -mu_log / sigma_log**2 * n_ids
-        ref_dsigma = (mu_log**2 / sigma_log**2 - 1) / sigma_log * n_ids
+        parameters = [mu, sigma]
+        ref_ll = self.non_centered.compute_log_likelihood(parameters, etas)
+        ref_detas = 0
+        ref_dmu = 0
+        ref_dsigma = 0
 
         # Compute log-likelihood and sensitivities
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        score, deta, dtheta = self.non_centered.compute_sensitivities(
+            parameters, etas)
 
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_dpsi)
-        self.assertEqual(sens[1], ref_dpsi)
-        self.assertEqual(sens[2], ref_dpsi)
-        self.assertEqual(sens[3], ref_dpsi)
-        self.assertEqual(sens[4], ref_dpsi)
-        self.assertEqual(sens[5], ref_dpsi)
-        self.assertEqual(sens[6], ref_dpsi)
-        self.assertEqual(sens[7], ref_dpsi)
-        self.assertEqual(sens[8], ref_dpsi)
-        self.assertEqual(sens[9], ref_dpsi)
-        self.assertAlmostEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(deta.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(deta[0, 0], ref_detas)
+        self.assertAlmostEqual(deta[1, 0], ref_detas)
+        self.assertAlmostEqual(deta[2, 0], ref_detas)
+        self.assertAlmostEqual(deta[3, 0], ref_detas)
+        self.assertAlmostEqual(deta[4, 0], ref_detas)
+        self.assertAlmostEqual(deta[5, 0], ref_detas)
+        self.assertAlmostEqual(deta[6, 0], ref_detas)
+        self.assertAlmostEqual(deta[7, 0], ref_detas)
+        self.assertAlmostEqual(deta[8, 0], ref_detas)
+        self.assertAlmostEqual(deta[9, 0], ref_detas)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
 
-        # Test case II.2:
-        psis = [1] * n_ids
-        mu_log = 3
-        sigma_log = np.exp(3)
+        # Test case I.4: non-centered (with dlogp/dpsi)
+        etas = np.ones(n_ids)
+        mu = 1
+        sigma = 1
+        dlog_dpsi = np.ones((n_ids, 1)) * 2
+        psi = np.exp(mu + sigma * etas)
 
         # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
-        ref_dpsi = -1 + mu_log / sigma_log**2
-        ref_dmu = -mu_log / sigma_log**2 * n_ids
-        ref_dsigma = (mu_log**2 / sigma_log**2 - 1) / sigma_log * n_ids
+        parameters = [mu, sigma]
+        ref_ll = self.non_centered.compute_log_likelihood(parameters, etas)
+        ref_detas = psi[0] * sigma * dlog_dpsi[0, 0] - etas[0]
+        ref_dmu = np.sum(psi[0] * dlog_dpsi)
+        ref_dsigma = np.sum(psi[0] * dlog_dpsi)
 
         # Compute log-likelihood and sensitivities
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        score, deta, dtheta = self.non_centered.compute_sensitivities(
+            parameters, etas, dlogp_dpsi=dlog_dpsi)
 
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_dpsi)
-        self.assertEqual(sens[1], ref_dpsi)
-        self.assertEqual(sens[2], ref_dpsi)
-        self.assertEqual(sens[3], ref_dpsi)
-        self.assertEqual(sens[4], ref_dpsi)
-        self.assertEqual(sens[5], ref_dpsi)
-        self.assertEqual(sens[6], ref_dpsi)
-        self.assertEqual(sens[7], ref_dpsi)
-        self.assertEqual(sens[8], ref_dpsi)
-        self.assertEqual(sens[9], ref_dpsi)
-        self.assertAlmostEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(deta.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(deta[0, 0], ref_detas)
+        self.assertAlmostEqual(deta[1, 0], ref_detas)
+        self.assertAlmostEqual(deta[2, 0], ref_detas)
+        self.assertAlmostEqual(deta[3, 0], ref_detas)
+        self.assertAlmostEqual(deta[4, 0], ref_detas)
+        self.assertAlmostEqual(deta[5, 0], ref_detas)
+        self.assertAlmostEqual(deta[6, 0], ref_detas)
+        self.assertAlmostEqual(deta[7, 0], ref_detas)
+        self.assertAlmostEqual(deta[8, 0], ref_detas)
+        self.assertAlmostEqual(deta[9, 0], ref_detas)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
 
-        # Test case III: psis all the same, sigma_log = 1.
-        # Score reduces to
-        # dpsi = (-1 + mu_log - log psi) / psi
-        # dmu = (log psi - mu_log) * nids
-        # dsigma = ((log psi - mu_log)^2 - 1) * nids
-
-        # Test case III.1
-        psi = [np.exp(4)] * n_ids
-        mu_log = 1
-        sigma_log = 1
-
-        # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
-        ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
-        ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
-        ref_dsigma = ((np.log(psi[0]) - mu_log)**2 - 1) * n_ids
-
-        # Compute log-likelihood and sensitivities
-        score, sens = self.pop_model.compute_sensitivities(parameters, psi)
-
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_dpsi)
-        self.assertEqual(sens[1], ref_dpsi)
-        self.assertEqual(sens[2], ref_dpsi)
-        self.assertEqual(sens[3], ref_dpsi)
-        self.assertEqual(sens[4], ref_dpsi)
-        self.assertEqual(sens[5], ref_dpsi)
-        self.assertEqual(sens[6], ref_dpsi)
-        self.assertEqual(sens[7], ref_dpsi)
-        self.assertEqual(sens[8], ref_dpsi)
-        self.assertEqual(sens[9], ref_dpsi)
-        self.assertAlmostEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
-
-        # Test case III.2
-        psi = [np.exp(3)] * n_ids
-        mu_log = 3
-        sigma_log = 1
-
-        # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
-        ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
-        ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
-        ref_dsigma = ((np.log(psi[0]) - mu_log)**2 - 1) * n_ids
-
-        # Compute log-likelihood and sensitivities
-        score, sens = self.pop_model.compute_sensitivities(parameters, psi)
-
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_dpsi)
-        self.assertEqual(sens[1], ref_dpsi)
-        self.assertEqual(sens[2], ref_dpsi)
-        self.assertEqual(sens[3], ref_dpsi)
-        self.assertEqual(sens[4], ref_dpsi)
-        self.assertEqual(sens[5], ref_dpsi)
-        self.assertEqual(sens[6], ref_dpsi)
-        self.assertEqual(sens[7], ref_dpsi)
-        self.assertEqual(sens[8], ref_dpsi)
-        self.assertEqual(sens[9], ref_dpsi)
-        self.assertAlmostEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
-
-        # Test case IV: Compare gradients to numpy.gradient
+        # Test case II: finite difference
+        # Test case II.1 1dim, return flattened
         epsilon = 0.00001
-        n_parameters = n_ids + self.pop_model.n_parameters()
-        parameters = np.full(shape=n_parameters, fill_value=0.3)
-        ref_sens = []
-        for index in range(n_parameters):
+        psis = np.arange(10) * 0.1 + 0.1
+        parameters = np.array([0.1, 2])
+        ref_score = self.pop_model.compute_log_likelihood(
+            parameters, psis)
+        ref_dpsi = []
+        for index in range(len(psis)):
+            # Construct parameter grid
+            low = psis.copy()
+            low[index] -= epsilon
+            high = psis.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.pop_model.compute_log_likelihood(parameters, low),
+                    ref_score,
+                    self.pop_model.compute_log_likelihood(parameters, high)],
+                (epsilon))
+            ref_dpsi.append(sens[1])
+        ref_dtheta = []
+        for index in range(len(parameters)):
             # Construct parameter grid
             low = parameters.copy()
             low[index] -= epsilon
@@ -2289,103 +2414,172 @@ class TestLogNormalModel(unittest.TestCase):
             # Compute reference using numpy.gradient
             sens = np.gradient(
                 [
-                    self.pop_model.compute_log_likelihood(
-                        low[n_ids:], low[:n_ids]),
-                    self.pop_model.compute_log_likelihood(
-                        parameters[n_ids:], parameters[:n_ids]),
-                    self.pop_model.compute_log_likelihood(
-                        high[n_ids:], high[:n_ids])],
+                    self.pop_model.compute_log_likelihood(low, psis),
+                    ref_score,
+                    self.pop_model.compute_log_likelihood(high, psis)],
                 (epsilon))
-            ref_sens.append(sens[1])
+            ref_dtheta.append(sens[1])
 
         # Compute sensitivities with hierarchical model
-        _, sens = self.pop_model.compute_sensitivities(
-            parameters[n_ids:], parameters[:n_ids])
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis)
+        self.assertEqual(score, ref_score)
+        self.assertEqual(dpsi.shape, (10, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi[0])
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi[1])
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi[2])
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi[3])
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi[4])
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi[5])
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi[6])
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi[7])
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi[8])
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi[9])
+        self.assertAlmostEqual(dtheta[0], ref_dtheta[0])
+        self.assertAlmostEqual(dtheta[1], ref_dtheta[1])
 
-        self.assertEqual(len(sens), 12)
-        self.assertAlmostEqual(sens[0], ref_sens[0])
-        self.assertAlmostEqual(sens[1], ref_sens[1])
-        self.assertAlmostEqual(sens[2], ref_sens[2])
-        self.assertAlmostEqual(sens[3], ref_sens[3])
-        self.assertAlmostEqual(sens[4], ref_sens[4])
-        self.assertAlmostEqual(sens[5], ref_sens[5])
-        self.assertAlmostEqual(sens[6], ref_sens[6])
-        self.assertAlmostEqual(sens[7], ref_sens[7])
-        self.assertAlmostEqual(sens[8], ref_sens[8])
-        self.assertAlmostEqual(sens[9], ref_sens[9])
-        self.assertAlmostEqual(sens[10], ref_sens[10], 5)
-        self.assertAlmostEqual(sens[11], ref_sens[11], 5)
+        # Test case II.2 1dim, return unflattened
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis, flattened=False)
+        self.assertEqual(score, ref_score)
+        self.assertEqual(dpsi.shape, (10, 1))
+        self.assertEqual(dtheta.shape, (10, 2, 1))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi[0])
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi[1])
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi[2])
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi[3])
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi[4])
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi[5])
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi[6])
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi[7])
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi[8])
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi[9])
 
-        # Test case V: mu_log or sigma_log negative or zero
+        # Test case II.3 non-centered, 1dim, return flattened
+        epsilon = 0.00001
+        etas = np.arange(10) * 0.1
+        parameters = np.array([0.1, 2])
+        ref_score = self.non_centered.compute_log_likelihood(
+            parameters, etas)
+        ref_deta = []
+        for index in range(len(etas)):
+            # Construct parameter grid
+            low = etas.copy()
+            low[index] -= epsilon
+            high = etas.copy()
+            high[index] += epsilon
 
-        # Test case V.1
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.non_centered.compute_log_likelihood(parameters, low),
+                    ref_score,
+                    self.non_centered.compute_log_likelihood(
+                        parameters, high)],
+                (epsilon))
+            ref_deta.append(sens[1])
+        ref_dtheta = []
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.non_centered.compute_log_likelihood(low, etas),
+                    ref_score,
+                    self.non_centered.compute_log_likelihood(high, etas)],
+                (epsilon))
+            ref_dtheta.append(sens[1])
+
+        # Compute sensitivities with hierarchical model
+        score, deta, dtheta = self.non_centered.compute_sensitivities(
+            parameters, etas)
+        self.assertEqual(score, ref_score)
+        self.assertEqual(deta.shape, (10, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(deta[0, 0], ref_deta[0])
+        self.assertAlmostEqual(deta[1, 0], ref_deta[1])
+        self.assertAlmostEqual(deta[2, 0], ref_deta[2])
+        self.assertAlmostEqual(deta[3, 0], ref_deta[3])
+        self.assertAlmostEqual(deta[4, 0], ref_deta[4])
+        self.assertAlmostEqual(deta[5, 0], ref_deta[5])
+        self.assertAlmostEqual(deta[6, 0], ref_deta[6])
+        self.assertAlmostEqual(deta[7, 0], ref_deta[7])
+        self.assertAlmostEqual(deta[8, 0], ref_deta[8])
+        self.assertAlmostEqual(deta[9, 0], ref_deta[9])
+        self.assertAlmostEqual(dtheta[0], ref_dtheta[0])
+        self.assertAlmostEqual(dtheta[1], ref_dtheta[1])
+
+        # Test case II.4: non-centered, 1dim, return unflattened
+        score, deta, dtheta = self.non_centered.compute_sensitivities(
+            parameters, etas, flattened=False)
+        self.assertEqual(score, ref_score)
+        self.assertEqual(deta.shape, (10, 1))
+        self.assertEqual(dtheta.shape, (10, 2, 1))
+        self.assertAlmostEqual(deta[0, 0], ref_deta[0])
+        self.assertAlmostEqual(deta[1, 0], ref_deta[1])
+        self.assertAlmostEqual(deta[2, 0], ref_deta[2])
+        self.assertAlmostEqual(deta[3, 0], ref_deta[3])
+        self.assertAlmostEqual(deta[4, 0], ref_deta[4])
+        self.assertAlmostEqual(deta[5, 0], ref_deta[5])
+        self.assertAlmostEqual(deta[6, 0], ref_deta[6])
+        self.assertAlmostEqual(deta[7, 0], ref_deta[7])
+        self.assertAlmostEqual(deta[8, 0], ref_deta[8])
+        self.assertAlmostEqual(deta[9, 0], ref_deta[9])
+
+        # Test case III: sigma_log negative or zero
+        # Test case III.1
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = 0
 
         parameters = [mu] + [sigma]
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis)
         self.assertEqual(score, -np.inf)
-        self.assertEqual(sens[0], np.inf)
-        self.assertEqual(sens[1], np.inf)
-        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
 
-        # Test case V.2
+        # Test case III.2 non-centered (finite score)
+        etas = [np.exp(10)] * n_ids
+        mu = 1
+        sigma = 0
+
+        parameters = [mu] + [sigma]
+        score, dpsi, dtheta = self.non_centered.compute_sensitivities(
+            parameters, etas)
+        self.assertTrue(np.isfinite(score))
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+
+        # Test case III.3 negative
         psis = [np.exp(10)] * n_ids
         mu = 1
         sigma = -10
 
         parameters = [mu] + [sigma]
-        score, sens = self.pop_model.compute_sensitivities(parameters, psis)
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis)
         self.assertEqual(score, -np.inf)
-        self.assertEqual(sens[0], np.inf)
-        self.assertEqual(sens[1], np.inf)
-        self.assertEqual(sens[2], np.inf)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
 
-        # Test case VI. Multi-dimensional
-        psi = [np.exp(3)] * n_ids
-        mu_log = 3
-        sigma_log = 1
+        # Test case III.4 negative unflattened
+        psis = [np.exp(10)] * n_ids
+        mu = 1
+        sigma = -10
 
-        # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.pop_model.compute_log_likelihood(parameters, psi)
-        ref_dpsi = (-1 + mu_log - np.log(psi[0])) / psi[0]
-        ref_dmu = (np.log(psi[0]) - mu_log) * n_ids
-        ref_dsigma = ((np.log(psi[0]) - mu_log)**2 - 1) * n_ids
-
-        # Compute log-likelihood and sensitivities
-        pop_model = chi.LogNormalModel(n_dim=2)
-        psi = np.vstack((np.array(psi), np.array(psi))).T
-        parameters = [mu_log, mu_log, sigma_log, sigma_log]
-        score, sens = pop_model.compute_sensitivities(parameters, psi)
-
-        self.assertAlmostEqual(score, 2 * ref_ll)
-        self.assertEqual(len(sens), (n_ids + 2) * 2)
-        self.assertEqual(sens[0], ref_dpsi)
-        self.assertEqual(sens[1], ref_dpsi)
-        self.assertEqual(sens[2], ref_dpsi)
-        self.assertEqual(sens[3], ref_dpsi)
-        self.assertEqual(sens[4], ref_dpsi)
-        self.assertEqual(sens[5], ref_dpsi)
-        self.assertEqual(sens[6], ref_dpsi)
-        self.assertEqual(sens[7], ref_dpsi)
-        self.assertEqual(sens[8], ref_dpsi)
-        self.assertEqual(sens[9], ref_dpsi)
-        self.assertEqual(sens[10], ref_dpsi)
-        self.assertEqual(sens[11], ref_dpsi)
-        self.assertEqual(sens[12], ref_dpsi)
-        self.assertEqual(sens[13], ref_dpsi)
-        self.assertEqual(sens[14], ref_dpsi)
-        self.assertEqual(sens[15], ref_dpsi)
-        self.assertEqual(sens[16], ref_dpsi)
-        self.assertEqual(sens[17], ref_dpsi)
-        self.assertEqual(sens[18], ref_dpsi)
-        self.assertEqual(sens[19], ref_dpsi)
-        self.assertAlmostEqual(sens[20], ref_dmu)
-        self.assertAlmostEqual(sens[21], ref_dmu)
-        self.assertAlmostEqual(sens[22], ref_dsigma)
-        self.assertAlmostEqual(sens[23], ref_dsigma)
+        parameters = [mu] + [sigma]
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis, flattened=False)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (n_ids, 2, 1))
 
     def test_get_mean_and_std(self):
         # Test case I: std_log = 0
