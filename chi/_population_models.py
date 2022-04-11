@@ -19,8 +19,9 @@ class PopulationModel(object):
     """
     A base class for population models.
 
-    Population models can be multi-dimensional, but unless explicitly specfied,
-    the dimensions of the model are assumed to be independent.
+    Population models can be multi-dimensional, but unless explicitly specfied
+    in the model description, the dimensions of the model are modelled
+    independently.
 
     :param n_dim: The dimensionality of the population model.
     :type n_dim: int, optional
@@ -35,7 +36,6 @@ class PopulationModel(object):
                 'equal to 1.')
         self._n_dim = int(n_dim)
         self._n_hierarchical_dim = self._n_dim
-        self._needs_covariates = False
 
         if dim_names:
             if len(dim_names) != self._n_dim:
@@ -64,7 +64,8 @@ class PopulationModel(object):
         """
         return eta
 
-    def compute_log_likelihood(self, parameters, observations):
+    def compute_log_likelihood(
+            self, parameters, observations, *args, **kwargs):
         """
         Returns the log-likelihood of the population model parameters.
 
@@ -77,7 +78,7 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
-    def compute_pointwise_ll(self, parameters, observations):
+    def compute_pointwise_ll(self, parameters, observations,  *args, **kwargs):
         """
         Returns the pointwise log-likelihood of the model parameters for
         each observation.
@@ -95,11 +96,16 @@ class PopulationModel(object):
         raise NotImplementedError
 
     def compute_sensitivities(
-            self, parameters, observations, dlogp_dpsi=None):
+            self, parameters, observations, dlogp_dpsi=None,  *args, **kwargs):
         """
         Returns the log-likelihood of the population model parameters and
         its sensitivity to the population parameters as well as the
         observations.
+
+        The sensitivities of the bottom-level log-likelihoods with respect to
+        the ``observations`` (bottom-level parameters) may be provided using
+        ``dlogp_dpsi``, in order to compute the sensitivities of the full
+        hierarchical log-likelihood.
 
         The log-likelihood and sensitivities are returned as a tuple
         ``(score, deta, dtheta)``.
@@ -142,6 +148,12 @@ class PopulationModel(object):
         """
         raise NotImplementedError
 
+    def n_covariates(self):
+        """
+        Returns the number of covariates.
+        """
+        return 0
+
     def n_dim(self):
         """
         Returns the dimensionality of the population model.
@@ -158,13 +170,6 @@ class PopulationModel(object):
         """
         return self._n_hierarchical_dim
 
-    def needs_covariates(self):
-        """
-        A boolean flag indicating whether the population model is conditionally
-        defined on covariates.
-        """
-        return self._needs_covariates
-
     def n_hierarchical_parameters(self, n_ids):
         """
         Returns a tuple of the number of individual parameters and the number
@@ -172,18 +177,10 @@ class PopulationModel(object):
         :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
         modelled.
 
-        Parameters
-        ----------
-        n_ids
-            Number of individuals.
+        :param n_ids: Number of individuals.
+        :type n_ids: int
         """
         raise NotImplementedError
-
-    def n_covariates(self):
-        """
-        Returns the number of covariates.
-        """
-        return 0
 
     def n_ids(self):
         """
@@ -201,7 +198,7 @@ class PopulationModel(object):
         raise NotImplementedError
 
     def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
-        r"""
+        """
         Returns random samples from the population distribution.
 
         The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
@@ -217,15 +214,12 @@ class PopulationModel(object):
         raise NotImplementedError
 
     def set_dim_names(self, names=None):
-        r"""
+        """
         Sets the names of the population model dimensions.
 
-        Parameters
-        ----------
-        names
-            An array-like object with string-convertable entries of length
-            :meth:`n_dim`. If ``None``, dimension names are reset to
-            defaults.
+        :param names: A list of dimension names. If ``None``, dimension names
+            are reset to defaults.
+        :type names: List[str], optional
         """
         if names is None:
             # Reset names to defaults
@@ -257,9 +251,8 @@ class PopulationModel(object):
         """
         Sets the names of the population model parameters.
 
-        :param names: A list with string-convertable entries of
-            length :meth:`n_parameters`. If ``None``, parameter names are
-            reset to defaults.
+        :param names: A list of parameter names. If ``None``, parameter names
+            are reset to defaults.
         :type names: List[str]
         """
         raise NotImplementedError
@@ -1111,7 +1104,7 @@ class GaussianModel(PopulationModel):
 
     A Gaussian population model assumes that a model parameter
     :math:`\psi` varies across individuals such that :math:`\psi` is
-    Gaussian distributed in the population
+    normally distributed in the population
 
     .. math::
         p(\psi |\mu, \sigma) =
@@ -1362,61 +1355,60 @@ class GaussianModel(PopulationModel):
 
         return self._compute_log_likelihood(mus, vars, observations)
 
-    def compute_pointwise_ll(
-            self, parameters, observations):  # pragma: no cover
-        r"""
-        Returns the pointwise log-likelihood of the model parameters for
-        each observation.
+    # def compute_pointwise_ll(
+    #         self, parameters, observations):  # pragma: no cover
+    #     r"""
+    #     Returns the pointwise log-likelihood of the model parameters for
+    #     each observation.
 
-        The pointwise log-likelihood of a Gaussian distribution is
-        the log-pdf evaluated at the observations
+    #     The pointwise log-likelihood of a Gaussian distribution is
+    #     the log-pdf evaluated at the observations
 
-        .. math::
-            L(\mu , \sigma | \psi _i) =
-            \log p(\psi _i |
-            \mu , \sigma ) ,
+    #     .. math::
+    #         L(\mu , \sigma | \psi _i) =
+    #         \log p(\psi _i |
+    #         \mu , \sigma ) ,
 
-        where
-        :math:`\psi _i` are the "observed" parameters :math:`\psi` from
-        individual :math:`i`.
+    #     where
+    #     :math:`\psi _i` are the "observed" parameters :math:`\psi` from
+    #     individual :math:`i`.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the model parameter values, i.e.
-            [:math:`\mu`, :math:`\sigma`].
-        observations
-            An array like object with the parameter values for the individuals,
-            i.e. [:math:`\psi _1, \ldots , \psi _N`].
-        """
-        # TODO: Needs proper research to establish which pointwise
-        # log-likelihood makes sense for hierarchical models.
-        # Also needs to be adapted to match multi-dimensional API.
-        raise NotImplementedError
-        observations = np.asarray(observations)
-        mean, std = parameters
-        var = std**2
+    #     Parameters
+    #     ----------
+    #     parameters
+    #         An array-like object with the model parameter values, i.e.
+    #         [:math:`\mu`, :math:`\sigma`].
+    #     observations
+    #         An array like object with the parameter values for the
+    #         individuals.
+    #     """
+    #     # TODO: Needs proper research to establish which pointwise
+    #     # log-likelihood makes sense for hierarchical models.
+    #     # Also needs to be adapted to match multi-dimensional API.
+    #     raise NotImplementedError
+    #     observations = np.asarray(observations)
+    #     mean, std = parameters
+    #     var = std**2
 
-        eps = 1E-6
-        if (std <= 0) or (var <= eps):
-            # The std. of the Gaussian distribution is strictly positive
-            return np.full(shape=len(observations), fill_value=-np.inf)
+    #     eps = 1E-6
+    #     if (std <= 0) or (var <= eps):
+    #         # The std. of the Gaussian distribution is strictly positive
+    #         return np.full(shape=len(observations), fill_value=-np.inf)
 
-        return self._compute_pointwise_ll(mean, var, observations)
+    #     return self._compute_pointwise_ll(mean, var, observations)
 
     def compute_sensitivities(
             self, parameters, observations, dlogp_dpsi=None, flattened=True,
             *args, **kwargs):
         """
         Returns the log-likelihood of the population model parameters and
-        its sensitivity to the population parameters as well as the
+        its sensitivities to the population parameters as well as the
         observations.
 
-        If ``centered = False``, the sensitivities of the log-likelihood of the
-        individual parameters may be provided using ``dlogp_dpsi``. Otherwise
-        the sensitivities with respect to the population parameters cannot be
-        computed, and the sensitivities with respect to the observations
-        account only for their contribution to the population log-likelihood.
+        The sensitivities of the bottom-level log-likelihoods with respect to
+        the ``observations`` (bottom-level parameters) may be provided using
+        ``dlogp_dpsi``, in order to compute the sensitivities of the full
+        hierarchical log-likelihood.
 
         The log-likelihood and sensitivities are returned as a tuple
         ``(score, deta, dtheta)``.
@@ -1503,10 +1495,8 @@ class GaussianModel(PopulationModel):
         :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
         modelled.
 
-        Parameters
-        ----------
-        n_ids
-            Number of individuals.
+        :param n_ids: Number of individuals.
+        :type n_ids: int
         """
         n_ids = int(n_ids)
 
@@ -1597,7 +1587,6 @@ class GaussianModel(PopulationModel):
 
 
 class HeterogeneousModel(PopulationModel):
-    # TODO: Test!
     """
     A population model which imposes no relationship on the model parameters
     across individuals.
@@ -1646,9 +1635,12 @@ class HeterogeneousModel(PopulationModel):
         parameters = np.asarray(parameters)
         if parameters.ndim == 1:
             n_parameters = len(parameters) // self._n_dim
-            parameters = parameters.reshape(1, n_parameters, self._n_dim)
-        elif parameters.ndim == 2:
-            parameters = parameters[np.newaxis, ...]
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+        elif parameters.ndim == 3:
+            # Heterogenous model is special, because n_param_per_dim = n_ids.
+            # But after covariate transformation, the covariate information is
+            # in the n_ids dimension.
+            parameters = parameters[:, 0, :]
 
         # Return -inf if any of the observations do not equal the heterogenous
         # parameters
@@ -1659,24 +1651,25 @@ class HeterogeneousModel(PopulationModel):
         # Otherwise return 0
         return 0
 
-    def compute_pointwise_ll(self, parameters, observations):
-        r"""
-        Returns the pointwise log-likelihood of the model parameters for
-        each observation.
+    # def compute_pointwise_ll(self, parameters, observations):
+    #     r"""
+    #     Returns the pointwise log-likelihood of the model parameters for
+    #     each observation.
 
-        A heterogenous population model imposes no restrictions on the
-        individuals, as a result the log-likelihood score is zero irrespective
-        of the model parameters.
+    #     A heterogenous population model imposes no restrictions on the
+    #     individuals, as a result the log-likelihood score is zero
+    #     irrespective
+    #     of the model parameters.
 
-        Parameters
-        ----------
-        parameters
-            An array-like object with the parameters of the population model.
-        observations
-            An array-like object with the observations of the individuals. Each
-            entry is assumed to belong to one individual.
-        """
-        raise NotImplementedError
+    #     Parameters
+    #     ----------
+    #     parameters
+    #         An array-like object with the parameters of the population model.
+    #     observations
+    #         An array-like object with the observations of the individuals.
+    #         Each entry is assumed to belong to one individual.
+    #     """
+    #     raise NotImplementedError
 
     def compute_sensitivities(
             self, parameters, observations, dlogp_dpsi=None, flattened=True,
@@ -1711,9 +1704,12 @@ class HeterogeneousModel(PopulationModel):
         parameters = np.asarray(parameters)
         if parameters.ndim == 1:
             n_parameters = len(parameters) // self._n_dim
-            parameters = parameters.reshape(1, n_parameters, self._n_dim)
-        elif parameters.ndim == 2:
-            parameters = parameters[np.newaxis, ...]
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+        elif parameters.ndim == 3:
+            # Heterogenous model is special, because n_param_per_dim = n_ids.
+            # But after covariate transformation, the covariate information is
+            # in the n_ids dimension.
+            parameters = parameters[:, 0, :]
 
         # Return -inf if any of the observations does not equal the
         # heterogenous parameters
@@ -1761,10 +1757,8 @@ class HeterogeneousModel(PopulationModel):
         :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
         modelled.
 
-        Parameters
-        ----------
-        n_ids
-            Number of individuals.
+        :param n_ids: Number of individuals.
+        :type n_ids: int
         """
         n_ids = int(n_ids)
 
@@ -1869,7 +1863,7 @@ class HeterogeneousModel(PopulationModel):
 class LogNormalModel(PopulationModel):
     r"""
     A population model which models parameters across individuals
-    with a lognormal distributed.
+    with a lognormal distribution.
 
     A lognormal population model assumes that a model parameter :math:`\psi`
     varies across individuals such that :math:`\psi` is log-normally
@@ -2062,7 +2056,7 @@ class LogNormalModel(PopulationModel):
         If ``centered = True``, the model does not transform the parameters
         and ``eta`` is returned.
 
-        If ``centered = False``, the individual parameters are defined as
+        If ``centered = False``, the individual parameters are computed using
 
         .. math::
             \psi = \mathrm{e}^{
@@ -2192,11 +2186,10 @@ class LogNormalModel(PopulationModel):
         its sensitivity to the population parameters as well as the
         observations.
 
-        If ``centered = False``, the sensitivities of the log-likelihood of the
-        individual parameters may be provided using ``dlogp_dpsi``. Otherwise
-        the sensitivities with respect to the population parameters cannot be
-        computed, and the sensitivities with respect to the observations
-        account only for their contribution to the population log-likelihood.
+        The sensitivities of the bottom-level log-likelihoods with respect to
+        the ``observations`` (bottom-level parameters) may be provided using
+        ``dlogp_dpsi``, in order to compute the sensitivities of the full
+        hierarchical log-likelihood.
 
         The log-likelihood and sensitivities are returned as a tuple
         ``(score, deta, dtheta)``.
@@ -2460,9 +2453,9 @@ class PooledModel(PopulationModel):
         parameters = np.asarray(parameters)
         if parameters.ndim == 1:
             n_parameters = len(parameters) // self._n_dim
-            parameters = parameters.reshape(1, n_parameters, self._n_dim)
-        elif parameters.ndim == 2:
-            parameters = parameters[np.newaxis, ...]
+            parameters = parameters.reshape(n_parameters, self._n_dim)
+        elif parameters.ndim == 3:
+            parameters = parameters[:, 0]
 
         # Return -inf if any of the observations do not equal the pooled
         # parameter
@@ -2542,8 +2535,8 @@ class PooledModel(PopulationModel):
         if parameters.ndim == 1:
             n_parameters = len(parameters) // self._n_dim
             parameters = parameters.reshape(1, n_parameters, self._n_dim)
-        elif parameters.ndim == 2:
-            parameters = parameters[np.newaxis, ...]
+        elif parameters.ndim == 3:
+            parameters = parameters[:, 0]
 
         # Return -inf if any of the observations does not equal the pooled
         # parameter
@@ -2590,10 +2583,8 @@ class PooledModel(PopulationModel):
         :class:`HierarchicalLogLikelihood`, when ``n_ids`` individuals are
         modelled.
 
-        Parameters
-        ----------
-        n_ids
-            Number of individuals.
+        :param n_ids: Number of individuals.
+        :type n_ids: int
         """
         return (0, self._n_parameters)
 

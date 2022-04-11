@@ -1666,6 +1666,21 @@ class TestHeterogeneousModel(unittest.TestCase):
         score = pop_model.compute_log_likelihood(parameters, observations)
         self.assertTrue(np.isinf(score))
 
+        # Test IV: matrix parameters
+        n_ids = 5
+        n_dim = 2
+        pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
+        parameters = np.arange(n_ids * n_dim).reshape(n_ids, n_dim)
+        observations = parameters
+        score = pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, 0)
+
+        # Test V: 3 dim matrix parameters
+        parameters = np.broadcast_to(
+            parameters[:, np.newaxis, :], (n_ids, n_ids, n_dim))
+        score = pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, 0)
+
     def test_compute_pointwise_ll(self):
         with self.assertRaisesRegex(NotImplementedError, None):
             self.pop_model.compute_pointwise_ll('some', 'input')
@@ -1674,11 +1689,13 @@ class TestHeterogeneousModel(unittest.TestCase):
         # Test I: n_ids=1
         parameters = [1]
         observations = [1]
-        score, sens = self.pop_model.compute_sensitivities(
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
             parameters, observations)
         self.assertEqual(score, 0)
-        self.assertEqual(len(sens), 2)
-        self.assertTrue(np.all(sens == 0))
+        self.assertEqual(dpsi.shape, (1, 1))
+        self.assertEqual(dtheta.shape, (1,))
+        self.assertTrue(np.all(dpsi == 0))
+        self.assertTrue(np.all(dtheta == 0))
 
         # Test II: n_ids=5, dim=2
         n_ids = 5
@@ -1686,19 +1703,52 @@ class TestHeterogeneousModel(unittest.TestCase):
         pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
         parameters = np.arange(n_ids * n_dim)
         observations = parameters.reshape(n_ids, n_dim)
-        score, sens = pop_model.compute_sensitivities(
+        score, dpsi, dtheta = pop_model.compute_sensitivities(
             parameters, observations)
         self.assertEqual(score, 0)
-        self.assertEqual(len(sens), 20)
-        self.assertTrue(np.all(sens == 0))
+        self.assertEqual(dpsi.shape, (n_ids, n_dim))
+        self.assertEqual(dtheta.shape, (10,))
+        self.assertTrue(np.all(dpsi == 0))
+        self.assertTrue(np.all(dtheta == 0))
 
         # Test III: inf for unequal params
         parameters = np.ones(n_ids * n_dim)
-        score, sens = pop_model.compute_sensitivities(
+        score, dpsi, dtheta = pop_model.compute_sensitivities(
             parameters, observations)
         self.assertTrue(np.isinf(score))
-        self.assertEqual(len(sens), 20)
-        self.assertTrue(np.all(np.isinf(sens)))
+        self.assertEqual(dpsi.shape, (n_ids, n_dim))
+        self.assertEqual(dtheta.shape, (10,))
+
+        # Test IV: n_ids=5, dim=2 3 dimensional input
+        n_ids = 5
+        n_dim = 2
+        pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
+        parameters = np.arange(n_ids * n_dim)
+        observations = parameters.reshape(n_ids, n_dim)
+        parameters = np.broadcast_to(
+            observations[:, np.newaxis, :], (n_ids, n_ids, n_dim))
+        score, dpsi, dtheta = pop_model.compute_sensitivities(
+            parameters, observations)
+        self.assertEqual(score, 0)
+        self.assertEqual(dpsi.shape, (n_ids, n_dim))
+        self.assertEqual(dtheta.shape, (10,))
+        self.assertTrue(np.all(dpsi == 0))
+        self.assertTrue(np.all(dtheta == 0))
+
+        # Test V: add dlogp_dpsi
+        n_ids = 5
+        n_dim = 2
+        pop_model = chi.HeterogeneousModel(n_dim=n_dim, n_ids=n_ids)
+        parameters = np.arange(n_ids * n_dim)
+        observations = parameters.reshape(n_ids, n_dim)
+        dlogp_dpsi = np.ones((n_ids, n_dim))
+        score, dpsi, dtheta = pop_model.compute_sensitivities(
+            parameters, observations, dlogp_dpsi=dlogp_dpsi)
+        self.assertEqual(score, 0)
+        self.assertEqual(dpsi.shape, (n_ids, n_dim))
+        self.assertEqual(dtheta.shape, (10,))
+        self.assertTrue(np.all(dpsi == 1))
+        self.assertTrue(np.all(dtheta == 0))
 
     def test_get_parameter_names(self):
         names = self.pop_model.get_parameter_names()
@@ -2598,9 +2648,15 @@ class TestLogNormalModel(unittest.TestCase):
         pop_model = chi.LogNormalModel(n_dim=2)
         sample = pop_model.sample(
             parameters, n_samples=n_samples, seed=seed)
+        self.assertEqual(sample.shape, (n_samples, 2))
 
-        self.assertEqual(
-            sample.shape, (n_samples, 2))
+        # Test case IV: non-centered sampling
+        parameters = [3, 2, 3, 2]
+        n_samples = 4
+        pop_model = chi.LogNormalModel(n_dim=2, centered=False)
+        sample = pop_model.sample(
+            parameters, n_samples=n_samples, seed=seed)
+        self.assertEqual(sample.shape, (n_samples, 2))
 
     def test_sample_bad_input(self):
         # Too many paramaters
@@ -2665,6 +2721,12 @@ class TestPooledModel(unittest.TestCase):
         # Test case II: all values agree with parameter
         parameters = [1]
         observations = [1, 1, 1, 1]
+        score = self.pop_model.compute_log_likelihood(parameters, observations)
+        self.assertEqual(score, 0)
+
+        # Test case III: 3 dimensional input
+        parameters = np.arange(4).reshape(4, 1, 1)
+        observations = [0, 1, 2, 3]
         score = self.pop_model.compute_log_likelihood(parameters, observations)
         self.assertEqual(score, 0)
 
@@ -2766,6 +2828,15 @@ class TestPooledModel(unittest.TestCase):
         self.assertEqual(dpsi.shape, (4, 1))
         self.assertEqual(dtheta.shape, (4, 1, 1))
 
+        # Test case VI: 3 dim input
+        parameters = np.arange(4).reshape(4, 1, 1)
+        observations = [0, 1, 2, 3]
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, observations, flattened=False)
+        self.assertEqual(score, 0)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (4, 1, 1))
+
     def test_get_parameter_names(self):
         names = ['Pooled Dim. 1']
         self.assertEqual(self.pop_model.get_parameter_names(), names)
@@ -2851,6 +2922,12 @@ class TestPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.compute_log_likelihood(parameters, observations)
 
+    def test_compute_individual_parameters(self):
+        # simply returns the eta input
+        eta = [1] * 10
+        psi = self.pop_model.compute_individual_parameters('some params', eta)
+        self.assertEqual(psi, eta)
+
     def test_compute_pointwise_ll(self):
         parameters = 'some parameters'
         observations = 'some observations'
@@ -2865,6 +2942,11 @@ class TestPopulationModel(unittest.TestCase):
 
     def test_get_covariate_names(self):
         self.assertEqual(len(self.pop_model.get_covariate_names()), 0)
+
+    def test_get_dim_names(self):
+        names = self.pop_model.get_dim_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Dim. 1')
 
     def test_get_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
@@ -2914,9 +2996,6 @@ class TestPopulationModel(unittest.TestCase):
     def test_n_parameters(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.n_parameters()
-
-    def test_transforms_individual_parameters(self):
-        self.assertFalse(self.pop_model.transforms_individual_parameters())
 
     def test_sample(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
