@@ -3017,12 +3017,13 @@ class TestReducedPopulationModel(unittest.TestCase):
         pop_model = chi.LogNormalModel()
         cls.pop_model = chi.ReducedPopulationModel(pop_model)
 
-        # Test case II: Covariate population model
-        cls.bare_pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=2)
-        )
-        cls.cpop_model = chi.ReducedPopulationModel(cls.bare_pop_model)
+        # TODO:
+        # # Test case II: Covariate population model
+        # cls.bare_pop_model = chi.CovariatePopulationModel(
+        #     chi.GaussianModel(),
+        #     chi.LogNormalLinearCovariateModel(n_covariates=2)
+        # )
+        # cls.cpop_model = chi.ReducedPopulationModel(cls.bare_pop_model)
 
     def test_bad_instantiation(self):
         model = 'Bad type'
