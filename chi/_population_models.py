@@ -616,6 +616,7 @@ class ComposedPopulationModel(PopulationModel):
         rng = np.random.default_rng(seed=seed)
 
         # Sample from constituent population models
+        cov = None
         current_dim = 0
         current_param = 0
         current_cov = 0
@@ -624,8 +625,7 @@ class ComposedPopulationModel(PopulationModel):
             end_param = current_param + pop_model.n_parameters()
 
             # Get covariates
-            cov = None
-            if pop_model.n_covariates() > 0:
+            if covariates is not None:
                 cov = covariates[:, current_cov:pop_model.n_covariates()]
                 current_cov += pop_model.n_covariates()
 
