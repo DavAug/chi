@@ -307,10 +307,7 @@ class ComposedPopulationModel(PopulationModel):
         n_parameters = 0
         n_covariates = 0
         n_hierarchical_dim = 0
-        needs_covariates = False
         for pop_model in self._population_models:
-            needs_cov = pop_model.needs_covariates()
-            needs_covariates = needs_covariates | needs_cov
             n_covariates += pop_model.n_covariates()
             n_dim += pop_model.n_dim()
             n_hierarchical_dim += pop_model.n_hierarchical_dim()
@@ -320,7 +317,6 @@ class ComposedPopulationModel(PopulationModel):
         self._n_hierarchical_dim = n_hierarchical_dim
         self._n_parameters = n_parameters
         self._n_covariates = n_covariates
-        self._needs_covariates = needs_covariates
 
         # Make sure that models have unique parameter names
         # (if not enumerate dimensions to make them unique in most cases)
