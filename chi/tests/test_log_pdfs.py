@@ -2024,8 +2024,12 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         population_filter = chi.GaussianFilter(observations)
         times = np.array([1, 2, 3, 4])
         mechanistic_model = ToyExponentialModel()
-        population_model = chi.LogNormalModel(n_dim=2)
+        population_model = chi.ComposedPopulationModel([
+            chi.LogNormalModel(n_dim=1),
+            chi.LogNormalModel(n_dim=1, centered=False)])
         n_samples = 3
+
+        # TODO: Think carefully whether this is sufficiently tested.
 
         # Test case I: Fixed sigma, Gaussian error
         log_prior = pints.ComposedLogPrior(
@@ -2388,7 +2392,7 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         # Compute sensitivities from filter
         score, sens = self.log_posterior1.evaluateS1(parameters)
 
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
         self.assertFalse(np.any(np.isinf(sens)))
         self.assertEqual(len(sens), 22)
         self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
@@ -2449,7 +2453,7 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         # Compute sensitivities from filter
         score, sens = self.log_posterior2.evaluateS1(parameters)
 
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
         self.assertFalse(np.any(np.isinf(sens)))
         self.assertEqual(len(sens), 22)
         self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
@@ -2510,7 +2514,7 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         # Compute sensitivities from filter
         score, sens = self.log_posterior3.evaluateS1(parameters)
 
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
         self.assertFalse(np.any(np.isinf(sens)))
         self.assertEqual(len(sens), 23)
         self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
@@ -2572,7 +2576,7 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         # Compute sensitivities from filter
         score, sens = self.log_posterior4.evaluateS1(parameters)
 
-        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(score, ref_score)
         self.assertFalse(np.any(np.isinf(sens)))
         self.assertEqual(len(sens), 23)
         self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
@@ -2775,8 +2779,8 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         names = self.log_posterior1.get_parameter_names()
         self.assertEqual(len(names), 22)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
         self.assertEqual(names[4], 'Initial count')
         self.assertEqual(names[5], 'Growth rate')
@@ -2801,16 +2805,16 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             exclude_bottom_level=True)
         self.assertEqual(len(names), 4)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
 
         names = self.log_posterior1.get_parameter_names(
             include_ids=True)
         self.assertEqual(len(names), 22)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
         self.assertEqual(names[4], 'Sim. 1 Initial count')
         self.assertEqual(names[5], 'Sim. 1 Growth rate')
@@ -2835,15 +2839,15 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             exclude_bottom_level=True, include_ids=True)
         self.assertEqual(len(names), 4)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
 
         names = self.log_posterior3.get_parameter_names()
         self.assertEqual(len(names), 23)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
         self.assertEqual(names[4], 'Sigma Count')
         self.assertEqual(names[5], 'Initial count')
@@ -2869,8 +2873,8 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             exclude_bottom_level=True)
         self.assertEqual(len(names), 5)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
         self.assertEqual(names[4], 'Sigma Count')
 
@@ -2878,8 +2882,8 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             include_ids=True)
         self.assertEqual(len(names), 23)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
         self.assertEqual(names[4], 'Sigma Count')
         self.assertEqual(names[5], 'Sim. 1 Initial count')
@@ -2905,8 +2909,8 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             exclude_bottom_level=True, include_ids=True)
         self.assertEqual(len(names), 5)
         self.assertEqual(names[0], 'Log mean Initial count')
-        self.assertEqual(names[1], 'Log mean Growth rate')
-        self.assertEqual(names[2], 'Log std. Initial count')
+        self.assertEqual(names[1], 'Log std. Initial count')
+        self.assertEqual(names[2], 'Log mean Growth rate')
         self.assertEqual(names[3], 'Log std. Growth rate')
         self.assertEqual(names[4], 'Sigma Count')
 

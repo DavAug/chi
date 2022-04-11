@@ -446,13 +446,11 @@ class HierarchicalLogLikelihood(object):
             score += l
             dlogp_dpsi[idi] = dl_dpsi
 
-        print(dlogp_dpsi)
         # Compute population model score
         s, ds_dbottom, ds_dtop = self._population_model.compute_sensitivities(
             top_parameters, bottom_parameters, covariates=self._covariates,
             dlogp_dpsi=dlogp_dpsi)
         score += s
-        print(ds_dbottom)
 
         # Collect sensitivities
         sensitivities = self._collect_sensitivities(ds_dbottom, ds_dtop)
@@ -1620,11 +1618,10 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                 'The number of population model dimensions does not match the '
                 'number of mechanistic model parameters.')
         # TODO: Currently, no support for covariate population models
-        if population_model.transforms_individual_parameters():
+        if population_model.n_covariates() > 0:
             raise ValueError(
-                'Population models that transform the individual parameters '
-                'are currently not supported. This feature will be added in a '
-                'future release.')
+                'Covariate population models are currently not supported. '
+                'This feature will come in a future release.')
         self._population_model = copy.deepcopy(population_model)
 
         n_samples = int(n_samples)
@@ -1745,6 +1742,12 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         if self._mechanistic_model.has_sensitivities():
             self._mechanistic_model.enable_sensitivities(False)
 
+        # Transform bottom parameters into mechanistic model space
+        bottom_parameters = \
+            self._population_model.compute_individual_parameters(
+                parameters=pop_parameters,
+                eta=bottom_parameters)
+
         # Solve mechanistic model for bottom parameters
         y = np.empty(
             shape=(self._n_samples, self._n_observables, self._n_times))
@@ -1811,71 +1814,62 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
         return special_dims, n_pooled_dims, n_hetero_dims
 
-    def _remove_duplicates(self, sensitivities):
+    def _remove_duplicates(self, sensitivities, dbottom):
         """
         In some sense the reverse of self._reshape_bottom_parameters.
 
         1. Pooled bottom parameters need to be added to population parameter
         2. Heterogeneous bottom parameters need to added to population
             parameters
+
+        sensitivities: shape (n_parameters,)
+        dbottom: shape (n_ids, n_bottom, n_dim)
         """
         # Check for quick solution 1: no pooled parameters and no heterogeneous
         # parameters
         n_dim = self._population_model.n_dim()
         if self._population_model.n_hierarchical_dim() == n_dim:
+            sensitivities[self._n_top:self._end_bottom] = dbottom.flatten()
             return sensitivities
-
-        # Get population parameter sensitvitities
-        sens = np.zeros(shape=self._n_parameters)
-        sens[:self._n_top] = sensitivities[:self._n_top]
 
         # Check for quick solution 2: all parameters heterogen.
         if self._n_heterogen_dim == n_dim:
-            # Add contributions from bottom-level parameters
-            sens += sensitivities[self._n_top:]
-            return sens
-
-        # Get epsilon parameter sensitvitities
-        end_bottom = self._n_top + self._n_samples * n_dim
-        sens[self._end_bottom:] = sensitivities[end_bottom:]
+            # Add contributions from bottom-level parameters to top-level
+            # parameters
+            sensitivities[:self._n_top] += dbottom.flatten()
+            return sensitivities
 
         # Check for quick solution 3: all parameters pooled
         if self._n_pooled_dim == n_dim:
             # Add contributions from bottom-level parameters
             # (Population sens. are actually zero, so we can just replace them)
-            sens[:self._n_top] += np.sum(
-                sensitivities[self._n_top:end_bottom].reshape(
-                    self._n_samples, n_dim),
-                axis=0)
-            return sens
+            sensitivities[:self._n_top] += np.sum(dbottom, axis=0)
+            return sensitivities
 
         shift = 0
         current_dim = 0
-        bottom_sensitivities = sensitivities[
-            self._n_top:end_bottom].reshape(self._n_samples, n_dim)
         bottom_sens = np.empty(shape=(self._n_samples, self._n_hdim))
         for info in self._special_dims:
             start_dim, end_dim, start_top, end_top, is_pooled = info
             # Fill leading regular dims
             bottom_sens[:, current_dim-shift:start_dim-shift] = \
-                bottom_sensitivities[:, current_dim:start_dim]
+                dbottom[:, current_dim:start_dim]
             # Fill special dims
             if is_pooled:
-                sens[start_top:end_top] += \
-                    np.sum(bottom_sensitivities[:, start_dim:end_dim], axis=0)
+                sensitivities[start_top:end_top] += \
+                    np.sum(dbottom[:, start_dim:end_dim], axis=0)
             else:
-                sens[start_top:end_top] += \
-                    bottom_sensitivities[:, start_dim:end_dim].flatten()
+                sensitivities[start_top:end_top] += \
+                    dbottom[:, start_dim:end_dim].flatten()
             current_dim = end_dim
             shift += end_dim - start_dim
         # Fill trailing regular dims
-        bottom_sens[:, current_dim-shift:] = bottom_sensitivities[
-            :, current_dim:]
+        bottom_sens[:, current_dim-shift:] = dbottom[:, current_dim:]
 
         # Add bottom sensitivties
-        sens[self._n_top:self._end_bottom] = bottom_sens.flatten()
+        sensitivities[self._n_top:self._end_bottom] = bottom_sens.flatten()
 
-        return sens
+        return sensitivities
 
     def _reshape_bottom_parameters(self, bottom_parameters, top_parameters):
         """
@@ -1950,40 +1944,31 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         epsilon = parameters[self._end_bottom:].reshape(
             self._n_samples, self._n_observables, self._n_times)
 
-        # Initialise sensitivities as if all dimensions were hierarchical
-        # (Pooled and heterogenous dimensions are accounted for below)
-        end_bottom = \
-            self._n_top+self._n_samples * self._population_model.n_dim()
-        n_parameters = end_bottom + self._n_samples * self._n_times
-        sensitivities = np.empty(shape=n_parameters)
+        # Initialise sensitivities
+        sensitivities = np.empty(shape=self._n_parameters)
 
         # Compute log-prior contribution to score
         score, sensitivities[:self._n_top] = self._log_prior.evaluateS1(
             parameters[:self._n_top])
         if np.isinf(score):
-            return score, sensitivities[:self._n_parameters]
-
-        # Add population contribution to the score
-        bottom_parameters = self._reshape_bottom_parameters(
-            bottom_parameters, pop_parameters)
-        s, sens = self._population_model.compute_sensitivities(
-            parameters=pop_parameters,
-            observations=bottom_parameters)
-        score += s
-        sensitivities[:n_pop] += sens[-n_pop:]
-        sensitivities[self._n_top:end_bottom] = sens[:-n_pop]
-        if np.isinf(score):
-            return score, sensitivities[:self._n_parameters]
+            return score, sensitivities
 
         # Add noise contribution
         score += \
             - self._n_samples * self._n_observables * np.log(2 * np.pi) / 2 \
             - np.sum(epsilon**2) / 2
-        sensitivities[end_bottom:] = -epsilon.flatten()
+        sensitivities[self._end_bottom:] = -epsilon.flatten()
 
         # Check that mechanistic model has sensitivities enabled
         if not self._mechanistic_model.has_sensitivities():
             self._mechanistic_model.enable_sensitivities(True)
+
+        # Transform bottom-parameters
+        bottom_parameters = self._reshape_bottom_parameters(
+            bottom_parameters, pop_parameters)
+        psi = self._population_model.compute_individual_parameters(
+            parameters=pop_parameters,
+            eta=bottom_parameters)
 
         # Solve mechanistic model for bottom parameters
         n_parameters = self._mechanistic_model.n_parameters()
@@ -1991,7 +1976,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             shape=(self._n_samples, self._n_observables, self._n_times))
         dybar_dpsi = np.empty(shape=(
             self._n_samples, self._n_times, self._n_observables, n_parameters))
-        for ids, individual_parameters in enumerate(bottom_parameters):
+        for ids, individual_parameters in enumerate(psi):
             try:
                 y[ids], dybar_dpsi[ids] = self._mechanistic_model.simulate(
                     parameters=individual_parameters, times=self._times)
@@ -2017,16 +2002,16 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         # (ds_dy * dy_dybar * dybar_dpsi, ds_dy * dy_dybar * dy_depsilon)
         score += s
         if self._error_on_log_scale:
-            sensitivities[self._n_top:end_bottom] += np.sum(
+            ds_dpsi = np.sum(
                 (ds_y * np.exp(sigma * epsilon))[..., np.newaxis]
-                * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2)).flatten()
-            sensitivities[end_bottom:] += np.sum(
+                * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2))
+            sensitivities[self._end_bottom:] += np.sum(
                 ds_y * y * sigma, axis=1).flatten()
         else:
-            sensitivities[self._n_top:end_bottom] += np.sum(
+            ds_dpsi = np.sum(
                 ds_y[..., np.newaxis]
-                * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2)).flatten()
-            sensitivities[end_bottom:] += np.sum(
+                * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2))
+            sensitivities[self._end_bottom:] += np.sum(
                 ds_y * sigma, axis=1).flatten()
 
         # Add sigma sensitivities, if sigma is not fixed
@@ -2039,9 +2024,18 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                 sensitivities[n_pop:self._n_top] += np.sum(
                     ds_y * epsilon, axis=(0, 2))
 
-        # Collect sensitivity contributions from heterogeneous and pooled
-        # dimensions
-        sensitivities = self._remove_duplicates(sensitivities)
+        # Add population contribution to the score
+        s, dbottom, dtheta = self._population_model.compute_sensitivities(
+            parameters=pop_parameters,
+            observations=bottom_parameters,
+            dlogp_dpsi=ds_dpsi)
+        score += s
+        sensitivities[:n_pop] += dtheta
+        if np.isinf(score):
+            return score, sensitivities[:self._n_parameters]
+
+        # Collect sensitivities
+        sensitivities = self._remove_duplicates(sensitivities, dbottom)
 
         return score, sensitivities
 
