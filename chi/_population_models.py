@@ -504,8 +504,7 @@ class ComposedPopulationModel(PopulationModel):
         """
         names = []
         for pop_model in self._population_models:
-            if pop_model.needs_covariates():
-                names += pop_model.get_covariate_names()
+            names += pop_model.get_covariate_names()
         return names
 
     def get_dim_names(self):
@@ -626,7 +625,7 @@ class ComposedPopulationModel(PopulationModel):
 
             # Get covariates
             cov = None
-            if pop_model.needs_covariates():
+            if pop_model.n_covariates() > 0:
                 cov = covariates[:, current_cov:pop_model.n_covariates()]
                 current_cov += pop_model.n_covariates()
 
