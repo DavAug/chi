@@ -3014,7 +3014,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Test case I: Non-covariate population model
-        pop_model = chi.LogNormalModel()
+        pop_model = chi.LogNormalModel(centered=False)
         cls.pop_model = chi.ReducedPopulationModel(pop_model)
 
         # TODO:
@@ -3036,12 +3036,13 @@ class TestReducedPopulationModel(unittest.TestCase):
         eta = [0.2, -0.3, 1, 5]
         psi = self.pop_model.compute_individual_parameters(
             parameters, eta)
+        ref_psi = np.exp(1 + 10 * np.array(eta))
 
         self.assertEqual(len(psi), 4)
-        self.assertEqual(psi[0], eta[0])
-        self.assertEqual(psi[1], eta[1])
-        self.assertEqual(psi[2], eta[2])
-        self.assertEqual(psi[3], eta[3])
+        self.assertEqual(psi[0], ref_psi[0])
+        self.assertEqual(psi[1], ref_psi[1])
+        self.assertEqual(psi[2], ref_psi[2])
+        self.assertEqual(psi[3], ref_psi[3])
 
         # Test case II: Model transforms psi
         # Test case II.1: No fixed parameters
@@ -3083,122 +3084,6 @@ class TestReducedPopulationModel(unittest.TestCase):
             'Shift Covariate 1 Dim. 1': None
         })
 
-    def test_compute_individual_sensitivities(self):
-        # Test case I: Model does not transform psi
-        parameters = [1, 10]
-        eta = [0.2, -0.3, 1, 5]
-        psi, sens = self.pop_model.compute_individual_sensitivities(
-            parameters, eta)
-
-        self.assertEqual(len(psi), 4)
-        self.assertEqual(psi[0], eta[0])
-        self.assertEqual(psi[1], eta[1])
-        self.assertEqual(psi[2], eta[2])
-        self.assertEqual(psi[3], eta[3])
-
-        self.assertEqual(sens.shape, (3, 4))
-        self.assertEqual(sens[0, 0], 1)
-        self.assertEqual(sens[0, 1], 1)
-        self.assertEqual(sens[0, 2], 1)
-        self.assertEqual(sens[0, 3], 1)
-        self.assertEqual(sens[1, 0], 0)
-        self.assertEqual(sens[1, 1], 0)
-        self.assertEqual(sens[1, 2], 0)
-        self.assertEqual(sens[1, 3], 0)
-        self.assertEqual(sens[2, 0], 0)
-        self.assertEqual(sens[2, 1], 0)
-        self.assertEqual(sens[2, 2], 0)
-        self.assertEqual(sens[2, 3], 0)
-
-        # Test case II: Model transforms psi
-        # Test case II.1: No fixed parameters
-        parameters = [1, 1, -1, 1]
-        eta = [0.2, -0.3, 1, 5]
-        covariates = np.ones(shape=(4, 2))
-
-        ref_psi, ref_sens = \
-            self.bare_pop_model.compute_individual_sensitivities(
-                parameters, eta, covariates)
-        psi, sens = self.cpop_model.compute_individual_sensitivities(
-            parameters, eta, covariates)
-
-        self.assertEqual(len(psi), 4)
-        self.assertEqual(psi[0], ref_psi[0])
-        self.assertEqual(psi[1], ref_psi[1])
-        self.assertEqual(psi[2], ref_psi[2])
-        self.assertEqual(psi[3], ref_psi[3])
-
-        self.assertEqual(sens.shape, (5, 4))
-        self.assertEqual(sens[0, 0], ref_sens[0, 0])
-        self.assertEqual(sens[0, 1], ref_sens[0, 1])
-        self.assertEqual(sens[0, 2], ref_sens[0, 2])
-        self.assertEqual(sens[0, 3], ref_sens[0, 3])
-        self.assertEqual(sens[1, 0], ref_sens[1, 0])
-        self.assertEqual(sens[1, 1], ref_sens[1, 1])
-        self.assertEqual(sens[1, 2], ref_sens[1, 2])
-        self.assertEqual(sens[1, 3], ref_sens[1, 3])
-        self.assertEqual(sens[2, 0], ref_sens[2, 0])
-        self.assertEqual(sens[2, 1], ref_sens[2, 1])
-        self.assertEqual(sens[2, 2], ref_sens[2, 2])
-        self.assertEqual(sens[2, 3], ref_sens[2, 3])
-        self.assertEqual(sens[3, 0], ref_sens[3, 0])
-        self.assertEqual(sens[3, 1], ref_sens[3, 1])
-        self.assertEqual(sens[3, 2], ref_sens[3, 2])
-        self.assertEqual(sens[3, 3], ref_sens[3, 3])
-        self.assertEqual(sens[4, 0], ref_sens[4, 0])
-        self.assertEqual(sens[4, 1], ref_sens[4, 1])
-        self.assertEqual(sens[4, 2], ref_sens[4, 2])
-        self.assertEqual(sens[4, 3], ref_sens[4, 3])
-
-        # Test case II.2: Fix some parameters
-        self.cpop_model.fix_parameters({
-            'Base log mean Dim. 1': 1,
-            'Shift Covariate 1 Dim. 1': -1
-        })
-        reduced_parameters = [1, 1]
-        eta = [0.2, -0.3, 1, 5]
-        covariates = np.ones(shape=(4, 2))
-
-        ref_psi, ref_sens = \
-            self.bare_pop_model.compute_individual_sensitivities(
-                parameters, eta, covariates)
-        psi, sens = self.cpop_model.compute_individual_sensitivities(
-            reduced_parameters, eta, covariates)
-
-        self.assertEqual(len(psi), 4)
-        self.assertEqual(psi[0], ref_psi[0])
-        self.assertEqual(psi[1], ref_psi[1])
-        self.assertEqual(psi[2], ref_psi[2])
-        self.assertEqual(psi[3], ref_psi[3])
-
-        self.assertEqual(sens.shape, (5, 4))
-        self.assertEqual(sens[0, 0], ref_sens[0, 0])
-        self.assertEqual(sens[0, 1], ref_sens[0, 1])
-        self.assertEqual(sens[0, 2], ref_sens[0, 2])
-        self.assertEqual(sens[0, 3], ref_sens[0, 3])
-        self.assertEqual(sens[1, 0], ref_sens[1, 0])
-        self.assertEqual(sens[1, 1], ref_sens[1, 1])
-        self.assertEqual(sens[1, 2], ref_sens[1, 2])
-        self.assertEqual(sens[1, 3], ref_sens[1, 3])
-        self.assertEqual(sens[2, 0], ref_sens[2, 0])
-        self.assertEqual(sens[2, 1], ref_sens[2, 1])
-        self.assertEqual(sens[2, 2], ref_sens[2, 2])
-        self.assertEqual(sens[2, 3], ref_sens[2, 3])
-        self.assertEqual(sens[3, 0], ref_sens[3, 0])
-        self.assertEqual(sens[3, 1], ref_sens[3, 1])
-        self.assertEqual(sens[3, 2], ref_sens[3, 2])
-        self.assertEqual(sens[3, 3], ref_sens[3, 3])
-        self.assertEqual(sens[4, 0], ref_sens[4, 0])
-        self.assertEqual(sens[4, 1], ref_sens[4, 1])
-        self.assertEqual(sens[4, 2], ref_sens[4, 2])
-        self.assertEqual(sens[4, 3], ref_sens[4, 3])
-
-        # Unfix parameters
-        self.cpop_model.fix_parameters({
-            'Base log mean Dim. 1': None,
-            'Shift Covariate 1 Dim. 1': None
-        })
-
     def test_compute_log_likelihood(self):
         # Test case I: fix some parameters
         self.pop_model.fix_parameters(name_value_dict={
@@ -3210,10 +3095,25 @@ class TestReducedPopulationModel(unittest.TestCase):
         score = self.pop_model.compute_log_likelihood(
             parameters, observations)
 
-        # Compute ref score with original error model
+        # Compute ref score with original model
         parameters = [1, 2]
-        error_model = self.pop_model.get_population_model()
-        ref_score = error_model.compute_log_likelihood(
+        pop_model = self.pop_model.get_population_model()
+        ref_score = pop_model.compute_log_likelihood(
+            parameters, observations)
+
+        self.assertEqual(score, ref_score)
+
+        # Test case II: Same but with matrix input
+        # Compute log-likelihood
+        parameters = np.ones((1, 1)) * 2
+        observations = np.arange(2, 6).reshape(4, 1)
+        score = self.pop_model.compute_log_likelihood(
+            parameters, observations)
+
+        # Compute ref score with original model
+        parameters = [1, 2]
+        pop_model = self.pop_model.get_population_model()
+        ref_score = pop_model.compute_log_likelihood(
             parameters, observations)
 
         self.assertEqual(score, ref_score)
@@ -3224,7 +3124,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
     def test_compute_pointwise_ll(self):
         with self.assertRaisesRegex(NotImplementedError, None):
-            self.cpop_model.compute_pointwise_ll('some', 'input')
+            self.pop_model.compute_pointwise_ll('some', 'input')
 
         # # Test case I: fix some parameters
         # self.pop_model.fix_parameters(name_value_dict={
@@ -3260,39 +3160,65 @@ class TestReducedPopulationModel(unittest.TestCase):
         # Compute log-likelihood
         parameters = [2]
         observations = [2, 3, 4, 5]
-        score, sens = self.pop_model.compute_sensitivities(
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
             parameters, observations)
 
-        # Compute ref score with original error model
+        # Compute ref score with original model
         parameters = [1, 2]
-        error_model = self.pop_model.get_population_model()
-        ref_score, ref_sens = error_model.compute_sensitivities(
+        pop_model = self.pop_model.get_population_model()
+        ref_score, ref_dpsi, ref_dtheta = pop_model.compute_sensitivities(
             parameters, observations)
 
         self.assertEqual(score, ref_score)
-        self.assertEqual(len(sens), 5)
-        self.assertEqual(sens[0], ref_sens[0])
-        self.assertEqual(sens[1], ref_sens[1])
-        self.assertEqual(sens[2], ref_sens[2])
-        self.assertEqual(sens[3], ref_sens[3])
-        self.assertEqual(sens[4], ref_sens[5])
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (1,))
+        self.assertEqual(dpsi[0, 0], ref_dpsi[0, 0])
+        self.assertEqual(dpsi[1, 0], ref_dpsi[1, 0])
+        self.assertEqual(dpsi[2, 0], ref_dpsi[2, 0])
+        self.assertEqual(dpsi[3, 0], ref_dpsi[3, 0])
+        self.assertEqual(dtheta[0], ref_dtheta[1])
+
+        # Test case II: provide dlogp_dpsi
+        dlogp_dpsi = np.ones((4, 1))
+
+        # Compute log-likelihood
+        parameters = [2]
+        observations = [2, 3, 4, 5]
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, observations, dlogp_dpsi=dlogp_dpsi)
+
+        # Compute ref score with original model
+        parameters = [1, 2]
+        pop_model = self.pop_model.get_population_model()
+        ref_score, ref_dpsi, ref_dtheta = pop_model.compute_sensitivities(
+            parameters, observations, dlogp_dpsi=dlogp_dpsi)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (1,))
+        self.assertEqual(dpsi[0, 0], ref_dpsi[0, 0])
+        self.assertEqual(dpsi[1, 0], ref_dpsi[1, 0])
+        self.assertEqual(dpsi[2, 0], ref_dpsi[2, 0])
+        self.assertEqual(dpsi[3, 0], ref_dpsi[3, 0])
+        self.assertEqual(dtheta[0], ref_dtheta[1])
 
         # Unfix model parameters
         self.pop_model.fix_parameters(name_value_dict={
             'Log mean Dim. 1': None})
 
         # Compute log-likelihood
-        score, sens = self.pop_model.compute_sensitivities(
-            parameters, observations)
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, observations, dlogp_dpsi=dlogp_dpsi)
 
         self.assertEqual(score, ref_score)
-        self.assertEqual(len(sens), 6)
-        self.assertEqual(sens[0], ref_sens[0])
-        self.assertEqual(sens[1], ref_sens[1])
-        self.assertEqual(sens[2], ref_sens[2])
-        self.assertEqual(sens[3], ref_sens[3])
-        self.assertEqual(sens[4], ref_sens[4])
-        self.assertEqual(sens[5], ref_sens[5])
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertEqual(dpsi[0, 0], ref_dpsi[0, 0])
+        self.assertEqual(dpsi[1, 0], ref_dpsi[1, 0])
+        self.assertEqual(dpsi[2, 0], ref_dpsi[2, 0])
+        self.assertEqual(dpsi[3, 0], ref_dpsi[3, 0])
+        self.assertEqual(dtheta[0], ref_dtheta[0])
+        self.assertEqual(dtheta[1], ref_dtheta[1])
 
     def test_fix_parameters(self):
         # Test case I: fix some parameters
@@ -3503,13 +3429,6 @@ class TestReducedPopulationModel(unittest.TestCase):
             'Sigma base']
         with self.assertRaisesRegex(ValueError, 'Parameter names cannot'):
             self.pop_model.set_parameter_names(names)
-
-    def test_transforms_individual_parameters(self):
-        # Test case I: No transform
-        self.assertFalse(self.pop_model.transforms_individual_parameters())
-
-        # Test case II: Transforms parameters
-        self.assertTrue(self.cpop_model.transforms_individual_parameters())
 
 
 class TestTruncatedGaussianModel(unittest.TestCase):

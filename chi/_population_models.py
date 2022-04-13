@@ -203,8 +203,12 @@ class PopulationModel(object):
 
         The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
 
+        If ``centered = False`` random samples from the standard normal
+        distribution are returned.
+
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,)
+        :type parameters: np.ndarray of shape ``(p,)`` or
+            ``(p_per_dim, n_dim)``
         :param n_samples: Number of samples. If ``None``, one sample is
             returned.
         :type n_samples: int, optional
@@ -212,6 +216,19 @@ class PopulationModel(object):
         :type seed: int, optional
         """
         raise NotImplementedError
+
+    def set_covariate_names(self, names=None):
+        """
+        Sets the names of the covariates.
+
+        If the model has not covariates, input is ignored.
+
+        :param names: A list of parameter names. If ``None``, covariate names
+            are reset to defaults.
+        :type names: List[str]
+        """
+        # Default is that models do not have covariates.
+        return None
 
     def set_dim_names(self, names=None):
         """
@@ -648,7 +665,7 @@ class ComposedPopulationModel(PopulationModel):
 
         :param names: A list of parameter names. If ``None``, covariate names
             are reset to defaults.
-        :type names: List
+        :type names: List[str]
         """
         return None
 
@@ -798,6 +815,8 @@ class CovariatePopulationModel(PopulationModel):
             raise ValueError(
                 'The dimensionality of the covariate model and the population '
                 'model do not match.')
+        # TODO: Does not accept reduced models, but can be reduced once
+        # instantiated
 
         # Remember models
         self._population_model = population_model
@@ -1516,7 +1535,7 @@ class GaussianModel(PopulationModel):
         return self._n_parameters
 
     def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
-        r"""
+        """
         Returns random samples from the population distribution.
 
         The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
@@ -1796,7 +1815,8 @@ class HeterogeneousModel(PopulationModel):
         individuals.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :type parameters: np.ndarray of shape ``(p,)`` or
+            ``(p_per_dim, n_dim)``
         :param n_samples: Number of samples. If ``None``, one sample is
             returned.
         :type n_samples: int, optional
@@ -2607,15 +2627,18 @@ class PooledModel(PopulationModel):
         distribution.
 
         For a PooledModel the input top-level parameters are copied
-        ``n_samples`` and are returned.
+        ``n_samples`` times and are returned.
 
-        The returned value is a NumPy array with shape ``(n_samples,)``.
+        The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,) or (p_per_dim, n_dim)
+        :type parameters: np.ndarray of shape ``(p,)`` or
+            ``(p_per_dim, n_dim)``
         :param n_samples: Number of samples. If ``None``, one sample is
             returned.
         :type n_samples: int, optional
+        :param seed: A seed for the pseudo-random number generator.
+        :type seed: int, optional
         """
         parameters = np.asarray(parameters)
         if len(parameters.flatten()) != self._n_parameters:
@@ -2708,19 +2731,17 @@ class ReducedPopulationModel(PopulationModel):
 
     def compute_log_likelihood(
             self, parameters, observations, *args, **kwargs):
-        r"""
+        """
         Returns the log-likelihood of the population model parameters.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,)
-        :param observations: "Observations" of the individuals. Typically
-            refers to the values of a mechanistic model parameter for each
-            individual, i.e. [:math:`\psi _1, \ldots , \psi _N`].
-        :type observations: np.ndarray of shape (n, n_dim)
-        :returns: Log-likelihood of individual parameters and population
-            parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)`` or
+            ``(n_param_per_dim, n_dim)``
+        :param observations: Individual model parameters.
+        :type observations: np.ndarray of shape ``(n_ids, n_dim)``
         :rtype: float
         """
+        parameters = np.asarray(parameters).flatten()
         # Get fixed parameter values
         if self._fixed_params_mask is not None:
             self._fixed_params_values[~self._fixed_params_mask] = parameters
@@ -2763,7 +2784,8 @@ class ReducedPopulationModel(PopulationModel):
 
     #     # return scores
 
-    def compute_sensitivities(self, parameters, observations, *args, **kwargs):
+    def compute_sensitivities(
+            self, parameters, observations, dlogp_dpsi=None, *args, **kwargs):
         """
         Returns the log-likelihood of the population model parameters and
         its sensitivity to the population parameters as well as the
@@ -2778,8 +2800,8 @@ class ReducedPopulationModel(PopulationModel):
         ``(score, deta, dtheta)``.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape ``(n_parameters,)``,
-            ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
+        :type parameters: np.ndarray of shape ``(n_parameters,)`` or
+            ``(n_param_per_dim, n_dim)``
         :param observations: Individual model parameters.
         :type observations: np.ndarray of shape ``(n_ids, n_dim)``
         :param dlogp_dpsi: The sensitivities of the log-likelihood of the
@@ -2789,6 +2811,7 @@ class ReducedPopulationModel(PopulationModel):
         :rtype: Tuple[float, np.ndarray of shape ``(n_ids, n_dim)``,
             np.ndarray of shape ``(n_parameters,)``]
         """
+        parameters = np.asarray(parameters).flatten()
         # Get fixed parameter values
         if self._fixed_params_mask is not None:
             self._fixed_params_values[~self._fixed_params_mask] = parameters
@@ -2797,7 +2820,7 @@ class ReducedPopulationModel(PopulationModel):
         # Compute log-likelihood and sensitivities
         kwargs['flattened'] = True
         score, dpsi, dtheta = self._population_model.compute_sensitivities(
-            parameters, observations, *args, **kwargs)
+            parameters, observations, dlogp_dpsi, *args, **kwargs)
 
         if self._fixed_params_mask is None:
             return score, dpsi, dtheta
@@ -2933,16 +2956,13 @@ class ReducedPopulationModel(PopulationModel):
 
     def sample(self, parameters, n_samples=None, seed=None, *args, **kwargs):
         """
-        Returns random samples from the underlying population distribution.
-
-        The returned value is a NumPy array with shape ``(n_samples,)``.
-
         Returns random samples from the population distribution.
 
         The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
 
         :param parameters: Parameters of the population model.
-        :type parameters: np.ndarray of shape (p,)
+        :type parameters: np.ndarray of shape ``(p,)`` or
+            ``(p_per_dim, n_dim)``
         :param n_samples: Number of samples. If ``None``, one sample is
             returned.
         :type n_samples: int, optional
