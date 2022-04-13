@@ -1678,7 +1678,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         self._error_on_log_scale = bool(error_on_log_scale)
         self._top_names = names
         self._n_parameters = \
-            self._n_top + self._n_samples * (self._n_hdim + self._n_times)
+            self._n_top + self._n_samples \
+            * (self._n_hdim + self._n_times * self._n_observables)
         self._end_bottom = self._n_top + self._n_samples * self._n_hdim
 
         # Get dimensions that need to be treated differently during inference
@@ -2071,7 +2072,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         for _id in range(self._n_samples):
             ids += ['Sim. %d' % (_id + 1)] * self._n_hdim
         for _id in range(self._n_samples):
-            ids += ['Sim. %d' % (_id + 1)] * self._n_times
+            ids += [
+                'Sim. %d' % (_id + 1)] * self._n_observables * self._n_times
 
         return ids
 
@@ -2107,8 +2109,11 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         names += bottom_names * self._n_samples
 
         # Append epsilon parameter names
-        epsilon_names = [
-            'Epsilon time %d' % (idt + 1) for idt in range(self._n_times)]
+        epsilon_names = []
+        for output in self._mechanistic_model.outputs():
+            name = output + ' Epsilon time '
+            epsilon_names += [
+                name + '%d' % (idt + 1) for idt in range(self._n_times)]
         names += epsilon_names * self._n_samples
 
         if include_ids:
@@ -2215,6 +2220,11 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
         # Sample epsilons
         initial_params[:, self._end_bottom:] = rng.normal(
-            loc=0, scale=1, size=(n_samples, self._n_samples * self._n_times))
+            loc=0, scale=1,
+            size=(
+                n_samples,
+                self._n_samples * self._n_times * self._n_observables
+            )
+        )
 
         return initial_params
