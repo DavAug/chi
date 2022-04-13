@@ -2006,14 +2006,12 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             ds_dpsi = np.sum(
                 (ds_y * np.exp(sigma * epsilon))[..., np.newaxis]
                 * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2))
-            sensitivities[self._end_bottom:] += np.sum(
-                ds_y * y * sigma, axis=1).flatten()
+            sensitivities[self._end_bottom:] += (ds_y * y * sigma).flatten()
         else:
             ds_dpsi = np.sum(
                 ds_y[..., np.newaxis]
                 * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2))
-            sensitivities[self._end_bottom:] += np.sum(
-                ds_y * sigma, axis=1).flatten()
+            sensitivities[self._end_bottom:] += (ds_y * sigma).flatten()
 
         # Add sigma sensitivities, if sigma is not fixed
         # ds_dsigma = derror_model_dsigma + ds_dy * dy_dsigma
