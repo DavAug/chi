@@ -78,7 +78,7 @@ class CovariateModel(object):
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
-            ``(n_cov, n_selected)``
+            ``(n_selected, n_cov)``
         :param pop_parameters: Population model parameters.
         :type pop_parameters: np.ndarray of shape
             ``(n_pop_params_per_dim, n_dim)``
@@ -88,23 +88,26 @@ class CovariateModel(object):
         """
         raise NotImplementedError
 
-    def compute_sensitivities(self, parameters):
+    def compute_sensitivities(
+            self, parameters, pop_parameters, covariates, dlogp_dvartheta):
         """
-        Returns the transformed population model parameters and their
-        sensitivities with respect to the model parameters and the population
+        Returns the sensitivities of the transformed population model
+        parameters with respect to the model parameters and the population
         parameters.
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
-            ``(n_params_per_dim, n_dim)``
+            ``(n_selected, n_cov)``
         :param pop_parameters: Population model parameters.
         :type pop_parameters: np.ndarray of shape
-            ``(n_pop_per_dim, n_dim)``
+            ``(n_pop_params_per_dim, n_dim)``
         :param covariates: Covariates of individuals.
         :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
-        :rtype: Tuple[np.ndarray, np.ndarray] of shapes
-            ``(n_ids, n_pop_per_dim, n_dim)`` and
-            ``(n_ids, n_pop_per_dim, n_dim, n_pop_per_dim + n_params_per_dim)``
+        :param dlogp_dvartheta: Unflattened sensitivities of the population
+            model to the transformed parameters.
+        :type dlogp_dvartheta: np.ndarray of shape
+            ``(n_ids, n_param_per_dim, n_dim)``
+        :rtype: np.ndarray of shape ``(n_pop_params + n_parameters,)``
         """
         raise NotImplementedError
 
@@ -240,7 +243,7 @@ class LinearCovariateModel(CovariateModel):
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
-            ``(n_cov, n_selected)``
+            ``(n_selected, n_cov)``
         :param pop_parameters: Population model parameters.
         :type pop_parameters: np.ndarray of shape
             ``(n_pop_params_per_dim, n_dim)``
@@ -263,44 +266,41 @@ class LinearCovariateModel(CovariateModel):
         return vartheta
 
     def compute_sensitivities(
-            self, parameters, pop_parameters, covariates):
+            self, parameters, pop_parameters, covariates, dlogp_dvartheta):
         """
-        Returns the transformed population model parameters and their
-        sensitivities with respect to the model parameters and the population
+        Returns the sensitivities of the transformed population model
+        parameters with respect to the model parameters and the population
         parameters.
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
-            ``(n_cov, n_selected)``
+            ``(n_selected, n_cov)``
         :param pop_parameters: Population model parameters.
         :type pop_parameters: np.ndarray of shape
             ``(n_pop_params_per_dim, n_dim)``
         :param covariates: Covariates of individuals.
         :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
-        :rtype: Tuple[np.ndarray, np.ndarray] of shapes
-            ``(n_ids, n_pop_per_dim, n_dim)`` and
-            ``(n_ids, n_pop_per_dim, n_dim, 1 + n_cov)``
+        :param dlogp_dvartheta: Unflattened sensitivities of the population
+            model to the transformed parameters.
+        :type dlogp_dvartheta: np.ndarray of shape
+            ``(n_ids, n_param_per_dim, n_dim)``
+        :rtype: np.ndarray of shape ``(n_pop_params + n_parameters,)``
         """
         parameters = np.asarray(parameters)
         if parameters.ndim == 1:
             parameters = parameters.reshape(self._n_selected, self._n_cov)
         parameters = parameters.T
 
-        # Compute population parameters
-        n_pop, n_dim = pop_parameters.shape
-        n_ids = len(covariates)
-        vartheta = np.zeros((n_ids, n_pop, n_dim))
-        vartheta += pop_parameters[np.newaxis, ...]
-        vartheta[:, self._pidx, self._didx] += covariates @ parameters
-
         # Compute sensitivities
-        dvartheta_dtheta = np.zeros(shape=(
-            n_ids, n_pop, n_dim, 1 + self._n_cov))
-        dvartheta_dtheta[..., 0] = 1
-        dvartheta_dtheta[:, self._pidx, self._didx, 1:] = \
-            covariates[:, np.newaxis, :]
+        n_pop, n_dim = pop_parameters.shape
+        n_pop = n_pop * n_dim
+        dtheta = np.empty(n_pop + self._n_parameters)
+        dtheta[:n_pop] = np.sum(dlogp_dvartheta, axis=0).flatten()
+        dtheta[n_pop:] = np.sum(
+            dlogp_dvartheta[:, self._pidx, self._didx, np.newaxis]
+            * covariates[:, np.newaxis, :], axis=0).flatten()
 
-        return vartheta, dvartheta_dtheta
+        return dtheta
 
     def set_population_parameters(self, indices):
         """

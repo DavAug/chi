@@ -224,15 +224,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         parameters = np.ones(n_cov)
         covariates = np.arange(n_ids).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, n_dim))
-        vartheta, dvartheta = self.cov_model.compute_sensitivities(
-            parameters, pop_params, covariates)
-        ref_vartheta = self.cov_model.compute_population_parameters(
-            parameters, pop_params, covariates)
-        self.assertEqual(vartheta.shape, (n_ids, 1, 1))
-        self.assertEqual(vartheta[0, 0, 0], ref_vartheta[0, 0, 0])
-        self.assertEqual(vartheta[1, 0, 0], ref_vartheta[1, 0, 0])
-        self.assertEqual(vartheta[2, 0, 0], ref_vartheta[2, 0, 0])
-        self.assertEqual(dvartheta.shape, (n_ids, n_pop, n_dim, 1 + 1))
+        dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
+        dtheta = self.cov_model.compute_sensitivities(
+            parameters, pop_params, covariates, dlogp_dvartheta)
+        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
 
         # 1 covariate, 1 dimension, 2 pop param
         n_cov = 1
@@ -241,12 +236,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         parameters = np.ones(n_cov) * 2
         covariates = np.arange(n_ids).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 1)) * 0.1
-        vartheta, dvartheta = self.cov_model.compute_sensitivities(
-            parameters, pop_params, covariates)
-        ref_vartheta = self.cov_model.compute_population_parameters(
-            parameters, pop_params, covariates)
-        self.assertEqual(vartheta.shape, (n_ids, 2, 1))
-        self.assertEqual(dvartheta.shape, (n_ids, n_pop, n_dim, 1 + 1))
+        dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
+        dtheta = self.cov_model.compute_sensitivities(
+            parameters, pop_params, covariates, dlogp_dvartheta)
+        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
 
         # select both parameters
         self.cov_model.set_population_parameters(indices=[
@@ -254,12 +247,9 @@ class TestLinearCovariateModel(unittest.TestCase):
         parameters = np.ones(n_cov * n_pop) * 2
         covariates = np.arange(n_ids).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 1)) * 0.1
-        vartheta, dvartheta = self.cov_model.compute_sensitivities(
-            parameters, pop_params, covariates)
-        ref_vartheta = self.cov_model.compute_population_parameters(
-            parameters, pop_params, covariates)
-        self.assertEqual(vartheta.shape, (n_ids, 2, 1))
-        self.assertEqual(dvartheta.shape, (n_ids, n_pop, n_dim, 1 + 1))
+        dtheta = self.cov_model.compute_sensitivities(
+            parameters, pop_params, covariates, dlogp_dvartheta)
+        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov * 2,))
         self.cov_model.set_population_parameters(indices=[
             [0, 0]])
 
@@ -271,12 +261,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         parameters = np.ones(n_cov)
         covariates = np.arange(n_ids * n_cov).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 1)) * 0.1
-        vartheta, dvartheta = cov_model.compute_sensitivities(
-            parameters, pop_params, covariates)
-        ref_vartheta = cov_model.compute_population_parameters(
-            parameters, pop_params, covariates)
-        self.assertEqual(vartheta.shape, (n_ids, 1, 1))
-        self.assertEqual(dvartheta.shape, (n_ids, n_pop, n_dim, 1 + 2))
+        dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
+        dtheta = cov_model.compute_sensitivities(
+            parameters, pop_params, covariates, dlogp_dvartheta)
+        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
 
         # 1 covariates, 2 dimension, 1 pop param
         n_cov = 1
@@ -286,12 +274,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         parameters = np.ones(n_cov)
         covariates = np.arange(n_ids * n_cov).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 2)) * 0.1
-        vartheta, dvartheta = self.cov_model.compute_sensitivities(
-            parameters, pop_params, covariates)
-        ref_vartheta = self.cov_model.compute_population_parameters(
-            parameters, pop_params, covariates)
-        self.assertEqual(vartheta.shape, (n_ids, 1, 2))
-        self.assertEqual(dvartheta.shape, (n_ids, n_pop, n_dim, 1 + 1))
+        dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
+        dtheta = self.cov_model.compute_sensitivities(
+            parameters, pop_params, covariates, dlogp_dvartheta)
+        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
 
 
 if __name__ == '__main__':
