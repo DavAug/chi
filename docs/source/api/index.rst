@@ -36,8 +36,8 @@ Summary of all functions and classes in chi
     chi.ErrorModel
     chi.library.DataLibrary
     chi.library.ModelLibrary
+    chi.LinearCovariateModel
     chi.LogLikelihood
-    chi.LogNormalLinearCovariateModel
     chi.LogNormalErrorModel
     chi.LogNormalModel
     chi.LogPosterior

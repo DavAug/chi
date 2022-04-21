@@ -91,9 +91,8 @@ class CovariateModel(object):
     def compute_sensitivities(
             self, parameters, pop_parameters, covariates, dlogp_dvartheta):
         """
-        Returns the sensitivities of the transformed population model
-        parameters with respect to the model parameters and the population
-        parameters.
+        Returns the sensitivities of the population likelihood with respect to
+        the model parameters.
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
@@ -197,8 +196,14 @@ class CovariateModel(object):
 
         Note that this influences the number of model parameters.
 
+        .. warning::
+            Whether or not the indices are out of bounds cannot be checked at
+            this point. It is assumed that for any future call which requires
+            ``pop_parameters``, the selected indices are compatible with the
+            input.
+
         :param indices: A list of parameter indices
-            (param index per dim, dim index)
+            [param index per dim, dim index].
         :type indices: List[List[int]]
         """
         raise NotImplementedError
@@ -268,9 +273,8 @@ class LinearCovariateModel(CovariateModel):
     def compute_sensitivities(
             self, parameters, pop_parameters, covariates, dlogp_dvartheta):
         """
-        Returns the sensitivities of the transformed population model
-        parameters with respect to the model parameters and the population
-        parameters.
+        Returns the sensitivities of the population likelihood with respect to
+        the model parameters.
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
@@ -316,7 +320,7 @@ class LinearCovariateModel(CovariateModel):
             input.
 
         :param indices: A list of parameter indices
-            [param index per dim, dim index]
+            [param index per dim, dim index].
         :type indices: List[List[int]]
         """
         # Keep only unique index pairs

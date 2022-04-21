@@ -11,18 +11,18 @@ structures that depend on characteristics of individuals or subpopulations,
 i.e. covariates of the inter-individual variability. Simple population models
 from
 `Population Models <https://chi.readthedocs.io/en/latest/population_models.html>`_
-are used to describe the variability in a subpopulation, while covariate models
-are used to describe the cross-subpopulation variability.
+are used to describe the variability within a subpopulation, while covariate
+models are used to describe the cross-subpopulation variability.
 
 Functional classes
 ------------------
 
-- :class:`LogNormalLinearCovariateModel`
+- :class:`LinearCovariateModel`
 
 Detailed API
 ^^^^^^^^^^^^
 
-.. autoclass:: LogNormalLinearCovariateModel
+.. autoclass:: LinearCovariateModel
     :members:
     :inherited-members:
 
