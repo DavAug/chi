@@ -406,15 +406,10 @@ class TestCovariatePopulationModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Test case I
-        cls.pop_model = chi.GaussianModel()
-        cls.cov_model = chi.LogNormalLinearCovariateModel()
+        cls.pop_model = chi.GaussianModel(n_dim=2)
+        cls.cov_model = chi.LinearCovariateModel()
         cls.cpop_model = chi.CovariatePopulationModel(
             cls.pop_model, cls.cov_model)
-
-        # Test case II
-        cls.cov_model2 = chi.LogNormalLinearCovariateModel(n_covariates=2)
-        cls.cpop_model2 = chi.CovariatePopulationModel(
-            cls.pop_model, cls.cov_model2)
 
     def test_bad_instantiation(self):
         # Population model is not a SimplePopulationModel
@@ -423,7 +418,7 @@ class TestCovariatePopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'The population model'):
             chi.CovariatePopulationModel(
                 pop_model,
-                chi.LogNormalLinearCovariateModel())
+                chi.LinearCovariateModel())
 
         # Covariate model is not a CovariateModel
         cov_model = 'bad type'
@@ -433,481 +428,393 @@ class TestCovariatePopulationModel(unittest.TestCase):
                 cov_model)
 
         # Multi-dimensional population model
-        pop_model = chi.GaussianModel(n_dim=2)
-        with self.assertRaisesRegex(ValueError, 'Only 1-dimensional pop'):
+        pop_model = chi.ComposedPopulationModel(
+            [chi.GaussianModel(), chi.PooledModel()])
+        with self.assertRaisesRegex(TypeError, 'The population model cannot'):
             chi.CovariatePopulationModel(
                 pop_model,
-                chi.LogNormalLinearCovariateModel())
+                chi.LinearCovariateModel())
+
+        # Population model is a reduced population model
+        pop_model = chi.ReducedPopulationModel(chi.GaussianModel())
+        with self.assertRaisesRegex(TypeError, 'The population model cannot'):
+            chi.CovariatePopulationModel(
+                pop_model,
+                chi.LinearCovariateModel())
 
     def test_compute_individual_parameters(self):
-        # Test case I: Model that is independent of covariates
-        # Test case I.1
-        parameters = [1, 1]
-        eta = [0.2, -0.3, 1, 5]
+        # Test case I: 1 ID
+        parameters = np.ones(8)
+        eta = np.arange(2).reshape(1, 2) + 1.23
+        covariates = np.arange(1).reshape(1, 1) * 0.12 + 1
 
-        ref_psi = self.cov_model.compute_individual_parameters(parameters, eta)
-        psi = self.cpop_model.compute_individual_parameters(parameters, eta)
-        self.assertEqual(psi[0], ref_psi[0])
-        self.assertEqual(psi[1], ref_psi[1])
-        self.assertEqual(psi[2], ref_psi[2])
-        self.assertEqual(psi[3], ref_psi[3])
-
-        # Test case I.2
-        parameters = [0.3, 1E-10]
-        eta = [0.2, -0.3, 1, 5]
-
-        psi = self.cpop_model.compute_individual_parameters(parameters, eta)
-        self.assertAlmostEqual(psi[0], np.exp(0.3))
-        self.assertAlmostEqual(psi[1], np.exp(0.3))
-        self.assertAlmostEqual(psi[2], np.exp(0.3))
-        self.assertAlmostEqual(psi[3], np.exp(0.3))
-
-        # Test case II: Model that dependends on covariates
-        # Test case II.1
-        parameters = [1, 1, -1, 1]
-        eta = [0.2, -0.3, 1, 5]
-        covariates = np.ones(shape=(4, 2))
-
-        ref_psi = self.cov_model2.compute_individual_parameters(
+        psi = self.cpop_model.compute_individual_parameters(
             parameters, eta, covariates)
-        psi = self.cpop_model2.compute_individual_parameters(
+        self.assertEqual(psi.shape, (1, 2))
+
+        # Test case II: 10 ID
+        n_ids = 10
+        parameters = np.ones(8)
+        eta = np.arange(2 * n_ids).reshape(n_ids, 2) + 1.23
+        covariates = np.arange(n_ids).reshape(n_ids, 1) * 0.12 + 1
+
+        psi = self.cpop_model.compute_individual_parameters(
             parameters, eta, covariates)
-        self.assertEqual(psi[0], ref_psi[0])
-        self.assertEqual(psi[1], ref_psi[1])
-        self.assertEqual(psi[2], ref_psi[2])
-        self.assertEqual(psi[3], ref_psi[3])
-
-        # Test case II.2
-        parameters = [0.3, 1E-20, 100, -100]
-        eta = [0.2, -0.3, 1, 5]
-        covariates = np.reshape(np.arange(8), newshape=(4, 2))
-
-        psi = self.cpop_model2.compute_individual_parameters(
-            parameters, eta, covariates)
-        self.assertAlmostEqual(psi[0], np.exp(0.3 + 100 * 0 - 100 * 1))
-        self.assertAlmostEqual(psi[1], np.exp(0.3 + 100 * 2 - 100 * 3))
-        self.assertAlmostEqual(psi[2], np.exp(0.3 + 100 * 4 - 100 * 5))
-        self.assertAlmostEqual(psi[3], np.exp(0.3 + 100 * 6 - 100 * 7))
-
-    def test_compute_individual_sensitivities(self):
-        n_ids = 5
-
-        # Test case I: mu != 0, sigma != 0
-        # Then psi = np.exp(mu)
-
-        # Test case I.1
-        parameters = [-1, 1]
-        eta = np.linspace(0.5, 1.5, n_ids)
-        covariates = 'some covariates'
-
-        # Compute psis and sensitivities
-        psis, sens = self.cpop_model.compute_individual_sensitivities(
-            parameters, eta, covariates)
-        ref_psis, ref_sens = self.cov_model.compute_individual_sensitivities(
-            parameters, eta, covariates)
-
-        self.assertEqual(len(psis), n_ids)
-        self.assertEqual(psis[0], ref_psis[0])
-        self.assertEqual(psis[1], ref_psis[1])
-        self.assertEqual(psis[2], ref_psis[2])
-        self.assertEqual(psis[3], ref_psis[3])
-        self.assertEqual(psis[4], ref_psis[4])
-
-        self.assertEqual(sens.shape, (3, n_ids))
-        self.assertEqual(sens[0, 0], ref_sens[0, 0])
-        self.assertEqual(sens[0, 1], ref_sens[0, 1])
-        self.assertEqual(sens[0, 2], ref_sens[0, 2])
-        self.assertEqual(sens[0, 3], ref_sens[0, 3])
-        self.assertEqual(sens[0, 4], ref_sens[0, 4])
-        self.assertEqual(sens[1, 0], ref_sens[1, 0])
-        self.assertEqual(sens[1, 1], ref_sens[1, 1])
-        self.assertEqual(sens[1, 2], ref_sens[1, 2])
-        self.assertEqual(sens[1, 3], ref_sens[1, 3])
-        self.assertEqual(sens[1, 4], ref_sens[1, 4])
-        self.assertEqual(sens[2, 0], ref_sens[2, 0])
-        self.assertEqual(sens[2, 1], ref_sens[2, 1])
-        self.assertEqual(sens[2, 2], ref_sens[2, 2])
-        self.assertEqual(sens[2, 3], ref_sens[2, 3])
-        self.assertEqual(sens[2, 4], ref_sens[2, 4])
+        self.assertEqual(psi.shape, (n_ids, 2))
 
     def test_compute_log_likelihood(self):
+        # Test case I: 1 ID
+        parameters = np.ones(8)
+        eta = np.arange(2).reshape(1, 2) + 1.23
+        covariates = np.arange(1).reshape(1, 1) * 0.12 + 1
+        score = self.cpop_model.compute_log_likelihood(
+            parameters, eta, covariates)
+        self.assertTrue(np.isfinite(score))
+
+        # Test case II: 10 ID
         n_ids = 10
+        parameters = np.ones(8)
+        eta = np.arange(2 * n_ids).reshape(n_ids, 2) + 1.23
+        covariates = np.arange(n_ids).reshape(n_ids, 1) * 0.12 + 1
+        score = self.cpop_model.compute_log_likelihood(
+            parameters, eta, covariates)
+        self.assertTrue(np.isfinite(score))
 
-        # Test case I:
-        # Test case I.1:
-        etas = [1] * n_ids
-        mu_log = 1
-        sigma_log = 10
+    # def test_compute_pointwise_ll(self):
+    #     # TODO:
+    #     with self.assertRaisesRegex(NotImplementedError, None):
+    #         self.cpop_model.compute_pointwise_ll('some', 'inputs')
 
-        # Parameters of standard normal (mean=0, std=1)
-        ref_score = self.pop_model.compute_log_likelihood([0, 1], etas)
+    #     # # Hard to test exactly, but at least test some edge cases where
+    #     # # loglikelihood is straightforward to compute analytically
 
-        parameters = [mu_log] + [sigma_log]
-        score = self.cpop_model.compute_log_likelihood(parameters, etas)
-        self.assertEqual(score, ref_score)
+    #     # n_ids = 10
 
-        # Test case I.2:
-        etas = [1] * n_ids
-        mu_log = 0.1
-        sigma_log = 5
+    #     # # Test case I:
+    #     # # Test case I.1:
+    #     # etas = [1] * n_ids
+    #     # mu_log = 1
+    #     # sigma_log = 10
 
-        # Parameters of standard normal (mean=0, std=1)
-        sigma = 1
-        ref_score = -n_ids * (
-            np.log(2 * np.pi * sigma**2) / 2 + etas[0]**2 / (2 * sigma**2))
+    #     # # Parameters of standard normal (mean=0, std=1)
+    #     # ref_score = -n_ids * (
+    #     #     np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
 
-        parameters = [mu_log] + [sigma_log]
-        score = self.cpop_model.compute_log_likelihood(parameters, etas)
-        self.assertAlmostEqual(score, ref_score)
+    #     # parameters = [mu_log] + [sigma_log]
+    #     # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
+    #     # self.assertEqual(len(scores), 10)
+    #     # self.assertAlmostEqual(np.sum(scores), ref_score)
+    #     # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-        # Test case I.3:
-        etas = [0.2] * n_ids
-        mu_log = 1
-        sigma_log = 2
+    #     # # Test case I.2:
+    #     # etas = [1] * n_ids
+    #     # mu_log = 0.1
+    #     # sigma_log = 5
 
-        # Parameters of standard normal (mean=0, std=1)
-        ref_score = -n_ids * (
-            np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
+    #     # # Parameters of standard normal (mean=0, std=1)
+    #     # sigma = 1
+    #     # ref_score = -n_ids * (
+    #     #     np.log(2 * np.pi * sigma**2) / 2 + etas[0]**2 / (2 * sigma**2))
 
-        parameters = [mu_log] + [sigma_log]
-        score = self.cpop_model.compute_log_likelihood(parameters, etas)
-        self.assertAlmostEqual(score, ref_score)
+    #     # parameters = [mu_log] + [sigma_log]
+    #     # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
+    #     # self.assertEqual(len(scores), 10)
+    #     # self.assertAlmostEqual(np.sum(scores), ref_score)
+    #     # self.assertTrue(np.allclose(scores, ref_score / 10))
 
-    def test_compute_pointwise_ll(self):
-        # TODO:
-        with self.assertRaisesRegex(NotImplementedError, None):
-            self.cpop_model.compute_pointwise_ll('some', 'inputs')
+    #     # # Test case I.3:
+    #     # etas = [0.2] * n_ids
+    #     # mu_log = 1
+    #     # sigma_log = 2
 
-        # # Hard to test exactly, but at least test some edge cases where
-        # # loglikelihood is straightforward to compute analytically
+    #     # # Parameters of standard normal (mean=0, std=1)
+    #     # ref_score = -n_ids * (
+    #     #     np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
 
-        # n_ids = 10
-
-        # # Test case I:
-        # # Test case I.1:
-        # etas = [1] * n_ids
-        # mu_log = 1
-        # sigma_log = 10
-
-        # # Parameters of standard normal (mean=0, std=1)
-        # ref_score = -n_ids * (
-        #     np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
-
-        # parameters = [mu_log] + [sigma_log]
-        # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
-        # self.assertEqual(len(scores), 10)
-        # self.assertAlmostEqual(np.sum(scores), ref_score)
-        # self.assertTrue(np.allclose(scores, ref_score / 10))
-
-        # # Test case I.2:
-        # etas = [1] * n_ids
-        # mu_log = 0.1
-        # sigma_log = 5
-
-        # # Parameters of standard normal (mean=0, std=1)
-        # sigma = 1
-        # ref_score = -n_ids * (
-        #     np.log(2 * np.pi * sigma**2) / 2 + etas[0]**2 / (2 * sigma**2))
-
-        # parameters = [mu_log] + [sigma_log]
-        # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
-        # self.assertEqual(len(scores), 10)
-        # self.assertAlmostEqual(np.sum(scores), ref_score)
-        # self.assertTrue(np.allclose(scores, ref_score / 10))
-
-        # # Test case I.3:
-        # etas = [0.2] * n_ids
-        # mu_log = 1
-        # sigma_log = 2
-
-        # # Parameters of standard normal (mean=0, std=1)
-        # ref_score = -n_ids * (
-        #     np.log(2 * np.pi * 1**2) / 2 + etas[0]**2 / (2 * 1**2))
-
-        # parameters = [mu_log] + [sigma_log]
-        # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
-        # self.assertEqual(len(scores), 10)
-        # self.assertAlmostEqual(np.sum(scores), ref_score)
-        # self.assertTrue(np.allclose(scores, ref_score / 10))
+    #     # parameters = [mu_log] + [sigma_log]
+    #     # scores = self.cpop_model.compute_pointwise_ll(parameters, etas)
+    #     # self.assertEqual(len(scores), 10)
+    #     # self.assertAlmostEqual(np.sum(scores), ref_score)
+    #     # self.assertTrue(np.allclose(scores, ref_score / 10))
 
     def test_compute_sensitivities(self):
+        # Test case I: 1 ID
+        parameters = np.ones(8)
+        psi = np.arange(2).reshape(1, 2) + 1.23
+        covariates = np.arange(1).reshape(1, 1) * 0.12 + 1
+        ref_score = self.cpop_model.compute_log_likelihood(
+            parameters, psi, covariates)
+        score, dpsi, dtheta = self.cpop_model.compute_sensitivities(
+            parameters, psi, covariates)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(dpsi.shape, (1, 2))
+        self.assertEqual(dtheta.shape, (8,))
+
+        epsilon = 0.00001
+        ref_score = self.cpop_model.compute_log_likelihood(
+            parameters, psi, covariates)
+        ref_dpsi = []
+        for index in range(len(psi)):
+            # Construct parameter grid
+            low = psi.copy()
+            low[index, 0] -= epsilon
+            high = psi.copy()
+            high[index, 0] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.cpop_model.compute_log_likelihood(
+                        parameters, low, covariates),
+                    ref_score,
+                    self.cpop_model.compute_log_likelihood(
+                        parameters, high, covariates)],
+                (epsilon))
+            ref_dpsi.append(sens[1])
+        ref_dtheta = []
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.cpop_model.compute_log_likelihood(
+                        low, psi, covariates),
+                    ref_score,
+                    self.cpop_model.compute_log_likelihood(
+                        high, psi, covariates)],
+                (epsilon))
+            ref_dtheta.append(sens[1])
+
+        # Compute sensitivities with hierarchical model
+        self.assertEqual(score, ref_score)
+        self.assertEqual(dpsi.shape, (1, 2))
+        self.assertEqual(dtheta.shape, (8,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi[0])
+        self.assertAlmostEqual(dtheta[0], ref_dtheta[0])
+        self.assertAlmostEqual(dtheta[1], ref_dtheta[1])
+        self.assertAlmostEqual(dtheta[2], ref_dtheta[2])
+        self.assertAlmostEqual(dtheta[3], ref_dtheta[3])
+        self.assertAlmostEqual(dtheta[4], ref_dtheta[4])
+        self.assertAlmostEqual(dtheta[5], ref_dtheta[5])
+        self.assertAlmostEqual(dtheta[6], ref_dtheta[6])
+        self.assertAlmostEqual(dtheta[7], ref_dtheta[7])
+
+        # Test case II: 10 ID
         n_ids = 10
+        parameters = np.ones(8)
+        psi = np.arange(2 * n_ids).reshape(n_ids, 2) + 1.23
+        covariates = np.arange(n_ids).reshape(n_ids, 1) * 0.12 + 1
+        ref_score = self.cpop_model.compute_log_likelihood(
+            parameters, psi, covariates)
+        score, dpsi, dtheta = self.cpop_model.compute_sensitivities(
+            parameters, psi, covariates)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(dpsi.shape, (n_ids, 2))
+        self.assertEqual(dtheta.shape, (8,))
 
-        # Test case I: Non-centered Log-Normal model
-        # Sensitivities reduce to
-        # deta = -eta
-        # dmu_log = 0
-        # dsigma_log = 0
+        epsilon = 0.00001
+        ref_score = self.cpop_model.compute_log_likelihood(
+            parameters, psi, covariates)
+        ref_dpsi = []
+        for index in range(len(psi)):
+            # Construct parameter grid
+            low = psi.copy()
+            low[index, 0] -= epsilon
+            high = psi.copy()
+            high[index, 0] += epsilon
 
-        # Test case I.1:
-        etas = [1] * n_ids
-        mu_log = 1
-        sigma_log = 1
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.cpop_model.compute_log_likelihood(
+                        parameters, low, covariates),
+                    ref_score,
+                    self.cpop_model.compute_log_likelihood(
+                        parameters, high, covariates)],
+                (epsilon))
+            ref_dpsi.append(sens[1])
+        ref_dtheta = []
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
 
-        # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.cpop_model.compute_log_likelihood(parameters, etas)
-        ref_detas = -1 * np.array(etas)
-        ref_dmu = 0
-        ref_dsigma = 0
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.cpop_model.compute_log_likelihood(
+                        low, psi, covariates),
+                    ref_score,
+                    self.cpop_model.compute_log_likelihood(
+                        high, psi, covariates)],
+                (epsilon))
+            ref_dtheta.append(sens[1])
 
-        # Compute log-likelihood and sensitivities
-        score, sens = self.cpop_model.compute_sensitivities(parameters, etas)
+        # Compute sensitivities with hierarchical model
+        self.assertEqual(score, ref_score)
+        self.assertEqual(dpsi.shape, (n_ids, 2))
+        self.assertEqual(dtheta.shape, (8,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi[0])
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi[1])
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi[2])
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi[3])
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi[4])
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi[5])
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi[6])
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi[7])
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi[8])
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi[9])
+        self.assertAlmostEqual(dtheta[0], ref_dtheta[0])
+        self.assertAlmostEqual(dtheta[1], ref_dtheta[1])
+        self.assertAlmostEqual(dtheta[2], ref_dtheta[2])
+        self.assertAlmostEqual(dtheta[3], ref_dtheta[3])
+        self.assertAlmostEqual(dtheta[4], ref_dtheta[4])
+        self.assertAlmostEqual(dtheta[5], ref_dtheta[5])
+        self.assertAlmostEqual(dtheta[6], ref_dtheta[6])
+        self.assertAlmostEqual(dtheta[7], ref_dtheta[7])
 
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_detas[0])
-        self.assertEqual(sens[1], ref_detas[1])
-        self.assertEqual(sens[2], ref_detas[2])
-        self.assertEqual(sens[3], ref_detas[3])
-        self.assertEqual(sens[4], ref_detas[4])
-        self.assertEqual(sens[5], ref_detas[5])
-        self.assertEqual(sens[6], ref_detas[6])
-        self.assertEqual(sens[7], ref_detas[7])
-        self.assertEqual(sens[8], ref_detas[8])
-        self.assertEqual(sens[9], ref_detas[9])
-        self.assertEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
+    def test_get_set_covariate_names(self):
+        names = self.cpop_model.get_covariate_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Cov. 1')
 
-        # Test case I.2:
-        etas = np.arange(n_ids)
-        mu_log = 1
-        sigma_log = 1
+        self.cpop_model.set_covariate_names(['some name'])
+        names = self.cpop_model.get_covariate_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'some name')
 
-        # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.cpop_model.compute_log_likelihood(parameters, etas)
-        ref_detas = -1 * np.array(etas)
-        ref_dmu = 0
-        ref_dsigma = 0
+        self.cpop_model.set_covariate_names(None)
 
-        # Compute log-likelihood and sensitivities
-        score, sens = self.cpop_model.compute_sensitivities(parameters, etas)
+    def test_get_set_dim_names(self):
+        names = self.cpop_model.get_dim_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Dim. 1')
+        self.assertEqual(names[1], 'Dim. 2')
 
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_detas[0])
-        self.assertEqual(sens[1], ref_detas[1])
-        self.assertEqual(sens[2], ref_detas[2])
-        self.assertEqual(sens[3], ref_detas[3])
-        self.assertEqual(sens[4], ref_detas[4])
-        self.assertEqual(sens[5], ref_detas[5])
-        self.assertEqual(sens[6], ref_detas[6])
-        self.assertEqual(sens[7], ref_detas[7])
-        self.assertEqual(sens[8], ref_detas[8])
-        self.assertEqual(sens[9], ref_detas[9])
-        self.assertEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
+        self.cpop_model.set_dim_names(['some', 'name'])
+        names = self.cpop_model.get_dim_names()
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'some')
+        self.assertEqual(names[1], 'name')
 
-        # Test case I.3:
-        etas = np.arange(n_ids)
-        mu_log = -1
-        sigma_log = 10
+        self.cpop_model.set_dim_names(None)
 
-        # Compute ref scores
-        parameters = [mu_log] + [sigma_log]
-        ref_ll = self.cpop_model.compute_log_likelihood(parameters, etas)
-        ref_detas = -1 * np.array(etas)
-        ref_dmu = 0
-        ref_dsigma = 0
+    def test_get_set_parameter_names(self):
+        # Test case I: 1 covariate
+        names = self.cpop_model.get_parameter_names()
+        self.assertEqual(len(names), 8)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Mean Dim. 2')
+        self.assertEqual(names[2], 'Std. Dim. 1')
+        self.assertEqual(names[3], 'Std. Dim. 2')
+        self.assertEqual(names[4], 'Mean Dim. 1 Cov. 1')
+        self.assertEqual(names[5], 'Mean Dim. 2 Cov. 1')
+        self.assertEqual(names[6], 'Std. Dim. 1 Cov. 1')
+        self.assertEqual(names[7], 'Std. Dim. 2 Cov. 1')
 
-        # Compute log-likelihood and sensitivities
-        score, sens = self.cpop_model.compute_sensitivities(parameters, etas)
+        # Test case I: 2 covariate
+        pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.LinearCovariateModel(n_cov=2))
+        names = pop_model.get_parameter_names()
+        self.assertEqual(len(names), 6)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
+        self.assertEqual(names[2], 'Mean Dim. 1 Cov. 1')
+        self.assertEqual(names[3], 'Mean Dim. 1 Cov. 2')
+        self.assertEqual(names[4], 'Std. Dim. 1 Cov. 1')
+        self.assertEqual(names[5], 'Std. Dim. 1 Cov. 2')
 
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 2)
-        self.assertEqual(sens[0], ref_detas[0])
-        self.assertEqual(sens[1], ref_detas[1])
-        self.assertEqual(sens[2], ref_detas[2])
-        self.assertEqual(sens[3], ref_detas[3])
-        self.assertEqual(sens[4], ref_detas[4])
-        self.assertEqual(sens[5], ref_detas[5])
-        self.assertEqual(sens[6], ref_detas[6])
-        self.assertEqual(sens[7], ref_detas[7])
-        self.assertEqual(sens[8], ref_detas[8])
-        self.assertEqual(sens[9], ref_detas[9])
-        self.assertEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
+        # Select a subset of model parameters
+        pop_model.set_population_parameters([[0, 0]])
+        names = pop_model.get_parameter_names()
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
+        self.assertEqual(names[2], 'Mean Dim. 1 Cov. 1')
+        self.assertEqual(names[3], 'Mean Dim. 1 Cov. 2')
 
-        # Test case II: Linear covariate model
-        etas = np.arange(n_ids)
-        mu_log = -1
-        sigma_log = 10
-        shifts = [1, 2]
-
-        # Compute ref scores
-        # (Distribution of eta is independent of model parameters, it's always
-        # standard Gaussian. Thus sensitivities of likelihood are zero.)
-        parameters = [mu_log] + [sigma_log] + shifts
-        ref_ll = self.cpop_model2.compute_log_likelihood(
-            parameters, etas)
-        ref_detas = -1 * np.array(etas)
-        ref_dmu = 0
-        ref_dsigma = 0
-        ref_dshift0 = 0
-        ref_dshift1 = 0
-
-        # Compute log-likelihood and sensitivities
-        score, sens = self.cpop_model2.compute_sensitivities(
-            parameters, etas)
-
-        self.assertEqual(score, ref_ll)
-        self.assertEqual(len(sens), n_ids + 4)
-        self.assertEqual(sens[0], ref_detas[0])
-        self.assertEqual(sens[1], ref_detas[1])
-        self.assertEqual(sens[2], ref_detas[2])
-        self.assertEqual(sens[3], ref_detas[3])
-        self.assertEqual(sens[4], ref_detas[4])
-        self.assertEqual(sens[5], ref_detas[5])
-        self.assertEqual(sens[6], ref_detas[6])
-        self.assertEqual(sens[7], ref_detas[7])
-        self.assertEqual(sens[8], ref_detas[8])
-        self.assertEqual(sens[9], ref_detas[9])
-        self.assertEqual(sens[10], ref_dmu)
-        self.assertAlmostEqual(sens[11], ref_dsigma)
-        self.assertAlmostEqual(sens[12], ref_dshift0)
-        self.assertAlmostEqual(sens[13], ref_dshift1)
-
-    def test_get_covariate_model(self):
-        cov_model = self.cpop_model.get_covariate_model()
-        self.assertIsInstance(cov_model, chi.CovariateModel)
-
-    def test_get_covariate_names(self):
-        # Test case I:
-        names = []
-        self.assertEqual(self.cpop_model.get_covariate_names(), names)
-
-        # Test case II:
-        names = ['Covariate 1', 'Covariate 2']
-        self.assertEqual(self.cpop_model2.get_covariate_names(), names)
-
-    def test_get_parameter_names(self):
-        # Test case I:
-        names = ['Base log mean Dim. 1', 'Log std. Dim. 1']
-        self.assertEqual(self.cpop_model.get_parameter_names(), names)
-
-        # Test case II:
-        names = [
-            'Base log mean Dim. 1', 'Log std. Dim. 1',
-            'Shift Covariate 1 Dim. 1', 'Shift Covariate 2 Dim. 1']
-        self.assertEqual(self.cpop_model2.get_parameter_names(), names)
-
-        # Exclude dim names
-        names = ['Base log mean', 'Log std.']
-        self.assertEqual(
-            self.cpop_model.get_parameter_names(exclude_dim_names=True),
-            names)
+        pop_model.set_population_parameters([[1, 0]])
+        names = pop_model.get_parameter_names()
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[0], 'Mean Dim. 1')
+        self.assertEqual(names[1], 'Std. Dim. 1')
+        self.assertEqual(names[2], 'Std. Dim. 1 Cov. 1')
+        self.assertEqual(names[3], 'Std. Dim. 1 Cov. 2')
 
     def test_n_hierarchical_parameters(self):
-        # Test case I:
+        # Test case I: 2 dim
         n_ids = 10
         n_hierarchical_params = self.cpop_model.n_hierarchical_parameters(
             n_ids)
 
         self.assertEqual(len(n_hierarchical_params), 2)
-        self.assertEqual(n_hierarchical_params[0], n_ids)
-        self.assertEqual(n_hierarchical_params[1], 2)
-
-        # Test case II:
-        n_ids = 10
-        n_hierarchical_params = self.cpop_model2.n_hierarchical_parameters(
-            n_ids)
-
-        self.assertEqual(len(n_hierarchical_params), 2)
-        self.assertEqual(n_hierarchical_params[0], n_ids)
-        self.assertEqual(n_hierarchical_params[1], 4)
+        self.assertEqual(n_hierarchical_params[0], 2 * n_ids)
+        self.assertEqual(n_hierarchical_params[1], 8)
 
     def test_n_covariates(self):
-        # Test case I:
+        # Test case I: One covariate
         n_cov = self.cpop_model.n_covariates()
-        self.assertEqual(n_cov, 0)
+        self.assertEqual(n_cov, 1)
 
-        # Test case II:
-        n_cov = self.cpop_model2.n_covariates()
+        # Test case II: two covariates
+        pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(), chi.LinearCovariateModel(n_cov=2))
+        n_cov = pop_model.n_covariates()
         self.assertEqual(n_cov, 2)
 
     def test_n_parameters(self):
-        self.assertEqual(self.cpop_model.n_parameters(), 2)
-
-    def test_transforms_individual_parameters(self):
-        self.assertTrue(self.cpop_model.transforms_individual_parameters())
+        self.assertEqual(self.cpop_model.n_parameters(), 8)
 
     def test_sample(self):
         # Test I: sample size 1
-        # Test case I.1: return eta
         seed = 42
-        parameters = [3, 2]
-        sample = self.cpop_model.sample(parameters, seed=seed)
+        covariates = [1]
+        parameters = [3, 2, 4, 2, 3, 2, 4, 2]
+        sample = self.cpop_model.sample(parameters, covariates, seed=seed)
 
         n_samples = 1
-        self.assertEqual(sample.shape, (n_samples, 1))
+        self.assertEqual(sample.shape, (n_samples, 2))
 
-        # Test case I.2: return psi
-        sample = self.cpop_model.sample(parameters, seed=seed, return_psi=True)
-        self.assertEqual(sample.shape, (n_samples, 1))
-
-        # Test II: sample size > 1
-        # Test case II.1: return eta
-        parameters = [3, 2]
-        n_samples = 4
+        # Test II sample size 10
+        n_samples = 10
         sample = self.cpop_model.sample(
-            parameters, n_samples=n_samples, seed=seed)
+            parameters, covariates, n_samples=n_samples, seed=seed)
+        self.assertEqual(sample.shape, (n_samples, 2))
 
-        self.assertEqual(sample.shape, (n_samples, 1))
-
-        # Test case II.2: return psi
+        # Test III: Select different covariates for the samples
+        n_samples = 10
+        covariates = np.arange(n_samples).reshape(n_samples, 1)
         sample = self.cpop_model.sample(
-            parameters, n_samples=n_samples, seed=seed, return_psi=True)
-        self.assertEqual(sample.shape, (n_samples, 1))
-
-        # Test III: Model with covariates
-        # Test case III.1: return eta
-        seed = 42
-        parameters = [3, 2, 10, 20]
-        covariates = [2, 4]
-        sample = self.cpop_model2.sample(
-            parameters, covariates=covariates, seed=seed, return_psi=False)
-
-        n_samples = 1
-        self.assertEqual(sample.shape, (n_samples, 1))
-
-        # Test case III.2: return psi
-        sample = self.cpop_model2.sample(
-            parameters, covariates=covariates, seed=seed, return_psi=True)
-        self.assertEqual(sample.shape, (n_samples, 1))
+            parameters, covariates, n_samples=n_samples, seed=seed)
+        self.assertEqual(sample.shape, (n_samples, 2))
 
     def test_sample_bad_input(self):
-        # Covariates do not match
-        parameters = [3, 2, 10, 20]
+        # Wrong numbere of covariates
+        parameters = [3, 2, 4, 2, 3, 2, 4, 2]
         covariates = ['this', 'is', 'the', 'wrong', 'length']
-        with self.assertRaisesRegex(ValueError, 'Covariates must be of'):
-            self.cpop_model2.sample(parameters, covariates=covariates)
+        with self.assertRaisesRegex(ValueError, 'Provided covariates do not'):
+            self.cpop_model.sample(parameters, covariates=covariates)
 
-    def test_set_covariate_names(self):
-        # Test some name
-        names = []
-        self.cpop_model.set_covariate_names(names)
+    def test_set_population_parameters(self):
+        # Out of bounds error
+        indices = [[-1, 0]]
+        with self.assertRaisesRegex(IndexError, 'The provided indices'):
+            self.cpop_model.set_population_parameters(indices)
 
-        # This covariate model has no covariates
-        self.assertEqual(
-            self.cpop_model.get_covariate_names(), [])
+        indices = [[1, 2]]
+        with self.assertRaisesRegex(IndexError, 'The provided indices'):
+            self.cpop_model.set_population_parameters(indices)
 
-    def test_set_parameter_names(self):
-        # Test some name
-        names = ['test', 'name']
-        self.cpop_model.set_parameter_names(names)
-
-        names = ['test Dim. 1', 'name Dim. 1']
-        self.assertEqual(
-            self.cpop_model.get_parameter_names(), names)
-
-        # Set back to default name
-        self.cpop_model.set_parameter_names(None)
-        names = self.cpop_model.get_parameter_names()
-
-        self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Base log mean Dim. 1')
-        self.assertEqual(names[1], 'Log std. Dim. 1')
+        indices = [[5, 1]]
+        with self.assertRaisesRegex(IndexError, 'The provided indices'):
+            self.cpop_model.set_population_parameters(indices)
 
 
 class TestGaussianModel(unittest.TestCase):
