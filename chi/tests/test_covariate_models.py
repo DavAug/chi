@@ -225,9 +225,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         covariates = np.arange(n_ids).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, n_dim))
         dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
-        dtheta = self.cov_model.compute_sensitivities(
+        dpop, dparams = self.cov_model.compute_sensitivities(
             parameters, pop_params, covariates, dlogp_dvartheta)
-        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
+        self.assertEqual(dpop.shape, (n_pop * n_dim,))
+        self.assertEqual(dparams.shape, (n_cov,))
 
         # 1 covariate, 1 dimension, 2 pop param
         n_cov = 1
@@ -237,9 +238,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         covariates = np.arange(n_ids).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 1)) * 0.1
         dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
-        dtheta = self.cov_model.compute_sensitivities(
+        dpop, dparams = self.cov_model.compute_sensitivities(
             parameters, pop_params, covariates, dlogp_dvartheta)
-        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
+        self.assertEqual(dpop.shape, (n_pop * n_dim,))
+        self.assertEqual(dparams.shape, (n_cov,))
 
         # select both parameters
         self.cov_model.set_population_parameters(indices=[
@@ -247,9 +249,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         parameters = np.ones(n_cov * n_pop) * 2
         covariates = np.arange(n_ids).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 1)) * 0.1
-        dtheta = self.cov_model.compute_sensitivities(
+        dpop, dparams = self.cov_model.compute_sensitivities(
             parameters, pop_params, covariates, dlogp_dvartheta)
-        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov * 2,))
+        self.assertEqual(dpop.shape, (n_pop * n_dim,))
+        self.assertEqual(dparams.shape, (n_cov * 2,))
         self.cov_model.set_population_parameters(indices=[
             [0, 0]])
 
@@ -262,9 +265,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         covariates = np.arange(n_ids * n_cov).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 1)) * 0.1
         dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
-        dtheta = cov_model.compute_sensitivities(
+        dpop, dparams = cov_model.compute_sensitivities(
             parameters, pop_params, covariates, dlogp_dvartheta)
-        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
+        self.assertEqual(dpop.shape, (n_pop * n_dim,))
+        self.assertEqual(dparams.shape, (n_cov,))
 
         # 1 covariates, 2 dimension, 1 pop param
         n_cov = 1
@@ -275,9 +279,10 @@ class TestLinearCovariateModel(unittest.TestCase):
         covariates = np.arange(n_ids * n_cov).reshape(n_ids, n_cov)
         pop_params = np.ones((n_pop, 2)) * 0.1
         dlogp_dvartheta = np.ones((n_ids, n_pop, n_dim))
-        dtheta = self.cov_model.compute_sensitivities(
+        dpop, dparams = self.cov_model.compute_sensitivities(
             parameters, pop_params, covariates, dlogp_dvartheta)
-        self.assertEqual(dtheta.shape, (n_pop * n_dim + n_cov,))
+        self.assertEqual(dpop.shape, (n_pop * n_dim,))
+        self.assertEqual(dparams.shape, (n_cov,))
 
 
 if __name__ == '__main__':

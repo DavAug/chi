@@ -91,8 +91,8 @@ class CovariateModel(object):
     def compute_sensitivities(
             self, parameters, pop_parameters, covariates, dlogp_dvartheta):
         """
-        Returns the sensitivities of the population likelihood with respect to
-        the model parameters.
+        Returns the sensitivities of the likelihood with respect to
+        the model parameters and the population model parameters.
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
@@ -106,7 +106,8 @@ class CovariateModel(object):
             model to the transformed parameters.
         :type dlogp_dvartheta: np.ndarray of shape
             ``(n_ids, n_param_per_dim, n_dim)``
-        :rtype: np.ndarray of shape ``(n_pop_params + n_parameters,)``
+        :rtype: Tuple[np.ndarray of shape ``(n_pop_params,)``,
+            np.ndarray of shape ``(n_parameters,)``]
         """
         raise NotImplementedError
 
@@ -273,8 +274,8 @@ class LinearCovariateModel(CovariateModel):
     def compute_sensitivities(
             self, parameters, pop_parameters, covariates, dlogp_dvartheta):
         """
-        Returns the sensitivities of the population likelihood with respect to
-        the model parameters.
+        Returns the sensitivities of the likelihood with respect to
+        the model parameters and the population model parameters.
 
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)`` or
@@ -288,7 +289,8 @@ class LinearCovariateModel(CovariateModel):
             model to the transformed parameters.
         :type dlogp_dvartheta: np.ndarray of shape
             ``(n_ids, n_param_per_dim, n_dim)``
-        :rtype: np.ndarray of shape ``(n_pop_params + n_parameters,)``
+        :rtype: Tuple[np.ndarray of shape ``(n_pop_params,)``,
+            np.ndarray of shape ``(n_parameters,)``]
         """
         parameters = np.asarray(parameters)
         if parameters.ndim == 1:
@@ -298,13 +300,12 @@ class LinearCovariateModel(CovariateModel):
         # Compute sensitivities
         n_pop, n_dim = pop_parameters.shape
         n_pop = n_pop * n_dim
-        dtheta = np.empty(n_pop + self._n_parameters)
-        dtheta[:n_pop] = np.sum(dlogp_dvartheta, axis=0).flatten()
-        dtheta[n_pop:] = np.sum(
+        dpop = np.sum(dlogp_dvartheta, axis=0).flatten()
+        dparams = np.sum(
             dlogp_dvartheta[:, self._pidx, self._didx, np.newaxis]
             * covariates[:, np.newaxis, :], axis=0).flatten()
 
-        return dtheta
+        return dpop, dparams
 
     def set_population_parameters(self, indices):
         """
