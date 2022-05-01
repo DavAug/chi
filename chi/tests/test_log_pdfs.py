@@ -1380,6 +1380,53 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         samples = self.log_posterior.sample_initial_parameters(seed=seed)
         self.assertEqual(samples.shape, (1, 13))
 
+        # Test sampling for covariate population model
+        # Create data
+        obs_1 = [1, 1.1, 1.2, 1.3]
+        times_1 = [1, 2, 3, 4]
+        observations = [obs_1]
+        times = [times_1]
+        covariates = np.arange(2).reshape(2, 1) + 1000
+
+        # Set up mechanistic and error models
+        model = ToyExponentialModel()
+        error_model = chi.GaussianErrorModel()
+
+        # Create log-likelihoods
+        log_likelihoods = [
+            chi.LogLikelihood(
+                model, error_model, observations, times),
+            chi.LogLikelihood(
+                model, error_model, observations, times)]
+
+        # Create population models
+        population_model = chi.ComposedPopulationModel([
+            chi.CovariatePopulationModel(
+                chi.GaussianModel(), chi.LinearCovariateModel()),
+            chi.PooledModel(n_dim=2)])
+
+        # Create hierarchical log-likelihood
+        log_likelihood = chi.HierarchicalLogLikelihood(
+            log_likelihoods, population_model, covariates=covariates)
+
+        # Define log-prior
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1))
+
+        # Create log-posterior
+        log_posterior = chi.HierarchicalLogPosterior(
+            log_likelihood, log_prior)
+
+        n_samples = 10
+        samples = log_posterior.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 8))
+
 
 class TestLogLikelihood(unittest.TestCase):
     """

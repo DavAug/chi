@@ -746,14 +746,14 @@ class HierarchicalLogPosterior(pints.LogPDF):
             seed += 1
         rng = np.random.default_rng(seed=seed)
 
-        # TODO: Need to pass covariates to population model
         n_ids = self._log_likelihood.n_log_likelihoods()
+        covariates = self._log_likelihood._covariates
         bottom_parameters = []
         population_model = self._log_likelihood.get_population_model()
         for sample_id in range(n_samples):
             bottom_parameters.append(population_model.sample(
                 parameters=initial_params[sample_id, n_bottom:],
-                n_samples=n_ids, seed=rng))
+                n_samples=n_ids, seed=rng, covariates=covariates))
 
         # Remove pooled dimensions
         # (Pooled and heterogen. dimensions do not count as bottom parameters)
