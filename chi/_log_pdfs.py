@@ -18,31 +18,22 @@ import chi
 class HierarchicalLogLikelihood(object):
     r"""
     A hierarchical log-likelihood consists of structurally identical
-    log-likelihoods whose parameters are related by a population model.
+    log-likelihoods whose parameters are governed by a population model.
 
-    A hierarchical log-likelihood takes a list of :class:`LogLikelihood`
-    instances and a :class:`PopulationModel` with the same dimension as the
-    number of parameters of the log-likelihoods. The hierarchical
-    log-likelihood is defined as
+    A hierarchical log-likelihood is defined by a list of
+    :class:`LogLikelihood` instances and a :class:`PopulationModel`
 
     .. math::
         \log p(\mathcal{D}, \Psi | \theta ) =
             \sum _{ij} \log p(y_{ij} | \psi _{i} , t_{ij})
-            + \sum _{ik} \log p(\psi _{ik}| \theta _k),
+            + \sum _{i} \log p(\psi _{i}| \theta),
 
-    where :math:`\sum _{j} \log p(y_{ij} | \psi _{i} , t_{ij})` is the
-    log-likelihood of :math:`\psi _{i}` associated with individual :math:`i`
-    and :math:`\sum _{ik} \log p(\psi _{ik}| \theta _k)` is the log-likelihood
-    of the population parameters. :math:`\mathcal{D}=\{ \mathcal{D}_i\}` is the
-    data, composed of measurements from different individuals
-    :math:`\mathcal{D}_i = \{(y_{ij}, t_{ij})\}`. :math:`\Psi = \{ \psi_i\}`
-    is the collection of bottom-level parameters, which in turn are the
-    parameters of the individual log-likelihoods
-    :math:`\psi_i = \{ \psi _{ik}\}`.
-    We use :math:`i` to index individuals, :math:`j` to index measurements for
-    an individual and :math:`k` to index the bottom-level parameters.
-    :math:`\theta _k = \{ \theta _{kr} \}` are the population parameters
-    associated with the :math:`k^{\text{th}}` bottom-level parameter.
+    where the first term is the sum over the log-likelihoods and the second
+    term is the log-likelihood of the population model parameters.
+    :math:`\mathcal{D}=\{ (y_{ij}, t_{ij})\}` is the
+    data, where :math:`(y_{ij}, t_{ij})` is the :math:`j^{\mathrm{th}}`
+    measurement of log-likelihood :math:`i`. :math:`\Psi = \{ \psi_i\}`
+    denotes the parameters across the individual log-likelihoods.
 
     :param log_likelihoods: A list of log-likelihoods which are
         defined on the same parameter space with dimension ``n_parameters``.
@@ -50,7 +41,7 @@ class HierarchicalLogLikelihood(object):
     :param population_models: A population model of dimension ``n_parameters``.
     :type population_models: PopulationModel
     :param covariates: A 2-dimensional array of with the
-        individual's covariates of shape ``(n_ids, n_cov)``.
+        individual's covariates.
     :type covariates: np.ndarray of shape ``(n_ids, n_cov)``, optional
     """
     def __init__(
@@ -75,7 +66,7 @@ class HierarchicalLogLikelihood(object):
                     'the dimensions of the log-likelihood parameter space.')
 
         n_ids = len(log_likelihoods)
-        if population_model.needs_covariates():
+        if population_model.n_covariates() > 0:
             if covariates is None:
                 raise ValueError(
                     'The population model needs covariates, but no covariates '
@@ -755,6 +746,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
             seed += 1
         rng = np.random.default_rng(seed=seed)
 
+        # TODO: Need to pass covariates to population model
         n_ids = self._log_likelihood.n_log_likelihoods()
         bottom_parameters = []
         population_model = self._log_likelihood.get_population_model()
@@ -1498,6 +1490,7 @@ class LogPosterior(pints.LogPDF):
 
 
 class PopulationFilterLogPosterior(HierarchicalLogPosterior):
+    # TODO: Is this sufficiently tested?
     r"""
     A population filter log-posterior approximates a hierarchical
     log-posterior.
@@ -1516,7 +1509,6 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             \sum _{sj} \log p (\tilde{y}_{sj} | \tilde{\psi}_s, t_j) +
             \sum _{sk} \log p (\tilde{\psi}_{sk} | \theta _k)& \\
             &+ \sum _{k} \log p (\theta _k) + \mathrm{constant},&
-
 
     where the data :math:`\mathcal{D} = \{ (Y_j , t_j)\}` are measurements
     over time with :math:`Y_j = \{ y_{ij} \}` denoting the measurements at time
