@@ -52,7 +52,7 @@ class PopulationModel(object):
         """
         Returns the individual parameters.
 
-        If the model does not transform the bottom-level parameters ``eta`` is
+        If the model does not transform the bottom-level parameters, ``eta`` is
         returned.
 
         :param parameters: Model parameters.
@@ -273,7 +273,6 @@ class PopulationModel(object):
 
 
 class ComposedPopulationModel(PopulationModel):
-    # TODO:
     r"""
     A multi-dimensional population model composed of mutliple population
     models.
@@ -343,11 +342,11 @@ class ComposedPopulationModel(PopulationModel):
 
     def compute_individual_parameters(
             self, parameters, eta, covariates=None):
-        r"""
+        """
         Returns the individual parameters.
 
-        If the model does not transform the bottom parameters, i.e.
-        :math:`\eta = \psi`, the input :math:`\eta` are returned.
+        If the model does not transform the bottom-level parameters, ``eta`` is
+        returned.
 
         If the population model does not use covariates, the covariate input
         is ignored.
@@ -376,9 +375,9 @@ class ComposedPopulationModel(PopulationModel):
         psis = np.empty(shape=eta.shape)
         for pop_model in self._population_models:
             # Get covariates
-            if covariates is not None:
+            if self._n_covariates > 0:
                 end_cov = current_cov + pop_model.n_covariates()
-                cov = covariates[current_cov:end_cov]
+                cov = covariates[:, current_cov:end_cov]
                 current_cov = end_cov
 
             end_p = current_p + pop_model.n_parameters()
@@ -411,16 +410,15 @@ class ComposedPopulationModel(PopulationModel):
         parameters = np.asarray(parameters)
 
         score = 0
-
         cov = None
         current_dim = 0
         current_param = 0
         current_cov = 0
         for pop_model in self._population_models:
             # Get covariates
-            if covariates is not None:
+            if self._n_covariates > 0:
                 end_cov = current_cov + pop_model.n_covariates()
-                cov = covariates[current_cov:end_cov]
+                cov = covariates[:, current_cov:end_cov]
                 current_cov = end_cov
 
             end_dim = current_dim + pop_model.n_dim()
@@ -479,27 +477,31 @@ class ComposedPopulationModel(PopulationModel):
 
         score = 0
         n_ids = len(observations)
-        dpsi = np.empty(shape=(n_ids, self._n_dim))
+        dpsi = np.zeros(shape=(n_ids, self._n_dim))
         dtheta = np.empty(shape=self._n_parameters)
 
         cov = None
+        dlp_dpsi = None
         current_cov = 0
         current_dim = 0
         current_param = 0
         for pop_model in self._population_models:
             # Get covariates
-            if covariates is not None:
+            if self._n_covariates > 0:
                 end_cov = current_cov + pop_model.n_covariates()
-                cov = covariates[current_cov:end_cov]
+                cov = covariates[:, current_cov:end_cov]
                 current_cov = end_cov
-
+            # Get dlogp/dpsi
             end_dim = current_dim + pop_model.n_dim()
             end_param = current_param + pop_model.n_parameters()
+            if dlogp_dpsi is not None:
+                dlp_dpsi = dlogp_dpsi[:, current_dim:end_dim]
+
             s, dp, dt = pop_model.compute_sensitivities(
                 parameters=parameters[current_param:end_param],
                 observations=observations[:, current_dim:end_dim],
                 covariates=cov,
-                dlogp_dpsi=dlogp_dpsi[:, current_dim:end_dim])
+                dlogp_dpsi=dlp_dpsi)
 
             # Add score and sensitivities
             score += s
@@ -587,7 +589,7 @@ class ComposedPopulationModel(PopulationModel):
     def sample(
             self, parameters, n_samples=None, seed=None, covariates=None,
             *args, **kwargs):
-        r"""
+        """
         Returns random samples from the population distribution.
 
         The returned value is a NumPy array with shape ``(n_samples, n_dim)``.
@@ -607,9 +609,10 @@ class ComposedPopulationModel(PopulationModel):
         :type n_samples: int, optional
         :param seed: A seed for the pseudo-random number generator.
         :type seed: int, np.random.Generator, optional
-        :param covariates: Values for the covariates. If ``None``, default
-            is assumed defined by the :class:`CovariateModel`.
-        :type covariates: List, np.ndarray of shape (n_cov,)
+        :param covariates: Covariate values, specifying the sampled
+            subpopulation.
+        :type covariates: List, np.ndarray of shape ``(n_cov,)`` or
+            ``(n_samples, n_cov)``, optional
         :returns: Samples from population model conditional on covariates.
         :rtype: np.ndarray of shape (n_samples, n_dim)
         """
@@ -618,6 +621,10 @@ class ComposedPopulationModel(PopulationModel):
             raise ValueError(
                 'The number of provided parameters does not match the expected'
                 ' number of top-level parameters.')
+        if (self._n_covariates > 0):
+            covariates = np.asarray(covariates)
+            if covariates.ndim == 1:
+                covariates = covariates[np.newaxis, :]
 
         # Define shape of samples
         if n_samples is None:
@@ -639,7 +646,7 @@ class ComposedPopulationModel(PopulationModel):
             end_param = current_param + pop_model.n_parameters()
 
             # Get covariates
-            if covariates is not None:
+            if self._n_covariates > 0:
                 cov = covariates[:, current_cov:pop_model.n_covariates()]
                 current_cov += pop_model.n_covariates()
 
@@ -750,7 +757,6 @@ class ComposedPopulationModel(PopulationModel):
 
 
 class CovariatePopulationModel(PopulationModel):
-    # TODO: Update all methods and test them
     r"""
     A population model that models the parameters across individuals
     conditional on covariates of the inter-individual variability.
@@ -761,7 +767,7 @@ class CovariatePopulationModel(PopulationModel):
     population model
 
     .. math::
-        p(\psi | \vartheta (\theta, \chi)),
+        p(\psi | \theta, \chi) = p(\psi | \vartheta (\theta, \chi)),
 
     where :math:`\vartheta` are the population parameters of the subpopulation
     which depend on global population parameters :math:`\theta` and the
@@ -829,7 +835,7 @@ class CovariatePopulationModel(PopulationModel):
         """
         Returns the individual parameters.
 
-        If the model does not transform the bottom-level parameters ``eta`` is
+        If the model does not transform the bottom-level parameters, ``eta`` is
         returned.
 
         :param parameters: Model parameters.
@@ -1695,7 +1701,7 @@ class HeterogeneousModel(PopulationModel):
 
         # Return -inf if any of the observations do not equal the heterogenous
         # parameters
-        mask = observations != parameters
+        mask = np.not_equal(observations, parameters)
         if np.any(mask):
             return -np.inf
 
@@ -2741,7 +2747,7 @@ class ReducedPopulationModel(PopulationModel):
         """
         Returns the individual parameters.
 
-        If the model does not transform the bottom-level parameters ``eta`` is
+        If the model does not transform the bottom-level parameters, ``eta`` is
         returned.
 
         :param parameters: Model parameters.
