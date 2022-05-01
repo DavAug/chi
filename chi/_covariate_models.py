@@ -136,6 +136,18 @@ class CovariateModel(object):
 
         return param_names
 
+    def get_set_population_parameters(self):
+        """
+        Returns the indices of the population parameters that are transformed.
+
+        Indices are returned as a tuple of arrays, where the first array are
+        parameters indices and the second array are the dimension indicies.
+
+        :rtype: Tuple[np.ndarray of shape ``(n_selected,)``,
+            np.ndarray of shape ``(n_selected,)``]
+        """
+        return (self._pidx.copy(), self._didx.copy())
+
     def n_covariates(self):
         """
         Returns the number of covariates c.
@@ -168,7 +180,7 @@ class CovariateModel(object):
 
         self._cov_names = [str(label) for label in names]
 
-    def set_parameter_names(self, names=None):
+    def set_parameter_names(self, names=None, mask_names=False):
         """
         Sets the names of the model parameters.
 
@@ -331,7 +343,11 @@ class LinearCovariateModel(CovariateModel):
                 unique.append([int(idx[0]), int(idx[1])])
 
         # Split into param index and dim index
+        # (sort 1. dimension axis, 2. parameter axis, so indexing preserves
+        # order of np.ndarray.flatten)
         indices = np.array(unique)
+        indices = indices[np.argsort(indices[:, 1]), :]
+        indices = indices[np.argsort(indices[:, 0]), :]
         self._pidx = indices[:, 0]
         self._didx = indices[:, 1]
 

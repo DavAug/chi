@@ -868,7 +868,18 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertEqual(names[0], 'some')
         self.assertEqual(names[1], 'name')
 
-        self.cpop_model.set_dim_names(None)
+        names = self.cpop_model.get_parameter_names()
+        self.assertEqual(len(names), 8)
+        self.assertEqual(names[0], 'Mean some')
+        self.assertEqual(names[1], 'Mean name')
+        self.assertEqual(names[2], 'Std. some')
+        self.assertEqual(names[3], 'Std. name')
+        self.assertEqual(names[4], 'Mean some Cov. 1')
+        self.assertEqual(names[5], 'Mean name Cov. 1')
+        self.assertEqual(names[6], 'Std. some Cov. 1')
+        self.assertEqual(names[7], 'Std. name Cov. 1')
+
+        self.cpop_model.set_dim_names(['Dim. 1', 'Dim. 2'])
 
     def test_get_set_parameter_names(self):
         # Test case I: 1 covariate
@@ -882,6 +893,23 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertEqual(names[5], 'Mean Dim. 2 Cov. 1')
         self.assertEqual(names[6], 'Std. Dim. 1 Cov. 1')
         self.assertEqual(names[7], 'Std. Dim. 2 Cov. 1')
+
+        names = [
+            'some', 'names', 'that', 'match', 'the', 'number', 'of', 'params']
+        self.cpop_model.set_parameter_names(names)
+        names = self.cpop_model.get_parameter_names()
+        self.assertEqual(len(names), 8)
+        self.assertEqual(names[0], 'some Dim. 1')
+        self.assertEqual(names[1], 'names Dim. 2')
+        self.assertEqual(names[2], 'that Dim. 1')
+        self.assertEqual(names[3], 'match Dim. 2')
+        self.assertEqual(names[4], 'the Cov. 1')
+        self.assertEqual(names[5], 'number Cov. 1')
+        self.assertEqual(names[6], 'of Cov. 1')
+        self.assertEqual(names[7], 'params Cov. 1')
+
+        self.cpop_model.set_parameter_names(None)
+        self.cpop_model.set_dim_names(['Dim. 1', 'Dim. 2'])
 
         # Test case I: 2 covariate
         pop_model = chi.CovariatePopulationModel(

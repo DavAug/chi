@@ -1103,11 +1103,27 @@ class CovariatePopulationModel(PopulationModel):
         """
         Sets the names of the population model dimensions.
 
+        Setting the dimension names overwrites the parameter names of the
+        covariate model.
+
         :param names: A list of dimension names. If ``None``, dimension names
             are reset to defaults.
         :type names: List[str], optional
         """
         self._population_model.set_dim_names(names)
+
+        # Get names of parameters affected by the covariate model
+        names = self._population_model.get_parameter_names()
+        names = np.array(names).reshape(
+            self._n_pop // self._n_dim, self._n_dim)
+        pidx, didx = self._covariate_model.get_set_population_parameters()
+        names = names[pidx, didx]
+
+        n = []
+        n_cov = self._covariate_model.n_covariates()
+        for name in names:
+            n += [name] * n_cov
+        self._covariate_model.set_parameter_names(n)
 
     def set_parameter_names(self, names=None):
         """
@@ -1118,7 +1134,14 @@ class CovariatePopulationModel(PopulationModel):
             reset to defaults.
         :type names: List[str]
         """
-        self._covariate_model.set_parameter_names(names)
+        if names is None:
+            # Reset parameter names
+            self._population_model.set_parameter_names()
+            self._covariate_model.set_parameter_names()
+            return None
+
+        self._population_model.set_parameter_names(names[:self._n_pop])
+        self._covariate_model.set_parameter_names(names[self._n_pop:])
 
     def set_population_parameters(self, indices):
         """
