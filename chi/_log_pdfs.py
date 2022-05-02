@@ -564,7 +564,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
     Formally the log-posterior is defined as
 
     .. math::
-        \log p(\Psi , \theta | X ^{\text{obs}}) =
+        \log p(\Psi , \theta | \mathcal{D}) =
             \log p(\mathcal{D}, \Psi | \theta) + \log p(\theta ) +
             \text{constant},
 
@@ -782,40 +782,19 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
 class LogLikelihood(pints.LogPDF):
     r"""
-    A log-likelihood quantifies how likely a model for a set of
-    parameters is to explain some observed biomarker values.
+    A log-likelihood that quantifies the likelihood of parameter values to
+    capture the measurements within the model approximation of the
+    data-generating process.
 
-    A log-likelihood takes an instance of a :class:`MechanisticModel` and one
-    instance of an :class:`ErrorModel` for each mechanistic model output. This
-    defines a time-dependent distribution of observable biomarkers
-    equivalent to a :class:`PredictiveModel`
-
-    .. math::
-        p(x | t; \psi ),
-
-    which is centered at the mechanistic model output and has a variance
-    according to the error model. Here, :math:`x` are the observable biomarker
-    values at time :math:`t`, and :math:`\psi` are the model parameters of the
-    mechanistic model and the error model. For multiple outputs of the
-    mechanistic model, :math:`p` will be a multivariate distribution.
-
-    The log-likelihood for observations
-    :math:`(x^{\text{obs}}, t^{\text{obs}})` is given by
+    A log-likelihood is defined by an instance of a :class:`MechanisticModel`,
+    one :class:`ErrorModel` for each mechanistic model output and measurements
+    defined by ``observations`` and ``times``
 
     .. math::
-        L(\psi | x^{\text{obs}}) = \sum _{i=1}^n
-        \log p(x^{\text{obs}}_i | t^{\text{obs}}_i; \psi),
+        p(\psi | \mathcal{D}) = \sum _{j=1}
+        \log p(y_j | \psi, t_j),
 
-    where :math:`n` is the total number of observations. Note that for
-    notational ease we omitted the conditioning on the observation times
-    :math:`t^{\text{obs}}` on the left hand side, and will also often drop
-    it elsewhere in the documentation.
-
-    .. note::
-        For notational ease we omitted that the log-likelihood also is
-        conditional on the dosing regimen associated with the observations.
-        The appropriate regimen can be set with
-        :meth:`PharmacokineticModel.set_dosing_regimen`
+    where :math:`\mathcal{D} = \{(y_j , t_j)\}` denotes the measurements.
 
     Extends :class:`pints.LogPDF`.
 
@@ -1329,11 +1308,11 @@ class LogPosterior(pints.LogPDF):
     :math:`\log p(\psi )` up to an additive constant
 
     .. math::
-        \log p(\psi | x ^{\text{obs}}) \sim
-        L(\psi | x^{\text{obs}}) + \log p(\psi ),
+        \log p(\psi | \mathcal{D}) =
+            \log p(\mathcal{D} | \psi) + \log p(\psi ) + \mathrm{constant},
 
     where :math:`\psi` are the parameters of the log-likelihood and
-    :math:`x ^{\text{obs}}` are the observed data. The additive constant
+    :math:`\mathcal{D}` are the observed data. The additive constant
     is the normalisation of the log-posterior and is in general not known.
 
     Extends :class:`pints.LogPDF`.
@@ -1504,28 +1483,28 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
     a mechanistic model, an error model, a population model and the data
 
     .. math::
-        \log p(\theta , \tilde{\Psi}, \tilde{Y} | \mathcal{D}) =&
+        \log p(\theta , \tilde{Y}, \Psi| \mathcal{D}) =&
             \sum _{ij} \log p (y_{ij} | \tilde{Y}_j) +
-            \sum _{sj} \log p (\tilde{y}_{sj} | \tilde{\psi}_s, t_j) +
-            \sum _{sk} \log p (\tilde{\psi}_{sk} | \theta _k)& \\
-            &+ \sum _{k} \log p (\theta _k) + \mathrm{constant},&
+            \sum _{sj} \log p (\tilde{y}_{sj} | \psi_s, t_j) +
+            \sum _{s} \log p (\psi_{s} | \theta)& \\
+            &+ \log p (\theta) + \mathrm{constant},&
 
     where the data :math:`\mathcal{D} = \{ (Y_j , t_j)\}` are measurements
     over time with :math:`Y_j = \{ y_{ij} \}` denoting the measurements at time
     point :math:`t_j` across individuals.
     Here, we use :math:`i` to index individuals from the dataset.
     The first term of the log-posterior is the population filter
-    contribution which estimates the log-likelihood that the simulated
+    contribution which estimates the log-likelihood that the virtual
     measurements, :math:`\tilde{Y}_j = \{ \tilde{y}_{sj}\}`, come from the same
     distribution as the measurements, :math:`Y_j`.
     The quality of the log-likelihood estimate is subject to the
     appropriateness of the population filter [ref]. We use :math:`s` to index
-    simulated individuals.
+    virtual individuals.
     The second term of the log-posterior is the
     log-likelihood of the simulated parameters
-    :math:`\tilde{\Psi} = \{ \tilde{\psi} _s\}`
-    with respect to the simulated measurements. Each simulated parameter
-    corresponds to a simulated individual.
+    :math:`\Psi = \{ \psi _s\}`
+    with respect to the virtual measurements. Each simulated parameter
+    corresponds to a virtual individual.
     The log-likelihood of a set of simulated parameters is defined
     by the mechanistic model and the error model, as well as the simulated
     measurements for that individual.
