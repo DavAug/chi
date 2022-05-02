@@ -36,6 +36,7 @@ class PopulationModel(object):
                 'equal to 1.')
         self._n_dim = int(n_dim)
         self._n_hierarchical_dim = self._n_dim
+        self._n_covariates = 0
 
         if dim_names:
             if len(dim_names) != self._n_dim:
@@ -152,7 +153,7 @@ class PopulationModel(object):
         """
         Returns the number of covariates.
         """
-        return 0
+        return self._n_covariates
 
     def n_dim(self):
         """
@@ -574,12 +575,6 @@ class ComposedPopulationModel(PopulationModel):
 
         return n_bottom, n_top
 
-    def n_covariates(self):
-        """
-        Returns the number of covariates.
-        """
-        return self._n_covariates
-
     def n_parameters(self):
         """
         Returns the number of parameters of the population model.
@@ -817,6 +812,7 @@ class CovariatePopulationModel(PopulationModel):
         self._n_dim = self._population_model.n_dim()
         self._n_pop = self._population_model.n_parameters()
         self._n_hierarchical_dim = self._population_model.n_hierarchical_dim()
+        self._n_covariates = self._covariate_model.n_covariates()
 
         # Set names and all parameters to be modelled by the covariate model
         n_cov = self._covariate_model.n_covariates()
@@ -1021,12 +1017,6 @@ class CovariatePopulationModel(PopulationModel):
 
         return (n_ids, self.n_parameters())
 
-    def n_covariates(self):
-        """
-        Returns the number of covariates.
-        """
-        return self._covariate_model.n_covariates()
-
     def n_parameters(self):
         """
         Returns the number of parameters of the population model.
@@ -1055,16 +1045,16 @@ class CovariatePopulationModel(PopulationModel):
             ``(n_samples, n_cov)``
         """
         covariates = np.array(covariates)
-        n_cov = self._covariate_model.n_covariates()
         if covariates.ndim == 1:
             covariates = covariates[np.newaxis, :]
-        if covariates.shape[1] != n_cov:
+        if covariates.shape[1] != self._n_covariates:
             raise ValueError(
                 'Provided covariates do not match the number of covariates.')
         if n_samples is None:
             n_samples = 1
         n_samples = int(n_samples)
-        covariates = np.broadcast_to(covariates, (n_samples, n_cov))
+        covariates = np.broadcast_to(
+            covariates, (n_samples, self._n_covariates))
 
         # Split parameters into covariate model parameters and population model
         # parameters
@@ -1120,9 +1110,8 @@ class CovariatePopulationModel(PopulationModel):
         names = names[pidx, didx]
 
         n = []
-        n_cov = self._covariate_model.n_covariates()
         for name in names:
-            n += [name] * n_cov
+            n += [name] * self._n_covariates
         self._covariate_model.set_parameter_names(n)
 
     def set_parameter_names(self, names=None):
@@ -1170,7 +1159,7 @@ class CovariatePopulationModel(PopulationModel):
         names = names.reshape(n_pop, self._n_dim)[indices[:, 0], indices[:, 1]]
         n = []
         for name in names:
-            n += [name] * self._covariate_model.n_covariates()
+            n += [name] * self._n_covariates
         self._covariate_model.set_parameter_names(n)
 
 
@@ -2780,6 +2769,11 @@ class ReducedPopulationModel(PopulationModel):
         :type eta: np.ndarray of shape ``(n_ids, n_dim)``
         :rtype: np.ndarray of shape ``(n_ids, n_dim)``
         """
+        # Get fixed parameter values
+        if self._fixed_params_mask is not None:
+            self._fixed_params_values[~self._fixed_params_mask] = parameters
+            parameters = self._fixed_params_values
+
         return self._population_model.compute_individual_parameters(
             parameters, eta, *args, **kwargs)
 
@@ -3030,7 +3024,8 @@ class ReducedPopulationModel(PopulationModel):
 
         # Sample from population model
         sample = self._population_model.sample(
-            parameters, n_samples, seed, *args, **kwargs)
+            parameters=parameters, n_samples=n_samples, seed=seed, *args,
+            **kwargs)
 
         return sample
 

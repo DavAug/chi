@@ -499,8 +499,8 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(names[1], 'Std. matching')
         self.assertEqual(names[2], 'Mean dim')
         self.assertEqual(names[3], 'Std. dim')
-        self.assertEqual(names[4], 'Mean Dim. 2 Cov. 1')
-        self.assertEqual(names[5], 'Std. Dim. 2 Cov. 1')
+        self.assertEqual(names[4], 'Mean dim Cov. 1')
+        self.assertEqual(names[5], 'Std. dim Cov. 1')
         self.assertEqual(names[6], 'ID 1 names')
 
         # Reset dim names
@@ -517,8 +517,8 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(names[1], 'Std. Dim. 1')
         self.assertEqual(names[2], 'Mean Dim. 1')
         self.assertEqual(names[3], 'Std. Dim. 1')
-        self.assertEqual(names[4], 'Mean Dim. 2 Cov. 1')
-        self.assertEqual(names[5], 'Std. Dim. 2 Cov. 1')
+        self.assertEqual(names[4], 'Mean Dim. 1 Cov. 1')
+        self.assertEqual(names[5], 'Std. Dim. 1 Cov. 1')
         self.assertEqual(names[6], 'ID 1 Dim. 1')
 
         # Set dim names to what we had before
@@ -3116,13 +3116,13 @@ class TestReducedPopulationModel(unittest.TestCase):
         pop_model = chi.LogNormalModel(centered=False)
         cls.pop_model = chi.ReducedPopulationModel(pop_model)
 
-        # TODO:
-        # # Test case II: Covariate population model
-        # cls.bare_pop_model = chi.CovariatePopulationModel(
-        #     chi.GaussianModel(),
-        #     chi.LogNormalLinearCovariateModel(n_covariates=2)
-        # )
-        # cls.cpop_model = chi.ReducedPopulationModel(cls.bare_pop_model)
+        # Test case II: Covariate population model
+        cls.bare_pop_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LinearCovariateModel(n_cov=2)
+        )
+        cls.bare_pop_model.set_population_parameters([[0, 0]])
+        cls.cpop_model = chi.ReducedPopulationModel(cls.bare_pop_model)
 
     def test_bad_instantiation(self):
         model = 'Bad type'
@@ -3143,10 +3143,10 @@ class TestReducedPopulationModel(unittest.TestCase):
         self.assertEqual(psi[2], ref_psi[2])
         self.assertEqual(psi[3], ref_psi[3])
 
-        # Test case II: Model transforms psi
+        # Test case II: Covariate model
         # Test case II.1: No fixed parameters
         parameters = [1, 1, -1, 1]
-        eta = [0.2, -0.3, 1, 5]
+        eta = np.array([0.2, -0.3, 1, 5]).reshape(4, 1)
         covariates = np.ones(shape=(4, 2))
 
         ref_psi = self.bare_pop_model.compute_individual_parameters(
@@ -3160,11 +3160,11 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Test case II.1: Fix some parameters
         self.cpop_model.fix_parameters({
-            'Base log mean Dim. 1': 1,
-            'Shift Covariate 1 Dim. 1': -1
+            'Mean Dim. 1': 1,
+            'Mean Dim. 1 Cov. 1': -1
         })
         reduced_parameters = [1, 1]
-        eta = [0.2, -0.3, 1, 5]
+        eta = np.array([0.2, -0.3, 1, 5]).reshape(4, 1)
         covariates = np.ones(shape=(4, 2))
 
         ref_psi = self.bare_pop_model.compute_individual_parameters(
@@ -3179,8 +3179,8 @@ class TestReducedPopulationModel(unittest.TestCase):
 
         # Unfix parameters
         self.cpop_model.fix_parameters({
-            'Base log mean Dim. 1': None,
-            'Shift Covariate 1 Dim. 1': None
+            'Mean Dim. 1': None,
+            'Mean Dim. 1 Cov. 1': None
         })
 
     def test_compute_log_likelihood(self):
@@ -3442,9 +3442,9 @@ class TestReducedPopulationModel(unittest.TestCase):
         parameters = [1, 1, -1, 1]
         covariates = [2, 3]
         samples = self.cpop_model.sample(
-            parameters, n_samples, seed, covariates, return_psi=True)
+            parameters, n_samples=n_samples, seed=seed, covariates=covariates)
         ref_samples = self.bare_pop_model.sample(
-            parameters, n_samples, seed, covariates, return_psi=True)
+            parameters, n_samples=n_samples, seed=seed, covariates=covariates)
 
         self.assertEqual(samples.shape, (4, 1))
         self.assertEqual(ref_samples.shape, (4, 1))
@@ -3465,8 +3465,8 @@ class TestReducedPopulationModel(unittest.TestCase):
         # Test case II: Has covariates
         names = self.cpop_model.get_covariate_names()
         self.assertEqual(len(names), 2)
-        self.assertEqual(names[0], 'Covariate 1')
-        self.assertEqual(names[1], 'Covariate 2')
+        self.assertEqual(names[0], 'Cov. 1')
+        self.assertEqual(names[1], 'Cov. 2')
 
         self.cpop_model.set_covariate_names(['some', 'names'])
         names = self.cpop_model.get_covariate_names()
@@ -3474,8 +3474,7 @@ class TestReducedPopulationModel(unittest.TestCase):
         self.assertEqual(names[0], 'some')
         self.assertEqual(names[1], 'names')
 
-        self.cpop_model.set_covariate_names(
-            ['Covariate 1', 'Covariate 2'])
+        self.cpop_model.set_covariate_names(None)
 
     def test_set_get_parameter_names(self):
         # Set some parameter names
