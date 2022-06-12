@@ -620,6 +620,10 @@ class ComposedPopulationModel(PopulationModel):
             covariates = np.asarray(covariates)
             if covariates.ndim == 1:
                 covariates = covariates[np.newaxis, :]
+            if covariates.shape[1] != self._n_covariates:
+                raise ValueError(
+                    'Provided covariates do not match the number of '
+                    'covariates.')
 
         # Define shape of samples
         if n_samples is None:
@@ -642,8 +646,9 @@ class ComposedPopulationModel(PopulationModel):
 
             # Get covariates
             if self._n_covariates > 0:
-                cov = covariates[:, current_cov:pop_model.n_covariates()]
-                current_cov += pop_model.n_covariates()
+                end_cov = current_cov + pop_model.n_covariates()
+                cov = covariates[:, current_cov:end_cov]
+                current_cov = end_cov
 
             # Sample bottom-level parameters
             samples[:, current_dim:end_dim] = pop_model.sample(
@@ -1140,8 +1145,8 @@ class CovariatePopulationModel(PopulationModel):
         Note that this influences the number of model parameters.
 
         :param indices: A list of parameter indices
-            [param index per dim, dim index].
-        :type indices: List[List[int]]
+            [param index, dim index].
+        :type indices: List[Tuple[int, int]]
         """
         # Check that indices are in bounds
         indices = np.array(indices)
