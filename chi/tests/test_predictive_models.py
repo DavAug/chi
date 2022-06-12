@@ -112,6 +112,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         covariate_pop_model = chi.CovariatePopulationModel(
             chi.GaussianModel(centered=True),
             chi.LinearCovariateModel(n_cov=2))
+        covariate_pop_model.set_population_parameters([(0, 0)])
         pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -468,7 +469,8 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         times = [1, 2, 3, 4, 5]
         covariates = \
             np.arange(n_samples * n_cov).reshape(n_samples, n_cov) + 0.1
-        samples = self.pop_model2.sample(times, covariates=covariates)
+        samples = self.pop_model2.sample(
+            times, covariates=covariates, n_samples=n_samples)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -480,8 +482,12 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(keys[3], 'Value')
 
         sample_ids = samples['ID'].unique()
-        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(len(sample_ids), n_samples)
         self.assertEqual(sample_ids[0], 1)
+        self.assertEqual(sample_ids[1], 2)
+        self.assertEqual(sample_ids[2], 3)
+        self.assertEqual(sample_ids[3], 4)
+        self.assertEqual(sample_ids[4], 5)
 
         biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 1)
@@ -496,7 +502,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         self.assertEqual(times[4], 5)
 
         values = samples['Value'].unique()
-        self.assertEqual(len(values), 5)
+        self.assertEqual(len(values), 25)
 
     def test_sample_bad_input(self):
         # Individual does not exist

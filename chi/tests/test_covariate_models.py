@@ -38,10 +38,9 @@ class TestCovariateModel(unittest.TestCase):
                 parameters)
 
     def test_compute_sensitivities(self):
-        parameters = 'some parameters'
         with self.assertRaisesRegex(NotImplementedError, None):
             self.cov_model.compute_sensitivities(
-                parameters)
+                'some', 'mat', 'ching', 'input')
 
     def test_get_covariate_names(self):
         names = self.cov_model.get_covariate_names()

@@ -224,7 +224,6 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
     def sample(
             self, times, n_samples=None, individual=None, seed=None,
             include_regimen=False, covariates=None):
-        # TODO:
         """
         Samples virtual measurements from the posterior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
@@ -254,7 +253,6 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             ``(n_samples, n_cov)``, optional
         :rtype: :class:`pandas.DataFrame`
         """
-        # TODO: Fix covariates
         # Make sure n_samples is an integer
         if n_samples is None:
             n_samples = 1
@@ -983,6 +981,10 @@ class PopulationPredictiveModel(PredictiveModel):
             ``(n_outputs, n_times, n_samples)``
         """
         # Check inputs
+        if not n_samples:
+            n_samples = 1
+        n_samples = int(n_samples)
+
         parameters = np.asarray(parameters)
         if len(parameters) != self.n_parameters():
             raise ValueError(
@@ -991,21 +993,23 @@ class PopulationPredictiveModel(PredictiveModel):
             covariates = np.asarray(covariates)
             if covariates.ndim == 1:
                 covariates = covariates[np.newaxis, :]
-            if covariates.shape[1] != self._population_model.n_covariates():
+            n_s, n_c = covariates.shape
+            if n_c != self._population_model.n_covariates():
                 raise ValueError(
                     'Provided covariates do not match the number of '
                     'covariates.')
-
-        if not n_samples:
-            n_samples = 1
-        n_samples = int(n_samples)
+            if (n_s > 1) and (n_s != n_samples):
+                raise ValueError(
+                    'Provided covariates cannot be broadcasted to number of '
+                    'samples.')
 
         if seed is not None:
             seed = np.random.default_rng(seed)
 
         # Sample individuals from population model
         patients = self._population_model.sample(
-            parameters, n_samples, seed, covariates=covariates)
+            parameters=parameters, n_samples=n_samples, seed=seed,
+            covariates=covariates)
         patients = self._population_model.compute_individual_parameters(
             parameters=parameters, eta=patients, covariates=covariates)
 
