@@ -2185,6 +2185,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         for sample_id in range(n_samples):
             bottom_parameters.append(self._population_model.sample(
                 parameters=initial_params[sample_id, :n_pop],
+                covariates=self._covariates,
                 n_samples=self._n_samples, seed=rng))
 
         # Remove pooled dimensions
