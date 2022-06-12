@@ -821,10 +821,10 @@ class ProblemModellingController(object):
                 self._data = None
                 warn(
                     'The covariates of the new population model could not '
-                    'automatically matched to the observables in the dataset. '
-                    'The data was therefore reset. Please set the data again '
-                    'with the `set_data` method and specify the covariate '
-                    'mapping.', UserWarning)
+                    'automatically be matched to the observables in the '
+                    'dataset. The data was therefore reset. Please set the '
+                    'data again with the `set_data` method and specify the '
+                    'covariate mapping.', UserWarning)
 
         # Set prior to default
         self._log_prior = None

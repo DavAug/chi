@@ -288,14 +288,16 @@ class TestProblemModellingController(unittest.TestCase):
         # I.3: With covariate models
         cov_pop_model1 = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=2)
+            chi.LinearCovariateModel(n_cov=2)
         )
+        cov_pop_model1.set_population_parameters([(0, 0)])
         cov_pop_model1.set_covariate_names(['Age', 'Sex'])
         cov_pop_model2 = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=3)
+            chi.LinearCovariateModel(n_cov=3)
         )
         cov_pop_model2.set_covariate_names(['SNP', 'Age', 'Height'])
+        cov_pop_model1.set_population_parameters([(1, 0)])
         pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             cov_pop_model1,
@@ -421,9 +423,9 @@ class TestProblemModellingController(unittest.TestCase):
         # Set a population model
         cov_pop_model = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=1)
+            chi.LinearCovariateModel(n_cov=1, cov_names=['Age'])
         )
-        cov_pop_model.set_covariate_names(['Age'], True)
+        cov_pop_model.set_population_parameters([(0, 0)])
         pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -461,11 +463,11 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertIsNone(ids[7])
         self.assertEqual(names[8], 'Pooled Sigma base')
         self.assertIsNone(ids[8])
-        self.assertEqual(names[9], 'Base log mean Sigma rel.')
+        self.assertEqual(names[9], 'Mean Sigma rel.')
         self.assertIsNone(ids[9])
-        self.assertEqual(names[10], 'Log std. Sigma rel.')
+        self.assertEqual(names[10], 'Std. Sigma rel.')
         self.assertIsNone(ids[10])
-        self.assertEqual(names[11], 'Shift Age Sigma rel.')
+        self.assertEqual(names[11], 'Mean Sigma rel. Age')
         self.assertIsNone(ids[11])
 
         # Make sure that selecting an individual is ignored for population
@@ -498,11 +500,11 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertIsNone(ids[7])
         self.assertEqual(names[8], 'Pooled Sigma base')
         self.assertIsNone(ids[8])
-        self.assertEqual(names[9], 'Base log mean Sigma rel.')
+        self.assertEqual(names[9], 'Mean Sigma rel.')
         self.assertIsNone(ids[9])
-        self.assertEqual(names[10], 'Log std. Sigma rel.')
+        self.assertEqual(names[10], 'Std. Sigma rel.')
         self.assertIsNone(ids[10])
-        self.assertEqual(names[11], 'Shift Age Sigma rel.')
+        self.assertEqual(names[11], 'Mean Sigma rel. Age')
         self.assertIsNone(ids[11])
 
         # Test with PKPD model
@@ -663,15 +665,13 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[6], 'Sigma rel.')
 
         # Test case I.2: Population model
-        cov_population_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
             chi.HeterogeneousModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            cov_population_model,
+            chi.LogNormalModel(centered=False),
             chi.LogNormalModel()])
         problem.set_population_model(pop_model)
         param_names = problem.get_parameter_names()
@@ -681,7 +681,7 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[2], 'ID 1 myokit.kappa')
         self.assertEqual(param_names[3], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[4], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[5], 'Base log mean Sigma base')
+        self.assertEqual(param_names[5], 'Log mean Sigma base')
         self.assertEqual(param_names[6], 'Log std. Sigma base')
         self.assertEqual(param_names[7], 'Log mean Sigma rel.')
         self.assertEqual(param_names[8], 'Log std. Sigma rel.')
@@ -710,7 +710,7 @@ class TestProblemModellingController(unittest.TestCase):
         self.assertEqual(param_names[4], 'ID 3 myokit.kappa')
         self.assertEqual(param_names[5], 'Pooled myokit.lambda_0')
         self.assertEqual(param_names[6], 'Pooled myokit.lambda_1')
-        self.assertEqual(param_names[7], 'Base log mean Sigma base')
+        self.assertEqual(param_names[7], 'Log mean Sigma base')
         self.assertEqual(param_names[8], 'Log std. Sigma base')
         self.assertEqual(param_names[9], 'Log mean Sigma rel.')
         self.assertEqual(param_names[10], 'Log std. Sigma rel.')
@@ -767,10 +767,9 @@ class TestProblemModellingController(unittest.TestCase):
 
         # Test case II.2: Population model
         cov_pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=1)
+            chi.LogNormalModel(),
+            chi.LinearCovariateModel(n_cov=1, cov_names=['Age'])
         )
-        cov_pop_model.set_covariate_names(['Age'], True)
         pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
@@ -785,7 +784,7 @@ class TestProblemModellingController(unittest.TestCase):
             chi.PooledModel()])
         problem.set_population_model(pop_model)
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 15)
+        self.assertEqual(len(param_names), 16)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'ID 1 central.size')
@@ -799,15 +798,19 @@ class TestProblemModellingController(unittest.TestCase):
             param_names[9], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
             param_names[10],
-            'Base log mean central.drug_concentration Sigma rel.')
+            'Log mean central.drug_concentration Sigma rel.')
         self.assertEqual(
             param_names[11], 'Log std. central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[12], 'Shift Age central.drug_concentration Sigma rel.')
+            param_names[12],
+            'Log mean central.drug_concentration Sigma rel. Age')
         self.assertEqual(
-            param_names[13], 'Pooled myokit.tumour_volume Sigma base')
+            param_names[13],
+            'Log std. central.drug_concentration Sigma rel. Age')
         self.assertEqual(
-            param_names[14], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[14], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[15], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -833,7 +836,7 @@ class TestProblemModellingController(unittest.TestCase):
                 'myokit.tumour_volume': 'Tumour volume',
                 'central.drug_concentration': 'IL 6'})
         param_names = problem.get_parameter_names()
-        self.assertEqual(len(param_names), 17)
+        self.assertEqual(len(param_names), 18)
         self.assertEqual(param_names[0], 'Pooled central.drug_amount')
         self.assertEqual(param_names[1], 'Pooled myokit.tumour_volume')
         self.assertEqual(param_names[2], 'ID 1 central.size')
@@ -849,15 +852,19 @@ class TestProblemModellingController(unittest.TestCase):
             param_names[11], 'Pooled central.drug_concentration Sigma base')
         self.assertEqual(
             param_names[12],
-            'Base log mean central.drug_concentration Sigma rel.')
+            'Log mean central.drug_concentration Sigma rel.')
         self.assertEqual(
             param_names[13], 'Log std. central.drug_concentration Sigma rel.')
         self.assertEqual(
-            param_names[14], 'Shift Age central.drug_concentration Sigma rel.')
+            param_names[14],
+            'Log mean central.drug_concentration Sigma rel. Age')
         self.assertEqual(
-            param_names[15], 'Pooled myokit.tumour_volume Sigma base')
+            param_names[15],
+            'Log std. central.drug_concentration Sigma rel. Age')
         self.assertEqual(
-            param_names[16], 'Pooled myokit.tumour_volume Sigma rel.')
+            param_names[16], 'Pooled myokit.tumour_volume Sigma base')
+        self.assertEqual(
+            param_names[17], 'Pooled myokit.tumour_volume Sigma rel.')
 
         # Test exclude population model True
         param_names = problem.get_parameter_names(exclude_pop_model=True)
@@ -936,17 +943,16 @@ class TestProblemModellingController(unittest.TestCase):
 
         # Set data with explicit covariate mapping
         cov_pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=1)
+            chi.LogNormalModel(),
+            chi.LinearCovariateModel(n_cov=1, cov_names=['Sex'])
         )
-        cov_pop_model.set_covariate_names(['Sex'], True)
         pop_model = chi.ComposedPopulationModel([cov_pop_model] * 7)
         problem.set_population_model(pop_model)
         covariate_dict = {'Sex': 'Age'}
         problem.set_data(self.data, output_observable_dict, covariate_dict)
 
         # Set data after fixing a parameter
-        problem.fix_parameters({'Base log mean Sigma rel.': 12})
+        problem.fix_parameters({'Log mean Sigma rel.': 12})
         problem.set_data(self.data, output_observable_dict, covariate_dict)
 
     def test_set_data_bad_input(self):
@@ -1005,14 +1011,12 @@ class TestProblemModellingController(unittest.TestCase):
             self.pd_model, self.error_model)
         cov_pop_model1 = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=1)
+            chi.LinearCovariateModel(n_cov=1, cov_names=['Age'])
         )
-        cov_pop_model1.set_covariate_names(['Age'], True)
         cov_pop_model2 = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=1)
+            chi.LinearCovariateModel(n_cov=1, cov_names=['Sex'])
         )
-        cov_pop_model2.set_covariate_names(['Sex'], True)
         pop_model = chi.ComposedPopulationModel(
             [cov_pop_model1] * 4 + [cov_pop_model2] * 3)
         problem.set_population_model(pop_model)
@@ -1100,9 +1104,8 @@ class TestProblemModellingController(unittest.TestCase):
         # Test case I.3: With covariates
         cov_pop_model = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=1)
+            chi.LinearCovariateModel(n_cov=1, cov_names=['Age'])
         )
-        cov_pop_model.set_covariate_names(['Age'], True)
         pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.PooledModel(),
