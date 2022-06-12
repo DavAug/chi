@@ -1734,14 +1734,12 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         # Test case II:
         # Create population model
-        covariate_population_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         cls.population_models = chi.ComposedPopulationModel([
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            covariate_population_model,
+            chi.LogNormalModel(centered=False),
             chi.PooledModel(),
             chi.PooledModel()])
 
@@ -1769,7 +1767,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
         # Create population model with covariates
         covariate_population_model = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=2))
+            chi.LinearCovariateModel(n_cov=2))
+        covariate_population_model.set_population_parameters([(0, 0)])
         population_models = chi.ComposedPopulationModel([
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
