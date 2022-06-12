@@ -1541,11 +1541,16 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         model models the residuals of the mechanistic model directly or on
         a log scale.
     :type error_on_log_scale: bool, optional
+    :param n_samples: Number of simulated individuals per evaluation.
+    :type n_samples: int, optional.
+    :param covariates: Covariates of the simulated individuals.
+    :type covariates: np.ndarray of shape ``(n_cov,)`` or
+        ``(n_samples, n_cov)``, optional
     """
     def __init__(
             self, population_filter, times, mechanistic_model,
             population_model, log_prior, sigma=None, error_on_log_scale=False,
-            n_samples=100):
+            n_samples=100, covariates=None):
 
         # Check filter
         if not isinstance(population_filter, chi.PopulationFilter):
@@ -1588,11 +1593,6 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             raise ValueError(
                 'The number of population model dimensions does not match the '
                 'number of mechanistic model parameters.')
-        # TODO: Currently, no support for covariate population models
-        if population_model.n_covariates() > 0:
-            raise ValueError(
-                'Covariate population models are currently not supported. '
-                'This feature will come in a future release.')
         self._population_model = copy.deepcopy(population_model)
 
         n_samples = int(n_samples)
@@ -1601,6 +1601,24 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                 'The number of samples of the population filter has to be '
                 'greater than zero.')
         self._n_samples = n_samples
+
+        self._covariates = None
+        if self._population_model.n_covariates() > 0:
+            covariates = np.array(covariates)
+            if covariates.ndim == 1:
+                covariates = covariates[np.newaxis, :]
+            _, n_c = covariates.shape
+            if n_c != self._population_model.n_covariates():
+                raise ValueError(
+                    'Provided covariates do not match the number of '
+                    'covariates.')
+            try:
+                covariates = np.broadcast_to(covariates, (n_samples, n_c))
+            except ValueError:
+                raise ValueError(
+                    'Provided covariates cannot be broadcasted to number of '
+                    'samples.')
+            self._covariates = covariates
 
         self._population_model.set_n_ids(self._n_samples)
         self._n_hdim = self._population_model.n_hierarchical_dim()
@@ -1700,7 +1718,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             bottom_parameters, pop_parameters)
         score += self._population_model.compute_log_likelihood(
             parameters=pop_parameters,
-            observations=bottom_parameters)
+            observations=bottom_parameters,
+            covariates=self._covariates)
         if np.isinf(score):
             return score
 
@@ -1718,7 +1737,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         bottom_parameters = \
             self._population_model.compute_individual_parameters(
                 parameters=pop_parameters,
-                eta=bottom_parameters)
+                eta=bottom_parameters,
+                covariates=self._covariates)
 
         # Solve mechanistic model for bottom parameters
         y = np.empty(
@@ -1940,7 +1960,8 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             bottom_parameters, pop_parameters)
         psi = self._population_model.compute_individual_parameters(
             parameters=pop_parameters,
-            eta=bottom_parameters)
+            eta=bottom_parameters,
+            covariates=self._covariates)
 
         # Solve mechanistic model for bottom parameters
         n_parameters = self._mechanistic_model.n_parameters()
@@ -1998,6 +2019,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
         s, dbottom, dtheta = self._population_model.compute_sensitivities(
             parameters=pop_parameters,
             observations=bottom_parameters,
+            covariates=self._covariates,
             dlogp_dpsi=ds_dpsi)
         score += s
         sensitivities[:n_pop] += dtheta

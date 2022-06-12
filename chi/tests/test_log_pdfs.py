@@ -2029,10 +2029,6 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             chi.LogNormalModel(n_dim=1, centered=False)])
         n_samples = 3
 
-        # TODO: Think carefully whether this is sufficiently tested.
-        # Also test multiple output models, fully missing data for one
-        # output
-
         # Test case I: Fixed sigma, Gaussian error
         log_prior = pints.ComposedLogPrior(
             pints.LogNormalLogPrior(0.3, 0.1),
@@ -2165,6 +2161,37 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             sigma=sigma,
             error_on_log_scale=error_on_log_scale,
             n_samples=n_samples
+        )
+
+        # Test case VIII: Covariate model
+        # Test case VII: mix
+        cov_model = chi.CovariatePopulationModel(
+            chi.GaussianModel(),
+            chi.LinearCovariateModel()
+        )
+        population_model = chi.ComposedPopulationModel([
+            cov_model,
+            chi.PooledModel()])
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1),
+        )
+        sigma = 1
+        covariates = [2]
+        error_on_log_scale = False
+        cls.log_posterior8 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples,
+            covariates=covariates
         )
 
     def test_bad_instantiation(self):
@@ -2356,6 +2383,12 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         parameters = np.ones(16)
         parameters[:3] = np.arange(3, 6)
         score = self.log_posterior7(parameters)
+        self.assertFalse(np.isinf(score))
+
+        # Test case VIII: covariate model.
+        parameters = np.ones(20)
+        parameters[:10] = np.arange(3, 13)
+        score = self.log_posterior8(parameters)
         self.assertFalse(np.isinf(score))
 
     def test_sensitivities(self):
@@ -2704,6 +2737,52 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
         self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
         self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+
+        # Test case VIII: covariate model
+        parameters = np.ones(20)
+        parameters[:10] = np.arange(3, 13)
+        epsilon = 0.00001
+        ref_sens = []
+        ref_score = self.log_posterior8(parameters)
+        for index in range(len(parameters)):
+            # Construct parameter grid
+            low = parameters.copy()
+            low[index] -= epsilon
+            high = parameters.copy()
+            high[index] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.log_posterior8(low),
+                    ref_score,
+                    self.log_posterior8(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.log_posterior8.evaluateS1(parameters)
+
+        self.assertEqual(score, ref_score)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertEqual(len(sens), 20)
+        self.assertAlmostEqual(sens[0], ref_sens[0], places=4)
+        self.assertAlmostEqual(sens[1], ref_sens[1], places=4)
+        self.assertAlmostEqual(sens[2], ref_sens[2], places=4)
+        self.assertAlmostEqual(sens[3], ref_sens[3], places=4)
+        self.assertAlmostEqual(sens[4], ref_sens[4], places=4)
+        self.assertAlmostEqual(sens[5], ref_sens[5], places=4)
+        self.assertAlmostEqual(sens[6], ref_sens[6], places=4)
+        self.assertAlmostEqual(sens[7], ref_sens[7], places=4)
+        self.assertAlmostEqual(sens[8], ref_sens[8], places=4)
+        self.assertAlmostEqual(sens[9], ref_sens[9], places=4)
+        self.assertAlmostEqual(sens[10], ref_sens[10], places=4)
+        self.assertAlmostEqual(sens[11], ref_sens[11], places=4)
+        self.assertAlmostEqual(sens[12], ref_sens[12], places=4)
+        self.assertAlmostEqual(sens[13], ref_sens[13], places=4)
+        self.assertAlmostEqual(sens[14], ref_sens[14], places=4)
+        self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
+        self.assertAlmostEqual(sens[16], ref_sens[16], places=4)
 
     def test_get_log_likelihood(self):
         self.assertIsInstance(
