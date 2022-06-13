@@ -10,15 +10,15 @@ import numpy as np
 
 class PopulationFilter(object):
     r"""
-    A base class for population filters.
+    A base class for filters.
 
-    A population filter estimates the likelihood with which simulated
+    A filter estimates the likelihood with which simulated
     observations :math:`\tilde{y}_{sj}` come from the same distribution as the
     measurements :math:`y_{ij}`, where :math:`s` indexes simulated individuals,
     :math:`j` time points and :math:`i` measured individuals.
 
     Formally the log-likelihood of the simulated observations with respect to
-    the population filter is defined as
+    the filter is defined as
 
     .. math::
         \log p(Y | \tilde{Y}) = \sum _{ij} \log p(y_{ij} | \tilde{Y}_j ),
@@ -31,7 +31,7 @@ class PopulationFilter(object):
     ``n_ids`` is the number of measured individuals at a given time point,
     ``n_observables`` is the number of unique observables that were
     measurement, and ``n_times`` is the number of unique time points.
-    The population filter expects the simulated measurements to be ordered in
+    The filter expects the simulated measurements to be ordered in
     the same way, so no record of the measurement times is needed.
 
     If varying numbers of individuals were measured at different time points,
@@ -117,27 +117,27 @@ class PopulationFilter(object):
 
 class ComposedPopulationFilter(PopulationFilter):
     r"""
-    A population filter composed of multiple population filters.
+    A filter composed of multiple filters.
 
-    A composed population filter takes a list of population filters and defines
+    A composed filter takes a list of filters and defines
     the log-likelihood of simulated measurements as the sum over the individual
-    log-likelihoods of the population filters
+    log-likelihoods of the filters
 
     .. math::
         \log p(Y | \tilde{Y}) = \sum _{ij} \log p_j(y_{ij} | \tilde{Y}_j ),
 
     where :math:`\tilde{Y}_j = \{ \tilde{y}_{sj} \}` are the simulated
-    measurements and :math:`p_j(\cdot | \tilde{Y}_j )` is the population filter
+    measurements and :math:`p_j(\cdot | \tilde{Y}_j )` is the filter
     at time point :math:`t_j`.
 
     The input instances of :class:`chi.PopulationFilter` may model
     multiple time points at once. The measurement times are expected to be
     ordered according to the concatenated measurement times of the individual
-    population filters.
+    filters.
 
     Extends :class:`chi.PopulationFilter`.
 
-    :param population_filters: List of population filters.
+    :param population_filters: List of filters.
     :type population_filters: List[chi.PopulationFilter]
     """
     def __init__(self, population_filters):
@@ -145,9 +145,9 @@ class ComposedPopulationFilter(PopulationFilter):
         for population_filter in population_filters:
             if not isinstance(population_filter, PopulationFilter):
                 raise TypeError(
-                    'All population filters have to be instances '
+                    'All filters have to be instances '
                     'of chi.PopulationFilter.')
-        # TODO: Enforce that all population filters model the same number of
+        # TODO: Enforce that all filters model the same number of
         # observables. In future PRs we can think about how to relax this
         # constraint (might be nice to model different observables at the same
         # time with different filters).
@@ -155,7 +155,7 @@ class ComposedPopulationFilter(PopulationFilter):
         for population_filter in population_filters:
             if population_filter.n_observables() != n_observables:
                 raise ValueError(
-                    'All population filters need to model the same number of '
+                    'All filters need to model the same number of '
                     'observables.')
         self._population_filters = population_filters
         self._n_observables = n_observables
@@ -260,7 +260,7 @@ class ComposedPopulationFilter(PopulationFilter):
             return None
 
         # Cannot sort observations directly
-        # (compartmentalised into individual population filters)
+        # (compartmentalised into individual filters)
         # So let us remember the order and order simulated measurements
         # during inference
         self._time_order = np.copy(order)
@@ -269,9 +269,9 @@ class ComposedPopulationFilter(PopulationFilter):
 
 class GaussianFilter(PopulationFilter):
     r"""
-    Implements a Gaussian population filter.
+    Implements a Gaussian filter.
 
-    A Gaussian population filter approximates the distribution of
+    A Gaussian filter approximates the distribution of
     measurements at time point :math:`t_j` by a Gaussian distribution
     whose mean and variance are estimated from simulated
     measurements
@@ -380,9 +380,9 @@ class GaussianFilter(PopulationFilter):
 
 class GaussianKDEFilter(PopulationFilter):
     r"""
-    Implements a Gaussian kernel density estimation population filter.
+    Implements a Gaussian kernel density estimation filter.
 
-    A Gaussian KDE population filter approximates the distribution of
+    A Gaussian KDE filter approximates the distribution of
     measurements at time point :math:`t_j` by a Gaussian KDE
     approximation of the simulated measurements. The Gaussian KDE approximation
     is defined by the average over Gaussian probability densities whose means
@@ -396,26 +396,25 @@ class GaussianKDEFilter(PopulationFilter):
     .. math::
         \log p(\mathcal{D} | \tilde{Y}) =
             \sum _{ij} \log \left( \frac{1}{n_s} \sum _{s=1}^{n_s}
-            \mathcal{N} (y_{ij} | \tilde{y}_{sj}, \sigma ^2_j) \right).
+            \mathcal{N} (y_{ij} | \tilde{y}_{sj}, \tilde{\sigma} ^2_j) \right).
 
     Here, we use :math:`i` to index measured individuals from the dataset,
     :math:`j` to index measurement time points and :math:`s` to index simulated
     measurements. :math:`n_s` denotes the number of simulated measurements per
     time point.
 
-    If ``bandwidth = None``, an adapted rule of thumb is used to estimate an
+    An adapted rule of thumb is used to estimate an
     appropriate bandwidth for each time point :math:`t_j`
 
     .. math::
-        \sigma _j =
+        \tilde{\sigma} _j =
             \left( \frac{4}{3n_s}\right) ^ {1/5}
-            \sqrt{\frac{1}{n_j - 1}\sum _i (y_{ij} - \mu _j)^2},
+            \sqrt{\frac{1}{n_s - 1}
+            \sum _s (\tilde{y}_{sj} - \tilde{\mu} _j)^2},
 
-    where :math:`\mu _j = \sum _i y_{ij} / n_j` is the empirical mean
-    over the measurements and :math:`n_j` is the number of measurements at time
-    :math:`t_j`. Note that this deviates from the standard definition of the
-    rule of thumb, where the empirical variance would be estimated from the
-    simulated measurements.
+    where :math:`\tilde{\mu} _j = \sum _s \tilde{y}_{sj} / n_s` is the
+    empirical mean over the simulated measurements at time
+    :math:`t_j`.
 
     For multiple measured observables the above expression can be
     straightforwardly extended to
@@ -423,54 +422,24 @@ class GaussianKDEFilter(PopulationFilter):
     .. math::
         \log p(\mathcal{D} | \tilde{Y}) =
             \sum _{ijr} \log \left( \frac{1}{n_s} \sum _{s=1}^{n_s}
-            \mathcal{N} (y_{ijr} | \tilde{y}_{sjr}, \sigma ^2_{jr}) \right),
+            \mathcal{N} (y_{ijr} | \tilde{y}_{sjr}, \tilde{\sigma} ^2_{jr})
+            \right),
 
     where :math:`r` indexes observables and
-    :math:`\sigma _{jr}` is the bandwidth for observable :math:`r` at time
-    point :math:`t_j`.
+    :math:`\tilde{\sigma} _{jr}` is the bandwidth for observable :math:`r` at
+    time point :math:`t_j`.
 
     Extends :class:`PopulationFilter`
 
     :param observations: Measurements.
     :type observations: np.ndarray of shape
         ``(n_ids, n_observables, n_times)``
-    :param bandwidth: Bandwidths of the Gaussian kernels for the different time
-        points and observables. By default an adapted rule of thumb is used to
-        determine appropriate bandwidths.
-    :type bandwidth: np.ndarray of shape ``(n_observables, n_times)``, optional
     """
-    def __init__(self, observations, bandwidth=None):
+    def __init__(self, observations):
         super().__init__(observations)
 
         # Add dummy dimension to observations for later convenience
         self._observations = self._observations[np.newaxis, ...]
-
-        # Compute unscaled bandwidth from data
-        # (Only used if bandwidth is None)
-        self._unscaled_bandwidth = np.std(
-            self._observations, ddof=1, axis=1, keepdims=True)
-
-        # Set bandwidth
-        self._bandwidth = None
-        if bandwidth is not None:
-            bandwidth = np.asarray(bandwidth)
-            if bandwidth.shape != (self._n_observables, self._n_times):
-                raise ValueError(
-                    'The bandwidth needs to be of shape '
-                    '(n_observables, n_times).')
-            if np.any(bandwidth <= 0):
-                raise ValueError(
-                    'The elements of the bandwidth need to be positive.')
-            self._bandwidth = bandwidth[np.newaxis, np.newaxis, ...]
-
-        if self._bandwidth is None:
-            if np.ma.is_masked(self._unscaled_bandwidth) or np.any(
-                    self._unscaled_bandwidth == 0):
-                raise ValueError(
-                    'The variance of the data is zero for at least one '
-                    'observable and measurement time point, so the rule of '
-                    'thumb cannot be used to estimate bandwidths. Please '
-                    'provide a bandwidth upon instantiation.')
 
     def compute_log_likelihood(self, simulated_obs):
         """
@@ -484,14 +453,13 @@ class GaussianKDEFilter(PopulationFilter):
         """
         n_sim = len(simulated_obs)
         simulated_obs = np.asarray(simulated_obs)[:, np.newaxis, :, :]
-        bandwidth = self._bandwidth
-        if bandwidth is None:
-            bandwidth = (4 / 3 / n_sim) ** 0.2 * self._unscaled_bandwidth
+        bw_squared = (4 / 3 / n_sim) ** 0.4 * np.var(
+            simulated_obs, ddof=1, axis=0, keepdims=True)
 
         score = np.sum(logsumexp(
             - (simulated_obs - self._observations)**2
-            / bandwidth**2 / 2, axis=0
-            ) - np.log(n_sim) - np.log(2 * np.pi) / 2 - np.log(bandwidth))
+            / bw_squared / 2, axis=0
+            ) - np.log(n_sim) - np.log(2 * np.pi) / 2 - np.log(bw_squared) / 2)
         if np.ma.is_masked(score):
             return -np.inf
 
@@ -511,35 +479,42 @@ class GaussianKDEFilter(PopulationFilter):
         """
         n_sim = len(simulated_obs)
         simulated_obs = np.asarray(simulated_obs)[:, np.newaxis, :, :]
-        bandwidth = self._bandwidth
-        if bandwidth is None:
-            bandwidth = (4 / 3 / n_sim) ** 0.2 * self._unscaled_bandwidth
+        mean = np.mean(simulated_obs, axis=0, keepdims=True)
+        var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
+        bw_squared = (4 / 3 / n_sim) ** 0.4 * var
 
         # Compute log-likelihood
         scores = \
-            - (simulated_obs - self._observations)**2 / bandwidth**2 / 2
+            - (simulated_obs - self._observations)**2 / bw_squared / 2
         score = np.sum(
             logsumexp(scores, axis=0) - np.log(n_sim) - np.log(2 * np.pi) / 2
-            - np.log(bandwidth))
+            - np.log(bw_squared) / 2)
         if np.ma.is_masked(score):
             n_sim, _, n_obs, n_times = simulated_obs.shape
             return -np.inf, np.empty((n_sim, n_obs, n_times))
 
         # Compute sensitivities
-        # score = log mean exp scores + constant
-        # dscore/dsim = exp(scores) / sum(exp(scores)) * dscores / dsim
+        # score = log mean exp scores - log bw + constant
+        # dscore/dsim =
+        #   exp(scores) / sum(exp(scores)) * dscores / dsim
+        #   - 1 / bw^2 / 2 * dbw^2 / dsim
+        dbw_squared_dsim_by_bw_squared = \
+            2 * (simulated_obs - mean) / (n_sim - 1) / var
         dscore_dsim = np.sum(
-            softmax(scores, axis=0)
-            * (self._observations - simulated_obs) / bandwidth**2, axis=1)
+            softmax(scores, axis=0) * (
+                (self._observations - simulated_obs) / bw_squared)
+            - np.sum(softmax(scores, axis=0) * scores, axis=0, keepdims=True)
+            * dbw_squared_dsim_by_bw_squared
+            - dbw_squared_dsim_by_bw_squared / 2, axis=1)
 
         return score, dscore_dsim
 
 
 class LogNormalFilter(PopulationFilter):
     r"""
-    Implements a lognormal population filter.
+    Implements a lognormal filter.
 
-    A lognormal population filter approximates the distribution of
+    A lognormal filter approximates the distribution of
     measurements at time point :math:`t_j` by a lognormal distribution
     whose location and scale are estimated from simulated
     measurements
@@ -657,9 +632,9 @@ class LogNormalFilter(PopulationFilter):
 
 class LogNormalKDEFilter(PopulationFilter):
     r"""
-    Implements a lognormal kernel density estimation population filter.
+    Implements a lognormal kernel density estimation filter.
 
-    A lognormal KDE population filter approximates the distribution of
+    A lognormal KDE filter approximates the distribution of
     measurements at time point :math:`t_j` by a lognormal KDE
     approximation of the simulated measurements. The lognormal KDE
     approximation is defined by the average over lognormal probability
@@ -764,6 +739,8 @@ class LogNormalKDEFilter(PopulationFilter):
         bandwidth = self._bandwidth
         if bandwidth is None:
             bandwidth = (4 / 3 / n_sim) ** 0.2 * self._unscaled_bandwidth
+
+        print(bandwidth.shape)
 
         score = np.sum(logsumexp(
             - (np.log(simulated_obs) - self._observations)**2
