@@ -501,8 +501,8 @@ class GaussianKDEFilter(PopulationFilter):
         dbw_squared_dsim_by_bw_squared = \
             2 * (simulated_obs - mean) / (n_sim - 1) / var
         dscore_dsim = np.sum(
-            softmax(scores, axis=0) * (
-                (self._observations - simulated_obs) / bw_squared)
+            softmax(scores, axis=0)
+            * (self._observations - simulated_obs) / bw_squared
             - np.sum(softmax(scores, axis=0) * scores, axis=0, keepdims=True)
             * dbw_squared_dsim_by_bw_squared
             - dbw_squared_dsim_by_bw_squared / 2, axis=1)
@@ -655,7 +655,7 @@ class LogNormalKDEFilter(PopulationFilter):
     measurements. :math:`n_s` denotes the number of simulated measurements per
     time point.
 
-    If ``bandwidth = None``, an adapted rule of thumb is used to estimate an
+    An adapted rule of thumb is used to estimate an
     appropriate bandwidth for each time point :math:`t_j`
 
     .. math::
@@ -686,43 +686,12 @@ class LogNormalKDEFilter(PopulationFilter):
     :param observations: Measurements.
     :type observations: np.ndarray of shape
         ``(n_ids, n_observables, n_times)``
-    :param bandwidth: Bandwidths of the lognormal kernels for the different
-        time points and observables. By default an adapted rule of thumb is
-        used to determine appropriate bandwidths.
-    :type bandwidth: np.ndarray of shape ``(n_observables, n_times)``, optional
     """
     def __init__(self, observations, bandwidth=None):
         super().__init__(observations)
 
         # Log-transform and reshape for later convenience
         self._observations = np.log(self._observations)[np.newaxis, ...]
-
-        # Compute unscaled bandwidth from data
-        # (Only used if bandwidth is None)
-        self._unscaled_bandwidth = np.std(
-            self._observations, ddof=1, axis=1, keepdims=True)
-
-        # Set bandwidth
-        self._bandwidth = None
-        if bandwidth is not None:
-            bandwidth = np.asarray(bandwidth)
-            if bandwidth.shape != (self._n_observables, self._n_times):
-                raise ValueError(
-                    'The bandwidth needs to be of shape '
-                    '(n_observables, n_times).')
-            if np.any(bandwidth <= 0):
-                raise ValueError(
-                    'The elements of the bandwidth need to be positive.')
-            self._bandwidth = bandwidth[np.newaxis, np.newaxis, ...]
-
-        if self._bandwidth is None:
-            if np.ma.is_masked(self._unscaled_bandwidth) or np.any(
-                    self._unscaled_bandwidth == 0):
-                raise ValueError(
-                    'The variance of the data is zero for at least one '
-                    'observable and measurement time point, so the rule of '
-                    'thumb cannot be used to estimate bandwidths. Please '
-                    'provide a bandwidth upon instantiation.')
 
     def compute_log_likelihood(self, simulated_obs):
         """
@@ -735,17 +704,14 @@ class LogNormalKDEFilter(PopulationFilter):
         :rtype: float
         """
         n_sim = len(simulated_obs)
-        simulated_obs = np.asarray(simulated_obs)[:, np.newaxis, :, :]
-        bandwidth = self._bandwidth
-        if bandwidth is None:
-            bandwidth = (4 / 3 / n_sim) ** 0.2 * self._unscaled_bandwidth
-
-        print(bandwidth.shape)
+        simulated_obs = np.log(np.asarray(simulated_obs))[:, np.newaxis, :, :]
+        bw_squared = (4 / 3 / n_sim) ** 0.4 * np.var(
+            simulated_obs, ddof=1, axis=0, keepdims=True)
 
         score = np.sum(logsumexp(
-            - (np.log(simulated_obs) - self._observations)**2
-            / bandwidth**2 / 2, axis=0
-            ) - np.log(n_sim) - np.log(2 * np.pi) / 2 - np.log(bandwidth))
+            - (simulated_obs - self._observations)**2
+            / bw_squared / 2, axis=0
+            ) - np.log(n_sim) - np.log(2 * np.pi) / 2 - np.log(bw_squared) / 2)
         if np.ma.is_masked(score):
             return -np.inf
 
@@ -766,28 +732,35 @@ class LogNormalKDEFilter(PopulationFilter):
         n_sim = len(simulated_obs)
         simulated_obs = np.asarray(simulated_obs)[:, np.newaxis, :, :]
         log_simulated_obs = np.log(simulated_obs)
-        bandwidth = self._bandwidth
-        if bandwidth is None:
-            bandwidth = (4 / 3 / n_sim) ** 0.2 * self._unscaled_bandwidth
+        mean = np.mean(log_simulated_obs, axis=0, keepdims=True)
+        var = np.var(log_simulated_obs, ddof=1, axis=0, keepdims=True)
+        bw_squared = (4 / 3 / n_sim) ** 0.4 * var
 
         # Compute log-likelihood
         scores = \
             - (log_simulated_obs - self._observations)**2 \
-            / bandwidth**2 / 2
+            / bw_squared / 2
         score = np.sum(
             logsumexp(scores, axis=0) - np.log(n_sim) - np.log(2 * np.pi) / 2
-            - np.log(bandwidth))
+            - np.log(bw_squared) / 2)
         if np.ma.is_masked(score) or np.isnan(score):
             n_sim, _, n_obs, n_times = simulated_obs.shape
             return -np.inf, np.empty((n_sim, n_obs, n_times))
 
         # Compute sensitivities
-        # score = log mean exp scores + constant
-        # dscore/dsim = exp(scores) / sum(exp(scores)) * dscores / dsim
+        # score = log mean exp scores - log bw + constant
+        # dscore/dsim =
+        #   exp(scores) / sum(exp(scores)) * dscores / dsim
+        #   - 1 / bw^2 / 2 * dbw^2 / dsim
+        dbw_squared_dsim_by_bw_squared = \
+            2 * (log_simulated_obs - mean) / (n_sim - 1) / var / simulated_obs
         dscore_dsim = np.sum(
             softmax(scores, axis=0)
-            * (self._observations - log_simulated_obs) / bandwidth**2 /
-            simulated_obs, axis=1)
+            * (self._observations - log_simulated_obs) / bw_squared
+            / simulated_obs
+            - np.sum(softmax(scores, axis=0) * scores, axis=0, keepdims=True)
+            * dbw_squared_dsim_by_bw_squared
+            - dbw_squared_dsim_by_bw_squared / 2, axis=1)
 
         return score, dscore_dsim
 
