@@ -439,7 +439,7 @@ class GaussianKDEFilter(PopulationFilter):
         super().__init__(observations)
 
         # Add dummy dimension to observations for later convenience
-        self._observations = self._observations[np.newaxis, ...]
+        self._observations = self._observations.copy()[np.newaxis, ...]
 
     def compute_log_likelihood(self, simulated_obs):
         """
@@ -568,7 +568,7 @@ class GaussianMixtureFilter(PopulationFilter):
         self._n_kernels = n_kernels
 
         # Add dummy dimension to observations for later convenience
-        self._observations = self._observations[
+        self._observations = self._observations.copy()[
             np.newaxis, :, :, :, np.newaxis]
 
     def _compute_log_likelihood(self, mu, var):

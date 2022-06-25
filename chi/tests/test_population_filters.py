@@ -81,13 +81,13 @@ class TestComposedPopulationFilter(unittest.TestCase):
     def test_bad_instantiation(self):
         # Wrong type
         filters = ['filter 1', 'filter 2']
-        with self.assertRaisesRegex(TypeError, 'All population filters have'):
+        with self.assertRaisesRegex(TypeError, 'All filters have'):
             chi.ComposedPopulationFilter(filters)
 
         # Number of modelled observations doesn't match
         observations = np.ones((2, 5, 4))
         filter3 = chi.GaussianFilter(observations)
-        with self.assertRaisesRegex(ValueError, 'All population filters need'):
+        with self.assertRaisesRegex(ValueError, 'All filters need'):
             chi.ComposedPopulationFilter([self.filter1, self.filter2, filter3])
 
     def test_compute_log_likelihood(self):
@@ -521,6 +521,14 @@ class TestGaussianMixtureFilter(unittest.TestCase):
             [[0, 20, 13, -4], [21, 0.2, 8, 4], [0.1, 0.2, 0.3, 0.4]],
             [[4, 1, 1, -3], [2, 0.3, 4, 2], [1, 0.7, 2, 1]]])
         cls.filter3 = chi.GaussianMixtureFilter(observations)
+
+    def test_bad_instantiation(self):
+        observations = np.array([
+            [[1, 2, np.nan, 5], [0.1, 2, 4, 3], [np.nan, 3, 2, np.nan]],
+            [[0, 20, 13, -4], [21, 0.2, 8, 4], [0.1, 0.2, 0.3, 0.4]],
+            [[4, 1, 1, -3], [2, 0.3, 4, 2], [1, 0.7, 2, 1]]])
+        with self.assertRaisesRegex(ValueError, 'Invalid number of kernels.'):
+            chi.GaussianMixtureFilter(observations, n_kernels=1)
 
     def test_compute_log_likelihood(self):
         # Test case I:
