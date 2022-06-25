@@ -537,7 +537,7 @@ class TestGaussianMixtureFilter(unittest.TestCase):
         self.assertFalse(np.isinf(score))
 
         # Test case II: More than 2 kernels
-        obs = self.filter1._observations[0, :, 0, :, :]
+        obs = self.filter1._observations[0, 0, :, :, :]
         f = chi.GaussianMixtureFilter(obs, n_kernels=5)
         score = f.compute_log_likelihood(sim_obs)
         self.assertFalse(np.isinf(score))
@@ -596,7 +596,7 @@ class TestGaussianMixtureFilter(unittest.TestCase):
         self.assertAlmostEqual(sens[4, 0, 0], ref_sens[4])
 
         # Test case II: More than 2 kernels
-        obs = self.filter1._observations[0, :, 0, :, :]
+        obs = self.filter1._observations[0, 0, :, :, :]
         f = chi.GaussianMixtureFilter(obs, n_kernels=5)
         epsilon = 0.00001
         sim_obs = np.vstack([
