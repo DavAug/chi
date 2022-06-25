@@ -510,6 +510,158 @@ class GaussianKDEFilter(PopulationFilter):
         return score, dscore_dsim
 
 
+class GaussianMixtureFilter(PopulationFilter):
+    r"""
+    Implements a Gaussian mixture filter.
+
+    A Gaussian mixture filter approximates the distribution of
+    measurements at time point :math:`t_j` by a Gaussian mixture distribution
+    whose kernel means and variances are estimated from simulated
+    measurements
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ij} \log \sum_m \frac{1}{M}
+            \mathcal{N} (y_{ij} | \mu _{jm}, \sigma ^2_{jm}),
+
+    where the mean :math:`\mu _{jm}` and the variance :math:`\sigma ^2_{jm}`
+    of the mth Gaussian distribution are given by the empirical estimates from
+    the mth subset of the simulated measurements
+
+    .. math::
+        \mu _{jm} = \frac{1}{n} \sum _{s=1}^{n} \tilde{y}_{sjm}
+        \quad \text{and} \quad
+        \sigma ^2 _{jm} = \frac{1}{n-1} \sum _{s=1}^{n} \left(
+            \tilde{y}_{sjm} - \mu _{jm} \right) ^2.
+
+    Here, we use :math:`i` to index measured individuals from the dataset,
+    :math:`j` to index measurement time points and :math:`s` to index simulated
+    measurements. :math:`n` denotes the number of simulated measurements per
+    time point.
+
+    For multiple measured observables the above expression can be
+    straightforwardly extended to
+
+    .. math::
+        \log p(\mathcal{D} | \tilde{Y}) =
+            \sum _{ijr} \log \sum_m \frac{1}{M}
+            \mathcal{N} (y_{ijr} | \mu _{jrm}, \sigma ^2_{jrm}),
+
+    where :math:`r` indexes observables and :math:`\mu _{jrm}` and
+    :math:`\sigma^2 _{jrm}` are the empirical mean and variance over the
+    mth subset of simulated measurements of the observable :math:`r` at time
+    point :math:`t_j`.
+
+    Extends :class:`PopulationFilter`
+
+    :param observations: Measurements.
+    :type observations: np.ndarray of shape
+        ``(n_ids, n_observables, n_times)``
+    """
+    def __init__(self, observations, n_kernels=2):
+        super().__init__(observations)
+        n_kernels = int(n_kernels)
+        if n_kernels < 2:
+            raise ValueError(
+                'Invalid number of kernels. A Gaussian mixture filter expects '
+                'at least 2 kernels.')
+        self._n_kernels = n_kernels
+
+        # Add dummy dimension to observations for later convenience
+        self._observations = self._observations[
+            np.newaxis, :, :, :, np.newaxis]
+
+    def _compute_log_likelihood(self, mu, var):
+        """
+        Returns the log-likelihood.
+
+        mu of shape (1, n_observables, n_times, n_kernels)
+        var of shape (1, n_observables, n_times, n_kernels)
+        """
+        score = np.sum(logsumexp(
+            - (mu - self._observations)**2 / var / 2 - np.log(var) / 2, axis=4)
+            - np.log(self._n_kernels) - np.log(2 * np.pi) / 2)
+        if np.ma.is_masked(score):
+            return -np.inf
+
+        return score
+
+    def compute_log_likelihood(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter.
+
+        :param simulated_obs: Simulated measurements.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: float
+        """
+        if len(simulated_obs) % self._n_kernels > 0:
+            raise ValueError(
+                'The number of simulated observations needs to be a multiple '
+                'of the number of kernels.')
+
+        # Compute means and variances
+        n_sim, n_obs, n_times = simulated_obs.shape
+        n_per_kernel = n_sim // self._n_kernels
+        simulated_obs = simulated_obs.reshape(
+            n_per_kernel, 1, n_obs, n_times, self._n_kernels)
+        mu = np.mean(simulated_obs, axis=0, keepdims=True)
+        var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
+
+        score = self._compute_log_likelihood(mu, var)
+        if np.ma.is_masked(score):
+            return -np.inf
+
+        return score
+
+    def compute_sensitivities(self, simulated_obs):
+        """
+        Returns the log-likelihood of the simulated observations with respect
+        to the data and filter, and the sensitivities of the log-likelihood
+        with respect to the simulated observations.
+
+        :param simulated_obs: Simulated measurements.
+        :type simulated_obs: np.ndarray of shape
+            (n_sim, n_observables, n_times)
+        :rtype: Tuple[float, np.ndarray] where the array has shape
+            ``(n_sim, n_observables, n_times)``
+        """
+        if len(simulated_obs) % self._n_kernels > 0:
+            raise ValueError(
+                'The number of simulated observations needs to be a multiple '
+                'of the number of kernels.')
+
+        # Compute means and variances
+        n_sim, n_obs, n_times = simulated_obs.shape
+        n_per_kernel = n_sim // self._n_kernels
+        simulated_obs = simulated_obs.reshape(
+            n_per_kernel, 1, n_obs, n_times, self._n_kernels)
+        mu = np.mean(simulated_obs, axis=0, keepdims=True)
+        var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
+
+        # Compute log-likelihood
+        scores = - (mu - self._observations)**2 / var / 2 - np.log(var) / 2
+        score = np.sum(
+            logsumexp(scores, axis=4) - np.log(self._n_kernels)
+            - np.log(2 * np.pi) / 2)
+        if np.ma.is_masked(score):
+            return -np.inf, np.empty((n_sim, n_obs, n_times))
+
+        # Compute sensitivities
+        # score = log mean exp scores + constant
+        # dscore/dsim =
+        #   exp(scores) / sum(exp(scores)) * dscores / dsim
+        dscores_dsim = \
+            (self._observations - mu) / var / n_per_kernel \
+            + (- 1 / var + (self._observations - mu)**2 / var**2) \
+            * (simulated_obs - mu) / (n_per_kernel - 1)
+        dscore_dsim = np.sum(softmax(scores, axis=4) * dscores_dsim, axis=1)
+        dscore_dsim = dscore_dsim.reshape(n_sim, n_obs, n_times)
+
+        return score, dscore_dsim
+
+
 class LogNormalFilter(PopulationFilter):
     r"""
     Implements a lognormal filter.

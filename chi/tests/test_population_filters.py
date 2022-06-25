@@ -501,6 +501,185 @@ class TestGaussianKDEFilter(unittest.TestCase):
         self.assertEqual(sens.shape, (10, 3, 4))
 
 
+class TestGaussianMixtureFilter(unittest.TestCase):
+    """
+    Tests the chi.GaussianMixtureFilter class.
+    """
+    @classmethod
+    def setUpClass(cls):
+
+        # Test case I: no missing values, default bandwidth
+        observations = np.vstack([
+            np.ones(shape=(1, 3, 4)),
+            2 * np.ones(shape=(1, 3, 4)),
+            0.3 * np.ones(shape=(1, 3, 4))])
+        cls.filter1 = chi.GaussianMixtureFilter(observations)
+
+        # Test case III: missing values, default bandwidth
+        observations = np.array([
+            [[1, 2, np.nan, 5], [0.1, 2, 4, 3], [np.nan, 3, 2, np.nan]],
+            [[0, 20, 13, -4], [21, 0.2, 8, 4], [0.1, 0.2, 0.3, 0.4]],
+            [[4, 1, 1, -3], [2, 0.3, 4, 2], [1, 0.7, 2, 1]]])
+        cls.filter3 = chi.GaussianMixtureFilter(observations)
+
+    def test_compute_log_likelihood(self):
+        # Test case I:
+        sim_obs = np.arange(10 * 3 * 4).reshape(10, 3, 4)
+        score = self.filter1.compute_log_likelihood(sim_obs)
+        self.assertFalse(np.isinf(score))
+
+        # Test case II: More than 2 kernels
+        obs = self.filter1._observations[0, :, :, :, 0]
+        f = chi.GaussianMixtureFilter(obs, n_kernels=5)
+        score = f.compute_log_likelihood(sim_obs)
+        self.assertFalse(np.isinf(score))
+
+        # Test case III:
+        sim_obs = np.arange(10 * 3 * 4).reshape(10, 3, 4)
+        score = self.filter3.compute_log_likelihood(sim_obs)
+        self.assertFalse(np.isinf(score))
+
+        # Test case V: infinite score for masked score
+        sim_obs = np.full(shape=(10, 3, 4), fill_value=np.nan)
+        score = self.filter3.compute_log_likelihood(sim_obs)
+        self.assertTrue(np.isinf(score))
+
+    def test_compute_sensitivities(self):
+        # Test case I: Finite difference
+        epsilon = 0.00001
+        sim_obs = np.vstack([
+            np.ones(shape=(1, 3, 4)),
+            2 * np.ones(shape=(1, 3, 4)),
+            0.3 * np.ones(shape=(1, 3, 4)),
+            0.9 * np.ones(shape=(1, 3, 4)),
+            0.9 * np.ones(shape=(1, 3, 4)),
+            0.91 * np.ones(shape=(1, 3, 4)),
+            0.92 * np.ones(shape=(1, 3, 4)),
+            0.39 * np.ones(shape=(1, 3, 4)),
+            0.94 * np.ones(shape=(1, 3, 4)),
+            0.5 * np.ones(shape=(1, 3, 4))])
+        ref_sens = []
+        ref_score = self.filter1.compute_log_likelihood(sim_obs)
+        for index in range(len(sim_obs)):
+            # Construct parameter grid
+            low = sim_obs.copy()
+            low[index, 0, 0] -= epsilon
+            high = sim_obs.copy()
+            high[index, 0, 0] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.filter1.compute_log_likelihood(low),
+                    ref_score,
+                    self.filter1.compute_log_likelihood(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.filter1.compute_sensitivities(sim_obs)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(sens.shape, (10, 3, 4))
+        self.assertAlmostEqual(sens[0, 0, 0], ref_sens[0])
+        self.assertAlmostEqual(sens[1, 0, 0], ref_sens[1])
+        self.assertAlmostEqual(sens[2, 0, 0], ref_sens[2])
+        self.assertAlmostEqual(sens[3, 0, 0], ref_sens[3])
+        self.assertAlmostEqual(sens[4, 0, 0], ref_sens[4])
+
+        # Test case II: More than 2 kernels
+        obs = self.filter1._observations[0, :, :, :, 0]
+        f = chi.GaussianMixtureFilter(obs, n_kernels=5)
+        epsilon = 0.00001
+        sim_obs = np.vstack([
+            np.ones(shape=(1, 3, 4)),
+            2 * np.ones(shape=(1, 3, 4)),
+            0.3 * np.ones(shape=(1, 3, 4)),
+            0.9 * np.ones(shape=(1, 3, 4)),
+            5 * np.ones(shape=(1, 3, 4)),
+            0.1 * np.ones(shape=(1, 3, 4)),
+            3.62 * np.ones(shape=(1, 3, 4)),
+            0.19 * np.ones(shape=(1, 3, 4)),
+            2.94 * np.ones(shape=(1, 3, 4)),
+            0.1 * np.ones(shape=(1, 3, 4))])
+        ref_sens = []
+        ref_score = f.compute_log_likelihood(sim_obs)
+        for index in range(len(sim_obs)):
+            # Construct parameter grid
+            low = sim_obs.copy()
+            low[index, 0, 0] -= epsilon
+            high = sim_obs.copy()
+            high[index, 0, 0] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    f.compute_log_likelihood(low),
+                    ref_score,
+                    f.compute_log_likelihood(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = f.compute_sensitivities(sim_obs)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(sens.shape, (10, 3, 4))
+        self.assertAlmostEqual(sens[0, 0, 0], ref_sens[0])
+        self.assertAlmostEqual(sens[1, 0, 0], ref_sens[1])
+        self.assertAlmostEqual(sens[2, 0, 0], ref_sens[2], 5)
+        self.assertAlmostEqual(sens[3, 0, 0], ref_sens[3])
+        self.assertAlmostEqual(sens[4, 0, 0], ref_sens[4])
+
+        # Test case III
+        epsilon = 0.00001
+        sim_obs = np.vstack([
+            np.ones(shape=(1, 3, 4)),
+            2 * np.ones(shape=(1, 3, 4)),
+            0.3 * np.ones(shape=(1, 3, 4)),
+            0.9 * np.ones(shape=(1, 3, 4)),
+            0.9 * np.ones(shape=(1, 3, 4)),
+            0.91 * np.ones(shape=(1, 3, 4)),
+            0.92 * np.ones(shape=(1, 3, 4)),
+            0.39 * np.ones(shape=(1, 3, 4)),
+            0.94 * np.ones(shape=(1, 3, 4)),
+            0.5 * np.ones(shape=(1, 3, 4))])
+        ref_sens = []
+        ref_score = self.filter3.compute_log_likelihood(sim_obs)
+        for index in range(len(sim_obs)):
+            # Construct parameter grid
+            low = sim_obs.copy()
+            low[index, 0, 0] -= epsilon
+            high = sim_obs.copy()
+            high[index, 0, 0] += epsilon
+
+            # Compute reference using numpy.gradient
+            sens = np.gradient(
+                [
+                    self.filter3.compute_log_likelihood(low),
+                    ref_score,
+                    self.filter3.compute_log_likelihood(high)],
+                (epsilon))
+            ref_sens.append(sens[1])
+
+        # Compute sensitivities from filter
+        score, sens = self.filter3.compute_sensitivities(sim_obs)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(sens.shape, (10, 3, 4))
+        self.assertAlmostEqual(sens[0, 0, 0], ref_sens[0], 5)
+        self.assertAlmostEqual(sens[1, 0, 0], ref_sens[1], 5)
+        self.assertAlmostEqual(sens[2, 0, 0], ref_sens[2], 5)
+        self.assertAlmostEqual(sens[3, 0, 0], ref_sens[3], 5)
+        self.assertAlmostEqual(sens[4, 0, 0], ref_sens[4], 5)
+
+        # Test case V: infinite score for masked score
+        sim_obs = np.full(shape=(10, 3, 4), fill_value=np.nan)
+        score, sens = self.filter3.compute_sensitivities(sim_obs)
+        self.assertTrue(np.isinf(score))
+        self.assertEqual(sens.shape, (10, 3, 4))
+
+
 class TestLogNormalFilter(unittest.TestCase):
     """
     Tests the chi.LogNormalFilter class.

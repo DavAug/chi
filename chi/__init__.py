@@ -46,6 +46,7 @@ from ._population_filters import (  # noqa
     ComposedPopulationFilter,
     GaussianFilter,
     GaussianKDEFilter,
+    GaussianMixtureFilter,
     LogNormalFilter,
     LogNormalKDEFilter
 )

@@ -33,6 +33,10 @@ Detailed API
     :members:
     :inherited-members:
 
+.. autoclass:: GaussianMixtureFilter
+    :members:
+    :inherited-members:
+
 .. autoclass:: LogNormalFilter
     :members:
     :inherited-members:
