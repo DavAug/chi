@@ -439,7 +439,7 @@ class GaussianKDEFilter(PopulationFilter):
         super().__init__(observations)
 
         # Add dummy dimension to observations for later convenience
-        self._observations = self._observations.copy()[np.newaxis, ...]
+        self._observations = self._observations[np.newaxis, ...]
 
     def compute_log_likelihood(self, simulated_obs):
         """
@@ -568,8 +568,8 @@ class GaussianMixtureFilter(PopulationFilter):
         self._n_kernels = n_kernels
 
         # Add dummy dimension to observations for later convenience
-        self._observations = self._observations.copy()[
-            np.newaxis, :, :, :, np.newaxis]
+        self._observations = self._observations[
+            np.newaxis, :, np.newaxis, :, :]
 
     def _compute_log_likelihood(self, mu, var):
         """
@@ -579,7 +579,7 @@ class GaussianMixtureFilter(PopulationFilter):
         var of shape (1, n_observables, n_times, n_kernels)
         """
         score = np.sum(logsumexp(
-            - (mu - self._observations)**2 / var / 2 - np.log(var) / 2, axis=4)
+            - (mu - self._observations)**2 / var / 2 - np.log(var) / 2, axis=2)
             - np.log(self._n_kernels) - np.log(2 * np.pi) / 2)
         if np.ma.is_masked(score):
             return -np.inf
@@ -605,7 +605,7 @@ class GaussianMixtureFilter(PopulationFilter):
         n_sim, n_obs, n_times = simulated_obs.shape
         n_per_kernel = n_sim // self._n_kernels
         simulated_obs = simulated_obs.reshape(
-            n_per_kernel, 1, n_obs, n_times, self._n_kernels)
+            n_per_kernel, 1, self._n_kernels, n_obs, n_times)
         mu = np.mean(simulated_obs, axis=0, keepdims=True)
         var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
 
@@ -636,14 +636,14 @@ class GaussianMixtureFilter(PopulationFilter):
         n_sim, n_obs, n_times = simulated_obs.shape
         n_per_kernel = n_sim // self._n_kernels
         simulated_obs = simulated_obs.reshape(
-            n_per_kernel, 1, n_obs, n_times, self._n_kernels)
+            n_per_kernel, 1, self._n_kernels, n_obs, n_times)
         mu = np.mean(simulated_obs, axis=0, keepdims=True)
         var = np.var(simulated_obs, ddof=1, axis=0, keepdims=True)
 
         # Compute log-likelihood
         scores = - (mu - self._observations)**2 / var / 2 - np.log(var) / 2
         score = np.sum(
-            logsumexp(scores, axis=4) - np.log(self._n_kernels)
+            logsumexp(scores, axis=2) - np.log(self._n_kernels)
             - np.log(2 * np.pi) / 2)
         if np.ma.is_masked(score):
             return -np.inf, np.empty((n_sim, n_obs, n_times))
@@ -656,7 +656,7 @@ class GaussianMixtureFilter(PopulationFilter):
             (self._observations - mu) / var / n_per_kernel \
             + (- 1 / var + (self._observations - mu)**2 / var**2) \
             * (simulated_obs - mu) / (n_per_kernel - 1)
-        dscore_dsim = np.sum(softmax(scores, axis=4) * dscores_dsim, axis=1)
+        dscore_dsim = np.sum(softmax(scores, axis=2) * dscores_dsim, axis=1)
         dscore_dsim = dscore_dsim.reshape(n_sim, n_obs, n_times)
 
         return score, dscore_dsim
