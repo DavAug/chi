@@ -657,12 +657,6 @@ class HierarchicalLogPosterior(pints.LogPDF):
         """
         return self._log_prior
 
-    def get_population_model(self):
-        """
-        Returns the population model.
-        """
-        return self._log_likelihood.get_population_model()
-
     def get_id(self, unique=False):
         """
         Returns the ids of the log-posterior's parameters. If the ID is
@@ -692,6 +686,12 @@ class HierarchicalLogPosterior(pints.LogPDF):
             exclude_bottom_level, include_ids)
 
         return names
+
+    def get_population_model(self):
+        """
+        Returns the population model.
+        """
+        return self._log_likelihood.get_population_model()
 
     def n_ids(self):
         """
@@ -1469,7 +1469,6 @@ class LogPosterior(pints.LogPDF):
 
 
 class PopulationFilterLogPosterior(HierarchicalLogPosterior):
-    # TODO: Is this sufficiently tested?
     r"""
     A population filter log-posterior approximates a hierarchical
     log-posterior.
@@ -1610,14 +1609,14 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
             _, n_c = covariates.shape
             if n_c != self._population_model.n_covariates():
                 raise ValueError(
-                    'Provided covariates do not match the number of '
-                    'covariates.')
+                    'Invalid covariates. The provided covariates do not match '
+                    'the number of covariates.')
             try:
                 covariates = np.broadcast_to(covariates, (n_samples, n_c))
             except ValueError:
                 raise ValueError(
-                    'Provided covariates cannot be broadcasted to number of '
-                    'samples.')
+                    'Invalid covariates. The provided covariates cannot be '
+                    'broadcasted to the shape (n_samples, n_cov).')
             self._covariates = covariates
 
         self._population_model.set_n_ids(self._n_samples)
@@ -2142,9 +2141,9 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
 
         return self._n_parameters
 
-    def n_ids(self):
+    def n_samples(self):
         """
-        Returns the number of modelled individuals.
+        Returns the number of simulated individuals per posterior evaluation.
         """
         return self._n_samples
 

@@ -1348,6 +1348,14 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(
             parameter_names[10], 'Pooled Dim. 9')
 
+    def test_get_population_model(self):
+        population_model = self.log_posterior.get_population_model()
+        self.assertIsInstance(population_model, chi.PopulationModel)
+
+    def test_n_ids(self):
+        n_ids = self.log_posterior.n_ids()
+        self.assertEqual(n_ids, 2)
+
     def test_n_parameters(self):
         # Test case I: All parameters
         # 9 individual parameters, from which 1 is modelled heterogeneously,
@@ -1379,6 +1387,49 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         seed = 3
         samples = self.log_posterior.sample_initial_parameters(seed=seed)
         self.assertEqual(samples.shape, (1, 13))
+
+        # Test simple population model
+        # Create data
+        obs_1 = [1, 1.1, 1.2, 1.3]
+        times_1 = [1, 2, 3, 4]
+        observations = [obs_1]
+        times = [times_1]
+
+        # Set up mechanistic and error models
+        model = ToyExponentialModel()
+        error_model = chi.GaussianErrorModel()
+
+        # Create log-likelihoods
+        log_likelihoods = [
+            chi.LogLikelihood(
+                model, error_model, observations, times),
+            chi.LogLikelihood(
+                model, error_model, observations, times)]
+
+        # Create population models
+        population_model = chi.GaussianModel(n_dim=3)
+
+        # Create hierarchical log-likelihood
+        log_likelihood = chi.HierarchicalLogLikelihood(
+            log_likelihoods, population_model)
+
+        # Define log-prior
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1))
+
+        # Create log-posterior
+        log_posterior = chi.HierarchicalLogPosterior(
+            log_likelihood, log_prior)
+
+        n_samples = 10
+        samples = log_posterior.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 12))
 
         # Test sampling for covariate population model
         # Create data
@@ -1426,6 +1477,29 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         samples = log_posterior.sample_initial_parameters(
             n_samples=n_samples)
         self.assertEqual(samples.shape, (10, 8))
+
+        # Test no bottom level parameters
+        # Create population models
+        population_model = chi.PooledModel(n_dim=3)
+
+        # Create hierarchical log-likelihood
+        log_likelihood = chi.HierarchicalLogLikelihood(
+            log_likelihoods, population_model, covariates=covariates)
+
+        # Define log-prior
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1))
+
+        # Create log-posterior
+        log_posterior = chi.HierarchicalLogPosterior(
+            log_likelihood, log_prior)
+
+        n_samples = 10
+        samples = log_posterior.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 3))
 
 
 class TestLogLikelihood(unittest.TestCase):
@@ -1981,6 +2055,10 @@ class TestLogPosterior(unittest.TestCase):
         log_likelihood = self.log_posterior.get_log_likelihood()
         self.assertIsInstance(log_likelihood, chi.LogLikelihood)
 
+    def test_get_log_prior(self):
+        log_prior = self.log_posterior.get_log_prior()
+        self.assertIsInstance(log_prior, pints.LogPrior)
+
     def test_get_parameter_names(self):
         # Test case I: Non-trivial parameters
         parameter_names = self.log_posterior.get_parameter_names()
@@ -2194,6 +2272,25 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             covariates=covariates
         )
 
+        # Test case IX: all pooled
+        population_model = chi.PooledModel(n_dim=2)
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(0.3, 0.1),
+            pints.LogNormalLogPrior(0.3, 0.1)
+        )
+        sigma = 1
+        error_on_log_scale = False
+        cls.log_posterior9 = chi.PopulationFilterLogPosterior(
+            population_filter=population_filter,
+            times=times,
+            mechanistic_model=mechanistic_model,
+            population_model=population_model,
+            log_prior=log_prior,
+            sigma=sigma,
+            error_on_log_scale=error_on_log_scale,
+            n_samples=n_samples
+        )
+
     def test_bad_instantiation(self):
         observations = np.array([
             [[1, 2, np.nan, 5]],
@@ -2262,6 +2359,29 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
             chi.PopulationFilterLogPosterior(
                 population_filter, times, mechanistic_model,
                 p, log_prior)
+
+        # The number of covariates does not match the number of covariates
+        # required by the population model
+        p = chi.ComposedPopulationModel([
+            chi.CovariatePopulationModel(
+                chi.PooledModel(), chi.LinearCovariateModel()),
+            chi.CovariatePopulationModel(
+                chi.PooledModel(), chi.LinearCovariateModel())
+        ])
+        n_samples, n_cov = 10, 3
+        c = np.ones(shape=(n_samples, n_cov))
+        with self.assertRaisesRegex(ValueError, 'Invalid covariates.'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                p, log_prior, covariates=c)
+
+        # The covariates cannot be broadcasted to (n_samples, n_cov)
+        n_samples, n_cov = 10, 2
+        c = np.ones(shape=(n_samples, n_cov))
+        with self.assertRaisesRegex(ValueError, 'Invalid covariates.'):
+            chi.PopulationFilterLogPosterior(
+                population_filter, times, mechanistic_model,
+                p, log_prior, covariates=c)
 
         # The number of sigmas does not match the number of model outputs
         sigma = [1, 2, 3]
@@ -2784,6 +2904,13 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertAlmostEqual(sens[15], ref_sens[15], places=4)
         self.assertAlmostEqual(sens[16], ref_sens[16], places=4)
 
+        # Test all pooled
+        parameters = np.arange(1, 15) * 0.01
+        score, sens = self.log_posterior9.evaluateS1(parameters)
+
+        self.assertFalse(np.isinf(score))
+        self.assertFalse(np.any(np.isinf(sens)))
+
     def test_get_log_likelihood(self):
         self.assertIsInstance(
             self.log_posterior1.get_log_likelihood(), chi.PopulationFilter)
@@ -2995,6 +3122,16 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertEqual(names[3], 'Log std. Growth rate')
         self.assertEqual(names[4], 'Sigma Count')
 
+        names = self.log_posterior9.get_parameter_names(
+            exclude_bottom_level=True)
+        self.assertEqual(len(names), 2)
+        self.assertEqual(names[0], 'Pooled Initial count')
+        self.assertEqual(names[1], 'Pooled Growth rate')
+
+    def test_get_population_model(self):
+        pop_model = self.log_posterior1.get_population_model()
+        self.assertIsInstance(pop_model, chi.PopulationModel)
+
     def test_n_parameters(self):
         self.assertEqual(self.log_posterior1.n_parameters(), 22)
         self.assertEqual(
@@ -3002,6 +3139,9 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         self.assertEqual(self.log_posterior3.n_parameters(), 23)
         self.assertEqual(
             self.log_posterior3.n_parameters(exclude_bottom_level=True), 5)
+
+    def test_n_samples(self):
+        self.assertEqual(self.log_posterior1.n_samples(), 3)
 
     def test_sample_initial_parameters(self):
         # Bad input
@@ -3020,6 +3160,9 @@ class TestPopulationFilterLogPosterior(unittest.TestCase):
         seed = 3
         samples = self.log_posterior1.sample_initial_parameters(seed=seed)
         self.assertEqual(samples.shape, (1, 22))
+
+        samples = self.log_posterior9.sample_initial_parameters(seed=seed)
+        self.assertEqual(samples.shape, (1, 14))
 
 
 if __name__ == '__main__':
