@@ -552,6 +552,12 @@ class TestGaussianMixtureFilter(unittest.TestCase):
         score = self.filter3.compute_log_likelihood(sim_obs)
         self.assertTrue(np.isinf(score))
 
+        # Raises error when number of observations is not a multiple of the
+        # number of kernels
+        sim_obs = np.arange(11 * 3 * 4).reshape(11, 3, 4)
+        with self.assertRaisesRegex(ValueError, 'Invalid simulated_obs.'):
+            self.filter3.compute_log_likelihood(sim_obs)
+
     def test_compute_sensitivities(self):
         # Test case I: Finite difference
         epsilon = 0.00001
@@ -686,6 +692,12 @@ class TestGaussianMixtureFilter(unittest.TestCase):
         score, sens = self.filter3.compute_sensitivities(sim_obs)
         self.assertTrue(np.isinf(score))
         self.assertEqual(sens.shape, (10, 3, 4))
+
+        # Raises error when number of observations is not a multiple of the
+        # number of kernels
+        sim_obs = np.arange(11 * 3 * 4).reshape(11, 3, 4)
+        with self.assertRaisesRegex(ValueError, 'Invalid simulated_obs.'):
+            self.filter3.compute_sensitivities(sim_obs)
 
 
 class TestLogNormalFilter(unittest.TestCase):

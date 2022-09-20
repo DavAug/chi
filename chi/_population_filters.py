@@ -598,8 +598,8 @@ class GaussianMixtureFilter(PopulationFilter):
         """
         if len(simulated_obs) % self._n_kernels > 0:
             raise ValueError(
-                'The number of simulated observations needs to be a multiple '
-                'of the number of kernels.')
+                'Invalid simulated_obs. The number of simulated observations '
+                'needs to be a multiple of the number of kernels.')
 
         # Compute means and variances
         n_sim, n_obs, n_times = simulated_obs.shape
@@ -610,8 +610,6 @@ class GaussianMixtureFilter(PopulationFilter):
         var = np.var(simulated_obs, ddof=1, axis=1, keepdims=True)
 
         score = self._compute_log_likelihood(mu, var)
-        if np.ma.is_masked(score):
-            return -np.inf
 
         return score
 
@@ -629,8 +627,8 @@ class GaussianMixtureFilter(PopulationFilter):
         """
         if len(simulated_obs) % self._n_kernels > 0:
             raise ValueError(
-                'The number of simulated observations needs to be a multiple '
-                'of the number of kernels.')
+                'Invalid simulated_obs. The number of simulated observations '
+                'needs to be a multiple of the number of kernels.')
 
         # Compute means and variances
         n_sim, n_obs, n_times = simulated_obs.shape
