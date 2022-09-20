@@ -219,7 +219,7 @@ class PopulationModel(object):
         """
         Sets the names of the covariates.
 
-        If the model has not covariates, input is ignored.
+        If the model has no covariates, input is ignored.
 
         :param names: A list of parameter names. If ``None``, covariate names
             are reset to defaults.
@@ -660,18 +660,6 @@ class ComposedPopulationModel(PopulationModel):
             current_param = end_param
 
         return samples
-
-    def set_covariate_names(self, names=None):
-        """
-        Sets the names of the covariates.
-
-        If the model has not covariates, input is ignored.
-
-        :param names: A list of parameter names. If ``None``, covariate names
-            are reset to defaults.
-        :type names: List[str]
-        """
-        return None
 
     def set_dim_names(self, names=None):
         r"""
@@ -1512,7 +1500,7 @@ class GaussianModel(PopulationModel):
             n_parameters = len(parameters) // self._n_dim
             parameters = parameters.reshape(1, n_parameters, self._n_dim)
         elif parameters.ndim == 2:
-            n_parameters = parameters[np.newaxis, ...]
+            parameters = parameters[np.newaxis, ...]
 
         # Parse parameters
         mus = parameters[:, 0]
@@ -3038,7 +3026,7 @@ class ReducedPopulationModel(PopulationModel):
         """
         Sets the names of the covariates.
 
-        If the model has not covariates, input is ignored.
+        If the model has no covariates, input is ignored.
 
         :param names: A list of parameter names. If ``None``, covariate names
             are reset to defaults.

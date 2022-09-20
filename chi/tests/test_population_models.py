@@ -439,6 +439,16 @@ class TestComposedPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The number of provided'):
             self.pop_model.sample(parameters)
 
+        # Wrong number of provided covariates
+        seed = 1
+        n_samples = 10
+        parameters = np.arange(7)
+        covariates = np.arange(n_samples * 2).reshape(n_samples, 2)
+        with self.assertRaisesRegex(ValueError, 'Provided covariates'):
+            self.pop_model_prime.sample(
+                parameters, n_samples=n_samples, seed=seed,
+                covariates=covariates)
+
     def test_set_dim_names(self):
         # Set parameter names to something
         names = ['dim', 'names', 'that', 'match']
@@ -1055,6 +1065,30 @@ class TestGaussianModel(unittest.TestCase):
         self.assertEqual(ref_psis[7], psis[7, 0])
         self.assertEqual(ref_psis[8], psis[8, 0])
         self.assertEqual(ref_psis[9], psis[9, 0])
+
+        # Test case II.2: matrix input
+        etas = np.arange(10) * 0.1
+        theta = np.array([[0.3, 2]])
+        psis = self.non_centered.compute_individual_parameters(theta, etas)
+
+        self.assertEqual(psis.shape, (10, 1))
+        self.assertEqual(ref_psis[0], psis[0, 0])
+        self.assertEqual(ref_psis[1], psis[1, 0])
+        self.assertEqual(ref_psis[2], psis[2, 0])
+        self.assertEqual(ref_psis[3], psis[3, 0])
+        self.assertEqual(ref_psis[4], psis[4, 0])
+        self.assertEqual(ref_psis[5], psis[5, 0])
+        self.assertEqual(ref_psis[6], psis[6, 0])
+        self.assertEqual(ref_psis[7], psis[7, 0])
+        self.assertEqual(ref_psis[8], psis[8, 0])
+        self.assertEqual(ref_psis[9], psis[9, 0])
+
+        # Test case II.3 negative sigma
+        etas = np.arange(10) * 0.1
+        theta = np.array([[0.3, -1]])
+        psis = self.non_centered.compute_individual_parameters(theta, etas)
+        self.assertEqual(psis.shape, (10, 1))
+        self.assertTrue(np.all(np.isnan(psis)))
 
     def test_compute_log_likelihood(self):
         n_ids = 10
