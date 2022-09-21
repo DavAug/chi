@@ -1363,6 +1363,34 @@ class TestGaussianModel(unittest.TestCase):
         self.assertAlmostEqual(dtheta[0], ref_dmu)
         self.assertAlmostEqual(dtheta[1], ref_dsigma)
 
+        # Matrix input
+        # Compute ref scores
+        parameters = [[mu], [sigma]]
+        ref_ll = self.pop_model.compute_log_likelihood(parameters, psis)
+        ref_dpsi = 0
+        ref_dmu = 0
+        ref_dsigma = -n_ids
+
+        # Compute log-likelihood and sensitivities
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis)
+
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
+
         # Test case I.2: centered, with dlop_dpsi
         psis = np.ones((n_ids, 1))
         mu = 1
@@ -1852,6 +1880,14 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertEqual(dpsi.shape, (n_ids, n_dim))
         self.assertEqual(dtheta.shape, (10,))
 
+        # Same, but unflattened
+        parameters = np.ones(n_ids * n_dim)
+        score, dpsi, dtheta = pop_model.compute_sensitivities(
+            parameters, observations, flattened=False)
+        self.assertTrue(np.isinf(score))
+        self.assertEqual(dpsi.shape, (n_ids, n_dim))
+        self.assertEqual(dtheta.shape, (n_ids, n_ids, n_dim))
+
         # Test IV: n_ids=5, dim=2 3 dimensional input
         n_ids = 5
         n_dim = 2
@@ -1865,6 +1901,15 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertEqual(score, 0)
         self.assertEqual(dpsi.shape, (n_ids, n_dim))
         self.assertEqual(dtheta.shape, (10,))
+        self.assertTrue(np.all(dpsi == 0))
+        self.assertTrue(np.all(dtheta == 0))
+
+        # Same, but unflattened
+        score, dpsi, dtheta = pop_model.compute_sensitivities(
+            parameters, observations, flattened=False)
+        self.assertEqual(score, 0)
+        self.assertEqual(dpsi.shape, (n_ids, n_dim))
+        self.assertEqual(dtheta.shape, (5, 5, 2))
         self.assertTrue(np.all(dpsi == 0))
         self.assertTrue(np.all(dtheta == 0))
 
@@ -2010,6 +2055,25 @@ class TestLogNormalModel(unittest.TestCase):
         psis = self.non_centered.compute_individual_parameters(theta, etas)
 
         ref_psis = np.exp(theta[0] + theta[1] * etas)
+
+        self.assertEqual(psis.shape, (10, 1))
+        self.assertEqual(ref_psis[0], psis[0, 0])
+        self.assertEqual(ref_psis[1], psis[1, 0])
+        self.assertEqual(ref_psis[2], psis[2, 0])
+        self.assertEqual(ref_psis[3], psis[3, 0])
+        self.assertEqual(ref_psis[4], psis[4, 0])
+        self.assertEqual(ref_psis[5], psis[5, 0])
+        self.assertEqual(ref_psis[6], psis[6, 0])
+        self.assertEqual(ref_psis[7], psis[7, 0])
+        self.assertEqual(ref_psis[8], psis[8, 0])
+        self.assertEqual(ref_psis[9], psis[9, 0])
+
+        # Same, but matrix input
+        etas = np.arange(10) * 0.1
+        theta = np.array([[0.3, 2]])
+        psis = self.non_centered.compute_individual_parameters(theta, etas)
+
+        ref_psis = np.exp(theta[0][0] + theta[0][1] * etas)
 
         self.assertEqual(psis.shape, (10, 1))
         self.assertEqual(ref_psis[0], psis[0, 0])
@@ -2346,6 +2410,27 @@ class TestLogNormalModel(unittest.TestCase):
         ref_dsigma = (mu_log**2 - 1) * n_ids
 
         # Compute log-likelihood and sensitivities
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis)
+
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
+
+        # Same, but matrix input
+        parameters = [[mu_log, sigma_log]]
         score, dpsi, dtheta = self.pop_model.compute_sensitivities(
             parameters, psis)
 
@@ -2909,6 +2994,13 @@ class TestPooledModel(unittest.TestCase):
         self.assertEqual(dpsi.shape, (4, 1))
         self.assertEqual(dtheta.shape, (1,))
 
+        # Same, but unflattened
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, observations, flattened=False)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(dpsi.shape, (4, 1))
+        self.assertEqual(dtheta.shape, (4, 1, 1))
+
         # Test case II: all values agree with parameter
         parameters = [1]
         observations = [1, 1, 1, 1]
@@ -3394,6 +3486,11 @@ class TestReducedPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The name-value dictionary'):
             self.pop_model.fix_parameters(name_value_dict)
 
+    def test_get_dim_names(self):
+        names = self.pop_model.get_dim_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Dim. 1')
+
     def test_get_population_model(self):
         pop_model = self.pop_model.get_population_model()
         self.assertIsInstance(pop_model, chi.PopulationModel)
@@ -3509,6 +3606,22 @@ class TestReducedPopulationModel(unittest.TestCase):
         self.assertEqual(names[1], 'names')
 
         self.cpop_model.set_covariate_names(None)
+
+    def test_set_dim_names(self):
+        self.pop_model.set_dim_names(['Test'])
+        names = self.pop_model.get_dim_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Test')
+
+        self.pop_model.set_dim_names(None)
+        names = self.pop_model.get_dim_names()
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], 'Dim. 1')
+
+    def test_set_n_ids(self):
+        self.pop_model.set_n_ids(11)
+        nids = self.pop_model.n_ids()
+        self.assertEqual(nids, 0)  # Lognormal model does not maintain n_ids
 
     def test_set_get_parameter_names(self):
         # Set some parameter names
@@ -3806,6 +3919,28 @@ class TestTruncatedGaussianModel(unittest.TestCase):
         ref_dsigma = -n_ids + norm.pdf(mu) * mu * n_ids / (1 - norm.cdf(-mu))
 
         # Compute log-likelihood and sensitivities
+        score, dpsi, dtheta = self.pop_model.compute_sensitivities(
+            parameters, psis)
+
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dpsi.shape, (n_ids, 1))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dpsi[0, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[1, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[2, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[3, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[4, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[5, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[6, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[7, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[8, 0], ref_dpsi)
+        self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
+        self.assertAlmostEqual(dtheta[0], ref_dmu)
+        self.assertAlmostEqual(dtheta[1], ref_dsigma)
+
+        # Same, but matrix input
+        # Compute log-likelihood and sensitivities
+        parameters = [[mu], [sigma]]
         score, dpsi, dtheta = self.pop_model.compute_sensitivities(
             parameters, psis)
 
