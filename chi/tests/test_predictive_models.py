@@ -185,8 +185,9 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
     def test_sample(self):
         # Test case I: Just one sample
+        seed = 100
         times = [1, 2, 3, 4, 5]
-        samples = self.model.sample(times)
+        samples = self.model.sample(times, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -218,7 +219,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         # Test case II: More than one sample
         n_samples = 4
-        samples = self.model.sample(times, n_samples=n_samples)
+        samples = self.model.sample(times, n_samples=n_samples, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -254,7 +255,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         # Test case III: include dosing regimen
 
         # Test case III.1: PD model
-        samples = self.model.sample(times, include_regimen=True)
+        samples = self.model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -302,7 +303,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             predictive_model, self.posterior_samples, param_map=param_map)
 
         # Sample
-        samples = model.sample(times, include_regimen=True)
+        samples = model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -336,7 +337,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         model.set_dosing_regimen(1, 1, duration=2, period=2, num=2)
 
         # Sample
-        samples = model.sample(times, include_regimen=True)
+        samples = model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -396,7 +397,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         pop_model = chi.PosteriorPredictiveModel(
             pred_pop_model, pop_post_samples)
 
-        samples = pop_model.sample(times, include_regimen=True)
+        samples = pop_model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -433,7 +434,8 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         times = [1, 2, 3, 4, 5]
         covariates = \
             np.arange(n_samples * n_cov).reshape(n_samples, n_cov) + 0.1
-        samples = self.pop_model2.sample(times, covariates=covariates)
+        samples = self.pop_model2.sample(
+            times, covariates=covariates, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -470,7 +472,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         covariates = \
             np.arange(n_samples * n_cov).reshape(n_samples, n_cov) + 0.1
         samples = self.pop_model2.sample(
-            times, covariates=covariates, n_samples=n_samples)
+            times, covariates=covariates, n_samples=n_samples, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
