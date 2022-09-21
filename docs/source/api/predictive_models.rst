@@ -6,11 +6,11 @@ Predictive Models
 
 .. currentmodule:: chi
 
-Predictive models in chi_ can be used to predict observable
-pharmacokinetic and pharmacodynamic biomarker values.
+Predictive models in chi_ can be used to model data-generating processes and
+generate synthetic measurements.
 
-Each predictive model consists of a :class:`MechanisticModel` and one
-:class:`ErrorModel` for each observable biomarker.
+Each predictive model consists of a :class:`MechanisticModel` and an
+:class:`ErrorModel`.
 
 Functional classes
 ------------------

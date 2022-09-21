@@ -7,7 +7,7 @@
 
 from ._covariate_models import (  # noqa
     CovariateModel,
-    LogNormalLinearCovariateModel
+    LinearCovariateModel
 )
 
 from ._error_models import (  # noqa
@@ -24,7 +24,7 @@ from ._log_pdfs import (  # noqa
     HierarchicalLogPosterior,
     LogLikelihood,
     LogPosterior,
-    ReducedLogPDF
+    PopulationFilterLogPosterior
 )
 
 from ._mechanistic_models import (  # noqa
@@ -39,6 +39,16 @@ from ._inference import (  # noqa
     InferenceController,
     OptimisationController,
     SamplingController
+)
+
+from ._population_filters import (  # noqa
+    PopulationFilter,
+    ComposedPopulationFilter,
+    GaussianFilter,
+    GaussianKDEFilter,
+    GaussianMixtureFilter,
+    LogNormalFilter,
+    LogNormalKDEFilter
 )
 
 from ._population_models import (  # noqa

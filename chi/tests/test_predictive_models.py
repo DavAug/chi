@@ -108,49 +108,11 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         cls.model = chi.PosteriorPredictiveModel(
             cls.pred_model, cls.posterior_samples)
 
-        # Test model II: PopulationPredictive model
-        covariate_pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
-        pop_model = chi.ComposedPopulationModel([
-            chi.PooledModel(),
-            chi.HeterogeneousModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            chi.PooledModel(),
-            covariate_pop_model])
-        cls.pred_pop_model = chi.PopulationPredictiveModel(
-            cls.pred_model, pop_model)
-
-        # Create a posterior samples
-        n_chains = 2
-        n_draws = 3
-        n_ids = 2
-        samples = np.ones(shape=(n_chains, n_draws, n_ids))
-        samples = xr.DataArray(
-            data=samples,
-            dims=['chain', 'draw', 'individual'],
-            coords={
-                'chain': list(range(n_chains)),
-                'draw': list(range(n_draws)),
-                'individual': ['ID 1', 'ID 2']})
-        pop_samples = xr.DataArray(
-            data=samples[:, :, 0],
-            dims=['chain', 'draw'],
-            coords={
-                'chain': list(range(n_chains)),
-                'draw': list(range(n_draws))})
-        names = pop_model.get_parameter_names()
-        cls.pop_post_samples = xr.Dataset({
-            name: pop_samples for name in names})
-
-        cls.pop_model = chi.PosteriorPredictiveModel(
-            cls.pred_pop_model, cls.pop_post_samples)
-
         # Test model III: PopulationPredictive model with covariates
         covariate_pop_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=2))
+            chi.GaussianModel(centered=True),
+            chi.LinearCovariateModel(n_cov=2))
+        covariate_pop_model.set_population_parameters([(0, 0)])
         pop_model = chi.ComposedPopulationModel([
             chi.PooledModel(),
             chi.HeterogeneousModel(),
@@ -223,8 +185,9 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
     def test_sample(self):
         # Test case I: Just one sample
+        seed = 100
         times = [1, 2, 3, 4, 5]
-        samples = self.model.sample(times)
+        samples = self.model.sample(times, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -256,7 +219,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         # Test case II: More than one sample
         n_samples = 4
-        samples = self.model.sample(times, n_samples=n_samples)
+        samples = self.model.sample(times, n_samples=n_samples, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -292,7 +255,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         # Test case III: include dosing regimen
 
         # Test case III.1: PD model
-        samples = self.model.sample(times, include_regimen=True)
+        samples = self.model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -340,7 +303,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
             predictive_model, self.posterior_samples, param_map=param_map)
 
         # Sample
-        samples = model.sample(times, include_regimen=True)
+        samples = model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -374,7 +337,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         model.set_dosing_regimen(1, 1, duration=2, period=2, num=2)
 
         # Sample
-        samples = model.sample(times, include_regimen=True)
+        samples = model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -434,7 +397,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         pop_model = chi.PosteriorPredictiveModel(
             pred_pop_model, pop_post_samples)
 
-        samples = pop_model.sample(times, include_regimen=True)
+        samples = pop_model.sample(times, include_regimen=True, seed=seed)
 
         self.assertIsInstance(samples, pd.DataFrame)
 
@@ -463,6 +426,85 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
 
         values = samples['Value'].unique()
         self.assertEqual(len(values), 5)
+
+        # Test covariate population model
+        # Just one sample
+        n_samples = 1
+        n_cov = 2
+        times = [1, 2, 3, 4, 5]
+        covariates = \
+            np.arange(n_samples * n_cov).reshape(n_samples, n_cov) + 0.1
+        samples = self.pop_model2.sample(
+            times, covariates=covariates, seed=seed)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), 1)
+        self.assertEqual(sample_ids[0], 1)
+
+        biomarkers = samples['Observable'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Value'].unique()
+        self.assertEqual(len(values), 5)
+
+        # Multiple samples
+        n_samples = 5
+        n_cov = 2
+        times = [1, 2, 3, 4, 5]
+        covariates = \
+            np.arange(n_samples * n_cov).reshape(n_samples, n_cov) + 0.1
+        samples = self.pop_model2.sample(
+            times, covariates=covariates, n_samples=n_samples, seed=seed)
+
+        self.assertIsInstance(samples, pd.DataFrame)
+
+        keys = samples.keys()
+        self.assertEqual(len(keys), 4)
+        self.assertEqual(keys[0], 'ID')
+        self.assertEqual(keys[1], 'Time')
+        self.assertEqual(keys[2], 'Observable')
+        self.assertEqual(keys[3], 'Value')
+
+        sample_ids = samples['ID'].unique()
+        self.assertEqual(len(sample_ids), n_samples)
+        self.assertEqual(sample_ids[0], 1)
+        self.assertEqual(sample_ids[1], 2)
+        self.assertEqual(sample_ids[2], 3)
+        self.assertEqual(sample_ids[3], 4)
+        self.assertEqual(sample_ids[4], 5)
+
+        biomarkers = samples['Observable'].unique()
+        self.assertEqual(len(biomarkers), 1)
+        self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
+
+        times = samples['Time'].unique()
+        self.assertEqual(len(times), 5)
+        self.assertEqual(times[0], 1)
+        self.assertEqual(times[1], 2)
+        self.assertEqual(times[2], 3)
+        self.assertEqual(times[3], 4)
+        self.assertEqual(times[4], 5)
+
+        values = samples['Value'].unique()
+        self.assertEqual(len(values), 25)
 
     def test_sample_bad_input(self):
         # Individual does not exist
@@ -1172,14 +1214,12 @@ class TestPopulationPredictiveModel(unittest.TestCase):
             mechanistic_model, error_models)
 
         # Create population model
-        covariate_population_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         cls.population_model = chi.ComposedPopulationModel([
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            covariate_population_model,
+            chi.LogNormalModel(centered=False),
             chi.PooledModel(),
             chi.PooledModel()])
 
@@ -1191,7 +1231,8 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         # Create population model
         covariate_population_model = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=2))
+            chi.LinearCovariateModel(n_cov=2))
+        covariate_population_model.set_population_parameters([(0, 0)])
         population_model = chi.ComposedPopulationModel([
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
@@ -1238,7 +1279,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[0], 'Log mean Dim. 2')
         self.assertEqual(names[1], 'Pooled Dim. 3')
         self.assertEqual(names[2], 'Pooled Dim. 4')
-        self.assertEqual(names[3], 'Base log mean Dim. 5')
+        self.assertEqual(names[3], 'Log mean Dim. 5')
         self.assertEqual(names[4], 'Log std. Dim. 5')
         self.assertEqual(names[5], 'Pooled Dim. 6')
         self.assertEqual(names[6], 'Pooled Dim. 7')
@@ -1257,7 +1298,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[1], 'Log std. Dim. 2')
         self.assertEqual(names[2], 'Pooled Dim. 3')
         self.assertEqual(names[3], 'Pooled Dim. 4')
-        self.assertEqual(names[4], 'Base log mean Dim. 5')
+        self.assertEqual(names[4], 'Log mean Dim. 5')
         self.assertEqual(names[5], 'Log std. Dim. 5')
         self.assertEqual(names[6], 'Pooled Dim. 6')
 
@@ -1276,7 +1317,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[2], 'Log std. Dim. 2')
         self.assertEqual(names[3], 'Pooled Dim. 3')
         self.assertEqual(names[4], 'Pooled Dim. 4')
-        self.assertEqual(names[5], 'Base log mean Dim. 5')
+        self.assertEqual(names[5], 'Log mean Dim. 5')
         self.assertEqual(names[6], 'Log std. Dim. 5')
         self.assertEqual(names[7], 'Pooled Dim. 6')
         self.assertEqual(names[8], 'Pooled Dim. 7')
@@ -1304,7 +1345,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[2], 'Log std. Dim. 2')
         self.assertEqual(names[3], 'Pooled Dim. 3')
         self.assertEqual(names[4], 'Pooled Dim. 4')
-        self.assertEqual(names[5], 'Base log mean Dim. 5')
+        self.assertEqual(names[5], 'Log mean Dim. 5')
         self.assertEqual(names[6], 'Log std. Dim. 5')
         self.assertEqual(names[7], 'Pooled Dim. 6')
         self.assertEqual(names[8], 'Pooled Dim. 7')
@@ -1330,7 +1371,7 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         self.assertEqual(names[2], 'Log std. Dim. 2')
         self.assertEqual(names[3], 'Pooled Dim. 3')
         self.assertEqual(names[4], 'Pooled Dim. 4')
-        self.assertEqual(names[5], 'Base log mean Dim. 5')
+        self.assertEqual(names[5], 'Log mean Dim. 5')
         self.assertEqual(names[6], 'Log std. Dim. 5')
         self.assertEqual(names[7], 'Pooled Dim. 6')
         self.assertEqual(names[8], 'Pooled Dim. 7')
@@ -1636,8 +1677,8 @@ class TestPopulationPredictiveModel(unittest.TestCase):
         biomarkers = samples['Observable'].unique()
         self.assertEqual(len(biomarkers), 3)
         self.assertEqual(biomarkers[0], 'myokit.tumour_volume')
-        self.assertEqual(biomarkers[1], 'Covariate 1')
-        self.assertEqual(biomarkers[2], 'Covariate 2')
+        self.assertEqual(biomarkers[1], 'Cov. 1')
+        self.assertEqual(biomarkers[2], 'Cov. 2')
 
         times = samples['Time'].unique()
         self.assertEqual(len(times), 6)
@@ -1658,6 +1699,23 @@ class TestPopulationPredictiveModel(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, 'The length of parameters'):
             self.model.sample(parameters, times)
+
+        # Raises error when number of covariates and does not match model
+        seed = 100
+        times = [1, 2, 3, 4, 5]
+        parameters = [1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 2, 3]
+        covariates = [1.3, 2.4, 1]
+        with self.assertRaisesRegex(ValueError, 'Provided covariates do not'):
+            self.model2.sample(
+                parameters, times, seed=seed, covariates=covariates)
+
+        # Raises error when the covariates per sample do not match n_samples
+        n_samples = 3
+        covariates = np.ones(shape=(5, 2))
+        with self.assertRaisesRegex(ValueError, 'Provided covariates cannot'):
+            self.model2.sample(
+                parameters, times, seed=seed, covariates=covariates,
+                n_samples=n_samples)
 
 
 class TestPriorPredictiveModel(unittest.TestCase):
@@ -1695,14 +1753,12 @@ class TestPriorPredictiveModel(unittest.TestCase):
 
         # Test case II:
         # Create population model
-        covariate_population_model = chi.CovariatePopulationModel(
-            chi.GaussianModel(), chi.LogNormalLinearCovariateModel())
         cls.population_models = chi.ComposedPopulationModel([
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),
             chi.PooledModel(),
             chi.PooledModel(),
-            covariate_population_model,
+            chi.LogNormalModel(centered=False),
             chi.PooledModel(),
             chi.PooledModel()])
 
@@ -1730,7 +1786,8 @@ class TestPriorPredictiveModel(unittest.TestCase):
         # Create population model with covariates
         covariate_population_model = chi.CovariatePopulationModel(
             chi.GaussianModel(),
-            chi.LogNormalLinearCovariateModel(n_covariates=2))
+            chi.LinearCovariateModel(n_cov=2))
+        covariate_population_model.set_population_parameters([(0, 0)])
         population_models = chi.ComposedPopulationModel([
             chi.HeterogeneousModel(),
             chi.LogNormalModel(),

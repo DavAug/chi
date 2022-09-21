@@ -83,18 +83,18 @@ class AveragedPredictiveModel(object):
     def sample(
             self, times, n_samples=None, seed=None, include_regimen=False):
         """
-        Samples "measurements" of the biomarkers from the predictive model and
-        returns them in form of a :class:`pandas.DataFrame`.
+        Samples virtual measurements from the model of the data-generating
+        process and returns them in form of a :class:`pandas.DataFrame`.
         """
         raise NotImplementedError
 
     def set_dosing_regimen(
             self, dose, start, duration=0.01, period=None, num=None):
         """
-        Sets the dosing regimen with which the compound is administered.
+        Sets the dosing regimen of the administered compound.
 
         By default the dose is administered as a bolus injection (duration on
-        a time scale that is 100 fold smaller than the basic time unit). To
+        a time scale that is 100 fold smaller than the time unit). To
         model an infusion of the dose over a longer time period, the
         ``duration`` can be adjusted to the appropriate time scale.
 
@@ -129,30 +129,24 @@ class AveragedPredictiveModel(object):
 
 class PosteriorPredictiveModel(AveragedPredictiveModel):
     r"""
-    Implements a model that predicts the change of observable biomarkers over
-    time based on the inferred parameter posterior distribution.
+    Implements the posterior predictive model of the modelled
+    data-generating process and the associated parameter posterior
+    distribution.
 
-    A PosteriorPredictiveModel is instantiated with an instance of a
-    :class:`PredictiveModel` and a :class:`xarray.Dataset` of parameter
-    posterior samples generated e.g. with the :class:`SamplingController`. The
-    samples approximate the posterior distribution of the model parameters. The
-    posterior distribution has to be of the same parametric dimension as the
-    predictive model. Future biomarker "measurements" can then be predicted by
-    first sampling parameter values from the posterior distribution, and then
-    generating "virtual" measurements from the predictive model with those
-    parameters.
+    A :class:`PosteriorPredictiveModel` is instantiated with a
+    :class:`PredictiveModel` and samples from the associated posterior
+    distribution in form of a :class:`xarray.Dataset`. The samples approximate
+    the posterior distribution of the model parameters.
 
-    Formally the posterior predictive model may be defined as
+    Formally, the posterior predictive model is defined as
 
     .. math::
-        p(x | t; X^{\text{obs}}) = \int \text{d}\theta \,
-        p(x | t; \theta)p(\theta | X^{\text{obs}}),
+        p(y | \mathcal{D}, t) = \int \text{d}\psi \,
+            p(y | \psi , t)\, p(\psi | \mathcal{D}),
 
-    where :math:`x` are the measureable biomarker values, :math:`t` is the
-    measurement time, :math:`p(x | t; \theta)` is the predictive model
-    and :math:`p(\theta | X^{\text{obs}})` is the posterior distribution of
-    the model parmeters :math:`\theta` for observations
-    :math:`X^{\text{obs}}`.
+    where :math:`p(y | \psi, t)` is the model of the data-generating process
+    and :math:`p(\psi | \mathcal{D})` is the posterior distribution of
+    the model parmeters.
 
     :param predictive_model: A predictive model which defines the distribution
         of observable biomarkers over time conditioned on parameter values.
@@ -231,7 +225,7 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             self, times, n_samples=None, individual=None, seed=None,
             include_regimen=False, covariates=None):
         """
-        Samples "measurements" of the biomarkers from the posterior predictive
+        Samples virtual measurements from the posterior predictive
         model and returns them in form of a :class:`pandas.DataFrame`.
 
         For each of the ``n_samples`` a parameter set is drawn from the
@@ -253,9 +247,10 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             dosing regimen information is included in the output. Only possible
             when ``return_df=True``.
         :type include_regimen: bool, optional
-        :param covariates: Values for the covariates. If ``None``, default
-            is assumed defined by the :class:`CovariateModel`.
-        :type covariates: np.ndarray of shape ``(n_cov, 1)``, optional
+        :param covariates: Covariate values, specifying the sampled
+            subpopulation.
+        :type covariates: List, np.ndarray of shape ``(n_cov,)`` or
+            ``(n_samples, n_cov)``, optional
         :rtype: :class:`pandas.DataFrame`
         """
         # Make sure n_samples is an integer
@@ -344,25 +339,16 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
 
 class PredictiveModel(object):
     r"""
-    Implements a model that predicts the change of observable biomarkers over
-    time in a patient or a model organism.
+    Implements a model of a data-generating process.
 
-    This model takes an instance of a :class:`MechanisticModel` and an instance
-    of an :class:`ErrorModel` for each mechanistic model output, and predicts
-    biomarker values that may be measured in preclinical or clinical
-    experiments.
-
-    Formally, the distribution of measureable observables may be expressed as
+    The model is defined by an instance of a :class:`MechanisticModel` and an
+    instance of an :class:`ErrorModel` for each mechanistic model output
 
     .. math::
-        X \sim \mathbb{P}
-        \left( f(t, \psi _{\text{m}}), \psi _{\text{e}} \right) ,
+        p(y | \psi , t),
 
-    where :math:`X` is a measureable biomarker value at time :math:`t`.
-    :math:`f(t, \psi _{\text{m}})` is the output of the mechanistic model for
-    model parameters :math:`\psi _{\text{m}}`, and :math:`\mathbb{P}` is the
-    distribution around the mechanistic model for error model parameters
-    :math:`\psi _{\text{e}}`.
+    where :math:`y` are measurements of quantities of interest, :math:`\psi`
+    are the model parameters and :math:`t` is the time.
 
     Parameters
     ----------
@@ -818,26 +804,20 @@ class PredictiveModel(object):
 
 class PopulationPredictiveModel(PredictiveModel):
     r"""
-    Implements a model that predicts the change of observable biomarkers over
-    time in a population of patients or model organisms.
+    Implements a model of a data-generating process.
 
-    This model takes an instance of a :class:`PredictiveModel`, and one
-    instance of a :class:`PopulationModel` for each predictive model
-    parameter.
+    The model is defined by an instance of a :class:`PredictiveModel` and an
+    instance of a :class:`PopulationModel`. The predictive model
+    :math:`p(y | \psi, t)` defines the data-generating process for an
+    individual in the population with parameters :math:`\psi`. The population
+    model :math:`p(\psi | \theta)` defines how the parameters vary across
+    individuals in the population.
 
-    Formally, the distribution of measureable observables may be expressed as
+    As a result, the data-generating process is defined as
 
     .. math::
-        X \sim
-        \mathbb{P}\left( t; \psi _{\text{m}}, \psi _{\text{e}} \right)
-        \mathbb{P}\left(\psi _{\text{m}}, \psi _{\text{e}} | \theta \right),
-
-    where :math:`X` is a measureable biomarker value at time :math:`t`.
-    :math:`\mathbb{P}\left( t; \psi _{\text{m}}, \psi _{\text{e}} \right)` is
-    the predictive model for an individual patient defined by the predictive
-    model, and
-    :math:`\mathbb{P}\left(\psi _{\text{m}}, \psi _{\text{e}} | \theta \right)`
-    is the population distribution with parameters :math:`\theta`.
+        p(y | \theta, t) =
+            \int \mathrm{d}\psi \, p(y | \psi, t)\, p(\psi |\theta).
 
     Extends :class:`PredictiveModel`.
 
@@ -967,14 +947,15 @@ class PopulationPredictiveModel(PredictiveModel):
         """
         Samples measurements of the observables from virtual patients.
 
-        Virtual patients are sampled from the population model in form of
-        predictive model parameters. Those parameters are then used to sample
-        virtual measurements from the predictive model. For each virtual
-        patient one measurement is performed at each of the provided time
-        points.
+        Virtual patients are sampled from the population model and measured by
+        sampling from the individual-level predictive model. Each virtual
+        patient is measured at each of the provided time points.
 
         The number of virtual patients that is being measured can be specified
         with ``n_samples``.
+
+        If the data-generating process does not depend on covariates, the
+        ``covariates`` input is ignored.
 
         :param parameters: Population model parameters.
         :type parameters: np.ndarry of shape ``(n_parameters,)``
@@ -992,30 +973,45 @@ class PopulationPredictiveModel(PredictiveModel):
             dosing regimen information is included in the output. Only possible
             when ``return_df=True``.
         :type include_regimen: bool, optional
-        :param covariates: Values for the covariates. If ``None``, default
-            is assumed defined by the :class:`CovariateModel`.
-        :type covariates: np.ndarray of shape ``(n_cov, 1)``, optional
+        :param covariates: Covariate values, specifying the sampled
+            subpopulation.
+        :type covariates: List, np.ndarray of shape ``(n_cov,)`` or
+            ``(n_samples, n_cov)``, optional
         :rtype: :class:`pandas.DataFrame` or np.ndarray of shape
             ``(n_outputs, n_times, n_samples)``
         """
         # Check inputs
-        parameters = np.asarray(parameters)
-        if len(parameters) != self.n_parameters():
-            raise ValueError(
-                'The length of parameters does not match n_parameters.')
-
-        # Make sure n_cov is 2 dimensional
-        if covariates is not None:
-            covariates = np.asarray(covariates)
-            covariates = covariates.reshape(len(covariates), 1)
-
         if not n_samples:
             n_samples = 1
         n_samples = int(n_samples)
 
+        parameters = np.asarray(parameters)
+        if len(parameters) != self.n_parameters():
+            raise ValueError(
+                'The length of parameters does not match n_parameters.')
+        if (self._population_model.n_covariates() > 0):
+            covariates = np.asarray(covariates)
+            if covariates.ndim == 1:
+                covariates = covariates[np.newaxis, :]
+            n_s, n_c = covariates.shape
+            if n_c != self._population_model.n_covariates():
+                raise ValueError(
+                    'Provided covariates do not match the number of '
+                    'covariates.')
+            if (n_s > 1) and (n_s != n_samples):
+                raise ValueError(
+                    'Provided covariates cannot be broadcasted to number of '
+                    'samples.')
+
+        if seed is not None:
+            seed = np.random.default_rng(seed)
+
         # Sample individuals from population model
         patients = self._population_model.sample(
-            parameters, n_samples, seed, covariates=covariates)
+            parameters=parameters, n_samples=n_samples, seed=seed,
+            covariates=covariates)
+        patients = self._population_model.compute_individual_parameters(
+            parameters=parameters, eta=patients, covariates=covariates)
 
         # Create numpy container for samples (measurements of virtual patients)
         n_outputs = self._predictive_model.get_n_outputs()
@@ -1061,7 +1057,7 @@ class PopulationPredictiveModel(PredictiveModel):
                     'ID': sample_ids,
                     'Time': np.nan,
                     'Observable': covariate,
-                    'Value': covariates[idc]})])
+                    'Value': covariates[..., idc]})])
 
         # Add dosing regimen information, if set
         if include_regimen:
@@ -1180,9 +1176,10 @@ class PriorPredictiveModel(AveragedPredictiveModel):
             dosing regimen information is included in the output. Only possible
             when ``return_df=True``.
         :type include_regimen: bool, optional
-        :param covariates: Values for the covariates. If ``None``, default
-            is assumed defined by the :class:`CovariateModel`.
-        :type covariates: np.ndarray of shape ``(n_cov, 1)``, optional
+        :param covariates: Covariate values, specifying the sampled
+            subpopulation.
+        :type covariates: List, np.ndarray of shape ``(n_cov,)`` or
+            ``(n_samples, n_cov)``, optional
         :rtype: :class:`pandas.DataFrame`
         """
         # Make sure n_samples is an integer

@@ -19,6 +19,7 @@ used to explore chi's functionality in a more structured way.
     log_pdfs
     mechanistic_models
     plots/index
+    population_filters
     population_models
     predictive_models
     problems
@@ -35,8 +36,8 @@ Summary of all functions and classes in chi
     chi.ErrorModel
     chi.library.DataLibrary
     chi.library.ModelLibrary
+    chi.LinearCovariateModel
     chi.LogLikelihood
-    chi.LogNormalLinearCovariateModel
     chi.LogNormalErrorModel
     chi.LogNormalModel
     chi.LogPosterior
@@ -66,7 +67,6 @@ Summary of all functions and classes in chi
     chi.PredictiveModel
     chi.PriorPredictiveModel
     chi.ProblemModellingController
-    chi.ReducedLogPDF
     chi.ReducedMechanisticModel
     chi.ReducedPopulationModel
     chi.SamplingController

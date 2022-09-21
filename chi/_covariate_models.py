@@ -5,133 +5,109 @@
 # full license details.
 #
 
-from warnings import warn
+import copy
 
 import numpy as np
-
-import chi
 
 
 class CovariateModel(object):
     r"""
     A base class for covariate models.
 
-    A CovariateModel assumes that the individual parameters :math:`\psi` are
-    distributed according to a population model that is conditional on the
-    model parameters :math:`\vartheta` and the covariates :math:`\chi`
+    Covariate models model parameters of population models as functions of
+    covariates
 
     .. math::
-        \psi \sim \mathbb{P}(\cdot | \vartheta, \chi).
+        \vartheta = \vartheta(\theta, \chi),
 
-    Here, covariates can vary from one individual to the next, while the model
-    parameters :math:`\vartheta` are the same for all individuals.
+    where :math:`\vartheta` are the parameters of a
+    :class:`chi.PopulationModel`, :math:`\chi` are the covariates and
+    :math:`\theta` are the new parameters that govern the
+    inter-individual variability of the population.
 
-    To simplify this dependence, CovariateModels make the assumption that the
-    distribution :math:`\mathbb{P}(\psi | \vartheta, \chi)` deterministically
-    varies with the covariates, such that the problem can be recast in terms
-    of a covariate-independent distribution of inter-individual
-    fluctuations :math:`\eta`
+    This allows you to distinguish subpopulations in the population
 
     .. math::
-        \eta \sim \mathbb{P}(\cdot | \theta)
+        p(\psi | \theta) =
+            \int \mathrm{d}\chi \,
+            p(\psi | \vartheta(\theta, \chi) )\, p(\chi),
 
-    and a set of deterministic relationships for the individual parameters
-    :math:`\psi`  and the new population parameters :math:`\theta`
+    where :math:`p(\chi)` is the distribution of the covariates in the
+    population (for discrete covariates the integrals becomes a sum).
+    Each subpopulation is characterised by a unique set of covariates.
 
-    .. math::
-        \theta = f(\vartheta)  \quad \mathrm{and} \quad
-        \psi = g(\vartheta , \eta, \chi ).
+    By default, only the first population parameter is transformed. The
+    parameters to transform can be selected with
+    :meth:`set_population_parameters`.
 
-    This base class provides an API to implement the functions :math:`f` and
-    :math:`g`.
+    :param n_cov: Number of covariates.
+    :type n_cov: int, optional
+    :param cov_names: Names of the covariates.
+    :type cov_names: List[str], optional
     """
 
-    def __init__(self):
+    def __init__(self, n_cov=1, cov_names=None):
         super(CovariateModel, self).__init__()
+        # Check inputs
+        n_cov = int(n_cov)
+        if n_cov < 1:
+            raise ValueError(
+                'The number of covariates has to be greater or equal to 1.')
+        self._n_cov = n_cov
+        if cov_names:
+            if len(cov_names) != self._n_cov:
+                raise ValueError(
+                    'The number of covariate names has to match the number of '
+                    'covariates.')
+            cov_names = [str(name) for name in cov_names]
+        else:
+            cov_names = [
+                'Cov. %d' % (id_cov + 1) for id_cov in range(self._n_cov)]
+        self._cov_names = cov_names
 
-        self._n_parameters = None
-        self._n_covariates = None
-        self._parameter_names = None
-        self._covariate_names = None
-
-    def check_compatibility(self, population_model):
-        r"""
-        Takes an instance of a :class:`PopulationModel` and checks
-        the compatibility with this CovariateModel.
-
-        If the model is not compatible, a warning is raised.
-
-        :param population_model: A population model for :math:`\eta`.
-        :type population_model: PopulationModel
-        """
-        raise NotImplementedError
-
-    def compute_individual_parameters(
-            self, parameters, eta, covariates=None):
-        r"""
-        Returns the individual parameters :math:`\psi`.
-
-        By default ``covariates`` are set to ``None``, such that model
-        does not rely on covariates. Each derived :class:`CovariateModel`
-        needs to make sure that model reduces to sensible values for
-        this edge case.
-
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :param eta: Inter-individual fluctuations :math:`\eta`.
-        :type eta: np.ndarray of length (n,)
-        :param covariates: Individual covariates :math:`\chi`.
-        :type covariates: np.ndarray of length (n, c)
-        :returns: Individual parameters :math:`\psi`.
-        :rtype: np.ndarray of length (n,)
-        """
-        raise NotImplementedError
-
-    def compute_individual_sensitivities(
-            self, parameters, eta, covariates=None):
-        r"""
-        Returns the individual parameters :math:`\psi` and their sensitivities
-        with respect to the model parameters :math:`\vartheta` and the relevant
-        fluctuation :math:`\eta`.
-
-        By default ``covariates`` are set to ``None``, such that model
-        does not rely on covariates. Each derived :class:`CovariateModel`
-        needs to make sure that model reduces to sensible values for
-        this edge case.
-
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :param eta: Inter-individual fluctuations :math:`\eta`.
-        :type eta: np.ndarray of length (n,)
-        :param covariates: Individual covariates :math:`\chi`.
-        :type covariates: np.ndarray of length (n, c)
-        :returns: Individual parameters and sensitivities of shape (p + 1, n).
-        :rtype: Tuple[np.ndarray, np.ndarray]
-        """
-        raise NotImplementedError
+        # Set defaults
+        self._pidx = np.array([0])
+        self._didx = np.array([0])
+        self._n_selected = 1
+        self._n_parameters = self._n_selected * self._n_cov
+        self._parameter_names = ['Param. 1'] * self._n_cov
 
     def compute_population_parameters(self, parameters):
-        r"""
-        Returns the population model parameters :math:`\theta` for the
-        inter-individual fluctuations :math:`\eta`.
+        """
+        Returns the transformed population model parameters.
 
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :returns: Population parameters :math:`\theta` for :math:`\eta`.
-        :rtype: np.ndarray of length (p',)
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)`` or
+            ``(n_selected, n_cov)``
+        :param pop_parameters: Population model parameters.
+        :type pop_parameters: np.ndarray of shape
+            ``(n_pop_params_per_dim, n_dim)``
+        :param covariates: Covariates of individuals.
+        :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
+        :rtype: np.ndarray of shape ``(n_ids, n_pop_params_per_dim, n_dim)``
         """
         raise NotImplementedError
 
-    def compute_population_sensitivities(self, parameters):
-        r"""
-        Returns the population model parameters :math:`\theta` for the
-        inter-individual fluctuations :math:`\eta` and their sensitivities
-        with respect to the model parameters :math:`\vartheta`.
+    def compute_sensitivities(
+            self, parameters, pop_parameters, covariates, dlogp_dvartheta):
+        """
+        Returns the sensitivities of the likelihood with respect to
+        the model parameters and the population model parameters.
 
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :returns: Population parameters and sensitivities of shape (p, p').
-        :rtype: Tuple[np.ndarray, np.ndarray]
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)`` or
+            ``(n_selected, n_cov)``
+        :param pop_parameters: Population model parameters.
+        :type pop_parameters: np.ndarray of shape
+            ``(n_pop_params_per_dim, n_dim)``
+        :param covariates: Covariates of individuals.
+        :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
+        :param dlogp_dvartheta: Unflattened sensitivities of the population
+            model to the transformed parameters.
+        :type dlogp_dvartheta: np.ndarray of shape
+            ``(n_ids, n_param_per_dim, n_dim)``
+        :rtype: Tuple[np.ndarray of shape ``(n_pop_params,)``,
+            np.ndarray of shape ``(n_parameters,)``]
         """
         raise NotImplementedError
 
@@ -139,19 +115,44 @@ class CovariateModel(object):
         """
         Returns the names of the covariates.
         """
-        return self._covariate_names
+        return self._cov_names
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, exclude_cov_names=False):
         """
         Returns the names of the model parameters.
+
+        :param exclude_cov_names: A boolean flag that indicates whether the
+            covariate name is appended to the parameter name.
+        :type exclude_cov_names: bool, optional
         """
-        return self._parameter_names
+        # Append covariate names
+        param_names = copy.copy(self._parameter_names)
+        if not exclude_cov_names:
+            names = []
+            for name_id, name in enumerate(param_names):
+                cov_name = self._cov_names[name_id % self._n_cov]
+                names += [name + ' ' + cov_name]
+            param_names = names
+
+        return param_names
+
+    def get_set_population_parameters(self):
+        """
+        Returns the indices of the population parameters that are transformed.
+
+        Indices are returned as a tuple of arrays, where the first array are
+        parameters indices and the second array are the dimension indicies.
+
+        :rtype: Tuple[np.ndarray of shape ``(n_selected,)``,
+            np.ndarray of shape ``(n_selected,)``]
+        """
+        return (self._pidx.copy(), self._didx.copy())
 
     def n_covariates(self):
         """
         Returns the number of covariates c.
         """
-        return self._n_covariates
+        return self._n_cov
 
     def n_parameters(self):
         """
@@ -167,241 +168,19 @@ class CovariateModel(object):
             are reset to defaults.
         :type names: List
         """
-        raise NotImplementedError
-
-    def set_parameter_names(self, names=None):
-        """
-        Sets the names of the model parameters.
-
-        :param names: A list of parameter names. If ``None``, parameter names
-            are reset to defaults.
-        :type names: List
-        """
-        raise NotImplementedError
-
-
-class LogNormalLinearCovariateModel(CovariateModel):
-    r"""
-    This model implements a reparametrisation of the
-    :class:`LogNormalModel` population model, where the mean on the log-scale
-    is a linear function of covariates :math:`\chi`
-
-    .. math::
-        \psi \sim \mathrm{Lognormal}\left(
-            \mu _{\mathrm{log}}(\chi ),  \sigma _{\mathrm{log}}\right) ,
-
-    where :math:`\psi` denotes the parameters of the individual models.
-    :math:`\mu _{\mathrm{log}}` and :math:`\sigma _{\mathrm{log}}` are
-    the mean and standard deviation of :math:`\log \psi`.
-    The mean :math:`\mu _{\mathrm{log}}` depends linearly on the covariates
-    :math:`\chi`
-
-    .. math::
-        \mu _{\mathrm{log}}(\chi ) =
-            \mu _{\mathrm{log}, 0} + \Delta \mu _{\mathrm{log}} \, \chi ,
-
-    where :math:`\mu _{\mathrm{log}, 0}` is the mean when the covariates are
-    zero, and :math:`\Delta \mu _{\mathrm{log}}` are the relative shifts per
-    unit from this baseline.
-    The standard deviation on the log-scale is assumed to be independent of the
-    covariates.
-
-    The model is instantiated in the non-centered parametrisation.
-    In the non-centered parametrisation the parameters are transformed to
-    standardised inter-individual fluctations which are modelled as Gaussian
-    random variables
-
-    .. math::
-        \eta \sim \mathcal{N}(0, 1).
-
-    These inter-individual fluctuations are related to the individual
-    parameters by
-
-    .. math::
-        \psi =
-            \mathrm{e}^{
-                \mu _{\mathrm{log}}(\chi ) + \sigma _{\mathrm{log}} \, \eta
-            } .
-
-    The parameters of this model are
-    :math:`\vartheta = (\mu _{\mathrm{log}, 0}, \sigma _{\mathrm{log}},
-    \Delta \mu _{\mathrm{log}, 1}, \ldots , \Delta \mu _{\mathrm{log}, c})`,
-    where :math:`c` is the number of covariates.
-
-    Extends :class:`CovariateModel`.
-    """
-    def __init__(self, n_covariates=0):
-        super(LogNormalLinearCovariateModel, self).__init__()
-
-        # Set number of parameters and covariates
-        self._n_covariates = int(n_covariates)
-        self._n_parameters = 2 + self._n_covariates
-
-        # Set default names
-        self._covariate_names = [
-            'Covariate %d' % int(c + 1) for c in range(self._n_covariates)]
-        self._parameter_names = ['Base log mean', 'Log std.'] + [
-            'Shift %s' % n for n in self._covariate_names]
-
-    def check_compatibility(self, population_model):
-        r"""
-        Takes an instance of a :class:`PopulationModel` and checks
-        the compatibility with this CovariateModel.
-
-        If the model is not compatible, a warning is raised.
-
-        In the non-centered parametrisation the model is only
-        compatible with a :class:`GaussianModel`.
-
-        :param population_model: A population model for the individuals'
-            parameters.
-        :type population_model: PopulationModel
-        """
-        if not isinstance(population_model, chi.GaussianModel):
-            warn(
-                'This CovariateModel is only intended for the use with a '
-                'GaussianModel.', UserWarning)
-
-    def compute_individual_parameters(self, parameters, eta, covariates=None):
-        r"""
-        Returns the individual parameters :math:`\psi`.
-
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :param eta: Inter-individual fluctuations :math:`\eta`.
-        :type eta: np.ndarray of length (n,)
-        :param covariates: Individual covariates :math:`\chi`.
-        :type covariates: np.ndarray of length (n, c)
-        :returns: Individual parameters :math:`\psi`.
-        :rtype: np.ndarray of length (n,)
-        """
-        # Unpack parameters
-        mu_base, sigma = parameters[:2]
-        shifts = np.array(parameters[2:])
-        if sigma <= 0:
-            # The standard deviation of a log-normal distribution is
-            # strictly positive
-            return np.array([np.nan] * len(eta))
-
-        # Compute individual parameters
-        mu = mu_base
-        if self._n_covariates > 0:
-            mu = mu_base + covariates @ shifts
-
-        eta = np.array(eta)
-        psi = np.exp(mu + sigma * eta)
-
-        return psi
-
-    def compute_individual_sensitivities(
-            self, parameters, eta, covariates=None):
-        r"""
-        Returns the individual parameters :math:`\psi` and their sensitivities
-        with respect to the model parameters :math:`\vartheta` and the relevant
-        fluctuations :math:`\eta`.
-
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :param eta: Inter-individual fluctuations :math:`\eta`.
-        :type eta: np.ndarray of length (n,)
-        :param covariates: Individual covariates :math:`\chi`.
-        :type covariates: np.ndarray of length (n, c)
-        :returns: Individual parameters :math:`\psi` and sensitivities
-            (:math:`\partial _{\eta} \psi` ,
-            :math:`\partial _{\vartheta _1} \psi`, :math:`\ldots`,
-            :math:`\partial _{\vartheta _p} \psi`).
-        :rtype: Tuple[np.ndarray, np.ndarray] of shapes (n,) and (1 + p, n)
-        """
-        # Unpack parameters
-        mu_base, sigma = parameters[:2]
-        shifts = np.array(parameters[2:])
-        if sigma <= 0:
-            # The standard deviation of a log-normal distribution is
-            # strictly positive
-            return (
-                np.full(fill_value=np.nan, shape=len(eta)),
-                np.full(fill_value=np.nan, shape=(3, len(eta)))
-            )
-
-        # Compute individual parameters
-        mu = mu_base
-        if self._n_covariates > 0:
-            mu = mu_base + covariates @ shifts
-
-        eta = np.array(eta)
-        psi = np.exp(mu + sigma * eta)
-
-        # Compute sensitivities
-        deta = sigma * psi
-        dmu_base = psi
-        dsigma = eta * psi
-
-        sensitivities = np.vstack((deta, dmu_base, dsigma))
-        if self._n_covariates > 0:
-            dshifts = covariates.T * psi[np.newaxis, :]
-            sensitivities = np.vstack((sensitivities, dshifts))
-
-        return (psi, sensitivities)
-
-    def compute_population_parameters(self, parameters):
-        r"""
-        Returns the population model parameters :math:`\theta` for the
-        inter-individual fluctuations :math:`\eta`.
-
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :returns: Population parameters :math:`\theta` for :math:`\eta`.
-        :rtype: np.ndarray of length (p',)
-        """
-        # As a result of the `centering` the population parameters for
-        # eta (mean and std.) are constant.
-        return np.array([0, 1])
-
-    def compute_population_sensitivities(self, parameters):
-        r"""
-        Returns the population model parameters :math:`\theta` for the
-        inter-individual fluctuations :math:`\eta` and their sensitivities
-        with respect to the model parameters :math:`\vartheta`.
-
-        :param parameters: Model parameters :math:`\vartheta`.
-        :type parameters: np.ndarray of length (p,)
-        :returns: Population parameters :math:`\theta` and sensitivities
-            :math:`\partial _{\vartheta}\theta`.
-        :rtype: Tuple[np.ndarray, np.ndarray] of shapes (p',) and (p, p')
-        """
-        # As a result of the `centering` the population parameters for
-        # eta (mean and std.) are constant.
-        return (np.array([0, 1]), np.array([[0, 0]] * len(parameters)))
-
-    def set_covariate_names(self, names=None, update_param_names=False):
-        """
-        Sets the covariate names.
-
-        :param names: A list of parameter names. If ``None``, covariate names
-            are reset to defaults.
-        :type names: List
-        :param update_param_names: Boolean flag indicating whether parameter
-            names should be updated according to new covariate names. By
-            default parameter names are not updated.
-        :type update_param_names: bool, optional
-        """
         if names is None:
             # Reset names to defaults
-            self._covariate_names = [
-                'Covariate %d' % int(c + 1) for c in range(self._n_covariates)
-            ]
+            self._cov_names = [
+                'Cov. %d' % (id_cov + 1) for id_cov in range(self._n_cov)]
             return None
 
-        if len(names) != self._n_covariates:
+        if len(names) != self._n_cov:
             raise ValueError(
-                'Length of names does not match n_covariates.')
+                'Length of names does not match number of covariates.')
 
-        self._covariate_names = [str(label) for label in names]
+        self._cov_names = [str(label) for label in names]
 
-        if update_param_names:
-            self.set_parameter_names()
-
-    def set_parameter_names(self, names=None):
+    def set_parameter_names(self, names=None, mask_names=False):
         """
         Sets the names of the model parameters.
 
@@ -411,13 +190,169 @@ class LogNormalLinearCovariateModel(CovariateModel):
         """
         if names is None:
             # Reset names to defaults
-            covariate_names = self.get_covariate_names()
-            self._parameter_names = ['Base log mean', 'Log std.'] + [
-                'Shift %s' % name for name in covariate_names]
+            names = []
+            for id_p in range(self._n_selected):
+                names += ['Param. %d' % (id_p + 1)] * self._n_cov
+            self._parameter_names = names
             return None
 
         if len(names) != self._n_parameters:
             raise ValueError(
-                'Length of names does not match n_parameters.')
+                'Length of names does not match number of covariates.')
 
         self._parameter_names = [str(label) for label in names]
+
+    def set_population_parameters(self, indices):
+        """
+        Sets the parameters of the population model that are transformed by the
+        covariate model.
+
+        Note that this influences the number of model parameters.
+
+        .. warning::
+            Whether or not the indices are out of bounds cannot be checked at
+            this point. It is assumed that for any future call which requires
+            ``pop_parameters``, the selected indices are compatible with the
+            input.
+
+        :param indices: A list of parameter indices
+            [param index per dim, dim index].
+        :type indices: List[List[int]]
+        """
+        raise NotImplementedError
+
+
+class LinearCovariateModel(CovariateModel):
+    r"""
+    A linear covariate model.
+
+    A linear covariate model transforms the parameters of the
+    population model :math:`\vartheta` linearly in the covariates
+
+    .. math::
+        \vartheta (\theta, \chi ) =
+            \vartheta _{0} + \sum _c \beta _c \, \chi _c,
+
+    where :math:`\chi = \{ \chi _c\}` are the covariates,
+    :math:`\vartheta _0` are the original parameters of the population model,
+    and :math:`\theta = (\vartheta _0, \beta)` are the new population
+    model parameters.
+
+    By default, only the first population parameter is transformed. The
+    parameters can be selected with :meth:`set_population_parameters`.
+
+    Extends :class:`CovariateModel`.
+
+    :param n_cov: Number of covariates.
+    :type n_cov: int, optional
+    :param cov_names: Names of the covariates.
+    :type cov_names: List[str], optional
+    """
+    def __init__(self, n_cov=1, cov_names=None):
+        super(LinearCovariateModel, self).__init__(n_cov, cov_names)
+
+        # Set number of parameters
+        self._n_parameters = self._n_cov
+
+    def compute_population_parameters(
+            self, parameters, pop_parameters, covariates):
+        """
+        Returns the transformed population model parameters.
+
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)`` or
+            ``(n_selected, n_cov)``
+        :param pop_parameters: Population model parameters.
+        :type pop_parameters: np.ndarray of shape
+            ``(n_pop_params_per_dim, n_dim)``
+        :param covariates: Covariates of individuals.
+        :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
+        :rtype: np.ndarray of shape ``(n_ids, n_pop_params_per_dim, n_dim)``
+        """
+        parameters = np.asarray(parameters)
+        if parameters.ndim == 1:
+            parameters = parameters.reshape(self._n_selected, self._n_cov)
+        parameters = parameters.T
+
+        # Compute population parameters
+        n_pop, n_dim = pop_parameters.shape
+        n_ids = len(covariates)
+        vartheta = np.zeros((n_ids, n_pop, n_dim))
+        vartheta += pop_parameters[np.newaxis, ...]
+        vartheta[:, self._pidx, self._didx] += covariates @ parameters
+
+        return vartheta
+
+    def compute_sensitivities(
+            self, parameters, pop_parameters, covariates, dlogp_dvartheta):
+        """
+        Returns the sensitivities of the likelihood with respect to
+        the model parameters and the population model parameters.
+
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)`` or
+            ``(n_selected, n_cov)``
+        :param pop_parameters: Population model parameters.
+        :type pop_parameters: np.ndarray of shape
+            ``(n_pop_params_per_dim, n_dim)``
+        :param covariates: Covariates of individuals.
+        :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
+        :param dlogp_dvartheta: Unflattened sensitivities of the population
+            model to the transformed parameters.
+        :type dlogp_dvartheta: np.ndarray of shape
+            ``(n_ids, n_param_per_dim, n_dim)``
+        :rtype: Tuple[np.ndarray of shape ``(n_pop_params,)``,
+            np.ndarray of shape ``(n_parameters,)``]
+        """
+        parameters = np.asarray(parameters)
+        if parameters.ndim == 1:
+            parameters = parameters.reshape(self._n_selected, self._n_cov)
+        parameters = parameters.T
+
+        # Compute sensitivities
+        n_pop, n_dim = pop_parameters.shape
+        n_pop = n_pop * n_dim
+        dpop = np.sum(dlogp_dvartheta, axis=0).flatten()
+        dparams = np.sum(
+            dlogp_dvartheta[:, self._pidx, self._didx, np.newaxis]
+            * covariates[:, np.newaxis, :], axis=0).flatten()
+
+        return dpop, dparams
+
+    def set_population_parameters(self, indices):
+        """
+        Sets the parameters of the population model that are transformed by the
+        covariate model.
+
+        Note that this influences the number of model parameters.
+
+        .. warning::
+            Whether or not the indices are out of bounds cannot be checked at
+            this point. It is assumed that for any future call which requires
+            ``pop_parameters``, the selected indices are compatible with the
+            input.
+
+        :param indices: A list of parameter indices
+            [param index per dim, dim index].
+        :type indices: List[List[int]]
+        """
+        # Keep only unique index pairs
+        unique = []
+        for idx in indices:
+            if idx not in unique:
+                unique.append([int(idx[0]), int(idx[1])])
+
+        # Split into param index and dim index
+        # (sort 1. dimension axis, 2. parameter axis, so indexing preserves
+        # order of np.ndarray.flatten)
+        indices = np.array(unique)
+        indices = indices[np.argsort(indices[:, 1]), :]
+        indices = indices[np.argsort(indices[:, 0]), :]
+        self._pidx = indices[:, 0]
+        self._didx = indices[:, 1]
+
+        # Update number of parameters and parameters names
+        n_params = len(self._pidx)
+        self._n_parameters = self._n_cov * n_params
+        self._n_selected = n_params
+        self.set_parameter_names()

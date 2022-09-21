@@ -18,31 +18,22 @@ import chi
 class HierarchicalLogLikelihood(object):
     r"""
     A hierarchical log-likelihood consists of structurally identical
-    log-likelihoods whose parameters are related by a population model.
+    log-likelihoods whose parameters are governed by a population model.
 
-    A hierarchical log-likelihood takes a list of :class:`LogLikelihood`
-    instances and a :class:`PopulationModel` with the same dimension as the
-    number of parameters of the log-likelihoods. The hierarchical
-    log-likelihood is defined as
+    A hierarchical log-likelihood is defined by a list of
+    :class:`LogLikelihood` instances and a :class:`PopulationModel`
 
     .. math::
         \log p(\mathcal{D}, \Psi | \theta ) =
             \sum _{ij} \log p(y_{ij} | \psi _{i} , t_{ij})
-            + \sum _{ik} \log p(\psi _{ik}| \theta _k),
+            + \sum _{i} \log p(\psi _{i}| \theta),
 
-    where :math:`\sum _{j} \log p(y_{ij} | \psi _{i} , t_{ij})` is the
-    log-likelihood of :math:`\psi _{i}` associated with individual :math:`i`
-    and :math:`\sum _{ik} \log p(\psi _{ik}| \theta _k)` is the log-likelihood
-    of the population parameters. :math:`\mathcal{D}=\{ \mathcal{D}_i\}` is the
-    data, composed of measurements from different individuals
-    :math:`\mathcal{D}_i = \{(y_{ij}, t_{ij})\}`. :math:`\Psi = \{ \psi_i\}`
-    is the collection of bottom-level parameters, which in turn are the
-    parameters of the individual log-likelihoods
-    :math:`\psi_i = \{ \psi _{ik}\}`.
-    We use :math:`i` to index individuals, :math:`j` to index measurements for
-    an individual and :math:`k` to index the bottom-level parameters.
-    :math:`\theta _k = \{ \theta _{kr} \}` are the population parameters
-    associated with the :math:`k^{\text{th}}` bottom-level parameter.
+    where the first term is the sum over the log-likelihoods and the second
+    term is the log-likelihood of the population model parameters.
+    :math:`\mathcal{D}=\{ (y_{ij}, t_{ij})\}` is the
+    data, where :math:`(y_{ij}, t_{ij})` is the :math:`j^{\mathrm{th}}`
+    measurement of log-likelihood :math:`i`. :math:`\Psi = \{ \psi_i\}`
+    denotes the parameters across the individual log-likelihoods.
 
     :param log_likelihoods: A list of log-likelihoods which are
         defined on the same parameter space with dimension ``n_parameters``.
@@ -50,7 +41,7 @@ class HierarchicalLogLikelihood(object):
     :param population_models: A population model of dimension ``n_parameters``.
     :type population_models: PopulationModel
     :param covariates: A 2-dimensional array of with the
-        individual's covariates of shape ``(n_ids, n_cov)``.
+        individual's covariates.
     :type covariates: np.ndarray of shape ``(n_ids, n_cov)``, optional
     """
     def __init__(
@@ -75,7 +66,7 @@ class HierarchicalLogLikelihood(object):
                     'the dimensions of the log-likelihood parameter space.')
 
         n_ids = len(log_likelihoods)
-        if population_model.needs_covariates():
+        if population_model.n_covariates() > 0:
             if covariates is None:
                 raise ValueError(
                     'The population model needs covariates, but no covariates '
@@ -132,17 +123,17 @@ class HierarchicalLogLikelihood(object):
 
         # Compute population model score
         score = self._population_model.compute_log_likelihood(
-            top_parameters, bottom_parameters)
+            top_parameters, bottom_parameters, covariates=self._covariates)
 
         # Return if values already lead to a rejection
         if np.isinf(score):
             return score
 
         # Transform bottom-level parameters
-        if self._population_model.transforms_individual_parameters():
-            bottom_parameters = \
-                self._population_model.compute_individual_parameters(
-                    top_parameters, bottom_parameters, self._covariates)
+        # Identity, if model does not tranform parameters
+        bottom_parameters = \
+            self._population_model.compute_individual_parameters(
+                top_parameters, bottom_parameters, self._covariates)
 
         # Evaluate individual likelihoods
         for idi, log_likelihood in enumerate(self._log_likelihoods):
@@ -210,64 +201,60 @@ class HierarchicalLogLikelihood(object):
             log_likelihood.set_id(_id)
             ids.append(_id)
 
-    def _remove_duplicates(self, sensitivities):
+    def _collect_sensitivities(self, ds_dbottom, ds_dtop):
         """
         In some sense the reverse of self._reshape_bottom_parameters.
 
         1. Pooled bottom parameters need to be added to population parameter
         2. Heterogeneous bottom parameters need to added to population
             parameters
+
+        ds_dbottom of shape (n_ids, n_dim)
+        ds_dtop of shape (n_top,)
         """
+        sens = np.empty(shape=self._n_parameters)
+        sens[self._n_bottom:] = ds_dtop
         # Check for quick solution 1: no pooled parameters and no heterogeneous
         # parameters
         if (self._n_pooled_dim == 0) and (self._n_hetero_dim == 0):
-            return sensitivities
-
-        # Get population parameter sensitvitities
-        start_pop = self._n_ids * self._n_dim
-        sens = np.zeros(shape=self._n_parameters)
-        sens[self._n_bottom:] = sensitivities[start_pop:]
+            sens[:self._n_bottom] = ds_dbottom.flatten()
+            return sens
 
         # Check for quick solution 2: all parameters heterogen.
         if self._n_hetero_dim == self._n_dim:
             # Add contributions from bottom-level parameters
             # (Population sens. are actually zero, so we can just replace them)
-            sens = sensitivities[:start_pop]
+            sens = ds_dbottom.flatten()
             return sens
 
         # Check for quick solution 3: all parameters pooled
         if self._n_pooled_dim == self._n_dim:
             # Add contributions from bottom-level parameters
             # (Population sens. are actually zero, so we can just replace them)
-            sens = np.sum(
-                sensitivities[:start_pop].reshape(self._n_ids, self._n_dim),
-                axis=0)
+            sens = np.sum(ds_dbottom, axis=0)
             return sens
 
         shift = 0
         current_dim = 0
-        bottom_sensitivities = sensitivities[:start_pop].reshape(
-            self._n_ids, self._n_dim)
-        bottom_sens = np.zeros(shape=(
+        bottom_sens = np.empty(shape=(
             self._n_ids,
             self._n_dim - self._n_pooled_dim - self._n_hetero_dim))
         for info in self._special_dims:
             start_dim, end_dim, start_top, end_top, is_pooled = info
             # Fill leading regular dims
             bottom_sens[:, current_dim-shift:start_dim-shift] = \
-                bottom_sensitivities[:, current_dim:start_dim]
+                ds_dbottom[:, current_dim:start_dim]
             # Fill special dims
             if is_pooled:
-                sens[self._n_bottom+start_top:self._n_bottom+end_top] = \
-                    np.sum(bottom_sensitivities[:, start_dim:end_dim], axis=0)
+                sens[self._n_bottom+start_top:self._n_bottom+end_top] += \
+                    np.sum(ds_dbottom[:, start_dim:end_dim], axis=0)
             else:
-                sens[self._n_bottom+start_top:self._n_bottom+end_top] = \
-                    bottom_sensitivities[:, start_dim:end_dim].flatten()
+                sens[self._n_bottom+start_top:self._n_bottom+end_top] += \
+                    ds_dbottom[:, start_dim:end_dim].flatten()
             current_dim = end_dim
             shift += end_dim - start_dim
         # Fill trailing regular dims
-        bottom_sens[:, current_dim-shift:] = bottom_sensitivities[
-            :, current_dim:]
+        bottom_sens[:, current_dim-shift:] = ds_dbottom[:, current_dim:]
 
         # Add bottom sensitivties
         sens[:self._n_bottom] = bottom_sens.flatten()
@@ -283,7 +270,7 @@ class HierarchicalLogLikelihood(object):
         bottom_params = np.empty(shape=(self._n_ids, self._n_dim))
 
         # Check for quick solution 1: no pooled parameters and no heterogen.
-        if (self._n_pooled_dim == 0) and (self._n_hetero_dim == 0):
+        if self._population_model.n_hierarchical_dim() == self._n_dim:
             bottom_params[:, :] = bottom_parameters.reshape(
                 self._n_ids, self._n_dim)
             return bottom_params
@@ -437,40 +424,27 @@ class HierarchicalLogLikelihood(object):
         bottom_parameters = self._reshape_bottom_parameters(
             bottom_parameters, top_parameters)
 
-        # Compute population model score
-        score, sensitivities = self._population_model.compute_sensitivities(
-            top_parameters, bottom_parameters)
-
-        # Return if values already lead to a rejection
-        if np.isinf(score):
-            return score, np.full(shape=self._n_parameters, fill_value=np.inf)
-
-        # Transform bottom-level parameters
-        dpsi = None
-        if self._population_model.transforms_individual_parameters():
-            bottom_parameters, dpsi = \
-                self._population_model.compute_individual_sensitivities(
-                    top_parameters, bottom_parameters, self._covariates)
-            dpsi_deta = dpsi[0]
-            dpsi_dtheta = dpsi[1:]
+        # Make sure bottom parameters are psi
+        # (parameters of the individual log-likelihoods)
+        psi = self._population_model.compute_individual_parameters(
+            top_parameters, bottom_parameters, self._covariates)
 
         # Evaluate individual likelihoods
+        score = 0
+        dlogp_dpsi = np.empty(shape=(self._n_ids, self._n_dim))
         for idi, log_likelihood in enumerate(self._log_likelihoods):
-            l, dl_dpsi = log_likelihood.evaluateS1(bottom_parameters[idi])
-
-            # Collect score and sensitivities
+            l, dl_dpsi = log_likelihood.evaluateS1(psi[idi])
             score += l
-            if dpsi is None:
-                sensitivities[idi*self._n_dim:(idi+1)*self._n_dim] += dl_dpsi
-            else:
-                sensitivities[idi*self._n_dim:(idi+1)*self._n_dim] += \
-                    dl_dpsi * dpsi_deta[idi]
-                sensitivities[self._n_ids*self._n_dim:] += np.sum(
-                    dl_dpsi[np.newaxis, :] * dpsi_dtheta[:, idi, :],
-                    axis=1)
+            dlogp_dpsi[idi] = dl_dpsi
 
-        # Collect sensitivities of pooled parameters
-        sensitivities = self._remove_duplicates(sensitivities)
+        # Compute population model score
+        s, ds_dbottom, ds_dtop = self._population_model.compute_sensitivities(
+            top_parameters, bottom_parameters, covariates=self._covariates,
+            dlogp_dpsi=dlogp_dpsi)
+        score += s
+
+        # Collect sensitivities
+        sensitivities = self._collect_sensitivities(ds_dbottom, ds_dtop)
 
         return score, sensitivities
 
@@ -590,7 +564,7 @@ class HierarchicalLogPosterior(pints.LogPDF):
     Formally the log-posterior is defined as
 
     .. math::
-        \log p(\Psi , \theta | X ^{\text{obs}}) =
+        \log p(\Psi , \theta | \mathcal{D}) =
             \log p(\mathcal{D}, \Psi | \theta) + \log p(\theta ) +
             \text{constant},
 
@@ -713,6 +687,18 @@ class HierarchicalLogPosterior(pints.LogPDF):
 
         return names
 
+    def get_population_model(self):
+        """
+        Returns the population model.
+        """
+        return self._log_likelihood.get_population_model()
+
+    def n_ids(self):
+        """
+        Returns the number of modelled individuals.
+        """
+        return self._log_likelihood.n_log_likelihoods()
+
     def n_parameters(self, exclude_bottom_level=False):
         """
         Returns the number of parameters.
@@ -724,43 +710,91 @@ class HierarchicalLogPosterior(pints.LogPDF):
         """
         return self._log_likelihood.n_parameters(exclude_bottom_level)
 
+    def sample_initial_parameters(self, n_samples=1, seed=None):
+        """
+        Samples top-level parameters from the log-prior and bottom-level
+        parameters from the population model using the top-level samples.
+
+        These parameter samples may be used to initialise inference algorithms.
+
+        :param n_samples: Number of samples.
+        :type n_samples: int, optional
+        :param seed: Seed for random number generator.
+        :type seed: int, optional
+        :rtype: np.ndarray of shape ``(n_samples, n_parameters)``
+        """
+        n_samples = int(n_samples)
+        if n_samples <= 0:
+            raise ValueError(
+                'The number of samples has to be greater or equal to 1.')
+
+        initial_params = np.empty(shape=(n_samples, self._n_parameters))
+
+        # Sample initial values for top-level parameters
+        np.random.seed(seed)
+        n_top = self._log_prior.n_parameters()
+        n_bottom = self._n_parameters - n_top
+        initial_params[:, n_bottom:] = self._log_prior.sample(n_samples)
+
+        # Sample bottom-level parameters
+        if n_bottom == 0:
+            return initial_params
+
+        # Transform seed to random number generator, so seed is propagated
+        # across models
+        if seed is not None:
+            seed += 1
+        rng = np.random.default_rng(seed=seed)
+
+        n_ids = self._log_likelihood.n_log_likelihoods()
+        covariates = self._log_likelihood._covariates
+        bottom_parameters = []
+        population_model = self._log_likelihood.get_population_model()
+        for sample_id in range(n_samples):
+            bottom_parameters.append(population_model.sample(
+                parameters=initial_params[sample_id, n_bottom:],
+                n_samples=n_ids, seed=rng, covariates=covariates))
+
+        # Remove pooled dimensions
+        # (Pooled and heterogen. dimensions do not count as bottom parameters)
+        dims = []
+        current_dim = 0
+        try:
+            pop_models = population_model.get_population_models()
+        except AttributeError:
+            pop_models = [population_model]
+        for pop_model in pop_models:
+            n_dim = pop_model.n_dim()
+            if isinstance(
+                    pop_model, (chi.PooledModel, chi.HeterogeneousModel)):
+                current_dim += n_dim
+                continue
+            end_dim = current_dim + n_dim
+            dims += list(range(current_dim, end_dim))
+            current_dim = end_dim
+        for idx, bottom_params in enumerate(bottom_parameters):
+            bottom_parameters[idx] = bottom_params[:, dims].flatten()
+
+        initial_params[:, :n_bottom] = np.vstack(bottom_parameters)
+
+        return initial_params
+
 
 class LogLikelihood(pints.LogPDF):
     r"""
-    A log-likelihood quantifies how likely a model for a set of
-    parameters is to explain some observed biomarker values.
+    A log-likelihood that quantifies the likelihood of parameter values to
+    capture the measurements within the model approximation of the
+    data-generating process.
 
-    A log-likelihood takes an instance of a :class:`MechanisticModel` and one
-    instance of an :class:`ErrorModel` for each mechanistic model output. This
-    defines a time-dependent distribution of observable biomarkers
-    equivalent to a :class:`PredictiveModel`
-
-    .. math::
-        p(x | t; \psi ),
-
-    which is centered at the mechanistic model output and has a variance
-    according to the error model. Here, :math:`x` are the observable biomarker
-    values at time :math:`t`, and :math:`\psi` are the model parameters of the
-    mechanistic model and the error model. For multiple outputs of the
-    mechanistic model, :math:`p` will be a multivariate distribution.
-
-    The log-likelihood for observations
-    :math:`(x^{\text{obs}}, t^{\text{obs}})` is given by
+    A log-likelihood is defined by an instance of a :class:`MechanisticModel`,
+    one :class:`ErrorModel` for each mechanistic model output and measurements
+    defined by ``observations`` and ``times``
 
     .. math::
-        L(\psi | x^{\text{obs}}) = \sum _{i=1}^n
-        \log p(x^{\text{obs}}_i | t^{\text{obs}}_i; \psi),
+        p(\psi | \mathcal{D}) = \sum _{j=1}
+        \log p(y_j | \psi, t_j),
 
-    where :math:`n` is the total number of observations. Note that for
-    notational ease we omitted the conditioning on the observation times
-    :math:`t^{\text{obs}}` on the left hand side, and will also often drop
-    it elsewhere in the documentation.
-
-    .. note::
-        For notational ease we omitted that the log-likelihood also is
-        conditional on the dosing regimen associated with the observations.
-        The appropriate regimen can be set with
-        :meth:`PharmacokineticModel.set_dosing_regimen`
+    where :math:`\mathcal{D} = \{(y_j , t_j)\}` denotes the measurements.
 
     Extends :class:`pints.LogPDF`.
 
@@ -1274,11 +1308,11 @@ class LogPosterior(pints.LogPDF):
     :math:`\log p(\psi )` up to an additive constant
 
     .. math::
-        \log p(\psi | x ^{\text{obs}}) \sim
-        L(\psi | x^{\text{obs}}) + \log p(\psi ),
+        \log p(\psi | \mathcal{D}) =
+            \log p(\mathcal{D} | \psi) + \log p(\psi ) + \mathrm{constant},
 
     where :math:`\psi` are the parameters of the log-likelihood and
-    :math:`x ^{\text{obs}}` are the observed data. The additive constant
+    :math:`\mathcal{D}` are the observed data. The additive constant
     is the normalisation of the log-posterior and is in general not known.
 
     Extends :class:`pints.LogPDF`.
@@ -1403,7 +1437,7 @@ class LogPosterior(pints.LogPDF):
         """
         return self._log_likelihood.get_id()
 
-    def get_parameter_names(self):
+    def get_parameter_names(self, *args, **kwargs):
         """
         Returns the names of the model parameters. By default the parameters
         are enumerated and assigned with the names 'Param #'.
@@ -1419,70 +1453,769 @@ class LogPosterior(pints.LogPDF):
         """
         return self._n_parameters
 
+    def sample_initial_parameters(self, n_samples=1, seed=None):
+        """
+        Samples parameters from the log-prior which may be used to initialise
+        inference algorithms.
 
-class ReducedLogPDF(pints.LogPDF):
+        :param n_samples: Number of samples.
+        :type n_samples: int, optional
+        :param seed: Seed for random number generator.
+        :type seed: int, optional
+        :rtype: np.ndarray of shape ``(n_samples, n_parameters)``
+        """
+        np.random.seed(seed)
+        return self._log_prior.sample(n_samples)
+
+
+class PopulationFilterLogPosterior(HierarchicalLogPosterior):
+    r"""
+    A population filter log-posterior approximates a hierarchical
+    log-posterior.
+
+    Population filter log-posteriors can be used to approximate hierarchical
+    log-posteriors when exact hierarchical inference becomes numerically
+    intractable. The canonical application of population filter inference is
+    the inference from time series snapshot data.
+
+    The population filter log-posterior is defined by a population filter,
+    a mechanistic model, an error model, a population model and the data
+
+    .. math::
+        \log p(\theta , \tilde{Y}, \Psi| \mathcal{D}) =&
+            \sum _{ij} \log p (y_{ij} | \tilde{Y}_j) +
+            \sum _{sj} \log p (\tilde{y}_{sj} | \psi_s, t_j) +
+            \sum _{s} \log p (\psi_{s} | \theta)& \\
+            &+ \log p (\theta) + \mathrm{constant},&
+
+    where the data :math:`\mathcal{D} = \{ (Y_j , t_j)\}` are measurements
+    over time with :math:`Y_j = \{ y_{ij} \}` denoting the measurements at time
+    point :math:`t_j` across individuals.
+    Here, we use :math:`i` to index individuals from the dataset.
+    The first term of the log-posterior is the population filter
+    contribution which estimates the log-likelihood that the virtual
+    measurements, :math:`\tilde{Y}_j = \{ \tilde{y}_{sj}\}`, come from the same
+    distribution as the measurements, :math:`Y_j`.
+    The quality of the log-likelihood estimate is subject to the
+    appropriateness of the population filter [ref]. We use :math:`s` to index
+    virtual individuals.
+    The second term of the log-posterior is the
+    log-likelihood of the simulated parameters
+    :math:`\Psi = \{ \psi _s\}`
+    with respect to the virtual measurements. Each simulated parameter
+    corresponds to a virtual individual.
+    The log-likelihood of a set of simulated parameters is defined
+    by the mechanistic model and the error model, as well as the simulated
+    measurements for that individual.
+    The third term is the log-likelihood that the population parameters
+    :math:`\theta = \{ \theta _k \}` govern the distribution of the
+    individual parameters. The final contribution is from the log-prior
+    of the population parameters.
+
+    Note that the choice of population filter makes assumptions about the
+    distributional shape of the measurements which can influence the inference
+    results.
+
+    :param population_filter: The population filter which connects the
+        observations to the simulated measurements.
+    :type population_filter: chi.PopulationFilter
+    :param times: Measurement time points of the data.
+    :type times: np.ndarray of shape ``(n_times,)``
+    :param mechanistic_model: A mechanistic model for the dynamics. The outputs
+        of the mechanistic model are expected to be in the same order as the
+        observables in ``observations``.
+    :type mechanistic_model: chi.MechanisticModel
+    :param population_model: A population model with the same dimensionality
+        as the number of mechanistic model parameters. The dimensions are
+        expected to be in the same order as the model parameters.
+    :type population_models: chi.PopulationModel
+    :param log_prior: Log-prior for the population level parameters.
+        The prior dimensions are expected to be in the order of the population
+        models.
+    :type log_prior: pints.LogPrior
+    :param sigma: Standard deviation of the Gaussian error model. If ``None``
+        the parameter is inferred from the data.
+    :type sigma: List[float] of length ``n_observables``, optional
+    :param error_on_log_scale: A boolean flag indicating whether the error
+        model models the residuals of the mechanistic model directly or on
+        a log scale.
+    :type error_on_log_scale: bool, optional
+    :param n_samples: Number of simulated individuals per evaluation.
+    :type n_samples: int, optional.
+    :param covariates: Covariates of the simulated individuals.
+    :type covariates: np.ndarray of shape ``(n_cov,)`` or
+        ``(n_samples, n_cov)``, optional
     """
-    A wrapper for a :class:`pints.LogPDF` to fix the values of a subset of
-    model parameters.
+    def __init__(
+            self, population_filter, times, mechanistic_model,
+            population_model, log_prior, sigma=None, error_on_log_scale=False,
+            n_samples=100, covariates=None):
 
-    This allows to reduce the parameter dimensionality of the log-pdf
-    at the cost of fixing some parameters at a constant value.
+        # Check filter
+        if not isinstance(population_filter, chi.PopulationFilter):
+            raise TypeError(
+                'The population filter has to be an instance of '
+                'chi.PopulationFilter.')
+        self._filter = copy.deepcopy(population_filter)
+        self._n_times = population_filter.n_times()
+        self._n_observables = population_filter.n_observables()
 
-    Extends :class:`pints.LogPDF`.
-
-    Parameters
-    ----------
-    log_pdf
-        An instance of a :class:`pints.LogPDF`.
-    mask
-        A boolean array of the length of the number of parameters. ``True``
-        indicates that the parameter is fixed at a constant value, ``False``
-        indicates that the parameter remains free.
-    values
-        A list of values the parameters are fixed at.
-    """
-
-    def __init__(self, log_pdf, mask, values):
-        super(ReducedLogPDF, self).__init__()
-
-        if not isinstance(log_pdf, pints.LogPDF):
+        # Check times
+        if len(times) != len(np.unique(times)):
             raise ValueError(
-                'The log-pdf has to be an instance of a pints.LogPDF.')
+                'The measurement times in times have to be unique.')
 
-        self._log_pdf = log_pdf
-
-        if len(mask) != self._log_pdf.n_parameters():
+        if len(times) != self._n_times:
             raise ValueError(
-                'Length of mask has to match the number of log-pdf '
-                'parameters.')
+                'The length of times does not match the time dimension of '
+                'observations.')
+        self._filter.sort_times(np.argsort(times))
+        self._times = np.sort(times)
 
-        mask = np.asarray(mask)
-        if mask.dtype != bool:
+        # Check mechanistic model
+        if not isinstance(mechanistic_model, chi.MechanisticModel):
+            raise TypeError(
+                'The mechanistic model has to be an instance of '
+                'chi.MechanisticModel.')
+        if mechanistic_model.n_outputs() != self._n_observables:
             raise ValueError(
-                'Mask has to be a boolean array.')
+                'The number of mechanistic model outputs does not match the '
+                'number of observables.')
+        self._mechanistic_model = mechanistic_model.copy()
 
-        n_fixed = int(np.sum(mask))
-        if n_fixed != len(values):
+        # Check population model
+        if not isinstance(population_model, chi.PopulationModel):
+            raise TypeError(
+                'The population model has to be an instance of '
+                'chi.PopulationModel.')
+        if population_model.n_dim() != self._mechanistic_model.n_parameters():
             raise ValueError(
-                'There have to be as many value inputs as the number of '
-                'fixed parameters.')
+                'The number of population model dimensions does not match the '
+                'number of mechanistic model parameters.')
+        self._population_model = copy.deepcopy(population_model)
 
-        # Create a parameter array for later calls of the log-pdf
-        self._parameters = np.empty(shape=len(mask))
-        self._parameters[mask] = np.asarray(values)
+        n_samples = int(n_samples)
+        if n_samples <= 0:
+            raise ValueError(
+                'The number of samples of the population filter has to be '
+                'greater than zero.')
+        self._n_samples = n_samples
 
-        # Allow for updating the 'free' number of parameters
-        self._mask = ~mask
-        self._n_parameters = int(np.sum(self._mask))
+        self._covariates = None
+        if self._population_model.n_covariates() > 0:
+            covariates = np.array(covariates)
+            if covariates.ndim == 1:
+                covariates = covariates[np.newaxis, :]
+            _, n_c = covariates.shape
+            if n_c != self._population_model.n_covariates():
+                raise ValueError(
+                    'Invalid covariates. The provided covariates do not match '
+                    'the number of covariates.')
+            try:
+                covariates = np.broadcast_to(covariates, (n_samples, n_c))
+            except ValueError:
+                raise ValueError(
+                    'Invalid covariates. The provided covariates cannot be '
+                    'broadcasted to the shape (n_samples, n_cov).')
+            self._covariates = covariates
+
+        self._population_model.set_n_ids(self._n_samples)
+        self._n_hdim = self._population_model.n_hierarchical_dim()
+        self._n_top = self._population_model.n_parameters()
+        self._population_model.set_dim_names(mechanistic_model.parameters())
+
+        # Check error model
+        if sigma is not None:
+            # Make sure sigma is a list (integers and floats wrapped)
+            try:
+                sigma = list(sigma)
+            except TypeError:
+                sigma = [sigma]
+            # Make sure that one sigma for each model output exists
+            if len(sigma) != self._n_observables:
+                raise ValueError(
+                    'One sigma for each observable has to provided.')
+            # Make sure sigmas assume valid values
+            sigma = np.array([float(s) for s in sigma])
+            if np.any(sigma < 0):
+                raise ValueError(
+                    'The elements of sigma have to be greater or equal '
+                    'to zero.')
+
+            # Reshape for later convenience
+            sigma = sigma.reshape(1, self._n_observables, 1)
+        self._sigma = sigma
+
+        # Get parameter names and update n_top if sigma has not been fixed
+        names = self._population_model.get_parameter_names()
+        if self._sigma is None:
+            names += [
+                'Sigma %s' % name for name in mechanistic_model.outputs()]
+            self._n_top += self._n_observables
+
+        if not isinstance(log_prior, pints.LogPrior):
+            raise TypeError(
+                'The log-prior has to be an instance of pints.LogPrior.')
+        if log_prior.n_parameters() != self._n_top:
+            raise ValueError(
+                'The dimensionality of the log-prior does not match the '
+                'number of population parameters. The population parameters '
+                'are <' + str(names) + '>.')
+        self._log_prior = log_prior
+
+        self._error_on_log_scale = bool(error_on_log_scale)
+        self._top_names = names
+        self._n_parameters = \
+            self._n_top + self._n_samples \
+            * (self._n_hdim + self._n_times * self._n_observables)
+        self._end_bottom = self._n_top + self._n_samples * self._n_hdim
+
+        # Get dimensions that need to be treated differently during inference
+        self._special_dims, self._n_pooled_dim, self._n_heterogen_dim = \
+            self._get_special_dims()
 
     def __call__(self, parameters):
-        # Fill in 'free' parameters
-        self._parameters[self._mask] = np.asarray(parameters)
-
-        return self._log_pdf(self._parameters)
-
-    def n_parameters(self):
         """
-        Returns the number of free parameters of the log-posterior.
+        Returns the log-likelihood of the model parameters with respect
+        to the filtered data.
+
+        The order of the input parameters is expected to be
+            1. Population parameters in order of the population models
+            2. The sampled bottom-level parameters for the simulated
+                individuals in order of the population models.
+            3. The sampled residual error of the mechanistic model.
+
+        The order of the parameters can be more explicitly checked with
+        :meth:`get_parameter_names`.
+
+        :param parameters: Parameters of the inference model.
+        :type parameters: np.ndarray of shape (n_parameters,)
         """
+        # Parse parameters into top parameters, bottom parameters and noise
+        # realisations.
+        # (top parameters inlcudes sigma, if sigma is not fixed)
+        parameters = np.asarray(parameters)
+        n_pop = self._population_model.n_parameters()
+        pop_parameters = parameters[:n_pop]
+        sigma = self._sigma
+        if self._sigma is None:
+            # Sigma is not fixed
+            sigma = parameters[n_pop:self._n_top].reshape(
+                1, self._n_observables, 1)
+        bottom_parameters = parameters[self._n_top:self._end_bottom].reshape(
+            self._n_samples, self._n_hdim)
+        epsilon = parameters[self._end_bottom:].reshape(
+            self._n_samples, self._n_observables, self._n_times)
+
+        # Compute log-prior contribution to score
+        score = self._log_prior(parameters[:self._n_top])
+        if np.isinf(score):
+            return score
+
+        # Add population contribution to the score
+        bottom_parameters = self._reshape_bottom_parameters(
+            bottom_parameters, pop_parameters)
+        score += self._population_model.compute_log_likelihood(
+            parameters=pop_parameters,
+            observations=bottom_parameters,
+            covariates=self._covariates)
+        if np.isinf(score):
+            return score
+
+        # Add noise contribution
+        score += \
+            - self._n_samples * self._n_observables * np.log(2 * np.pi) / 2 \
+            - np.sum(epsilon**2) / 2
+
+        # Check that mechanistic model has sensitivities disabled
+        # (Simply for performance)
+        if self._mechanistic_model.has_sensitivities():
+            self._mechanistic_model.enable_sensitivities(False)
+
+        # Transform bottom parameters into mechanistic model space
+        bottom_parameters = \
+            self._population_model.compute_individual_parameters(
+                parameters=pop_parameters,
+                eta=bottom_parameters,
+                covariates=self._covariates)
+
+        # Solve mechanistic model for bottom parameters
+        y = np.empty(
+            shape=(self._n_samples, self._n_observables, self._n_times))
+        for ids, individual_parameters in enumerate(bottom_parameters):
+            try:
+                y[ids] = self._mechanistic_model.simulate(
+                    parameters=individual_parameters, times=self._times)
+            except (myokit.SimulationError, Exception
+                    ) as e:  # pragma: no cover
+                warnings.warn(
+                    'An error occured while solving the mechanistic model: \n'
+                    + str(e) + '.\n A score of -infinity is returned.',
+                    RuntimeWarning)
+                return -np.infty
+
+        # Add noise to simulate measurements
+        if self._error_on_log_scale:
+            y *= np.exp(sigma * epsilon)
+        else:
+            y += sigma * epsilon
+
+        # Use population filter to compute log-likelihood of bottom-level
+        # parameters
+        score += self._filter.compute_log_likelihood(y)
+
+        return score
+
+    def _get_special_dims(self):
+        """
+        Counts the number of pooled and heterogeneous dimensions.
+        """
+        # Get elementary population models
+        pop_models = [self._population_model]
+        if isinstance(self._population_model, chi.ComposedPopulationModel):
+            pop_models = self._population_model.get_population_models()
+
+        n_pooled_dims = 0
+        n_hetero_dims = 0
+        special_dims = []
+        current_dim = 0
+        current_top_index = 0
+        for pop_model in pop_models:
+            # Check whether dimension is pooled
+            _, n_top = pop_model.n_hierarchical_parameters(self._n_samples)
+            n_dim = pop_model.n_dim()
+            is_pooled = isinstance(pop_model, chi.PooledModel)
+            is_heterogen = isinstance(pop_model, chi.HeterogeneousModel)
+            if is_pooled or is_heterogen:
+                # Remember start and end of special dimensions,
+                # Start and end of parameter values,
+                # and whether it's pooled or heterogeneous
+                special_dims.append([
+                    current_dim, current_dim + n_dim,
+                    current_top_index,
+                    current_top_index + n_top,
+                    is_pooled])
+            if is_pooled:
+                n_pooled_dims += n_dim
+            if is_heterogen:
+                n_hetero_dims += n_dim
+
+            current_dim += n_dim
+            current_top_index += n_top
+
+        return special_dims, n_pooled_dims, n_hetero_dims
+
+    def _remove_duplicates(self, sensitivities, dbottom):
+        """
+        In some sense the reverse of self._reshape_bottom_parameters.
+
+        1. Pooled bottom parameters need to be added to population parameter
+        2. Heterogeneous bottom parameters need to added to population
+            parameters
+
+        sensitivities: shape (n_parameters,)
+        dbottom: shape (n_ids, n_bottom, n_dim)
+        """
+        # Check for quick solution 1: no pooled parameters and no heterogeneous
+        # parameters
+        n_dim = self._population_model.n_dim()
+        if self._population_model.n_hierarchical_dim() == n_dim:
+            sensitivities[self._n_top:self._end_bottom] = dbottom.flatten()
+            return sensitivities
+
+        # Check for quick solution 2: all parameters heterogen.
+        if self._n_heterogen_dim == n_dim:
+            # Add contributions from bottom-level parameters to top-level
+            # parameters
+            sensitivities[:self._n_top] += dbottom.flatten()
+            return sensitivities
+
+        # Check for quick solution 3: all parameters pooled
+        if self._n_pooled_dim == n_dim:
+            # Add contributions from bottom-level parameters
+            # (Population sens. are actually zero, so we can just replace them)
+            sensitivities[:self._n_top] += np.sum(dbottom, axis=0)
+            return sensitivities
+
+        shift = 0
+        current_dim = 0
+        bottom_sens = np.empty(shape=(self._n_samples, self._n_hdim))
+        for info in self._special_dims:
+            start_dim, end_dim, start_top, end_top, is_pooled = info
+            # Fill leading regular dims
+            bottom_sens[:, current_dim-shift:start_dim-shift] = \
+                dbottom[:, current_dim:start_dim]
+            # Fill special dims
+            if is_pooled:
+                sensitivities[start_top:end_top] += \
+                    np.sum(dbottom[:, start_dim:end_dim], axis=0)
+            else:
+                sensitivities[start_top:end_top] += \
+                    dbottom[:, start_dim:end_dim].flatten()
+            current_dim = end_dim
+            shift += end_dim - start_dim
+        # Fill trailing regular dims
+        bottom_sens[:, current_dim-shift:] = dbottom[:, current_dim:]
+
+        # Add bottom sensitivties
+        sensitivities[self._n_top:self._end_bottom] = bottom_sens.flatten()
+
+        return sensitivities
+
+    def _reshape_bottom_parameters(self, bottom_parameters, top_parameters):
+        """
+        Takes bottom parameters and top parameters with no duplicates and
+        returns bottom parameters of shape (n_ids, n_dim), where pooled
+        and heterogenous parameters are duplicated.
+
+        Bottom parameters have currently shape (n_ids, n_hierarchical_dim) and
+        they will be returned in shape (n_ids, n_dim).
+        """
+        # Check for quick solution 1: no pooled parameters and no heterogen.
+        n_dim = self._population_model.n_dim()
+        if self._population_model.n_hierarchical_dim() == n_dim:
+            return bottom_parameters
+
+        # Check for quick solution 2: all parameters pooled
+        bottom_params = np.empty(shape=(self._n_samples, n_dim))
+        if self._n_pooled_dim == n_dim:
+            bottom_params[:, :] = top_parameters[np.newaxis, :]
+            return bottom_params
+
+        # Check for quick solution 3: all parameters heterogen.
+        if self._n_heterogen_dim == n_dim:
+            bottom_params[:, :] = top_parameters.reshape(
+                self._n_samples, n_dim)
+            return bottom_params
+
+        shift = 0
+        current_dim = 0
+        for info in self._special_dims:
+            start_dim, end_dim, start_top, end_top, is_pooled = info
+            # Fill leading non-pooled dims
+            bottom_params[:, current_dim:start_dim] = bottom_parameters[
+                :, current_dim-shift:start_dim-shift]
+            # Fill special dims
+            dims = end_dim - start_dim
+            if is_pooled:
+                bottom_params[:, start_dim:end_dim] = top_parameters[
+                    start_top:end_top]
+            else:
+                bottom_params[:, start_dim:end_dim] = top_parameters[
+                    start_top:end_top].reshape(self._n_samples, dims)
+            current_dim = end_dim
+            shift += dims
+        # Fill trailing non-pooled dims
+        bottom_params[:, current_dim:] = bottom_parameters[
+            :, current_dim-shift:]
+
+        return bottom_params
+
+    def evaluateS1(self, parameters):
+        """
+        Returns the log-posterior score and its sensitivities to the model
+        parameters.
+
+        :param parameters: An array-like object with parameter values.
+        :type parameters: List[float], numpy.ndarray of length ``n_parameters``
+        """
+        # Parse parameters into top parameters, bottom parameters and noise
+        # realisations.
+        # (top parameters inlcude sigma, if sigma is not fixed)
+        parameters = np.asarray(parameters)
+        n_pop = self._population_model.n_parameters()
+        pop_parameters = parameters[:n_pop]
+        sigma = self._sigma
+        if self._sigma is None:
+            # Sigma is not fixed
+            sigma = parameters[n_pop:self._n_top].reshape(
+                1, self._n_observables, 1)
+        bottom_parameters = parameters[self._n_top:self._end_bottom].reshape(
+            self._n_samples, self._n_hdim)
+        epsilon = parameters[self._end_bottom:].reshape(
+            self._n_samples, self._n_observables, self._n_times)
+
+        # Initialise sensitivities
+        sensitivities = np.empty(shape=self._n_parameters)
+
+        # Compute log-prior contribution to score
+        score, sensitivities[:self._n_top] = self._log_prior.evaluateS1(
+            parameters[:self._n_top])
+        if np.isinf(score):
+            return score, sensitivities
+
+        # Add noise contribution
+        score += \
+            - self._n_samples * self._n_observables * np.log(2 * np.pi) / 2 \
+            - np.sum(epsilon**2) / 2
+        sensitivities[self._end_bottom:] = -epsilon.flatten()
+
+        # Check that mechanistic model has sensitivities enabled
+        if not self._mechanistic_model.has_sensitivities():
+            self._mechanistic_model.enable_sensitivities(True)
+
+        # Transform bottom-parameters
+        bottom_parameters = self._reshape_bottom_parameters(
+            bottom_parameters, pop_parameters)
+        psi = self._population_model.compute_individual_parameters(
+            parameters=pop_parameters,
+            eta=bottom_parameters,
+            covariates=self._covariates)
+
+        # Solve mechanistic model for bottom parameters
+        n_parameters = self._mechanistic_model.n_parameters()
+        y = np.empty(
+            shape=(self._n_samples, self._n_observables, self._n_times))
+        dybar_dpsi = np.empty(shape=(
+            self._n_samples, self._n_times, self._n_observables, n_parameters))
+        for ids, individual_parameters in enumerate(psi):
+            try:
+                y[ids], dybar_dpsi[ids] = self._mechanistic_model.simulate(
+                    parameters=individual_parameters, times=self._times)
+            except (myokit.SimulationError, Exception
+                    ) as e:  # pragma: no cover
+                warnings.warn(
+                    'An error occured while solving the mechanistic model: \n'
+                    + str(e) + '.\n A score of -infinity is returned.',
+                    RuntimeWarning)
+                return -np.infty, sensitivities[:self._n_parameters]
+
+        # Add noise to simulate measurements
+        if self._error_on_log_scale:
+            y *= np.exp(sigma * epsilon)
+        else:
+            y += sigma * epsilon
+
+        # Use population filter to compute log-likelihood of bottom-level
+        # parameters
+        s, ds_y = self._filter.compute_sensitivities(simulated_obs=y)
+
+        # Add filter contributions
+        # (ds_dy * dy_dybar * dybar_dpsi, ds_dy * dy_dybar * dy_depsilon)
+        score += s
+        if self._error_on_log_scale:
+            ds_dpsi = np.sum(
+                (ds_y * np.exp(sigma * epsilon))[..., np.newaxis]
+                * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2))
+            sensitivities[self._end_bottom:] += (ds_y * y * sigma).flatten()
+        else:
+            ds_dpsi = np.sum(
+                ds_y[..., np.newaxis]
+                * np.swapaxes(dybar_dpsi, 1, 2), axis=(1, 2))
+            sensitivities[self._end_bottom:] += (ds_y * sigma).flatten()
+
+        # Add sigma sensitivities, if sigma is not fixed
+        # ds_dsigma = derror_model_dsigma + ds_dy * dy_dsigma
+        if self._sigma is None:
+            if self._error_on_log_scale:
+                sensitivities[n_pop:self._n_top] += np.sum(
+                    ds_y * epsilon * y, axis=(0, 2))
+            else:
+                sensitivities[n_pop:self._n_top] += np.sum(
+                    ds_y * epsilon, axis=(0, 2))
+
+        # Add population contribution to the score
+        s, dbottom, dtheta = self._population_model.compute_sensitivities(
+            parameters=pop_parameters,
+            observations=bottom_parameters,
+            covariates=self._covariates,
+            dlogp_dpsi=ds_dpsi)
+        score += s
+        sensitivities[:n_pop] += dtheta
+        if np.isinf(score):
+            return score, sensitivities[:self._n_parameters]
+
+        # Collect sensitivities
+        sensitivities = self._remove_duplicates(sensitivities, dbottom)
+
+        return score, sensitivities
+
+    def get_log_likelihood(self):
+        """
+        Returns the log-likelihood.
+
+        For the population filter log-posterior the population filter is
+        returned.
+        """
+        return copy.deepcopy(self._filter)
+
+    def get_log_prior(self):
+        """
+        Returns the log-prior.
+        """
+        return self._log_prior
+
+    def get_id(self, unique=False):
+        """
+        Returns the ids of the log-posterior's parameters. If the ID is
+        ``None`` corresponding parameter is defined on the population level.
+
+        :param unique: A boolean flag which indicates whether each ID is only
+            returned once, or whether the IDs of all paramaters are returned.
+        :type unique: bool, optional
+        """
+        if unique:
+            return [
+                'Sim. %d' % (_id + 1) for _id in range(self._n_samples)]
+
+        ids = [None] * self._n_top
+        for _id in range(self._n_samples):
+            ids += ['Sim. %d' % (_id + 1)] * self._n_hdim
+        for _id in range(self._n_samples):
+            ids += [
+                'Sim. %d' % (_id + 1)] * self._n_observables * self._n_times
+
+        return ids
+
+    def get_parameter_names(
+            self, exclude_bottom_level=False, include_ids=False):
+        """
+        Returns the names of the parameters.
+
+        :param exclude_bottom_level: A boolean flag which determines whether
+            the bottom-level parameter names are returned in addition to the
+            top-level parameters.
+        :type exclude_bottom_level: bool, optional
+        :param include_ids: A boolean flag which determines whether the IDs
+            (prefixes) of the model parameters are included.
+        :type include_ids: bool, optional
+        """
+        # Get top parameter names
+        names = copy.copy(self._top_names)
+
+        # Get bottom parameter names
+        # (pooled and heterogenous parameters count as top parameters)
+        current_dim = 0
+        bottom_names = self._mechanistic_model.parameters()
+        n = []
+        for info in self._special_dims:
+            start_dim, end_dim, _, _, _ = info
+            n += bottom_names[current_dim:start_dim]
+            current_dim = end_dim
+        n += bottom_names[current_dim:]
+        bottom_names = n
+
+        # Make copies of bottom parameters and append to top parameters
+        names += bottom_names * self._n_samples
+
+        # Append epsilon parameter names
+        epsilon_names = []
+        for output in self._mechanistic_model.outputs():
+            name = output + ' Epsilon time '
+            epsilon_names += [
+                name + '%d' % (idt + 1) for idt in range(self._n_times)]
+        names += epsilon_names * self._n_samples
+
+        if include_ids:
+            ids = self.get_id()
+            n = []
+            for idn, name in enumerate(names):
+                if ids[idn]:
+                    name = ids[idn] + ' ' + name
+                n.append(name)
+            names = n
+
+        if exclude_bottom_level:
+            names = names[:self._n_top]
+
+        return names
+
+    def get_population_model(self):
+        """
+        Returns the population model.
+        """
+        return self._population_model
+
+    def n_parameters(self, exclude_bottom_level=False):
+        """
+        Returns the number of parameters.
+
+        :param exclude_bottom_level: A boolean flag which determines whether
+            the bottom-level parameter are counted in addition to the
+            top-level parameters.
+        :type exclude_bottom_level: bool, optional
+        """
+        n_parameters = self._n_top
+        if exclude_bottom_level:
+            return n_parameters
+
         return self._n_parameters
+
+    def n_samples(self):
+        """
+        Returns the number of simulated individuals per posterior evaluation.
+        """
+        return self._n_samples
+
+    def sample_initial_parameters(self, n_samples=1, seed=None):
+        """
+        Samples top-level parameters from the log-prior and bottom-level
+        parameters from the population model using the top-level samples.
+        The noise realisations are sampled from a standard Gaussian
+        distribution.
+
+        These parameter samples may be used to initialise inference algorithms.
+
+        :param n_samples: Number of samples.
+        :type n_samples: int, optional
+        :param seed: Seed for random number generator.
+        :type seed: int, optional
+        :rtype: np.ndarray of shape ``(n_samples, n_parameters)``
+        """
+        n_samples = int(n_samples)
+        if n_samples <= 0:
+            raise ValueError('The number of samples has to be at least 1.')
+
+        initial_params = np.empty(shape=(n_samples, self._n_parameters))
+
+        # Sample initial values for top-level parameters
+        np.random.seed(seed)
+        initial_params[:, :self._n_top] = self._log_prior.sample(n_samples)
+
+        # Transform seed to random number generator, so seed is propagated
+        # across models
+        if seed is not None:
+            seed += 1
+        rng = np.random.default_rng(seed=seed)
+
+        # Sample bottom-level parameters
+        n_pop = self._population_model.n_parameters()
+        bottom_parameters = []
+        for sample_id in range(n_samples):
+            bottom_parameters.append(self._population_model.sample(
+                parameters=initial_params[sample_id, :n_pop],
+                covariates=self._covariates,
+                n_samples=self._n_samples, seed=rng))
+
+        # Remove pooled dimensions
+        # (Pooled and heterogen. dimensions do not count as bottom parameters)
+        dims = []
+        current_dim = 0
+        try:
+            pop_models = self._population_model.get_population_models()
+        except AttributeError:
+            pop_models = [self._population_model]
+        for pop_model in pop_models:
+            n_dim = pop_model.n_dim()
+            if pop_model.n_hierarchical_dim() == 0:
+                current_dim += n_dim
+                continue
+            end_dim = current_dim + n_dim
+            dims += list(range(current_dim, end_dim))
+            current_dim = end_dim
+        for idx, bottom_params in enumerate(bottom_parameters):
+            bottom_parameters[idx] = bottom_params[:, dims].flatten()
+
+        initial_params[:, self._n_top:self._end_bottom] = \
+            np.vstack(bottom_parameters)
+
+        # Sample epsilons
+        initial_params[:, self._end_bottom:] = rng.normal(
+            loc=0, scale=1,
+            size=(
+                n_samples,
+                self._n_samples * self._n_times * self._n_observables
+            )
+        )
+
+        return initial_params
