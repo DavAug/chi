@@ -89,7 +89,7 @@ class AveragedPredictiveModel(object):
         raise NotImplementedError
 
     def set_dosing_regimen(
-            self, dose, start, duration=0.01, period=None, num=None):
+            self, dose, start=0, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen of the administered compound.
 
@@ -755,7 +755,7 @@ class PredictiveModel(object):
         return samples
 
     def set_dosing_regimen(
-            self, dose, start, duration=0.01, period=None, num=None):
+            self, dose, start=0, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
 
@@ -1073,7 +1073,7 @@ class PopulationPredictiveModel(PredictiveModel):
         return measurements
 
     def set_dosing_regimen(
-            self, dose, start, duration=0.01, period=None, num=None):
+            self, dose, start=0, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
 
@@ -1389,7 +1389,7 @@ class PAMPredictiveModel(AveragedPredictiveModel):
         return samples
 
     def set_dosing_regimen(
-            self, dose, start, duration=0.01, period=None, num=None):
+            self, dose, start=0, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
 
