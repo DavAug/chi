@@ -759,6 +759,8 @@ class HierarchicalLogPosterior(pints.LogPDF):
         # (Pooled and heterogen. dimensions do not count as bottom parameters)
         dims = []
         current_dim = 0
+        if isinstance(population_model, chi.ReducedPopulationModel):
+            population_model = population_model.get_population_model()
         try:
             pop_models = population_model.get_population_models()
         except AttributeError:

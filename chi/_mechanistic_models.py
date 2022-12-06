@@ -1062,7 +1062,7 @@ class ReducedMechanisticModel(MechanisticModel):
         return copy.copy(names)
 
     def set_dosing_regimen(
-            self, dose, start, duration=0.01, period=None, num=None):
+            self, dose, start=0, duration=0.01, period=None, num=None):
         """
         Sets the dosing regimen with which the compound is administered.
 

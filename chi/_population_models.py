@@ -2966,7 +2966,8 @@ class ReducedPopulationModel(PopulationModel):
         # If parameters have been fixed, updated number of population
         # parameters
         if self._fixed_params_mask is not None:
-            n_pop = int(np.sum(self._fixed_params_mask))
+            n_fixed = int(np.sum(self._fixed_params_mask))
+            n_pop = self._n_parameters - n_fixed
 
         return (n_indiv, n_pop)
 
