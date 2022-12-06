@@ -1501,6 +1501,59 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
             n_samples=n_samples)
         self.assertEqual(samples.shape, (10, 3))
 
+        # Test fixed population parameters
+        # Fix population parameters
+        population_model = chi.ComposedPopulationModel([
+            chi.CovariatePopulationModel(
+                chi.GaussianModel(), chi.LinearCovariateModel()),
+            chi.PooledModel(n_dim=2)])
+        population_model = chi.ReducedPopulationModel(population_model)
+        population_model.fix_parameters({'Std. Dim. 1': 1})
+
+        # Create hierarchical log-likelihood
+        log_likelihood = chi.HierarchicalLogLikelihood(
+            log_likelihoods, population_model, covariates=covariates)
+
+        # Define log-prior
+        log_prior = pints.ComposedLogPrior(
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1),
+            pints.LogNormalLogPrior(1, 1))
+
+        # Create log-posterior
+        log_posterior = chi.HierarchicalLogPosterior(
+            log_likelihood, log_prior)
+
+        n_samples = 10
+        samples = log_posterior.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 7))
+
+        # Fix all parameters but one
+        population_model.fix_parameters({
+            'Mean Dim. 1': 1,
+            'Mean Dim. 1 Cov. 1': 1,
+            'Std. Dim. 1 Cov. 1': 1,
+            'Pooled Dim. 1': 1})
+
+        # Create hierarchical log-likelihood
+        log_likelihood = chi.HierarchicalLogLikelihood(
+            log_likelihoods, population_model, covariates=covariates)
+
+        # Define log-prior
+        log_prior = pints.LogNormalLogPrior(1, 1)
+
+        # Create log-posterior
+        log_posterior = chi.HierarchicalLogPosterior(
+            log_likelihood, log_prior)
+
+        n_samples = 10
+        samples = log_posterior.sample_initial_parameters(
+            n_samples=n_samples)
+        self.assertEqual(samples.shape, (10, 3))
+
 
 class TestLogLikelihood(unittest.TestCase):
     """
