@@ -66,7 +66,7 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(list(psis[:, 0]), list(etas[:, 0]))
         self.assertEqual(list(psis[:, 1]), ref_psi1)
         self.assertEqual(list(psis[:, 2]), ref_psi2)
-        self.assertEqual(list(psis[:, 3]), list(etas[:, 3]))
+        self.assertEqual(list(psis[:, 3]), [6] * n_ids)
 
         psis = self.pop_model.compute_individual_parameters(
             parameters, etas, covariates='some covs')
@@ -74,16 +74,63 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(list(psis[:, 0]), list(etas[:, 0]))
         self.assertEqual(list(psis[:, 1]), ref_psi1)
         self.assertEqual(list(psis[:, 2]), ref_psi2)
-        self.assertEqual(list(psis[:, 3]), list(etas[:, 3]))
+        self.assertEqual(list(psis[:, 3]), [6] * n_ids)
+
+        psis = self.pop_model.compute_individual_parameters(
+            parameters, etas, return_eta=True)
+        self.assertEqual(psis.shape, (6, 4))
+        self.assertEqual(list(psis[:, 0]), list(etas[:, 0]))
+        self.assertEqual(list(psis[:, 1]), list(etas[:, 1]))
+        self.assertEqual(list(psis[:, 2]), list(etas[:, 2]))
+        self.assertEqual(list(psis[:, 3]), [6] * n_ids)
+
+        # Test case I.2: flattened eta
+        self.pop_model.set_n_ids(n_ids)
+        etas = np.ones(shape=(n_ids * n_dim,))
+        psis = self.pop_model.compute_individual_parameters(
+            parameters, etas)
+        self.assertEqual(psis.shape, (6, 4))
+        self.assertEqual(list(psis[:, 0]), [1] * n_ids)
+        self.assertEqual(list(psis[:, 1]), ref_psi1)
+        self.assertEqual(list(psis[:, 2]), ref_psi2)
+        self.assertEqual(list(psis[:, 3]), [6] * n_ids)
+
+        # Test case I.3: flattened eta with missing special dimensions
+        etas = np.ones(shape=(n_ids * (n_dim-1),))
+        psis = self.pop_model.compute_individual_parameters(
+            parameters, etas)
+        self.assertEqual(psis.shape, (6, 4))
+        self.assertEqual(list(psis[:, 0]), [1] * n_ids)
+        self.assertEqual(list(psis[:, 1]), ref_psi1)
+        self.assertEqual(list(psis[:, 2]), ref_psi2)
+        self.assertEqual(list(psis[:, 3]), [6] * n_ids)
+
+        self.pop_model.set_n_ids(1)
 
         # Test case II: covariate model
         n_ids, n_dim, n_cov = (6, 3, 1)
+        self.pop_model_prime.set_n_ids(n_ids)
         etas = np.ones(shape=(n_ids, n_dim))
-        parameters = np.arange(6)
+        parameters = np.arange(6 + 6)
         covariates = np.arange(n_ids * n_cov).reshape(n_ids, n_cov)
         psis = self.pop_model_prime.compute_individual_parameters(
             parameters, etas, covariates)
         self.assertEqual(psis.shape, (6, 3))
+
+        # Test case II.2: flattened eta
+        self.pop_model_prime.set_n_ids(n_ids)
+        etas = np.ones(shape=(n_ids * n_dim,))
+        psis = self.pop_model_prime.compute_individual_parameters(
+            parameters, etas, covariates)
+        self.assertEqual(psis.shape, (6, 3))
+
+        # Test case II.3: flattened eta with missing special dimensions
+        etas = np.ones(shape=(n_ids * (n_dim-1),))
+        psis = self.pop_model_prime.compute_individual_parameters(
+            parameters, etas, covariates)
+        self.assertEqual(psis.shape, (6, 3))
+
+        self.pop_model_prime.set_n_ids(1)
 
     def test_compute_log_likelihood(self):
         # Test case I: no covariate model
@@ -585,6 +632,11 @@ class TestCovariatePopulationModel(unittest.TestCase):
         cls.cpop_model = chi.CovariatePopulationModel(
             cls.pop_model, cls.cov_model)
 
+        # Test case II
+        pop_model = chi.PooledModel(n_dim=1)
+        cls.cpop_model2 = chi.CovariatePopulationModel(
+            pop_model, cls.cov_model)
+
     def test_bad_instantiation(self):
         # Population model is not a SimplePopulationModel
         pop_model = 'bad type'
@@ -635,6 +687,30 @@ class TestCovariatePopulationModel(unittest.TestCase):
         psi = self.cpop_model.compute_individual_parameters(
             parameters, eta, covariates)
         self.assertEqual(psi.shape, (n_ids, 2))
+
+        # Test case III: Pooled model
+        parameters = np.ones(2)
+        eta = []
+        covariates = np.arange(1).reshape(1, 1) * 0.12 + 1
+
+        psi = self.cpop_model2.compute_individual_parameters(
+            parameters, eta, covariates)
+        self.assertEqual(psi.shape, (1, 1))
+        self.assertEqual(psi[0, 0], 2)
+
+        n_ids = 10
+        parameters = np.ones(2)
+        eta = []
+        covariates = np.arange(n_ids).reshape(n_ids, 1) * 0.12 + 1
+
+        psi = self.cpop_model2.compute_individual_parameters(
+            parameters, eta, covariates)
+        self.assertEqual(psi.shape, (n_ids, 1))
+        self.assertEqual(psi[0, 0], 2)
+        self.assertEqual(psi[1, 0], 2.12)
+        self.assertEqual(psi[2, 0], 2.24)
+        self.assertEqual(psi[3, 0], 2.36)
+        self.assertEqual(psi[9, 0], 3.08)
 
     def test_compute_log_likelihood(self):
         # Test case I: 1 ID
@@ -891,6 +967,24 @@ class TestCovariatePopulationModel(unittest.TestCase):
 
         self.cpop_model.set_dim_names(['Dim. 1', 'Dim. 2'])
 
+    def test_get_special_dims(self):
+        special_dim, n_pooled, n_hetero = self.cpop_model.get_special_dims()
+        self.assertEqual(len(special_dim), 0)
+        self.assertEqual(n_pooled, 0)
+        self.assertEqual(n_hetero, 0)
+
+        special_dim, n_pooled, n_hetero = self.cpop_model2.get_special_dims()
+        self.assertEqual(len(special_dim), 1)
+        special_dim = special_dim[0]
+        self.assertEqual(len(special_dim), 5)
+        self.assertEqual(special_dim[0], 0)
+        self.assertEqual(special_dim[1], 1)
+        self.assertEqual(special_dim[2], 0)
+        self.assertEqual(special_dim[3], 1)
+        self.assertTrue(special_dim[4])
+        self.assertEqual(n_pooled, 1)
+        self.assertEqual(n_hetero, 0)
+
     def test_get_set_parameter_names(self):
         # Test case I: 1 covariate
         names = self.cpop_model.get_parameter_names()
@@ -1089,6 +1183,13 @@ class TestGaussianModel(unittest.TestCase):
         psis = self.non_centered.compute_individual_parameters(theta, etas)
         self.assertEqual(psis.shape, (10, 1))
         self.assertTrue(np.all(np.isnan(psis)))
+
+        # Test case III: return eta
+        psis = self.pop_model.compute_individual_parameters(
+            theta, etas, return_eta=True)
+        ref_psis = self.non_centered.compute_individual_parameters(
+            theta, etas, return_eta=True)
+        self.assertTrue(np.all(psis == ref_psis))
 
     def test_compute_log_likelihood(self):
         n_ids = 10
@@ -1806,6 +1907,50 @@ class TestHeterogeneousModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'The number of modelled'):
             chi.HeterogeneousModel(n_ids=0)
 
+    def test_compute_individual_parameters(self):
+        # Test case I: n_ids = 1
+        # Test 1 dimensional parameters
+        parameters = np.array([2.3])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (1, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test 2 dimensional parameters
+        parameters = np.array([[2.3]])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (1, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test 3 dimensional parameters
+        parameters = np.array([[[2.3]]])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (1, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test case II: n_ids = 4
+        self.pop_model.set_n_ids(4)
+        # Test 1 dimensional parameters
+        parameters = np.array([2.3, 1, 2, 3])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (4, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+        self.assertEqual(psi[1, 0], 1)
+        self.assertEqual(psi[2, 0], 2)
+        self.assertEqual(psi[3, 0], 3)
+
+        # Test 2 dimensional parameters
+        parameters = np.array([[2.3], [2.3], [2.3], [2.3]])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (4, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test 3 dimensional parameters
+        parameters = np.arange(16).reshape(4, 4, 1)
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (4, 1))
+
+        self.pop_model.set_n_ids(1)
+
     def test_compute_log_likelihood(self):
         # Test I: n_ids=1
         parameters = [1]
@@ -1927,6 +2072,34 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertEqual(dtheta.shape, (10,))
         self.assertTrue(np.all(dpsi == 1))
         self.assertTrue(np.all(dtheta == 0))
+
+    def test_get_special_dims(self):
+        special_dim, n_pooled, n_hetero = self.pop_model.get_special_dims()
+        self.assertEqual(len(special_dim), 1)
+        special_dim = special_dim[0]
+        self.assertEqual(len(special_dim), 5)
+        self.assertEqual(special_dim[0], 0)
+        self.assertEqual(special_dim[1], 1)
+        self.assertEqual(special_dim[2], 0)
+        self.assertEqual(special_dim[3], 1)
+        self.assertFalse(special_dim[4])
+        self.assertEqual(n_pooled, 0)
+        self.assertEqual(n_hetero, 1)
+
+        self.pop_model.set_n_ids(10)
+        special_dim, n_pooled, n_hetero = self.pop_model.get_special_dims()
+        self.assertEqual(len(special_dim), 1)
+        special_dim = special_dim[0]
+        self.assertEqual(len(special_dim), 5)
+        self.assertEqual(special_dim[0], 0)
+        self.assertEqual(special_dim[1], 1)
+        self.assertEqual(special_dim[2], 0)
+        self.assertEqual(special_dim[3], 10)
+        self.assertFalse(special_dim[4])
+        self.assertEqual(n_pooled, 0)
+        self.assertEqual(n_hetero, 1)
+
+        self.pop_model.set_n_ids(1)
 
     def test_get_parameter_names(self):
         names = self.pop_model.get_parameter_names()
@@ -2086,6 +2259,13 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(ref_psis[7], psis[7, 0])
         self.assertEqual(ref_psis[8], psis[8, 0])
         self.assertEqual(ref_psis[9], psis[9, 0])
+
+        # Test case III: return eta
+        psis = self.pop_model.compute_individual_parameters(
+            theta, etas, return_eta=True)
+        ref_psis = self.non_centered.compute_individual_parameters(
+            theta, etas, return_eta=True)
+        self.assertTrue(np.all(psis == ref_psis))
 
     def test_compute_log_likelihood(self):
         # Hard to test exactly, but at least test some edge cases where
@@ -2922,6 +3102,48 @@ class TestPooledModel(unittest.TestCase):
     def setUpClass(cls):
         cls.pop_model = chi.PooledModel()
 
+    def test_compute_individual_parameters(self):
+        # Test case I: n_ids = 1
+        # Test 1 dimensional parameters
+        parameters = np.array([2.3])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (1, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test 2 dimensional parameters
+        parameters = np.array([[2.3]])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (1, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test 3 dimensional parameters
+        parameters = np.array([[[2.3]]])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (1, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test case II: n_ids = 4
+        self.pop_model.set_n_ids(4)
+        # Test 1 dimensional parameters
+        parameters = np.array([2.3])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (4, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test 2 dimensional parameters
+        parameters = np.array([[2.3]])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (4, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        # Test 3 dimensional parameters
+        parameters = np.array([[[2.3]], [[2.3]], [[2.3]], [[2.3]]])
+        psi = self.pop_model.compute_individual_parameters(parameters, eta=[])
+        self.assertEqual(psi.shape, (4, 1))
+        self.assertEqual(psi[0, 0], 2.3)
+
+        self.pop_model.set_n_ids(1)
+
     def test_compute_log_likelihood(self):
         # Test case I: observation differ from parameter
         # Test case I.1
@@ -3062,6 +3284,19 @@ class TestPooledModel(unittest.TestCase):
         self.assertEqual(dpsi.shape, (4, 1))
         self.assertEqual(dtheta.shape, (4, 1, 1))
 
+    def test_get_special_dims(self):
+        special_dim, n_pooled, n_hetero = self.pop_model.get_special_dims()
+        self.assertEqual(len(special_dim), 1)
+        special_dim = special_dim[0]
+        self.assertEqual(len(special_dim), 5)
+        self.assertEqual(special_dim[0], 0)
+        self.assertEqual(special_dim[1], 1)
+        self.assertEqual(special_dim[2], 0)
+        self.assertEqual(special_dim[3], 1)
+        self.assertTrue(special_dim[4])
+        self.assertEqual(n_pooled, 1)
+        self.assertEqual(n_hetero, 0)
+
     def test_get_parameter_names(self):
         names = ['Pooled Dim. 1']
         self.assertEqual(self.pop_model.get_parameter_names(), names)
@@ -3150,8 +3385,8 @@ class TestPopulationModel(unittest.TestCase):
     def test_compute_individual_parameters(self):
         # simply returns the eta input
         eta = [1] * 10
-        psi = self.pop_model.compute_individual_parameters('some params', eta)
-        self.assertEqual(psi, eta)
+        with self.assertRaisesRegex(NotImplementedError, ''):
+            self.pop_model.compute_individual_parameters('some params', eta)
 
     def test_compute_pointwise_ll(self):
         parameters = 'some parameters'
@@ -3268,6 +3503,15 @@ class TestReducedPopulationModel(unittest.TestCase):
         self.assertEqual(psi[1], ref_psi[1])
         self.assertEqual(psi[2], ref_psi[2])
         self.assertEqual(psi[3], ref_psi[3])
+
+        # Test case I.2: return eta
+        psi = self.pop_model.compute_individual_parameters(
+            parameters, eta, return_eta=True)
+        self.assertEqual(len(psi), 4)
+        self.assertEqual(psi[0, 0], eta[0])
+        self.assertEqual(psi[1, 0], eta[1])
+        self.assertEqual(psi[2, 0], eta[2])
+        self.assertEqual(psi[3, 0], eta[3])
 
         # Test case II: Covariate model
         # Test case II.1: No fixed parameters
@@ -3621,7 +3865,7 @@ class TestReducedPopulationModel(unittest.TestCase):
     def test_set_n_ids(self):
         self.pop_model.set_n_ids(11)
         nids = self.pop_model.n_ids()
-        self.assertEqual(nids, 0)  # Lognormal model does not maintain n_ids
+        self.assertEqual(nids, 1)  # Lognormal model does not maintain n_ids
 
     def test_set_get_parameter_names(self):
         # Set some parameter names

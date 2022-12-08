@@ -36,7 +36,11 @@ class PopulationModel(object):
                 'equal to 1.')
         self._n_dim = int(n_dim)
         self._n_hierarchical_dim = self._n_dim
+        self._special_dims = []
+        self._n_pooled_dims = 0
+        self._n_hetero_dims = 0
         self._n_covariates = 0
+        self._n_ids = 1
 
         if dim_names:
             if len(dim_names) != self._n_dim:
@@ -49,7 +53,8 @@ class PopulationModel(object):
                 'Dim. %d' % (id_dim + 1) for id_dim in range(self._n_dim)]
         self._dim_names = dim_names
 
-    def compute_individual_parameters(self, parameters, eta, *args, **kwargs):
+    def compute_individual_parameters(
+            self, parameters, eta, return_eta=False, *args, **kwargs):
         """
         Returns the individual parameters.
 
@@ -60,10 +65,14 @@ class PopulationModel(object):
         :type parameters: np.ndarray of shape ``(n_parameters,)``,
             ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
         :param eta: Inter-individual fluctuations.
-        :type eta: np.ndarray of shape ``(n_ids, n_dim)``
+        :type eta: np.ndarray of shape ``(n_ids * n_dim)`` or
+            ``(n_ids, n_dim)``
         :rtype: np.ndarray of shape ``(n_ids, n_dim)``
+        :param return_eta: A boolean flag indicating whether eta is returned
+            regardless of whether the parametrisation is centered or not.
+        :type return_eta: boolean, optional
         """
-        return eta
+        raise NotImplementedError
 
     def compute_log_likelihood(
             self, parameters, observations, *args, **kwargs):
@@ -138,6 +147,21 @@ class PopulationModel(object):
         """
         return copy.copy(self._dim_names)
 
+    def get_special_dims(self):
+        r"""
+        Returns information on pooled and heterogeneously modelled dimensions.
+
+        Returns a tuple with 3 entries:
+            1. A list of lists, each entry containing 1. the start and end
+                dimension of the special dimensions; 2. the associated
+                start and end index of the model parameters; 3. and a boolean
+                indicating whether the dimension is pooled (``True``) or
+                heterogeneous (``False``).
+            2. The number of pooled dimensions.
+            3. The number of heterogeneous dimensions.
+        """
+        return self._special_dims, self._n_pooled_dims, self._n_hetero_dims
+
     def get_parameter_names(self, exclude_dim_names=False):
         """
         Returns the names of the population model parameters. If name is
@@ -190,7 +214,7 @@ class PopulationModel(object):
         If the behaviour of the population model does not change with the
         number of modelled individuals 0 is returned.
         """
-        return 0
+        return self._n_ids
 
     def n_parameters(self):
         """
@@ -260,7 +284,10 @@ class PopulationModel(object):
         :param n_ids: Number of individuals.
         :type n_ids: int
         """
-        return None
+        n_ids = int(n_ids)
+        if n_ids < 1:
+            raise ValueError('The number of individuals has to be positive.')
+        self._n_ids = n_ids
 
     def set_parameter_names(self, names=None):
         """
@@ -306,32 +333,19 @@ class ComposedPopulationModel(PopulationModel):
                     'chi.PopulationModel.')
 
         # Check that number of modelled individuals is compatible
-        n_ids = 0
+        n_ids = 1
         for pop_model in population_models:
-            if (n_ids > 0) and (pop_model.n_ids() > 0) and (
+            if (n_ids > 1) and (pop_model.n_ids() > 1) and (
                     n_ids != pop_model.n_ids()):
                 raise ValueError(
                     'All population models must model the same number of '
                     'individuals.')
-            n_ids = n_ids if n_ids > 0 else pop_model.n_ids()
+            n_ids = n_ids if n_ids > 1 else pop_model.n_ids()
         self._population_models = population_models
         self._n_ids = n_ids
 
         # Get properties of population models
-        n_dim = 0
-        n_parameters = 0
-        n_covariates = 0
-        n_hierarchical_dim = 0
-        for pop_model in self._population_models:
-            n_covariates += pop_model.n_covariates()
-            n_dim += pop_model.n_dim()
-            n_hierarchical_dim += pop_model.n_hierarchical_dim()
-            n_parameters += pop_model.n_parameters()
-
-        self._n_dim = n_dim
-        self._n_hierarchical_dim = n_hierarchical_dim
-        self._n_parameters = n_parameters
-        self._n_covariates = n_covariates
+        self._set_population_model_properties()
 
         # Make sure that models have unique parameter names
         # (if not enumerate dimensions to make them unique in most cases)
@@ -341,8 +355,78 @@ class ComposedPopulationModel(PopulationModel):
                 'Dim. %d' % (dim_id + 1) for dim_id in range(self._n_dim)]
             self.set_dim_names(dim_names)
 
+    def _set_population_model_properties(self):
+        """
+        Sets the properties of the population model based on the submodels.
+        """
+        n_dim = 0
+        n_parameters = 0
+        n_covariates = 0
+        n_hierarchical_dim = 0
+        special_dim = []
+        n_pooled = 0
+        n_hetero = 0
+        for pop_model in self._population_models:
+            s, p, h = pop_model.get_special_dims()
+            n_pooled += p
+            n_hetero += h
+            for entry in s:
+                # Need to shift dimensions and parameter index
+                special_dim += [[
+                    entry[0] + n_dim,
+                    entry[1] + n_dim,
+                    entry[2] + n_parameters,
+                    entry[3] + n_parameters,
+                    entry[4]
+                ]]
+            n_covariates += pop_model.n_covariates()
+            n_dim += pop_model.n_dim()
+            n_hierarchical_dim += pop_model.n_hierarchical_dim()
+            n_parameters += pop_model.n_parameters()
+
+        self._n_dim = n_dim
+        self._n_parameters = n_parameters
+        self._n_covariates = n_covariates
+        self._n_hierarchical_dim = n_hierarchical_dim
+        self._special_dims = special_dim
+        self._n_pooled_dims = n_pooled
+        self._n_hetero_dims = n_hetero
+
+    def _shape_eta(self, eta):
+        """
+        Reshapes eta to numpy.ndarry of shape (n_ids, n_dim).
+        """
+        n_dim = len(eta) // self._n_ids
+        eta = eta.reshape(self._n_ids, n_dim)
+        if n_dim == self._n_dim:
+            # There are no special dimensions and we can just reshape and
+            # return
+            return eta
+
+        # Some dimensions have do be filled with dummies, because pooled
+        # and heterogeneous dimensions are special and replace dummy values
+        # later on.
+        if len(self._special_dims) == 0:
+            raise ValueError(
+                'eta is invalid. Eta cannot be reshaped into (n_ids, n_dim), '
+                'even after taking pooled and heterogenuous dimensions into '
+                'account.')
+        start = 0
+        shift = 0
+        eta_prime = np.empty(shape=(self._n_ids, self._n_dim))
+        for s in self._special_dims:
+            end = s[0]
+            eta_prime[:, start:end] = eta[:, start-shift:end-shift]
+            start = s[1]
+            shift += end - start
+
+        # Fill trailing dimensions
+        eta_prime[:, start:] = eta[:, start-shift:]
+
+        return eta_prime
+
     def compute_individual_parameters(
-            self, parameters, eta, covariates=None):
+            self, parameters, eta, covariates=None, return_eta=False):
         """
         Returns the individual parameters.
 
@@ -360,13 +444,20 @@ class ComposedPopulationModel(PopulationModel):
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)``
         :param eta: Inter-individual fluctuations.
-        :type eta: np.ndarray of shape ``(n_ids, n_dim)``
+        :type eta: np.ndarray of shape ``(n_ids * n_dim)`` or
+            ``(n_ids, n_dim)``
         :param covariates: Covariates of the individuals.
         :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
+        :param return_eta: A boolean flag indicating whether eta is returned
+            regardless of whether the parametrisation is centered or not.
+        :type return_eta: boolean, optional
         :rtype: np.ndarray of shape ``(n_ids, n_dim)``
         """
         eta = np.asarray(eta)
         parameters = np.asarray(parameters)
+
+        if eta.ndim == 1:
+            eta = self._shape_eta(eta)
 
         # Compute individual parameters
         cov = None
@@ -387,7 +478,8 @@ class ComposedPopulationModel(PopulationModel):
                 pop_model.compute_individual_parameters(
                     parameters=parameters[current_p:end_p],
                     eta=eta[:, current_dim:end_dim],
-                    covariates=cov)
+                    covariates=cov,
+                    return_eta=return_eta)
             current_p = end_p
             current_dim = end_dim
 
@@ -704,17 +796,15 @@ class ComposedPopulationModel(PopulationModel):
         """
         # Check cheap option first: Behaviour is not changed by input
         n_ids = int(n_ids)
-        if (self._n_ids == 0) or (n_ids == self._n_ids):
+        if n_ids == self._n_ids:
             return None
 
-        n_parameters = 0
         for pop_model in self._population_models:
             pop_model.set_n_ids(n_ids)
-            n_parameters += pop_model.n_parameters()
 
-        # Update n_ids and n_parameters
+        # Update n_ids and model properties
         self._n_ids = n_ids
-        self._n_parameters = n_parameters
+        self._set_population_model_properties()
 
     def set_parameter_names(self, names=None):
         """
@@ -806,6 +896,8 @@ class CovariatePopulationModel(PopulationModel):
         self._n_pop = self._population_model.n_parameters()
         self._n_hierarchical_dim = self._population_model.n_hierarchical_dim()
         self._n_covariates = self._covariate_model.n_covariates()
+        self._special_dims, self._n_pooled_dims, self._n_hetero_dims = \
+            self._population_model.get_special_dims()
 
         # Set names and all parameters to be modelled by the covariate model
         n_cov = self._covariate_model.n_covariates()
@@ -820,7 +912,8 @@ class CovariatePopulationModel(PopulationModel):
             names += [name] * n_cov
         self._covariate_model.set_parameter_names(names)
 
-    def compute_individual_parameters(self, parameters, eta, covariates):
+    def compute_individual_parameters(
+            self, parameters, eta, covariates, return_eta=False):
         """
         Returns the individual parameters.
 
@@ -830,9 +923,13 @@ class CovariatePopulationModel(PopulationModel):
         :param parameters: Model parameters.
         :type parameters: np.ndarray of shape ``(n_parameters,)``
         :param eta: Inter-individual fluctuations.
-        :type eta: np.ndarray of shape ``(n_ids, n_dim)``
+        :type eta: np.ndarray of shape ``(n_ids * n_dim)`` or
+            ``(n_ids, n_dim)``
         :param covariates: Covariates of individuals.
         :type covariates: np.ndarray of shape ``(n_ids, n_cov)``
+        :param return_eta: A boolean flag indicating whether eta is returned
+            regardless of whether the parametrisation is centered or not.
+        :type return_eta: boolean, optional
         :rtype: np.ndarray of shape ``(n_ids, n_dim)``
         """
         # Split into covariate model parameters and population parameters
@@ -841,8 +938,10 @@ class CovariatePopulationModel(PopulationModel):
         cov_params = parameters[self._n_pop:]
 
         # Reshape population parameters to (n_params_per_dim, n_dim)
+        # NOTE: Assumes that all dimensions have the same number of parameters
         # TODO: Need to introduce a population model owned method that
-        # transforms n_p to (n_p, n_d).
+        # transforms n_p to (n_p, n_d) for varying parameters across
+        # dimensions.
         n_params_per_dim = self._n_pop // self._n_dim
         pop_params = pop_params.reshape(n_params_per_dim, self._n_dim)
 
@@ -852,7 +951,7 @@ class CovariatePopulationModel(PopulationModel):
 
         # Compute psi(eta, vartheta)
         psi = self._population_model.compute_individual_parameters(
-            parameters, eta)
+            parameters, eta, return_eta=return_eta)
 
         return psi
 
@@ -1328,7 +1427,8 @@ class GaussianModel(PopulationModel):
 
         return dpsi, dtheta
 
-    def compute_individual_parameters(self, parameters, eta, *args, **kwargs):
+    def compute_individual_parameters(
+            self, parameters, eta, return_eta=False, *args, **kwargs):
         r"""
         Returns the individual parameters.
 
@@ -1347,13 +1447,17 @@ class GaussianModel(PopulationModel):
         :type parameters: np.ndarray of shape ``(n_parameters,)``,
             ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
         :param eta: Inter-individual fluctuations.
-        :type eta: np.ndarray of shape ``(n_ids, n_dim)``
+        :type eta: np.ndarray of shape ``(n_ids * n_dim)`` or
+            ``(n_ids, n_dim)`
+        :param return_eta: A boolean flag indicating whether eta is returned
+            regardless of whether the parametrisation is centered or not.
+        :type return_eta: boolean, optional
         :rtype: np.ndarray of shape ``(n_ids, n_dim)``
         """
         eta = np.asarray(eta)
         if eta.ndim == 1:
-            eta = eta[:, np.newaxis]
-        if self._centered:
+            eta = eta.reshape(self._n_ids, self._n_dim)
+        if self._centered or return_eta:
             return eta
 
         parameters = np.asarray(parameters)
@@ -1671,9 +1775,37 @@ class HeterogeneousModel(PopulationModel):
     """
     def __init__(self, n_dim=1, dim_names=None, n_ids=1):
         super(HeterogeneousModel, self).__init__(n_dim, dim_names)
-        self._n_ids = 0  # This is a temporary dummy value
         self._n_hierarchical_dim = 0
-        self.set_n_ids(n_ids)
+        self.set_n_ids(n_ids, no_shortcut=True)
+
+        # Set special dimensions
+        self._n_pooled_dims = 0
+        self._n_hetero_dims = self._n_dim
+
+    def compute_individual_parameters(
+            self, parameters, eta, return_eta=False, *args, **kwargs):
+        """
+        Returns the individual parameters.
+
+        If the model does not transform the bottom-level parameters, ``eta`` is
+        returned.
+
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)``,
+            ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
+        :param eta: Inter-individual fluctuations.
+        :type eta: np.ndarray of shape ``(n_ids, n_dim)``
+        :rtype: np.ndarray of shape ``(n_ids, n_dim)``
+        :param return_eta: A boolean flag indicating whether eta is returned
+            regardless of whether the parametrisation is centered or not.
+        :type return_eta: boolean, optional
+        """
+        if parameters.ndim == 1:
+            parameters = parameters.reshape(self._n_ids, self._n_dim)
+        elif parameters.ndim == 3:
+            parameters = np.diagonal(parameters, axis1=0, axis2=1).T
+
+        return parameters
 
     def compute_log_likelihood(
             self, parameters, observations, *args, **kwargs):
@@ -1872,7 +2004,7 @@ class HeterogeneousModel(PopulationModel):
 
         return parameters
 
-    def set_n_ids(self, n_ids):
+    def set_n_ids(self, n_ids, no_shortcut=False):
         """
         Sets the number of modelled individuals.
 
@@ -1883,6 +2015,9 @@ class HeterogeneousModel(PopulationModel):
 
         :param n_ids: Number of individuals.
         :type n_ids: int
+        :param no_shortcut: Boolean flag that prevents exiting the method
+            early when n_ids are unchanged.
+        :type no_shortcut: bool, optional
         """
         n_ids = int(n_ids)
 
@@ -1891,7 +2026,7 @@ class HeterogeneousModel(PopulationModel):
                 'The number of modelled individuals needs to be greater or '
                 'equal to 1.')
 
-        if n_ids == self._n_ids:
+        if (n_ids == self._n_ids) and not no_shortcut:
             return None
 
         self._n_ids = n_ids
@@ -1899,6 +2034,9 @@ class HeterogeneousModel(PopulationModel):
         self._parameter_names = []
         for _id in range(self._n_ids):
             self._parameter_names += ['ID %d' % (_id + 1)] * self._n_dim
+
+        # Update special dims
+        self._special_dims = [[0, self._n_dim, 0, self._n_parameters, False]]
 
     def set_parameter_names(self, names=None):
         r"""
@@ -2111,7 +2249,8 @@ class LogNormalModel(PopulationModel):
 
         return dpsi, dtheta
 
-    def compute_individual_parameters(self, parameters, eta, *args, **kwargs):
+    def compute_individual_parameters(
+            self, parameters, eta, return_eta=False, *args, **kwargs):
         r"""
         Returns the individual parameters.
 
@@ -2132,13 +2271,17 @@ class LogNormalModel(PopulationModel):
         :type parameters: np.ndarray of shape ``(n_parameters,)``,
             ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
         :param eta: Inter-individual fluctuations.
-        :type eta: np.ndarray of shape ``(n_ids, n_dim)``
+        :type eta: np.ndarray of shape ``(n_ids * n_dim)`` or
+            ``(n_ids, n_dim)``
+        :param return_eta: A boolean flag indicating whether eta is returned
+            regardless of whether the parametrisation is centered or not.
+        :type return_eta: boolean, optional
         :rtype: np.ndarray of shape ``(n_ids, n_dim)``
         """
         eta = np.asarray(eta)
         if eta.ndim == 1:
-            eta = eta[:, np.newaxis]
-        if self._centered:
+            eta = eta.reshape(self._n_ids, self._n_dim)
+        if self._centered or return_eta:
             return eta
 
         parameters = np.asarray(parameters)
@@ -2494,8 +2637,40 @@ class PooledModel(PopulationModel):
         # Set number of hierarchical dimensions
         self._n_hierarchical_dim = 0
 
+        # Set special dimensions
+        self._special_dims = [[0, self._n_dim, 0, self._n_parameters, True]]
+        self._n_pooled_dims = self._n_dim
+        self._n_hetero_dims = 0
+
         # Set default parameter names
         self._parameter_names = ['Pooled'] * self._n_dim
+
+    def compute_individual_parameters(
+            self, parameters, eta, return_eta=False, *args, **kwargs):
+        """
+        Returns the individual parameters.
+
+        If the model does not transform the bottom-level parameters, ``eta`` is
+        returned.
+
+        :param parameters: Model parameters.
+        :type parameters: np.ndarray of shape ``(n_parameters,)``,
+            ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
+        :param eta: Inter-individual fluctuations.
+        :type eta: np.ndarray of shape ``(n_ids, n_dim)``
+        :rtype: np.ndarray of shape ``(n_ids, n_dim)``
+        :param return_eta: A boolean flag indicating whether eta is returned
+            regardless of whether the parametrisation is centered or not.
+        :type return_eta: boolean, optional
+        """
+        if parameters.ndim < 3:
+            parameters = np.broadcast_to(
+                parameters.reshape(1, self._n_dim),
+                shape=(self._n_ids, self._n_dim))
+        elif parameters.ndim == 3:
+            parameters = parameters[:, 0, :]
+
+        return parameters
 
     def compute_log_likelihood(
             self, parameters, observations, *args, **kwargs):
