@@ -1567,7 +1567,7 @@ class GaussianModel(PopulationModel):
             ``(n_param_per_dim, n_dim)`` or ``(n_ids, n_param_per_dim, n_dim)``
         :param eta: Inter-individual fluctuations.
         :type eta: np.ndarray of shape ``(n_ids * n_dim)`` or
-            ``(n_ids, n_dim)`
+            ``(n_ids, n_dim)``
         :param return_eta: A boolean flag indicating whether eta is returned
             regardless of whether the parametrisation is centered or not.
         :type return_eta: boolean, optional
