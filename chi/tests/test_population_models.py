@@ -205,6 +205,38 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(dtheta[5], dtheta2[3])
         self.assertEqual(dtheta[6], dtheta3[0])
 
+        # Test reduce
+        self.pop_model1.set_n_ids(n_ids=6)
+        self.pop_model2.set_n_ids(n_ids=6)
+        self.pop_model3.set_n_ids(n_ids=6)
+        s1, dscore1 = self.pop_model1.compute_sensitivities(
+            parameters[:2], psis[:, 0], reduce=True)
+        s2, dscore2 = self.pop_model2.compute_sensitivities(
+            parameters[2:6], psis[:, 1:3], reduce=True)
+        s3, dscore3 = self.pop_model3.compute_sensitivities(
+            parameters[6], psis[:, 3], reduce=True)
+        ref_score = s1 + s2 + s3
+        self.pop_model.set_n_ids(n_ids=6)
+        score, dscore = self.pop_model.compute_sensitivities(
+            parameters, psis, reduce=True)
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(dscore.shape, (25,))
+        self.assertEqual(dscore[0], dscore1[0])
+        self.assertEqual(dscore[1], dscore2[0])
+        self.assertEqual(dscore[2], dscore2[1])
+        self.assertEqual(dscore[18], dscore1[6])
+        self.assertEqual(dscore[19], dscore1[7])
+        self.assertEqual(dscore[20], dscore2[12])
+        self.assertEqual(dscore[21], dscore2[13])
+        self.assertEqual(dscore[22], dscore2[14])
+        self.assertEqual(dscore[23], dscore2[15])
+        self.assertEqual(dscore[24], dscore3[0])
+
+        self.pop_model.set_n_ids(n_ids=1)
+        self.pop_model1.set_n_ids(n_ids=1)
+        self.pop_model2.set_n_ids(n_ids=1)
+        self.pop_model3.set_n_ids(n_ids=1)
+
         # Test case II: no covariate model, with dlogp/dpsi
         n_ids, n_dim = (6, 4)
         psis = np.ones(shape=(n_ids, n_dim))
@@ -273,6 +305,37 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(dtheta[10], dtheta3[4])
         self.assertEqual(dtheta[11], dtheta3[5])
 
+        # Reduce sensitivities
+        self.pop_model1.set_n_ids(n_ids)
+        self.pop_model4.set_n_ids(n_ids)
+        self.pop_model5.set_n_ids(n_ids)
+        s1, dscore1 = self.pop_model1.compute_sensitivities(
+            parameters[:2], psis[:, 0], reduce=True)
+        s2, dscore2 = self.pop_model4.compute_sensitivities(
+            parameters[2:6], psis[:, 1:2], covariates=covariates, reduce=True)
+        s3, dscore3 = self.pop_model5.compute_sensitivities(
+            parameters[6], psis[:, 2:], reduce=True)
+        ref_score = s1 + s2 + s3
+        score, dscore = self.pop_model_prime.compute_sensitivities(
+            parameters, psis, covariates=covariates, reduce=True)
+        self.assertTrue(np.isfinite(score))
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(dscore.shape, (24,))
+        self.assertEqual(dscore[0], dscore1[0])
+        self.assertEqual(dscore[1], dscore2[1])
+        self.assertEqual(dscore[12], dscore1[6])
+        self.assertEqual(dscore[13], dscore1[7])
+        self.assertEqual(dscore[14], dscore2[6])
+        self.assertEqual(dscore[15], dscore2[7])
+        self.assertEqual(dscore[16], dscore2[8])
+        self.assertEqual(dscore[17], dscore2[9])
+        self.assertEqual(dscore[18], dscore3[0])
+        self.assertEqual(dscore[19], dscore3[1])
+        self.assertEqual(dscore[20], dscore3[2])
+        self.assertEqual(dscore[21], dscore3[3])
+        self.assertEqual(dscore[22], dscore3[4])
+        self.assertEqual(dscore[23], dscore3[5])
+
         # Test case IV: covariate model, with dlogp/dpsi
         n_ids, n_dim, n_cov = (6, 3, 1)
         self.pop_model_prime.set_n_ids(n_ids)
@@ -311,6 +374,10 @@ class TestComposedPopulationModel(unittest.TestCase):
         self.assertEqual(dtheta[9], dtheta3[3])
         self.assertEqual(dtheta[10], dtheta3[4])
         self.assertEqual(dtheta[11], dtheta3[5])
+
+        self.pop_model1.set_n_ids(1)
+        self.pop_model4.set_n_ids(1)
+        self.pop_model5.set_n_ids(1)
 
     def test_get_covariate_names(self):
         # Test case I: no covariates
@@ -854,6 +921,20 @@ class TestCovariatePopulationModel(unittest.TestCase):
         self.assertAlmostEqual(dtheta[6], ref_dtheta[6])
         self.assertAlmostEqual(dtheta[7], ref_dtheta[7])
 
+        score, dscore = self.cpop_model.compute_sensitivities(
+            parameters, psi, covariates, reduce=True)
+        self.assertEqual(score, ref_score)
+        self.assertEqual(dscore.shape, (10,))
+        self.assertAlmostEqual(dscore[0], ref_dpsi[0])
+        self.assertAlmostEqual(dscore[2], ref_dtheta[0])
+        self.assertAlmostEqual(dscore[3], ref_dtheta[1])
+        self.assertAlmostEqual(dscore[4], ref_dtheta[2])
+        self.assertAlmostEqual(dscore[5], ref_dtheta[3])
+        self.assertAlmostEqual(dscore[6], ref_dtheta[4])
+        self.assertAlmostEqual(dscore[7], ref_dtheta[5])
+        self.assertAlmostEqual(dscore[8], ref_dtheta[6])
+        self.assertAlmostEqual(dscore[9], ref_dtheta[7])
+
         # Test case II: 10 ID
         n_ids = 10
         parameters = np.ones(8)
@@ -1125,7 +1206,9 @@ class TestGaussianModel(unittest.TestCase):
 
     def test_compute_individual_parameters(self):
         # Test case I: centered
-        etas = np.arange(10) * 0.1
+        n_ids = 10
+        self.pop_model.set_n_ids(n_ids)
+        etas = np.arange(n_ids) * 0.1
         theta = np.array([0.3, 2])
         psis = self.pop_model.compute_individual_parameters(theta, etas)
 
@@ -1142,7 +1225,8 @@ class TestGaussianModel(unittest.TestCase):
         self.assertEqual(etas[9], psis[9, 0])
 
         # Test case II: non-centered
-        etas = np.arange(10) * 0.1
+        self.non_centered.set_n_ids(n_ids)
+        etas = np.arange(n_ids) * 0.1
         theta = np.array([0.3, 2])
         psis = self.non_centered.compute_individual_parameters(theta, etas)
 
@@ -1190,6 +1274,9 @@ class TestGaussianModel(unittest.TestCase):
         ref_psis = self.non_centered.compute_individual_parameters(
             theta, etas, return_eta=True)
         self.assertTrue(np.all(psis == ref_psis))
+
+        self.pop_model.set_n_ids(1)
+        self.non_centered.set_n_ids(1)
 
     def test_compute_log_likelihood(self):
         n_ids = 10
@@ -1463,6 +1550,24 @@ class TestGaussianModel(unittest.TestCase):
         self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
         self.assertAlmostEqual(dtheta[0], ref_dmu)
         self.assertAlmostEqual(dtheta[1], ref_dsigma)
+
+        score, dscore = self.pop_model.compute_sensitivities(
+            parameters, psis, reduce=True)
+
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dscore.shape, (12,))
+        self.assertAlmostEqual(dscore[0], ref_dpsi)
+        self.assertAlmostEqual(dscore[1], ref_dpsi)
+        self.assertAlmostEqual(dscore[2], ref_dpsi)
+        self.assertAlmostEqual(dscore[3], ref_dpsi)
+        self.assertAlmostEqual(dscore[4], ref_dpsi)
+        self.assertAlmostEqual(dscore[5], ref_dpsi)
+        self.assertAlmostEqual(dscore[6], ref_dpsi)
+        self.assertAlmostEqual(dscore[7], ref_dpsi)
+        self.assertAlmostEqual(dscore[8], ref_dpsi)
+        self.assertAlmostEqual(dscore[9], ref_dpsi)
+        self.assertAlmostEqual(dscore[10], ref_dmu)
+        self.assertAlmostEqual(dscore[11], ref_dsigma)
 
         # Matrix input
         # Compute ref scores
@@ -2003,6 +2108,12 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertTrue(np.all(dpsi == 0))
         self.assertTrue(np.all(dtheta == 0))
 
+        score, dscore = self.pop_model.compute_sensitivities(
+            parameters, observations, reduce=True)
+        self.assertEqual(score, 0)
+        self.assertEqual(dscore.shape, (1,))
+        self.assertTrue(np.all(dscore == 0))
+
         # Test II: n_ids=5, dim=2
         n_ids = 5
         n_dim = 2
@@ -2016,6 +2127,12 @@ class TestHeterogeneousModel(unittest.TestCase):
         self.assertEqual(dtheta.shape, (10,))
         self.assertTrue(np.all(dpsi == 0))
         self.assertTrue(np.all(dtheta == 0))
+
+        score, dscore = pop_model.compute_sensitivities(
+            parameters, observations, reduce=True)
+        self.assertEqual(score, 0)
+        self.assertEqual(dscore.shape, (10,))
+        self.assertTrue(np.all(dscore == 0))
 
         # Test III: inf for unequal params
         parameters = np.ones(n_ids * n_dim)
@@ -2206,7 +2323,9 @@ class TestLogNormalModel(unittest.TestCase):
 
     def test_compute_individual_parameters(self):
         # Test case I: centered
-        etas = np.arange(10) * 0.1
+        n_ids = 10
+        self.pop_model.set_n_ids(n_ids)
+        etas = np.arange(n_ids) * 0.1
         theta = np.array([0.3, 2])
         psis = self.pop_model.compute_individual_parameters(theta, etas)
 
@@ -2223,7 +2342,8 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(etas[9], psis[9, 0])
 
         # Test case II: non-centered
-        etas = np.arange(10) * 0.1
+        self.non_centered.set_n_ids(n_ids)
+        etas = np.arange(n_ids) * 0.1
         theta = np.array([0.3, 2])
         psis = self.non_centered.compute_individual_parameters(theta, etas)
 
@@ -2242,7 +2362,7 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(ref_psis[9], psis[9, 0])
 
         # Same, but matrix input
-        etas = np.arange(10) * 0.1
+        etas = np.arange(n_ids) * 0.1
         theta = np.array([[0.3, 2]])
         psis = self.non_centered.compute_individual_parameters(theta, etas)
 
@@ -2267,10 +2387,14 @@ class TestLogNormalModel(unittest.TestCase):
             theta, etas, return_eta=True)
         self.assertTrue(np.all(psis == ref_psis))
 
+        self.pop_model.set_n_ids(1)
+        self.non_centered.set_n_ids(1)
+
     def test_compute_log_likelihood(self):
         # Hard to test exactly, but at least test some edge cases where
         # loglikelihood is straightforward to compute analytically
         n_ids = 10
+        self.pop_model.set_n_ids(n_ids)
 
         # Test case I: psis = 1, sigma_log = 1
         # Score reduces to
@@ -2424,6 +2548,8 @@ class TestLogNormalModel(unittest.TestCase):
         score = pop_model.compute_log_likelihood(parameters, etas)
         self.assertAlmostEqual(score, 2 * ref_score)
 
+        self.pop_model.set_n_ids(1)
+
     def test_compute_pointwise_ll(self):
         # TODO:
         with self.assertRaisesRegex(NotImplementedError, None):
@@ -2570,6 +2696,7 @@ class TestLogNormalModel(unittest.TestCase):
         # loglikelihood is straightforward to compute analytically
 
         n_ids = 10
+        self.pop_model.set_n_ids(10)
 
         # Test case I: psis = 1, sigma_log = 1
         # Sensitivities reduce to
@@ -2629,6 +2756,26 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertAlmostEqual(dpsi[9, 0], ref_dpsi)
         self.assertAlmostEqual(dtheta[0], ref_dmu)
         self.assertAlmostEqual(dtheta[1], ref_dsigma)
+
+        # Reduce sensitivities
+        score, dscore = self.pop_model.compute_sensitivities(
+            parameters, psis, reduce=True)
+
+        self.assertAlmostEqual(score, ref_ll)
+        self.assertEqual(dscore.shape, (12,))
+        self.assertEqual(dtheta.shape, (2,))
+        self.assertAlmostEqual(dscore[0], ref_dpsi)
+        self.assertAlmostEqual(dscore[1], ref_dpsi)
+        self.assertAlmostEqual(dscore[2], ref_dpsi)
+        self.assertAlmostEqual(dscore[3], ref_dpsi)
+        self.assertAlmostEqual(dscore[4], ref_dpsi)
+        self.assertAlmostEqual(dscore[5], ref_dpsi)
+        self.assertAlmostEqual(dscore[6], ref_dpsi)
+        self.assertAlmostEqual(dscore[7], ref_dpsi)
+        self.assertAlmostEqual(dscore[8], ref_dpsi)
+        self.assertAlmostEqual(dscore[9], ref_dpsi)
+        self.assertAlmostEqual(dscore[10], ref_dmu)
+        self.assertAlmostEqual(dscore[11], ref_dsigma)
 
         n_ids = 10
 
@@ -2932,6 +3079,8 @@ class TestLogNormalModel(unittest.TestCase):
         self.assertEqual(dpsi.shape, (n_ids, 1))
         self.assertEqual(dtheta.shape, (n_ids, 2, 1))
 
+        self.pop_model.set_n_ids(1)
+
     def test_get_mean_and_std(self):
         # Test case I: std_log = 0
         # Then:
@@ -3223,6 +3372,11 @@ class TestPooledModel(unittest.TestCase):
         self.assertEqual(dpsi.shape, (4, 1))
         self.assertEqual(dtheta.shape, (4, 1, 1))
 
+        score, dscore = self.pop_model.compute_sensitivities(
+            parameters, observations, reduce=True)
+        self.assertEqual(score, -np.inf)
+        self.assertEqual(dscore.shape, (1,))
+
         # Test case II: all values agree with parameter
         parameters = [1]
         observations = [1, 1, 1, 1]
@@ -3492,6 +3646,7 @@ class TestReducedPopulationModel(unittest.TestCase):
 
     def test_compute_individual_parameters(self):
         # Test case I: Model does not transform psi
+        self.pop_model.set_n_ids(4)
         parameters = [1, 10]
         eta = [0.2, -0.3, 1, 5]
         psi = self.pop_model.compute_individual_parameters(
@@ -3646,6 +3801,19 @@ class TestReducedPopulationModel(unittest.TestCase):
         self.assertEqual(dpsi[2, 0], ref_dpsi[2, 0])
         self.assertEqual(dpsi[3, 0], ref_dpsi[3, 0])
         self.assertEqual(dtheta[0], ref_dtheta[1])
+
+        parameters = [2]
+        observations = [2, 3, 4, 5]
+        score, dscore = self.pop_model.compute_sensitivities(
+            parameters, observations, reduce=True)
+
+        self.assertEqual(score, ref_score)
+        self.assertEqual(dscore.shape, (5,))
+        self.assertEqual(dscore[0], ref_dpsi[0, 0])
+        self.assertEqual(dscore[1], ref_dpsi[1, 0])
+        self.assertEqual(dscore[2], ref_dpsi[2, 0])
+        self.assertEqual(dscore[3], ref_dpsi[3, 0])
+        self.assertEqual(dscore[4], ref_dtheta[1])
 
         # Test case II: provide dlogp_dpsi
         dlogp_dpsi = np.ones((4, 1))
