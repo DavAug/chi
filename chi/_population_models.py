@@ -1915,10 +1915,12 @@ class HeterogeneousModel(PopulationModel):
         dtheta is returned in shape (n_ids, n_param_per_dim, n_dim)
         """
         if reduce or flattened:
-            # Since all entries are zero, this is a more efficient
+            # Since all dtheta are zero, this is a more efficient
             # implementation than summing
             dtheta = np.zeros(self._n_parameters)
         if reduce:
+            # non-zero entries can come from dpsi
+            dtheta = dpsi.flatten()
             return score, dtheta
 
         return score, dpsi, dtheta
@@ -2797,10 +2799,12 @@ class PooledModel(PopulationModel):
         dtheta is returned in shape (n_ids, n_param_per_dim, n_dim)
         """
         if reduce or flattened:
-            # Since all entries are zero, this is a more efficient
+            # Since all dtheta are zero, this is a more efficient
             # implementation than summing
             dtheta = np.zeros(self._n_parameters)
         if reduce:
+            # dpsi can be non-zero
+            dtheta = np.sum(dpsi, axis=0)
             return score, dtheta
 
         return score, dpsi, dtheta
