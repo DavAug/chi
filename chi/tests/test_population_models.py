@@ -130,6 +130,13 @@ class TestComposedPopulationModel(unittest.TestCase):
             parameters, etas, covariates)
         self.assertEqual(psis.shape, (6, 3))
 
+        # Test that error is raised when flattened eta has the wrong number
+        # of elements
+        etas = np.ones(shape=(n_ids,))
+        with self.assertRaisesRegex(ValueError, 'eta is invalid.'):
+            self.pop_model_prime.compute_individual_parameters(
+                parameters, etas, covariates)
+
         self.pop_model_prime.set_n_ids(1)
 
     def test_compute_log_likelihood(self):
@@ -3615,6 +3622,12 @@ class TestPopulationModel(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.sample('some values')
 
+    def test_set_n_ids(self):
+        self.pop_model.set_n_ids(10)
+
+        with self.assertRaisesRegex(ValueError, 'n_ids is invalid.'):
+            self.pop_model.set_n_ids(0)
+
     def test_set_parameter_names(self):
         with self.assertRaisesRegex(NotImplementedError, ''):
             self.pop_model.set_parameter_names('some name')
@@ -3902,6 +3915,53 @@ class TestReducedPopulationModel(unittest.TestCase):
         names = self.pop_model.get_dim_names()
         self.assertEqual(len(names), 1)
         self.assertEqual(names[0], 'Dim. 1')
+
+    def test_get_special_dims(self):
+        # Create a multi-dimensional 'special dimensional' model
+        pop_model = chi.PooledModel(n_dim=2)
+        pop_model = chi.ReducedPopulationModel(pop_model)
+
+        special_dims, n_pooled, n_hetero = pop_model.get_special_dims()
+        self.assertEqual(len(special_dims), 1)
+        special_dims = special_dims[0]
+        self.assertEqual(len(special_dims), 5)
+        self.assertEqual(special_dims[0], 0)
+        self.assertEqual(special_dims[1], 2)
+        self.assertEqual(special_dims[2], 0)
+        self.assertEqual(special_dims[3], 2)
+        self.assertTrue(special_dims[4])
+        self.assertEqual(n_pooled, 2)
+        self.assertEqual(n_hetero, 0)
+
+        # Fix first dimension
+        pop_model.fix_parameters({'Pooled Dim. 1': 1})
+        special_dims, n_pooled, n_hetero = pop_model.get_special_dims()
+        self.assertEqual(len(special_dims), 1)
+        special_dims = special_dims[0]
+        self.assertEqual(len(special_dims), 5)
+        self.assertEqual(special_dims[0], 0)
+        self.assertEqual(special_dims[1], 2)
+        self.assertEqual(special_dims[2], 0)
+        self.assertEqual(special_dims[3], 1)
+        self.assertTrue(special_dims[4])
+        self.assertEqual(n_pooled, 2)
+        self.assertEqual(n_hetero, 0)
+
+        pop_model.fix_parameters({'Pooled Dim. 2': 1})
+        special_dims, n_pooled, n_hetero = pop_model.get_special_dims()
+        self.assertEqual(len(special_dims), 1)
+        special_dims = special_dims[0]
+        self.assertEqual(len(special_dims), 5)
+        self.assertEqual(special_dims[0], 0)
+        self.assertEqual(special_dims[1], 2)
+        self.assertEqual(special_dims[2], 0)
+        self.assertEqual(special_dims[3], 0)
+        self.assertTrue(special_dims[4])
+        self.assertEqual(n_pooled, 2)
+        self.assertEqual(n_hetero, 0)
+
+        pop_model.fix_parameters({
+            'Pooled Dim. 1': None, 'Pooled Dim. 2': None})
 
     def test_get_population_model(self):
         pop_model = self.pop_model.get_population_model()

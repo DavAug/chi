@@ -310,7 +310,9 @@ class PopulationModel(object):
         """
         n_ids = int(n_ids)
         if n_ids < 1:
-            raise ValueError('The number of individuals has to be positive.')
+            raise ValueError(
+                'n_ids is invalid. The number of individuals has to be '
+                'positive.')
         self._n_ids = n_ids
 
     def set_parameter_names(self, names=None):
@@ -543,7 +545,7 @@ class ComposedPopulationModel(PopulationModel):
         # Some dimensions have do be filled with dummies, because pooled
         # and heterogeneous dimensions are special and replace dummy values
         # later on.
-        if len(self._special_dims) == 0:
+        if (n_dim + self._n_pooled_dims + self._n_hetero_dims) != self._n_dim:
             raise ValueError(
                 'eta is invalid. Eta cannot be reshaped into (n_ids, n_dim), '
                 'even after taking pooled and heterogenuous dimensions into '
