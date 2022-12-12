@@ -170,6 +170,39 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         cls.hierarchical_model3 = chi.HierarchicalLogLikelihood(
             cls.log_likelihoods, population_model, covariates)
 
+        # Test reduced population model inside compose pop model
+        reduced_pop1 = chi.ReducedPopulationModel(
+            chi.PooledModel(dim_names=['Dim. 1']))
+        reduced_pop1.fix_parameters({'Pooled Dim. 1': 10})
+        reduced_pop2 = chi.ReducedPopulationModel(chi.GaussianModel())
+        reduced_pop2.fix_parameters({'Mean Dim. 1': 0.2})
+        population_model = chi.ComposedPopulationModel([
+            reduced_pop1,
+            reduced_pop2,
+            chi.PooledModel(n_dim=6),
+            cpop_model2
+        ])
+        covariates = np.array([[1, 2], [3, 4]])
+        cls.hierarchical_model4 = chi.HierarchicalLogLikelihood(
+            cls.log_likelihoods, population_model, covariates)
+
+        # Test outer reduced pop model
+        population_model = chi.ComposedPopulationModel([
+            chi.PooledModel(dim_names=['Dim. 1']),
+            chi.GaussianModel(),
+            chi.PooledModel(n_dim=6),
+            cpop_model2
+        ])
+        population_model = chi.ReducedPopulationModel(population_model)
+        population_model.fix_parameters({
+            'Pooled Dim. 1': 10,
+            'Pooled Dim. 5': 1,
+            'Mean Dim. 9 Cov. 1': 1
+        })
+        covariates = np.array([[1, 2], [3, 4]])
+        cls.hierarchical_model5 = chi.HierarchicalLogLikelihood(
+            cls.log_likelihoods, population_model, covariates)
+
     def test_bad_instantiation(self):
         # Log-likelihoods are not pints.LogPDF
         log_likelihoods = ['bad', 'type']
@@ -403,6 +436,33 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
 
         self.assertNotEqual(ref_score, -np.inf)
         self.assertAlmostEqual(score, ref_score)
+
+        # Test that fixed likelihoods return same scores as unfixed likelihoods
+        psis_1 = np.array([0.1, 0.2])
+        etas_2 = np.array([1, 10])
+        pop_params_1 = [0.2, 1]
+        pop_params_2 = [1, 0.1, 1, 2, 3, 4]
+        mu = pop_params_2[0] + covariates @ np.array(pop_params_2)[2:4]
+        sigma = pop_params_2[1] + covariates @ np.array(pop_params_2)[4:]
+        psis_2 = mu + sigma * etas_2
+        pooled_params = [10, 1, 1, 1, 1, 2, 1.2]
+        parameters = [
+            psis_1[0],
+            etas_2[0],
+            psis_1[1],
+            etas_2[1],
+            pooled_params[0]
+            ] + pop_params_1 + pooled_params[1:] + pop_params_2
+
+        ref_score = self.hierarchical_model3(parameters)
+        p = parameters[:4] + parameters[6:]
+        score = self.hierarchical_model4(p)
+        self.assertEqual(score, ref_score)
+
+        p = parameters[:4] + parameters[5:9] + parameters[10:15] \
+            + parameters[16:]
+        score = self.hierarchical_model5(p)
+        self.assertEqual(score, ref_score)
 
     def test_compute_pointwise_ll(self):
         # TODO:
@@ -877,6 +937,56 @@ class TestHierarchicalLogLikelihood(unittest.TestCase):
         self.assertEqual(sens[17], ref_sens[17])
         self.assertEqual(sens[18], ref_sens[18])
 
+        # Test that fixed likelihoods return same scores as unfixed likelihoods
+        ref_score, ref_sens = score, sens
+        p = parameters[:4] + parameters[6:]
+        score, sens = self.hierarchical_model4.evaluateS1(p)
+        self.assertNotEqual(ref_score, -np.inf)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 17)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[6])
+        self.assertEqual(sens[5], ref_sens[7])
+        self.assertEqual(sens[6], ref_sens[8])
+        self.assertEqual(sens[7], ref_sens[9])
+        self.assertEqual(sens[8], ref_sens[10])
+        self.assertEqual(sens[9], ref_sens[11])
+        self.assertEqual(sens[10], ref_sens[12])
+        self.assertEqual(sens[11], ref_sens[13])
+        self.assertEqual(sens[12], ref_sens[14])
+        self.assertEqual(sens[13], ref_sens[15])
+        self.assertEqual(sens[14], ref_sens[16])
+        self.assertEqual(sens[15], ref_sens[17])
+        self.assertEqual(sens[16], ref_sens[18])
+
+        p = parameters[:4] + parameters[5:9] + parameters[10:15] \
+            + parameters[16:]
+        score, sens = self.hierarchical_model5.evaluateS1(p)
+        self.assertNotEqual(ref_score, -np.inf)
+        self.assertFalse(np.any(np.isinf(sens)))
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 16)
+        self.assertEqual(sens[0], ref_sens[0])
+        self.assertEqual(sens[1], ref_sens[1])
+        self.assertEqual(sens[2], ref_sens[2])
+        self.assertEqual(sens[3], ref_sens[3])
+        self.assertEqual(sens[4], ref_sens[5])
+        self.assertEqual(sens[5], ref_sens[6])
+        self.assertEqual(sens[6], ref_sens[7])
+        self.assertEqual(sens[7], ref_sens[8])
+        self.assertEqual(sens[8], ref_sens[10])
+        self.assertEqual(sens[9], ref_sens[11])
+        self.assertEqual(sens[10], ref_sens[12])
+        self.assertEqual(sens[11], ref_sens[13])
+        self.assertEqual(sens[12], ref_sens[14])
+        self.assertEqual(sens[13], ref_sens[16])
+        self.assertEqual(sens[14], ref_sens[17])
+        self.assertEqual(sens[15], ref_sens[18])
+
     def test_get_id(self):
         # Test case I: Get parameter IDs
         ids = self.hierarchical_model.get_id()
@@ -1166,7 +1276,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(score, ref_score)
 
         # Test case II: Check exception for inf prior score
-        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, -1]
         self.assertEqual(self.log_posterior(parameters), -np.inf)
 
     def test_evaluateS1(self):

@@ -90,9 +90,8 @@ class HierarchicalLogLikelihood(object):
 
         # Get number of parameters as well as pooled or heterogen. dimensions
         self._population_model.set_n_ids(self._n_ids)
-        info = self._count_parameters()
-        self._n_parameters, self._special_dims = info[:2]
-        self._n_pooled_dim, self._n_hetero_dim = info[2:]
+        self._n_parameters = np.sum(
+            self._population_model.n_hierarchical_parameters(self._n_ids))
         self._n_bottom = \
             self._n_parameters - self._population_model.n_parameters()
 
@@ -118,8 +117,13 @@ class HierarchicalLogLikelihood(object):
 
         # Broadcast pooled parameters and reshape bottom parameters to
         # (n_ids, n_dim)
-        bottom_parameters = self._reshape_bottom_parameters(
-            bottom_parameters, top_parameters)
+        bottom_parameters = \
+            self._population_model.compute_individual_parameters(
+                parameters=top_parameters,
+                eta=bottom_parameters,
+                covariates=self._covariates,
+                return_eta=True
+            )
 
         # Compute population model score
         score = self._population_model.compute_log_likelihood(
@@ -140,53 +144,6 @@ class HierarchicalLogLikelihood(object):
             score += log_likelihood(bottom_parameters[idi])
         return score
 
-    def _count_parameters(self):
-        """
-        Counts the parameters of the hierarchical log-likelihood.
-
-        For convenience it also remembers the indices where pooled parameters
-        have to be broadcasted and inserted (pooled parameters appear only
-        once for the inference, but the computation of the log-likelihood
-        requires n_ids+1 copies of the pooled parametres).
-        """
-        # Get elementary population models
-        pop_models = [self._population_model]
-        if isinstance(self._population_model, chi.ComposedPopulationModel):
-            pop_models = self._population_model.get_population_models()
-
-        n_parameters = 0
-        n_pooled_dims = 0
-        n_hetero_dims = 0
-        special_dims = []
-        current_dim = 0
-        current_top_index = 0
-        for pop_model in pop_models:
-            # Check whether dimension is pooled
-            n_bottom, n_top = pop_model.n_hierarchical_parameters(self._n_ids)
-            n_dim = pop_model.n_dim()
-            is_pooled = isinstance(pop_model, chi.PooledModel)
-            is_heterogen = isinstance(pop_model, chi.HeterogeneousModel)
-            if is_pooled or is_heterogen:
-                # Remember start and end of special dimensions,
-                # Start and end of parameter values,
-                # and whether it's pooled or heterogeneous
-                special_dims.append([
-                    current_dim, current_dim + n_dim,
-                    current_top_index,
-                    current_top_index + n_top,
-                    is_pooled])
-            if is_pooled:
-                n_pooled_dims += n_dim
-            if is_heterogen:
-                n_hetero_dims += n_dim
-
-            # Count overall number of parameters
-            n_parameters += n_bottom + n_top
-            current_dim += n_dim
-            current_top_index += n_top
-
-        return n_parameters, special_dims, n_pooled_dims, n_hetero_dims
-
     def _label_log_likelihoods(self):
         """
         Labels log-likelihoods if they don't already have an ID.
@@ -200,117 +157,6 @@ class HierarchicalLogLikelihood(object):
                 raise ValueError('Log-likelihood IDs need to be unique.')
             log_likelihood.set_id(_id)
             ids.append(_id)
-
-    def _collect_sensitivities(self, ds_dbottom, ds_dtop):
-        """
-        In some sense the reverse of self._reshape_bottom_parameters.
-
-        1. Pooled bottom parameters need to be added to population parameter
-        2. Heterogeneous bottom parameters need to added to population
-            parameters
-
-        ds_dbottom of shape (n_ids, n_dim)
-        ds_dtop of shape (n_top,)
-        """
-        sens = np.empty(shape=self._n_parameters)
-        sens[self._n_bottom:] = ds_dtop
-        # Check for quick solution 1: no pooled parameters and no heterogeneous
-        # parameters
-        if (self._n_pooled_dim == 0) and (self._n_hetero_dim == 0):
-            sens[:self._n_bottom] = ds_dbottom.flatten()
-            return sens
-
-        # Check for quick solution 2: all parameters heterogen.
-        if self._n_hetero_dim == self._n_dim:
-            # Add contributions from bottom-level parameters
-            # (Population sens. are actually zero, so we can just replace them)
-            sens = ds_dbottom.flatten()
-            return sens
-
-        # Check for quick solution 3: all parameters pooled
-        if self._n_pooled_dim == self._n_dim:
-            # Add contributions from bottom-level parameters
-            # (Population sens. are actually zero, so we can just replace them)
-            sens = np.sum(ds_dbottom, axis=0)
-            return sens
-
-        shift = 0
-        current_dim = 0
-        bottom_sens = np.empty(shape=(
-            self._n_ids,
-            self._n_dim - self._n_pooled_dim - self._n_hetero_dim))
-        for info in self._special_dims:
-            start_dim, end_dim, start_top, end_top, is_pooled = info
-            # Fill leading regular dims
-            bottom_sens[:, current_dim-shift:start_dim-shift] = \
-                ds_dbottom[:, current_dim:start_dim]
-            # Fill special dims
-            if is_pooled:
-                sens[self._n_bottom+start_top:self._n_bottom+end_top] += \
-                    np.sum(ds_dbottom[:, start_dim:end_dim], axis=0)
-            else:
-                sens[self._n_bottom+start_top:self._n_bottom+end_top] += \
-                    ds_dbottom[:, start_dim:end_dim].flatten()
-            current_dim = end_dim
-            shift += end_dim - start_dim
-        # Fill trailing regular dims
-        bottom_sens[:, current_dim-shift:] = ds_dbottom[:, current_dim:]
-
-        # Add bottom sensitivties
-        sens[:self._n_bottom] = bottom_sens.flatten()
-
-        return sens
-
-    def _reshape_bottom_parameters(self, bottom_parameters, top_parameters):
-        """
-        Takes bottom parameters and top parameters with no duplicates and
-        returns bottom parameters of shape (n_ids, n_dim), where pooled
-        parameters are duplicated.
-        """
-        bottom_params = np.empty(shape=(self._n_ids, self._n_dim))
-
-        # Check for quick solution 1: no pooled parameters and no heterogen.
-        if self._population_model.n_hierarchical_dim() == self._n_dim:
-            bottom_params[:, :] = bottom_parameters.reshape(
-                self._n_ids, self._n_dim)
-            return bottom_params
-
-        # Check for quick solution 2: all parameters pooled
-        if self._n_pooled_dim == self._n_dim:
-            bottom_params[:, :] = top_parameters[np.newaxis, :]
-            return bottom_params
-
-        # Check for quick solution 3: all parameters heterogen.
-        if self._n_hetero_dim == self._n_dim:
-            bottom_params[:, :] = top_parameters.reshape(
-                self._n_ids, self._n_dim)
-            return bottom_params
-
-        shift = 0
-        current_dim = 0
-        bottom_parameters = bottom_parameters.reshape(
-            self._n_ids,
-            self._n_dim - self._n_pooled_dim - self._n_hetero_dim)
-        for info in self._special_dims:
-            start_dim, end_dim, start_top, end_top, is_pooled = info
-            # Fill leading non-pooled dims
-            bottom_params[:, current_dim:start_dim] = bottom_parameters[
-                :, current_dim-shift:start_dim-shift]
-            # Fill special dims
-            dims = end_dim - start_dim
-            if is_pooled:
-                bottom_params[:, start_dim:end_dim] = top_parameters[
-                    start_top:end_top]
-            else:
-                bottom_params[:, start_dim:end_dim] = top_parameters[
-                    start_top:end_top].reshape(self._n_ids, dims)
-            current_dim = end_dim
-            shift += dims
-        # Fill trailing non-pooled dims
-        bottom_params[:, current_dim:] = bottom_parameters[
-            :, current_dim-shift:]
-
-        return bottom_params
 
     def compute_pointwise_ll(self, parameters, per_individual=True):
         r"""
@@ -421,13 +267,21 @@ class HierarchicalLogLikelihood(object):
 
         # Broadcast pooled parameters and reshape bottom parameters to
         # (n_ids, n_dim)
-        bottom_parameters = self._reshape_bottom_parameters(
-            bottom_parameters, top_parameters)
+        bottom_parameters = \
+            self._population_model.compute_individual_parameters(
+                parameters=top_parameters,
+                eta=bottom_parameters,
+                covariates=self._covariates,
+                return_eta=True
+            )
 
         # Make sure bottom parameters are psi
         # (parameters of the individual log-likelihoods)
         psi = self._population_model.compute_individual_parameters(
-            top_parameters, bottom_parameters, self._covariates)
+            parameters=top_parameters,
+            eta=bottom_parameters,
+            covariates=self._covariates
+        )
 
         # Evaluate individual likelihoods
         score = 0
@@ -438,15 +292,12 @@ class HierarchicalLogLikelihood(object):
             dlogp_dpsi[idi] = dl_dpsi
 
         # Compute population model score
-        s, ds_dbottom, ds_dtop = self._population_model.compute_sensitivities(
+        s, dscore = self._population_model.compute_sensitivities(
             top_parameters, bottom_parameters, covariates=self._covariates,
-            dlogp_dpsi=dlogp_dpsi)
+            dlogp_dpsi=dlogp_dpsi, reduce=True)
         score += s
 
-        # Collect sensitivities
-        sensitivities = self._collect_sensitivities(ds_dbottom, ds_dtop)
-
-        return score, sensitivities
+        return score, dscore
 
     def get_id(self, unique=False):
         """
@@ -493,7 +344,8 @@ class HierarchicalLogLikelihood(object):
         current_dim = 0
         names = self._log_likelihoods[0].get_parameter_names()
         n = []
-        for info in self._special_dims:
+        special_dims, _, _ = self._population_model.get_special_dims()
+        for info in special_dims:
             start_dim, end_dim, _, _, _ = info
             n += names[current_dim:start_dim]
             current_dim = end_dim
