@@ -1276,7 +1276,7 @@ class TestHierarchicalLogPosterior(unittest.TestCase):
         self.assertEqual(score, ref_score)
 
         # Test case II: Check exception for inf prior score
-        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        parameters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, -1]
         self.assertEqual(self.log_posterior(parameters), -np.inf)
 
     def test_evaluateS1(self):
