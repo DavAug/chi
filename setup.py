@@ -31,7 +31,7 @@ setup(
     # List of dependencies
     install_requires=[
         'arviz>=0.11',
-        'myokit>=1.33',
+        'myokit>=1.34',
         'numpy>=1.17',
         'pandas>=0.24',
         'pints>=0.4',
