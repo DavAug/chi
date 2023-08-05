@@ -179,7 +179,7 @@ class TestPosteriorPredictiveModel(unittest.TestCase):
         # (Drop dims removes all parameters with the dimension 'individual')
         posterior_samples = posterior_samples.rename(
             {'wrong name': 'chain'})
-        with self.assertRaisesRegex(ValueError, 'The parameter <myokit.'):
+        with self.assertRaisesRegex(ValueError, 'The parameter <global.'):
             chi.PosteriorPredictiveModel(
                 self.pred_model, posterior_samples)
 
