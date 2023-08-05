@@ -9,7 +9,7 @@ with open('README.md') as f:
 setup(
     # Module name
     name='chi-drm',
-    version='0.2.2',
+    version='0.2.3',
     description='Package to model dose response dynamics',
     long_description=readme,
     long_description_content_type="text/markdown",
