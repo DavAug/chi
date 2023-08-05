@@ -44,13 +44,13 @@ class TestParameterEstimatePlot(unittest.TestCase):
             'Run': runs})
 
         # Add a 'population' parameter to the dataset
-        cls.data = data.append(pd.DataFrame({
+        cls.data = pd.concat([data, pd.DataFrame({
             'ID': [None] * 8,
             'Parameter': 'Param 3',
             'Sample': np.arange(8),
             'Iteration': [1, 2, 3, 4] * 2,
             'Run': [1] * 4 + [2] * 4
-        }))
+        })])
 
         # Create test figure
         cls.fig = plots.ParameterEstimatePlot()

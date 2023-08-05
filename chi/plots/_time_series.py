@@ -149,11 +149,11 @@ class PDPredictivePlot(plots.SingleFigure):
                 biom_upper = reduced_data[mask][sample_key].min()
 
                 # Append percentiles to container
-                container = container.append(pd.DataFrame({
+                container = pd.concat([container, pd.DataFrame({
                     'Time': [time],
                     'Lower': [biom_lower],
                     'Upper': [biom_upper],
-                    'Bulk probability': [str(bulk_prob)]}))
+                    'Bulk probability': [str(bulk_prob)]})])
 
         return container
 
@@ -538,11 +538,11 @@ class PKPredictivePlot(plots.SingleSubplotFigure):
                 biom_upper = reduced_data[mask][sample_key].min()
 
                 # Append percentiles to container
-                container = container.append(pd.DataFrame({
+                container = pd.concat([container, pd.DataFrame({
                     'Time': [time],
                     'Lower': [biom_lower],
                     'Upper': [biom_upper],
-                    'Bulk probability': [str(bulk_prob)]}))
+                    'Bulk probability': [str(bulk_prob)]})])
 
         return container
 

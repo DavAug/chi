@@ -222,7 +222,7 @@ if args.test:
     fig.add_trace(
         go.Histogram(
             name='Posterior samples',
-            x=posterior_samples['myokit.elimination_rate'].values.flatten(),
+            x=posterior_samples['global.elimination_rate'].values.flatten(),
             histnorm='probability',
             showlegend=False
         ),
@@ -497,7 +497,7 @@ fig.add_trace(
 fig.add_trace(
     go.Histogram(
         name='Posterior samples',
-        x=posterior_samples['myokit.elimination_rate'].values.flatten(),
+        x=posterior_samples['global.elimination_rate'].values.flatten(),
         histnorm='probability',
         showlegend=False
     ),

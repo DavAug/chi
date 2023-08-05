@@ -124,62 +124,62 @@ class TestSBMLModel(unittest.TestCase):
         self.assertEqual(self.model.n_outputs(), 1)
         outputs_c = model.outputs()
         outputs = self.model.outputs()
-        self.assertEqual(outputs_c[0], 'myokit.tumour_volume')
-        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs_c[0], 'global.tumour_volume')
+        self.assertEqual(outputs[0], 'global.tumour_volume')
         self.assertEqual(model.n_parameters(), 5)
         self.assertEqual(self.model.n_parameters(), 5)
         params_c = model.parameters()
         params = self.model.parameters()
-        self.assertEqual(params_c[0], 'myokit.tumour_volume')
-        self.assertEqual(params_c[1], 'myokit.drug_concentration')
-        self.assertEqual(params_c[2], 'myokit.kappa')
-        self.assertEqual(params_c[3], 'myokit.lambda_0')
-        self.assertEqual(params_c[4], 'myokit.lambda_1')
-        self.assertEqual(params[0], 'myokit.tumour_volume')
-        self.assertEqual(params[1], 'myokit.drug_concentration')
-        self.assertEqual(params[2], 'myokit.kappa')
-        self.assertEqual(params[3], 'myokit.lambda_0')
-        self.assertEqual(params[4], 'myokit.lambda_1')
+        self.assertEqual(params_c[0], 'global.tumour_volume')
+        self.assertEqual(params_c[1], 'global.drug_concentration')
+        self.assertEqual(params_c[2], 'global.kappa')
+        self.assertEqual(params_c[3], 'global.lambda_0')
+        self.assertEqual(params_c[4], 'global.lambda_1')
+        self.assertEqual(params[0], 'global.tumour_volume')
+        self.assertEqual(params[1], 'global.drug_concentration')
+        self.assertEqual(params[2], 'global.kappa')
+        self.assertEqual(params[3], 'global.lambda_0')
+        self.assertEqual(params[4], 'global.lambda_1')
 
         # Change output name
-        model.set_output_names({'myokit.tumour_volume': 'test'})
+        model.set_output_names({'global.tumour_volume': 'test'})
         self.assertEqual(model.n_outputs(), 1)
         self.assertEqual(self.model.n_outputs(), 1)
         outputs_c = model.outputs()
         outputs = self.model.outputs()
         self.assertEqual(outputs_c[0], 'test')
-        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[0], 'global.tumour_volume')
 
         # Set new outputs
         model.set_outputs(
-            ['myokit.tumour_volume', 'myokit.tumour_volume'])
+            ['global.tumour_volume', 'global.tumour_volume'])
         self.assertEqual(model.n_outputs(), 2)
         self.assertEqual(self.model.n_outputs(), 1)
         outputs_c = model.outputs()
         outputs = self.model.outputs()
         self.assertEqual(outputs_c[0], 'test')
         self.assertEqual(outputs_c[1], 'test')
-        self.assertEqual(outputs[0], 'myokit.tumour_volume')
-        model.set_outputs(['myokit.tumour_volume'])
+        self.assertEqual(outputs[0], 'global.tumour_volume')
+        model.set_outputs(['global.tumour_volume'])
 
         # Rename some parameters
         model.set_parameter_names({
-            'myokit.kappa': 'new 1',
-            'myokit.lambda_0': 'new 2'})
+            'global.kappa': 'new 1',
+            'global.lambda_0': 'new 2'})
         self.assertEqual(model.n_parameters(), 5)
         self.assertEqual(self.model.n_parameters(), 5)
         params_c = model.parameters()
         params = self.model.parameters()
-        self.assertEqual(params_c[0], 'myokit.tumour_volume')
-        self.assertEqual(params_c[1], 'myokit.drug_concentration')
+        self.assertEqual(params_c[0], 'global.tumour_volume')
+        self.assertEqual(params_c[1], 'global.drug_concentration')
         self.assertEqual(params_c[2], 'new 1')
         self.assertEqual(params_c[3], 'new 2')
-        self.assertEqual(params_c[4], 'myokit.lambda_1')
-        self.assertEqual(params[0], 'myokit.tumour_volume')
-        self.assertEqual(params[1], 'myokit.drug_concentration')
-        self.assertEqual(params[2], 'myokit.kappa')
-        self.assertEqual(params[3], 'myokit.lambda_0')
-        self.assertEqual(params[4], 'myokit.lambda_1')
+        self.assertEqual(params_c[4], 'global.lambda_1')
+        self.assertEqual(params[0], 'global.tumour_volume')
+        self.assertEqual(params[1], 'global.drug_concentration')
+        self.assertEqual(params[2], 'global.kappa')
+        self.assertEqual(params[3], 'global.lambda_0')
+        self.assertEqual(params[4], 'global.lambda_1')
 
     def test_enable_sensitivities(self):
         # Enable sensitivities
@@ -187,7 +187,7 @@ class TestSBMLModel(unittest.TestCase):
         self.assertTrue(self.model.has_sensitivities())
 
         # Enable sensitivties for a subset of parameters
-        parameters = ['myokit.tumour_volume', 'myokit.kappa']
+        parameters = ['global.tumour_volume', 'global.kappa']
         self.model.enable_sensitivities(True, parameters)
         self.assertTrue(self.model.has_sensitivities())
 
@@ -214,16 +214,16 @@ class TestSBMLModel(unittest.TestCase):
     def test_outputs(self):
         outputs = self.model.outputs()
 
-        self.assertEqual(outputs, ['myokit.tumour_volume'])
+        self.assertEqual(outputs, ['global.tumour_volume'])
 
     def test_parameters(self):
         parameters = self.model.parameters()
 
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[0], 'global.tumour_volume')
+        self.assertEqual(parameters[1], 'global.drug_concentration')
+        self.assertEqual(parameters[2], 'global.kappa')
+        self.assertEqual(parameters[3], 'global.lambda_0')
+        self.assertEqual(parameters[4], 'global.lambda_1')
 
         # Test case II: Model where lambda_0 is defined as lambda_1 * kappa
         directory = os.path.dirname(__file__)
@@ -233,14 +233,14 @@ class TestSBMLModel(unittest.TestCase):
 
         self.assertEqual(len(parameters), 4)
         self.assertEqual(model.n_parameters(), 4)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_1')
+        self.assertEqual(parameters[0], 'global.tumour_volume')
+        self.assertEqual(parameters[1], 'global.drug_concentration')
+        self.assertEqual(parameters[2], 'global.kappa')
+        self.assertEqual(parameters[3], 'global.lambda_1')
 
     def test_set_outputs(self):
         # Set twice the same output
-        outputs = ['myokit.tumour_volume', 'myokit.tumour_volume']
+        outputs = ['global.tumour_volume', 'global.tumour_volume']
         self.model.set_outputs(outputs)
         self.assertEqual(self.model.outputs(), outputs)
         self.assertEqual(self.model.n_outputs(), 2)
@@ -248,7 +248,7 @@ class TestSBMLModel(unittest.TestCase):
         self.assertEqual(output.shape, (2, 2))
 
         # Set to default again
-        outputs = ['myokit.tumour_volume']
+        outputs = ['global.tumour_volume']
         self.model.set_outputs(outputs)
         self.assertEqual(self.model.outputs(), outputs)
         self.assertEqual(self.model.n_outputs(), 1)
@@ -262,11 +262,11 @@ class TestSBMLModel(unittest.TestCase):
 
         # Set output to constant
         with self.assertRaisesRegex(ValueError, 'Outputs have to be state or'):
-            self.model.set_outputs(['myokit.kappa'])
+            self.model.set_outputs(['global.kappa'])
 
     def test_set_output_names(self):
         # Set output name
-        names = {'myokit.tumour_volume': 'Some name'}
+        names = {'global.tumour_volume': 'Some name'}
         self.model.set_output_names(names)
         outputs = self.model.outputs()
         self.assertEqual(len(outputs), 1)
@@ -280,11 +280,11 @@ class TestSBMLModel(unittest.TestCase):
         self.assertEqual(outputs[0], 'Some other name')
 
         # Set name back to default
-        names = {'Some other name': 'myokit.tumour_volume'}
+        names = {'Some other name': 'global.tumour_volume'}
         self.model.set_output_names(names)
         outputs = self.model.outputs()
         self.assertEqual(len(outputs), 1)
-        self.assertEqual(outputs[0], 'myokit.tumour_volume')
+        self.assertEqual(outputs[0], 'global.tumour_volume')
 
     def test_set_output_names_bad_input(self):
         # List input is not ok!
@@ -298,36 +298,36 @@ class TestSBMLModel(unittest.TestCase):
             self.model.set_output_names(names)
 
         # New names exist already
-        names = {'param 1': 'myokit.tumour_volume', 'param 2': 'Some name'}
+        names = {'param 1': 'global.tumour_volume', 'param 2': 'Some name'}
         with self.assertRaisesRegex(ValueError, 'The output names cannot'):
             self.model.set_output_names(names)
 
     def test_set_parameter_names(self):
         # Set some parameter names
         names = {
-            'myokit.tumour_volume': 'TV',
-            'myokit.lambda_0': 'Expon. growth rate'}
+            'global.tumour_volume': 'TV',
+            'global.lambda_0': 'Expon. growth rate'}
         self.model.set_parameter_names(names)
         parameters = self.model.parameters()
 
         self.assertEqual(parameters[0], 'TV')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
+        self.assertEqual(parameters[1], 'global.drug_concentration')
+        self.assertEqual(parameters[2], 'global.kappa')
         self.assertEqual(parameters[3], 'Expon. growth rate')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[4], 'global.lambda_1')
 
         # Reverse parameter names
         names = {
-            'TV': 'myokit.tumour_volume',
-            'Expon. growth rate': 'myokit.lambda_0'}
+            'TV': 'global.tumour_volume',
+            'Expon. growth rate': 'global.lambda_0'}
         self.model.set_parameter_names(names)
         parameters = self.model.parameters()
 
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[0], 'global.tumour_volume')
+        self.assertEqual(parameters[1], 'global.drug_concentration')
+        self.assertEqual(parameters[2], 'global.kappa')
+        self.assertEqual(parameters[3], 'global.lambda_0')
+        self.assertEqual(parameters[4], 'global.lambda_1')
 
     def test_set_parameter_names_bad_input(self):
         # List input is not ok!
@@ -341,7 +341,7 @@ class TestSBMLModel(unittest.TestCase):
             self.model.set_parameter_names(names)
 
         # New names exist already
-        names = {'param 1': 'myokit.tumour_volume', 'param 2': 'Some name'}
+        names = {'param 1': 'global.tumour_volume', 'param 2': 'Some name'}
         with self.assertRaisesRegex(ValueError, 'The parameter names cannot'):
             self.model.set_parameter_names(names)
 
@@ -453,7 +453,7 @@ class TestPKPDModel(unittest.TestCase):
 
         self.assertEqual(parameters[0], 'central.drug_amount')
         self.assertEqual(parameters[1], 'central.size')
-        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+        self.assertEqual(parameters[2], 'global.elimination_rate')
 
     def test_set_administration(self):
         model = ModelLibrary().one_compartment_pk_model()
@@ -466,7 +466,7 @@ class TestPKPDModel(unittest.TestCase):
         self.assertEqual(model.n_parameters(), 3)
         self.assertEqual(parameters[0], 'central.drug_amount')
         self.assertEqual(parameters[1], 'central.size')
-        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+        self.assertEqual(parameters[2], 'global.elimination_rate')
 
         # Administer dose indirectly to central compartment
         model.set_administration(compartment='central', direct=False)
@@ -478,7 +478,7 @@ class TestPKPDModel(unittest.TestCase):
         self.assertEqual(parameters[1], 'dose.drug_amount')
         self.assertEqual(parameters[2], 'central.size')
         self.assertEqual(parameters[3], 'dose.absorption_rate')
-        self.assertEqual(parameters[4], 'myokit.elimination_rate')
+        self.assertEqual(parameters[4], 'global.elimination_rate')
 
     def test_set_administration_bad_input(self):
         # Bad compartment
@@ -655,7 +655,7 @@ class TestPKPDModel(unittest.TestCase):
         # Set some parameter names
         names = {
             'central.drug_amount': 'A',
-            'myokit.elimination_rate': 'k_e'}
+            'global.elimination_rate': 'k_e'}
         self.model.set_parameter_names(names)
         parameters = self.model.parameters()
 
@@ -666,13 +666,13 @@ class TestPKPDModel(unittest.TestCase):
         # Reverse parameter names
         names = {
             'A': 'central.drug_amount',
-            'k_e': 'myokit.elimination_rate'}
+            'k_e': 'global.elimination_rate'}
         self.model.set_parameter_names(names)
         parameters = self.model.parameters()
 
         self.assertEqual(parameters[0], 'central.drug_amount')
         self.assertEqual(parameters[1], 'central.size')
-        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+        self.assertEqual(parameters[2], 'global.elimination_rate')
 
     def test_set_parameter_names_bad_input(self):
         # List input is not ok!
@@ -735,9 +735,9 @@ class TestReducedMechanisticModel(unittest.TestCase):
         params_c = model.parameters()
         params = self.pkpd_model.parameters()
         self.assertEqual(params_c[0], 'central.drug_amount')
-        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params_c[1], 'global.elimination_rate')
         self.assertEqual(params[0], 'central.drug_amount')
-        self.assertEqual(params[1], 'myokit.elimination_rate')
+        self.assertEqual(params[1], 'global.elimination_rate')
 
         # Rename the output
         model.set_output_names({'central.drug_concentration': 'test'})
@@ -767,9 +767,9 @@ class TestReducedMechanisticModel(unittest.TestCase):
         params_c = model.parameters()
         params = self.pkpd_model.parameters()
         self.assertEqual(params_c[0], 'central.size')
-        self.assertEqual(params_c[1], 'myokit.elimination_rate')
+        self.assertEqual(params_c[1], 'global.elimination_rate')
         self.assertEqual(params[0], 'central.drug_amount')
-        self.assertEqual(params[1], 'myokit.elimination_rate')
+        self.assertEqual(params[1], 'global.elimination_rate')
 
         # Unfix model parameters
         self.pkpd_model.fix_parameters({'central.size': None})
@@ -881,7 +881,7 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(len(parameters), 3)
         self.assertEqual(parameters[0], 'Test')
         self.assertEqual(parameters[1], 'central.size')
-        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+        self.assertEqual(parameters[2], 'global.elimination_rate')
 
         # Test case II: set back to default
         self.pkpd_model.set_parameter_names({
@@ -891,7 +891,7 @@ class TestReducedMechanisticModel(unittest.TestCase):
         self.assertEqual(len(parameters), 3)
         self.assertEqual(parameters[0], 'central.drug_amount')
         self.assertEqual(parameters[1], 'central.size')
-        self.assertEqual(parameters[2], 'myokit.elimination_rate')
+        self.assertEqual(parameters[2], 'global.elimination_rate')
 
         # Test case III: Set parameter names for chi.MechanisticModel
         with self.assertRaisesRegex(NotImplementedError, 'The mechanistic'):
