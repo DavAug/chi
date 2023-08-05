@@ -986,7 +986,7 @@ class ReducedMechanisticModel(MechanisticModel):
             self._fixed_params_values[index] = value
 
         # If all parameters are free, set mask and values to None again
-        if np.alltrue(~self._fixed_params_mask):
+        if np.all(~self._fixed_params_mask):
             self._fixed_params_mask = None
             self._fixed_params_values = None
 

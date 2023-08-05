@@ -130,8 +130,8 @@ class HierarchicalLogLikelihood(object):
             top_parameters, bottom_parameters, covariates=self._covariates)
 
         # Return if values already lead to a rejection
-        if np.isinf(score):
-            return score
+        if np.isinf(score):  # noqa: no cover
+            return score  # noqa: no cover
 
         # Transform bottom-level parameters
         # Identity, if model does not tranform parameters

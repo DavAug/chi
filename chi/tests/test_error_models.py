@@ -1487,11 +1487,11 @@ class TestReducedErrorModel(unittest.TestCase):
         self.error_model.fix_parameters(name_value_dict={
             'Sigma base': 1})
         self.error_model.set_parameter_names(
-            ['myokit.tumour_volume Sigma rel.'])
+            ['global.tumour_volume Sigma rel.'])
 
         names = self.error_model.get_parameter_names()
         self.assertEqual(len(names), 1)
-        self.assertEqual(names[0], 'myokit.tumour_volume Sigma rel.')
+        self.assertEqual(names[0], 'global.tumour_volume Sigma rel.')
 
         # Reset to defaults
         self.error_model.set_parameter_names(None)

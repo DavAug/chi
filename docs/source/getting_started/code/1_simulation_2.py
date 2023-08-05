@@ -395,7 +395,7 @@ if args.test:
     fig.add_trace(
         go.Histogram(
             name='Patient 1 Post. samples',
-            x=posterior_samples['myokit.elimination_rate'].values[
+            x=posterior_samples['global.elimination_rate'].values[
                 0, :, 0].flatten(),
             histnorm='probability',
             showlegend=False,
@@ -407,7 +407,7 @@ if args.test:
     fig.add_trace(
         go.Histogram(
             name='Patient 1 Post. samples',
-            x=posterior_samples['myokit.elimination_rate'].values[
+            x=posterior_samples['global.elimination_rate'].values[
                 0, :, 1].flatten(),
             histnorm='probability',
             showlegend=False,
@@ -419,7 +419,7 @@ if args.test:
     fig.add_trace(
         go.Histogram(
             name='Patient 1 post. samples',
-            x=posterior_samples['myokit.elimination_rate'].values[
+            x=posterior_samples['global.elimination_rate'].values[
                 0, :, 2].flatten(),
             histnorm='probability',
             showlegend=False,
@@ -953,7 +953,7 @@ fig.add_trace(
 fig.add_trace(
     go.Histogram(
         name='Patient 1 Post. samples',
-        x=posterior_samples['myokit.elimination_rate'].values[
+        x=posterior_samples['global.elimination_rate'].values[
             0, :, 0].flatten(),
         histnorm='probability',
         showlegend=False,
@@ -965,7 +965,7 @@ fig.add_trace(
 fig.add_trace(
     go.Histogram(
         name='Patient 1 Post. samples',
-        x=posterior_samples['myokit.elimination_rate'].values[
+        x=posterior_samples['global.elimination_rate'].values[
             0, :, 1].flatten(),
         histnorm='probability',
         showlegend=False,
@@ -977,7 +977,7 @@ fig.add_trace(
 fig.add_trace(
     go.Histogram(
         name='Patient 1 post. samples',
-        x=posterior_samples['myokit.elimination_rate'].values[
+        x=posterior_samples['global.elimination_rate'].values[
             0, :, 2].flatten(),
         histnorm='probability',
         showlegend=False,

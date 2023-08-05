@@ -57,11 +57,11 @@ class TestParameterEstimatePlot(unittest.TestCase):
                 'chain': list(range(n_chains)),
                 'draw': list(range(n_draws))})
         cls.pop_post_samples = xr.Dataset({
-            'Pooled myokit.tumour_volume': pop_samples,
-            'myokit.drug_concentration': samples,
-            'Pooled myokit.kappa': pop_samples,
-            'Pooled myokit.lambda_0': pop_samples,
-            'Pooled myokit.lambda_1': pop_samples,
+            'Pooled global.tumour_volume': pop_samples,
+            'global.drug_concentration': samples,
+            'Pooled global.kappa': pop_samples,
+            'Pooled global.lambda_0': pop_samples,
+            'Pooled global.lambda_1': pop_samples,
             'Pooled Sigma base': pop_samples,
             'Sigma rel.': samples,
             'Mean Sigma rel.': pop_samples,

@@ -223,7 +223,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
         self.assertEqual(draws.loc[2], 2)
 
         # Map parameters
-        param_map = {'myokit.tumour_volume': 'myokit.tumour_volume'}
+        param_map = {'global.tumour_volume': 'global.tumour_volume'}
         pw_ll = chi.compute_pointwise_loglikelihood(
             self.log_likelihood, self.posterior_samples,
             param_map=param_map)
@@ -396,7 +396,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
 
         # # Map parameters
         # param_map = {
-        #     'Pooled myokit.tumour_volume': 'Pooled myokit.tumour_volume'}
+        #     'Pooled global.tumour_volume': 'Pooled global.tumour_volume'}
         # pw_ll = chi.compute_pointwise_loglikelihood(
         #     self.hierarch_log_likelihood,
         #     self.hierarch_posterior_samples,
@@ -510,7 +510,7 @@ class TestComputePointwiseLogLikelihood(unittest.TestCase):
                 param_map=param_map)
 
         # Not all parameters of the log-likelihood can be identified
-        param_map = {'myokit.tumour_volume': 'Something else'}
+        param_map = {'global.tumour_volume': 'Something else'}
         with self.assertRaisesRegex(ValueError, 'The parameter <Something'):
             chi.compute_pointwise_loglikelihood(
                 self.log_likelihood, self.posterior_samples,
@@ -682,7 +682,7 @@ class TestOptimisationController(unittest.TestCase):
         cls.problem = chi.ProblemModellingController(model, error_models)
 
         data = DataLibrary().lung_cancer_control_group()
-        cls.problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
+        cls.problem.set_data(data, {'global.tumour_volume': 'Tumour volume'})
 
         n_parameters = 7
         log_prior = pints.ComposedLogPrior(*[
@@ -739,11 +739,11 @@ class TestOptimisationController(unittest.TestCase):
         n_parameters = 7
         parameters = result['Parameter'].unique()
         self.assertEqual(len(parameters), n_parameters)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
-        self.assertEqual(parameters[1], 'myokit.drug_concentration')
-        self.assertEqual(parameters[2], 'myokit.kappa')
-        self.assertEqual(parameters[3], 'myokit.lambda_0')
-        self.assertEqual(parameters[4], 'myokit.lambda_1')
+        self.assertEqual(parameters[0], 'global.tumour_volume')
+        self.assertEqual(parameters[1], 'global.drug_concentration')
+        self.assertEqual(parameters[2], 'global.kappa')
+        self.assertEqual(parameters[3], 'global.lambda_0')
+        self.assertEqual(parameters[4], 'global.lambda_1')
         self.assertEqual(parameters[5], 'Sigma base')
         self.assertEqual(parameters[6], 'Sigma rel.')
 
@@ -788,18 +788,18 @@ class TestOptimisationController(unittest.TestCase):
         parameters = result['Parameter'].unique()
         self.assertEqual(len(parameters), 16)
         self.assertEqual(parameters[0], 'Sigma rel.')
-        self.assertEqual(parameters[1], 'Pooled myokit.tumour_volume')
-        self.assertEqual(parameters[2], 'Pooled myokit.drug_concentration')
-        self.assertEqual(parameters[3], 'ID 1 myokit.kappa')
-        self.assertEqual(parameters[4], 'ID 2 myokit.kappa')
-        self.assertEqual(parameters[5], 'ID 3 myokit.kappa')
-        self.assertEqual(parameters[6], 'ID 4 myokit.kappa')
-        self.assertEqual(parameters[7], 'ID 5 myokit.kappa')
-        self.assertEqual(parameters[8], 'ID 6 myokit.kappa')
-        self.assertEqual(parameters[9], 'ID 7 myokit.kappa')
-        self.assertEqual(parameters[10], 'ID 8 myokit.kappa')
-        self.assertEqual(parameters[11], 'Pooled myokit.lambda_0')
-        self.assertEqual(parameters[12], 'Pooled myokit.lambda_1')
+        self.assertEqual(parameters[1], 'Pooled global.tumour_volume')
+        self.assertEqual(parameters[2], 'Pooled global.drug_concentration')
+        self.assertEqual(parameters[3], 'ID 1 global.kappa')
+        self.assertEqual(parameters[4], 'ID 2 global.kappa')
+        self.assertEqual(parameters[5], 'ID 3 global.kappa')
+        self.assertEqual(parameters[6], 'ID 4 global.kappa')
+        self.assertEqual(parameters[7], 'ID 5 global.kappa')
+        self.assertEqual(parameters[8], 'ID 6 global.kappa')
+        self.assertEqual(parameters[9], 'ID 7 global.kappa')
+        self.assertEqual(parameters[10], 'ID 8 global.kappa')
+        self.assertEqual(parameters[11], 'Pooled global.lambda_0')
+        self.assertEqual(parameters[12], 'Pooled global.lambda_1')
         self.assertEqual(parameters[13], 'Pooled Sigma base')
         self.assertEqual(parameters[14], 'Log mean Sigma rel.')
         self.assertEqual(parameters[15], 'Log std. Sigma rel.')
@@ -817,10 +817,10 @@ class TestOptimisationController(unittest.TestCase):
         # Get test data and model
         problem = copy.deepcopy(self.problem)
         problem.fix_parameters({
-            'myokit.drug_concentration': 1,
-            'myokit.kappa': 1,
-            'myokit.lambda_0': 1,
-            'myokit.lambda_1': 1,
+            'global.drug_concentration': 1,
+            'global.kappa': 1,
+            'global.lambda_0': 1,
+            'global.lambda_1': 1,
             'Sigma base': 1,
             'Sigma rel.': 1})
         problem.set_log_prior(pints.ComposedLogPrior(*[
@@ -842,7 +842,7 @@ class TestOptimisationController(unittest.TestCase):
 
         parameters = result['Parameter'].unique()
         self.assertEqual(len(parameters), 1)
-        self.assertEqual(parameters[0], 'myokit.tumour_volume')
+        self.assertEqual(parameters[0], 'global.tumour_volume')
 
         runs = result['Run'].unique()
         self.assertEqual(len(runs), 3)
@@ -878,7 +878,7 @@ class TestSamplingController(unittest.TestCase):
         problem = chi.ProblemModellingController(model, error_models)
 
         data = DataLibrary().lung_cancer_control_group()
-        problem.set_data(data, {'myokit.tumour_volume': 'Tumour volume'})
+        problem.set_data(data, {'global.tumour_volume': 'Tumour volume'})
 
         n_parameters = 7
         log_prior = pints.ComposedLogPrior(*[
@@ -929,11 +929,11 @@ class TestSamplingController(unittest.TestCase):
         self.assertEqual(len(parameters), 7)
         self.assertEqual(parameters[0], 'Sigma base')
         self.assertEqual(parameters[1], 'Sigma rel.')
-        self.assertEqual(parameters[2], 'myokit.drug_concentration')
-        self.assertEqual(parameters[3], 'myokit.kappa')
-        self.assertEqual(parameters[4], 'myokit.lambda_0')
-        self.assertEqual(parameters[5], 'myokit.lambda_1')
-        self.assertEqual(parameters[6], 'myokit.tumour_volume')
+        self.assertEqual(parameters[2], 'global.drug_concentration')
+        self.assertEqual(parameters[3], 'global.kappa')
+        self.assertEqual(parameters[4], 'global.lambda_0')
+        self.assertEqual(parameters[5], 'global.lambda_1')
+        self.assertEqual(parameters[6], 'global.tumour_volume')
 
         chains = result.chain
         self.assertEqual(len(chains), 3)
@@ -978,21 +978,21 @@ class TestSamplingController(unittest.TestCase):
 
         parameters = sorted(list(result.data_vars.keys()))
         self.assertEqual(len(parameters), 16)
-        self.assertEqual(parameters[0], 'ID 1 myokit.kappa')
-        self.assertEqual(parameters[1], 'ID 2 myokit.kappa')
-        self.assertEqual(parameters[2], 'ID 3 myokit.kappa')
-        self.assertEqual(parameters[3], 'ID 4 myokit.kappa')
-        self.assertEqual(parameters[4], 'ID 5 myokit.kappa')
-        self.assertEqual(parameters[5], 'ID 6 myokit.kappa')
-        self.assertEqual(parameters[6], 'ID 7 myokit.kappa')
-        self.assertEqual(parameters[7], 'ID 8 myokit.kappa')
+        self.assertEqual(parameters[0], 'ID 1 global.kappa')
+        self.assertEqual(parameters[1], 'ID 2 global.kappa')
+        self.assertEqual(parameters[2], 'ID 3 global.kappa')
+        self.assertEqual(parameters[3], 'ID 4 global.kappa')
+        self.assertEqual(parameters[4], 'ID 5 global.kappa')
+        self.assertEqual(parameters[5], 'ID 6 global.kappa')
+        self.assertEqual(parameters[6], 'ID 7 global.kappa')
+        self.assertEqual(parameters[7], 'ID 8 global.kappa')
         self.assertEqual(parameters[8], 'Log mean Sigma rel.')
         self.assertEqual(parameters[9], 'Log std. Sigma rel.')
         self.assertEqual(parameters[10], 'Pooled Sigma base')
-        self.assertEqual(parameters[11], 'Pooled myokit.drug_concentration')
-        self.assertEqual(parameters[12], 'Pooled myokit.lambda_0')
-        self.assertEqual(parameters[13], 'Pooled myokit.lambda_1')
-        self.assertEqual(parameters[14], 'Pooled myokit.tumour_volume')
+        self.assertEqual(parameters[11], 'Pooled global.drug_concentration')
+        self.assertEqual(parameters[12], 'Pooled global.lambda_0')
+        self.assertEqual(parameters[13], 'Pooled global.lambda_1')
+        self.assertEqual(parameters[14], 'Pooled global.tumour_volume')
         self.assertEqual(parameters[15], 'Sigma rel.')
 
         chains = result.chain

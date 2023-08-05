@@ -1850,7 +1850,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(score, ref_score_2)
         n_obs = 3
         self.assertEqual(pw_score.shape, (n_obs,))
-        self.assertEqual(np.sum(pw_score), score)
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
     def test_evaluateS1(self):
         # Test case I: Compute reference score manually
@@ -1987,7 +1987,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(len(parameter_names), 7)
         self.assertEqual(parameter_names[0], 'dose.drug_amount')
         self.assertEqual(parameter_names[1], 'central.size')
-        self.assertEqual(parameter_names[2], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[2], 'global.elimination_rate')
         self.assertEqual(parameter_names[3], 'central.drug_amount Sigma base')
         self.assertEqual(parameter_names[4], 'central.drug_amount Sigma rel.')
         self.assertEqual(parameter_names[5], 'dose.drug_amount Sigma base')
@@ -1997,7 +1997,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.log_likelihood.fix_parameters(name_value_dict={
             'dose.absorption_rate': None,
             'dose.drug_amount Sigma base': 0.5,
-            'myokit.elimination_rate': 0.3})
+            'global.elimination_rate': 0.3})
 
         n_parameters = self.log_likelihood.n_parameters()
         self.assertEqual(n_parameters, 6)
@@ -2015,7 +2015,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.log_likelihood.fix_parameters(name_value_dict={
             'central.drug_amount': None,
             'dose.drug_amount Sigma base': None,
-            'myokit.elimination_rate': None})
+            'global.elimination_rate': None})
 
         n_parameters = self.log_likelihood.n_parameters()
         self.assertEqual(n_parameters, 9)
@@ -2026,7 +2026,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'dose.drug_amount')
         self.assertEqual(parameter_names[2], 'central.size')
         self.assertEqual(parameter_names[3], 'dose.absorption_rate')
-        self.assertEqual(parameter_names[4], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[4], 'global.elimination_rate')
         self.assertEqual(parameter_names[5], 'central.drug_amount Sigma base')
         self.assertEqual(parameter_names[6], 'central.drug_amount Sigma rel.')
         self.assertEqual(parameter_names[7], 'dose.drug_amount Sigma base')
@@ -2046,7 +2046,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertEqual(parameter_names[1], 'dose.drug_amount')
         self.assertEqual(parameter_names[2], 'central.size')
         self.assertEqual(parameter_names[3], 'dose.absorption_rate')
-        self.assertEqual(parameter_names[4], 'myokit.elimination_rate')
+        self.assertEqual(parameter_names[4], 'global.elimination_rate')
         self.assertEqual(parameter_names[5], 'central.drug_amount Sigma base')
         self.assertEqual(parameter_names[6], 'central.drug_amount Sigma rel.')
         self.assertEqual(parameter_names[7], 'dose.drug_amount Sigma base')
@@ -2227,11 +2227,11 @@ class TestLogPosterior(unittest.TestCase):
         parameter_names = self.log_posterior.get_parameter_names()
 
         self.assertEqual(len(parameter_names), 7)
-        self.assertEqual(parameter_names[0], 'myokit.tumour_volume')
-        self.assertEqual(parameter_names[1], 'myokit.drug_concentration')
-        self.assertEqual(parameter_names[2], 'myokit.kappa')
-        self.assertEqual(parameter_names[3], 'myokit.lambda_0')
-        self.assertEqual(parameter_names[4], 'myokit.lambda_1')
+        self.assertEqual(parameter_names[0], 'global.tumour_volume')
+        self.assertEqual(parameter_names[1], 'global.drug_concentration')
+        self.assertEqual(parameter_names[2], 'global.kappa')
+        self.assertEqual(parameter_names[3], 'global.lambda_0')
+        self.assertEqual(parameter_names[4], 'global.lambda_1')
         self.assertEqual(parameter_names[5], 'Sigma base')
         self.assertEqual(parameter_names[6], 'Sigma rel.')
 

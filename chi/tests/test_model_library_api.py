@@ -57,10 +57,10 @@ class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
         n_const = len(const_names)
         self.assertEqual(n_const, 5)
         self.assertEqual(const_names[0], 'central.size')
-        self.assertEqual(const_names[1], 'myokit.critical_volume')
-        self.assertEqual(const_names[2], 'myokit.elimination_rate')
-        self.assertEqual(const_names[3], 'myokit.kappa')
-        self.assertEqual(const_names[4], 'myokit.lambda')
+        self.assertEqual(const_names[1], 'global.critical_volume')
+        self.assertEqual(const_names[2], 'global.elimination_rate')
+        self.assertEqual(const_names[3], 'global.kappa')
+        self.assertEqual(const_names[4], 'global.lambda')
 
     def test_intermediate_variables(self):
         inter_names = sorted(
@@ -79,7 +79,7 @@ class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
         n_states = len(state_names)
         self.assertTrue(n_states, 2)
         self.assertEqual(state_names[0], 'central.drug_amount')
-        self.assertEqual(state_names[1], 'myokit.tumour_volume')
+        self.assertEqual(state_names[1], 'global.tumour_volume')
 
 
 class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
@@ -100,7 +100,7 @@ class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
         n_states = len(state_names)
         self.assertTrue(n_states, 1)
 
-        tumour_volume = 'myokit.tumour_volume'
+        tumour_volume = 'global.tumour_volume'
         self.assertEqual(state_names[0], tumour_volume)
 
     def test_constant_variables(self):
@@ -110,16 +110,16 @@ class TestTumourGrowthInhibitionModelKoch(unittest.TestCase):
         n_const = len(const_names)
         self.assertEqual(n_const, 4)
 
-        drug_conc = 'myokit.drug_concentration'
+        drug_conc = 'global.drug_concentration'
         self.assertEqual(const_names[0], drug_conc)
 
-        kappa = 'myokit.kappa'
+        kappa = 'global.kappa'
         self.assertEqual(const_names[1], kappa)
 
-        lambda_0 = 'myokit.lambda_0'
+        lambda_0 = 'global.lambda_0'
         self.assertEqual(const_names[2], lambda_0)
 
-        lambda_1 = 'myokit.lambda_1'
+        lambda_1 = 'global.lambda_1'
         self.assertEqual(const_names[3], lambda_1)
 
 
@@ -143,7 +143,7 @@ class TestTumourGrowthInhibitionModelKochReparametrised(unittest.TestCase):
         n_states = len(state_names)
         self.assertTrue(n_states, 1)
 
-        tumour_volume = 'myokit.tumour_volume'
+        tumour_volume = 'global.tumour_volume'
         self.assertEqual(state_names[0], tumour_volume)
 
     def test_constant_variables(self):
@@ -153,16 +153,16 @@ class TestTumourGrowthInhibitionModelKochReparametrised(unittest.TestCase):
         n_const = len(const_names)
         self.assertEqual(n_const, 4)
 
-        critical_volume = 'myokit.critical_volume'
+        critical_volume = 'global.critical_volume'
         self.assertEqual(const_names[0], critical_volume)
 
-        drug_conc = 'myokit.drug_concentration'
+        drug_conc = 'global.drug_concentration'
         self.assertEqual(const_names[1], drug_conc)
 
-        kappa = 'myokit.kappa'
+        kappa = 'global.kappa'
         self.assertEqual(const_names[2], kappa)
 
-        growth_rate = 'myokit.lambda'
+        growth_rate = 'global.lambda'
         self.assertEqual(const_names[3], growth_rate)
 
 
@@ -196,7 +196,7 @@ class TestOneCompartmentPKModel(unittest.TestCase):
         volume = 'central.size'
         self.assertEqual(const_names[0], volume)
 
-        elimination_rate = 'myokit.elimination_rate'
+        elimination_rate = 'global.elimination_rate'
         self.assertEqual(const_names[1], elimination_rate)
 
     def test_intermediate_variables(self):
