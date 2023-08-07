@@ -9,15 +9,20 @@
   publisher={Oxford University Press}
 }
 
-@article{augustin:2023,
-  title={Filter inference: A scalable nonlinear mixed effects inference approach for snapshot time series data},
-  author={Augustin, David and Lambert, Ben and Wang, Ken and Walz, Antje-Christine and Robinson, Martin and Gavaghan, David},
-  journal={PLOS Computational Biology},
-  volume={19},
-  number={5},
-  pages={e1011135},
-  year={2023},
-  publisher={Public Library of Science San Francisco, CA USA}
+@article{10.1371/journal.pcbi.1011135,
+    doi = {10.1371/journal.pcbi.1011135},
+    author = {Augustin, David AND Lambert, Ben AND Wang, Ken AND Walz, Antje-Christine AND Robinson, Martin AND Gavaghan, David},
+    journal = {PLOS Computational Biology},
+    publisher = {Public Library of Science},
+    title = {Filter inference: A scalable nonlinear mixed effects inference approach for snapshot time series data},
+    year = {2023},
+    month = {05},
+    volume = {19},
+    url = {https://doi.org/10.1371/journal.pcbi.1011135},
+    pages = {1-29},
+    abstract = {Variability is an intrinsic property of biological systems and is often at the heart of their complex behaviour. Examples range from cell-to-cell variability in cell signalling pathways to variability in the response to treatment across patients. A popular approach to model and understand this variability is nonlinear mixed effects (NLME) modelling. However, estimating the parameters of NLME models from measurements quickly becomes computationally expensive as the number of measured individuals grows, making NLME inference intractable for datasets with thousands of measured individuals. This shortcoming is particularly limiting for snapshot datasets, common e.g. in cell biology, where high-throughput measurement techniques provide large numbers of single cell measurements. We introduce a novel approach for the estimation of NLME model parameters from snapshot measurements, which we call filter inference. Filter inference uses measurements of simulated individuals to define an approximate likelihood for the model parameters, avoiding the computational limitations of traditional NLME inference approaches and making efficient inferences from snapshot measurements possible. Filter inference also scales well with the number of model parameters, using state-of-the-art gradient-based MCMC algorithms such as the No-U-Turn Sampler (NUTS). We demonstrate the properties of filter inference using examples from early cancer growth modelling and from epidermal growth factor signalling pathway modelling.},
+    number = {5},
+
 }
 
 @article{SCHUCK:2015,
@@ -64,11 +69,15 @@ author = {Thierry Lavé and Antonello Caruso and Neil Parrott and Antje Walz},
 abstract = {In this review we present ways in which translational PK/PD modeling can address opportunities to enhance probability of success in drug discovery and early development. This is achieved by impacting efficacy and safety-driven attrition rates, through increased focus on the quantitative understanding and modeling of translational PK/PD. Application of the proposed principles early in the discovery and development phases is anticipated to bolster confidence of successfully evaluating proof of mechanism in humans and ultimately improve Phase II success. The present review is centered on the application of predictive modeling and simulation approaches during drug discovery and early development, and more specifically of mechanism-based PK/PD modeling. Case studies are presented, focused on the relevance of M&S contributions to real-world questions and the impact on decision making.}
 }
 
-@article{augustin:20232,
-  title={Simulating clinical trials for model-informed precision dosing: Using warfarin treatment as a use case},
-  author={Augustin, David and Lambert, Ben and Robinson, Martin and Wang, Ken and Gavaghan, David},
-  journal={bioRxiv},
-  pages={2023--07},
-  year={2023},
-  publisher={Cold Spring Harbor Laboratory}
+@article {Augustin2023.07.31.551404,
+	author = {David Augustin and Ben Lambert and Martin Robinson and Ken Wang and David Gavaghan},
+	title = {Simulating clinical trials for model-informed precision dosing: Using warfarin treatment as a use case},
+	elocation-id = {2023.07.31.551404},
+	year = {2023},
+	doi = {10.1101/2023.07.31.551404},
+	publisher = {Cold Spring Harbor Laboratory},
+	abstract = {Treatment response variability across patients is a common phenomenon in clinical practice. For many drugs this inter-individual variability does not require much (if any) individualisation of dosing strategies. However, for some drugs, including chemotherapies and some monoclonal antibody treatments, individualisation of dosages are needed to avoid harmful adverse events. Model-informed precision dosing (MIPD) is an emerging approach to guide the individualisation of dosing regimens of otherwise difficult-to-administer drugs. Several MIPD approaches have been suggested to predict dosing strategies, including regression, reinforcement learning (RL) and pharmacokinetic and pharmacodynamic (PKPD) modelling. A unified framework to study the strengths and limitations of these approaches is missing. We develop a framework to simulate clinical MIPD trials, providing a cost and time efficient way to test different MIPD approaches. Central for our framework is a clinical trial model that emulates the complexities in clinical practice that challenge successful treatment individualisation. We demonstrate this framework using warfarin treatment as a use case and investigate three popular MIPD methods: 1. neural network regression; 2. deep RL; and 3. PKPD modelling. We find that the PKPD model individualises warfarin dosing regimens with the highest success rate and the highest efficiency: 75.1\% of the individuals display INRs inside the therapeutic range at the end of the simulated trial; and the median time in the therapeutic range (TTR) is 74 \%. In comparison, the regression model and the deep RL model have success rates of 47.9\% and 65.8 \%, and median TTRs of 45 \% and 68 \%. We also find that the MIPD models can attain different degrees of individualisation: the Regression model individualises dosing regimens up to variability explained by covariates; the Deep RL model and the PKPD model individualise dosing regimens accounting also for additional variation using monitoring data. However, the Deep RL model focusses on control of the treatment response, while the PKPD model uses the data also to further the individualisation of predictions.Competing Interest StatementKW is an employee and shareholder of F. Hoffmann-La Roche Ltd. DA, BL, MR and DG have declared that no competing interests exist.},
+	URL = {https://www.biorxiv.org/content/early/2023/08/02/2023.07.31.551404},
+	eprint = {https://www.biorxiv.org/content/early/2023/08/02/2023.07.31.551404.full.pdf},
+	journal = {bioRxiv}
 }
