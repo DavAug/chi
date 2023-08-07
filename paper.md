@@ -24,7 +24,7 @@ bibliography: paper.bib
 
 In [Chi](https://chi.readthedocs.io/en/latest/index.html), model parameters can be estimated from data using Bayesian inference. We provide a simple interface to estimate posterior distributions of PKPD model parameters and NLME model parameters. [Chi](https://chi.readthedocs.io/en/latest/index.html) also implements filter inference, a novel inference approach which makes the estimation of NLME model parameters from snapshot time series data possible [@augustin:2023].
 
-For the sampling from posterior distributions, [Chi](https://chi.readthedocs.io/en/latest/index.html) uses Markov chain Monte Carlo (MCMC) algorithms implemented in the Python package [PINTS](https://pints.readthedocs.io/en/stable/).
+For the sampling from posterior distributions, [Chi](https://chi.readthedocs.io/en/latest/index.html) uses Markov chain Monte Carlo (MCMC) algorithms implemented in the Python package [PINTS](https://pints.readthedocs.io/en/stable/) [@Clerx:2019].
 
 # Statement of need
 
