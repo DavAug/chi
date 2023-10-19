@@ -70,17 +70,15 @@ abstract = {In this review we present ways in which translational PK/PD modeling
 }
 
 @article {Augustin:20232,
-	author = {David Augustin and Ben Lambert and Martin Robinson and Ken Wang and David Gavaghan},
-	title = {Simulating clinical trials for model-informed precision dosing: Using warfarin treatment as a use case},
-	elocation-id = {2023.07.31.551404},
-	year = {2023},
-	doi = {10.1101/2023.07.31.551404},
-	publisher = {Cold Spring Harbor Laboratory},
-	abstract = {Treatment response variability across patients is a common phenomenon in clinical practice. For many drugs this inter-individual variability does not require much (if any) individualisation of dosing strategies. However, for some drugs, including chemotherapies and some monoclonal antibody treatments, individualisation of dosages are needed to avoid harmful adverse events. Model-informed precision dosing (MIPD) is an emerging approach to guide the individualisation of dosing regimens of otherwise difficult-to-administer drugs. Several MIPD approaches have been suggested to predict dosing strategies, including regression, reinforcement learning (RL) and pharmacokinetic and pharmacodynamic (PKPD) modelling. A unified framework to study the strengths and limitations of these approaches is missing. We develop a framework to simulate clinical MIPD trials, providing a cost and time efficient way to test different MIPD approaches. Central for our framework is a clinical trial model that emulates the complexities in clinical practice that challenge successful treatment individualisation. We demonstrate this framework using warfarin treatment as a use case and investigate three popular MIPD methods: 1. neural network regression; 2. deep RL; and 3. PKPD modelling. We find that the PKPD model individualises warfarin dosing regimens with the highest success rate and the highest efficiency: 75.1\% of the individuals display INRs inside the therapeutic range at the end of the simulated trial; and the median time in the therapeutic range (TTR) is 74 \%. In comparison, the regression model and the deep RL model have success rates of 47.9\% and 65.8 \%, and median TTRs of 45 \% and 68 \%. We also find that the MIPD models can attain different degrees of individualisation: the Regression model individualises dosing regimens up to variability explained by covariates; the Deep RL model and the PKPD model individualise dosing regimens accounting also for additional variation using monitoring data. However, the Deep RL model focusses on control of the treatment response, while the PKPD model uses the data also to further the individualisation of predictions.Competing Interest StatementKW is an employee and shareholder of F. Hoffmann-La Roche Ltd. DA, BL, MR and DG have declared that no competing interests exist.},
-	URL = {https://www.biorxiv.org/content/early/2023/08/02/2023.07.31.551404},
-	eprint = {https://www.biorxiv.org/content/early/2023/08/02/2023.07.31.551404.full.pdf},
-	journal = {bioRxiv}
-}
+	AUTHOR={Augustin, David and Lambert, Ben and Robinson, Martin and Wang, Ken and Gavaghan, David},
+  TITLE={Simulating clinical trials for model-informed precision dosing: using warfarin treatment as a use case},
+  JOURNAL={Frontiers in Pharmacology},
+  VOLUME={14},
+  YEAR={2023},
+  URL={https://www.frontiersin.org/articles/10.3389/fphar.2023.1270443},
+  DOI={10.3389/fphar.2023.1270443},
+  ISSN={1663-9812},
+  }
 
 @article{Clerx:2019,
  abstract = {Time series models are ubiquitous in science, arising in any situation where researchers seek to understand how a system’s behaviour changes over time. A key problem in time series modelling is inference; determining properties of the underlying system based on observed time series. For both statistical and mechanistic models, inference involves finding parameter values, or distributions of parameters values, which produce outputs consistent with observations. A wide variety of inference techniques are available and different approaches are suitable for different classes of problems. This variety presents a challenge for researchers, who may not have the resources or expertise to implement and experiment with these methods. PINTS (Probabilistic Inference on Noisy Time Series — https://github.com/pints-team/pints) is an open-source (BSD 3-clause license) Python library that provides researchers with a broad suite of non-linear optimisation and sampling methods. It allows users to wrap a model and data in a transparent and straightforward interface, which can then be used with custom or pre-defined error measures for optimisation, or with likelihood functions for Bayesian inference or maximum-likelihood estimation. Derivative-free optimisation algorithms — which work without harder-to-obtain gradient information — are included, as well as inference algorithms such as adaptive Markov chain Monte Carlo and nested sampling, which estimate distributions over parameter values. By making these statistical techniques available in an open and easy-to-use framework, PINTS brings the power of these modern methods to a wider scientific audience. Funding statement: M.C., G.R.M. and D.J.G. acknowledge support from the UK Biotechnology and Biological Sciences Research Council [BBSRC grant number BB/P010008/1]; M.R., S.G. and D.J.G. gratefully acknowledge research support from the UK Engineering and Physical Sciences Research Council Cross-Disciplinary Interface Programme [EPSRC grant number EP/I017909/1]; C.L.L. acknowledges support from the Clarendon Scholarship Fund, the EPSRC and the UK Medical Research Council (MRC) [EPSRC grant number EP/L016044/1]; B.L. acknowledges support from the UK Engineering and Physical Sciences Research Council [EPSRC grant number EP/F500394/1]; and S.G. and G.R.M. acknowledge support from the Wellcome Trust \&amp; Royal Society [Wellcome Trust grant numbers 101222/Z/13/Z and 212203/Z/18/Z].},
@@ -163,4 +161,16 @@ abstract = {In this review we present ways in which translational PK/PD modeling
   pages={2022--03},
   year={2022},
   publisher={Cold Spring Harbor Laboratory}
+}
+
+@article{clerx2016myokit,
+  title={Myokit: a simple interface to cardiac cellular electrophysiology},
+  author={Clerx, Michael and Collins, Pieter and De Lange, Enno and Volders, Paul GA},
+  journal={Progress in biophysics and molecular biology},
+  volume={120},
+  number={1-3},
+  pages={100--114},
+  year={2016},
+  doi={10.1016/j.pbiomolbio.2015.12.008},
+  publisher={Elsevier}
 }
