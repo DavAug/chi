@@ -41,7 +41,7 @@ setup(
     ],
     extras_require={
         'docs': [
-            'furo',
+            'sphinx-rtd-theme>=1.3',
             'sphinx>=1.5, !=1.7.3',     # For doc generation
         ],
         'notebooks': [
