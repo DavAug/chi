@@ -20,17 +20,75 @@ which is designed for pharmacokinetic and pharmacodynamic (PKPD) modelling.
 
 The main features of chi are
 
-- Simulation of mechanistic dose response models (differential equations) for arbitrary dosing regimens.
-- Inference of mechanistic model parameters from data (classical or Bayesian).
+- Simulation of dose response models for arbitrary dosing regimens, such as pharmacokinetic & pharmacodynamic (PKPD) models, physiology-based pharmacokinetic (PBPK) models, and quantitative systems pharmacology (QSP) models.
+- Inference of model parameters from data (classical or Bayesian).
 - Simulation of the dose response variability in a population (hierarchical models/non-linear mixed effects models).
 - Inference of population parameters from data (classical or Bayesian).
 - Simulation of structured populations, where inter-individual variability can be partly explained by covariates.
 - Inference of model parameters in a structured population from data (classical or Bayesian).
 
-This page provides the API, or developer documentation for
-chi.
+This page provides tutorials and the API documentation for chi.
 
 .. note::
-    This package is still in its infancy and is continuously being developed.
-    So if you find any bugs, please don't hesitate to reach out to us and share
-    your feedback.
+    Chi is being continuously further developed and improved.
+    So if you find any bugs or have any suggestions for improvement please
+    don't hesitate to reach out to us and share your feedback.
+
+Install instructions
+--------------------
+
+Installing chi requires two steps: 1. installation of a c-library called sundials; and 2. installation of the python package.
+
+Step 1: Installation of sundials
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chi uses the open source package Myokit to solve ordinary differential equations
+and compute their sensitivities efficiently. Myokit does this using a c-library called sundials.
+You can install sundials on your computer by entering the below commands in your terminal:
+
+- On Ubuntu, you can execute the below command to install sundials using ``apt-get``:
+
+.. code-block:: bash
+
+    apt-get install libsundials-dev
+
+
+- On MacOs, you can execute the below command to install sundials using ``brew``:
+
+.. code-block:: bash
+
+    brew install sundials
+
+- On Windows, sundials does not need to be installed manually. Myokit will install sundials automatically.
+
+Step 2: Installation of chi
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chi is distributed with PiPy which means that you can pip install chi with
+
+.. code-block:: bash
+
+    pip install chi-drm
+
+If you haven't installed sundials at this point, you will likely get some messages from ``myokit`` complaining
+that it cannot find sundials on your machine. In that case, please go back to step 1.
+
+Note that you need to install ``chi-drm``, and not ``chi``, to install this package.
+This has the simple reason that the name ``chi`` was already taken in PiPy when we wanted to
+distribute our package.
+
+Now you should be all done and have access to all of chi's functionalities. You can import chi in your python scripts with
+
+.. code-block:: python
+
+    import chi
+
+We hope you enjoy using chi. We are looking forward to seeing which insights you will generate for the pharmaceutical community.
+
+To get some idea what you can and what you cannot do we chi, we recommend that you have a look at the tutorials on the following pages.
+The API documentation can be found `here <https://chi.readthedocs.io/en/latest/api/index.html>`_.
+
+.. note::
+    Note that the package is distributed in PiPy under the name ``chi-drm``
+    while in your python scripts you can import the package under the name
+    ``chi``.
