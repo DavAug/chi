@@ -43,6 +43,7 @@ setup(
         'docs': [
             'sphinx-rtd-theme>=1.3',
             'sphinx>=1.5, !=1.7.3',     # For doc generation
+            'sphinx-copybutton>=0.5.2'
         ],
         'notebooks': [
             'jupyter==1.0.0',
