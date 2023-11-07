@@ -220,7 +220,7 @@ approximate the real data-generating processes, we can generalise the notion of
 data-generating parameters to being the effective set of parameter values that
 capture the most about the data-generating process within the limitations of
 the model approximation. Here, the maximum likelihood estimates can analogously
-differ significantly from the sought after data-generating parameters.
+differ substantially from the sought after data-generating parameters.
 
 In chi the uncertainty of parameter estimates can be estimated using Bayesian
 inference. In Bayesian inference Bayes' rule is used to define a distribution
@@ -518,7 +518,7 @@ log-posterior
 
 .. math::
     \log p(\Psi , \theta | \mathcal{D}) =
-        \log p(\mathcal{D}, \Psi | \theta) + \log p(\theta ) 
+        \log p(\mathcal{D}, \Psi | \theta) + \log p(\theta )
         + \text{constant},
 
 where :math:`\log p(\theta )` is the log-prior of the population parameters.
@@ -557,8 +557,8 @@ parameters.
 
 Note that in this case the posteriors of :math:`\mu _{k_e}` and
 :math:`\sigma _{k_e}` are largely dominated by the prior distribution as 3
-patients are not informative enough to influence the posterior distribution
-significantly.
+patients are not informative enough to substantially influence the posterior
+distribution.
 
 This concludes the quick overview of chi. You now know how to use chi to
 simulate mechanistic model outputs, measurements and population models. You

@@ -1,5 +1,3 @@
-.. _README: https://github.com/DavAug/chi/blob/main/README.md
-
 ***************
 Getting started
 ***************
@@ -10,8 +8,7 @@ This part of the documentation gets you started using chi. Each section will
 give a brief introduction into the modelling framework and show examples of
 how to implement models in chi. The covered topics include **simulation** and
 **inference** of e.g. ODE models, PKPD models with drug administration and
-non-linear mixed effects models / hierarchical models. For installation
-instructions please refer to the README_.
+non-linear mixed effects models / hierarchical models.
 
 .. toctree::
     :numbered:

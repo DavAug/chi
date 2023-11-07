@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model id="one_compartment_pk_model">
+
+    <listOfParameters>
+      <parameter id="drug_amount" value="1"/>
+      <parameter id="drug_concentration" value="1"/>
+      <parameter id="elimination_rate" value="1"/>
+      <parameter id="volume" value="1"/>
+    </listOfParameters>
+
+    <listOfRules>
+      <rateRule variable="drug_amount">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <cn> -1 </cn>
+            <ci> elimination_rate </ci>
+            <ci> drug_amount </ci>
+          </apply>
+        </math>
+      </rateRule>
+
+      <assignmentRule variable="drug_concentration">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> drug_amount </ci>
+            <ci> volume </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+
+  </model>
+</sbml>
