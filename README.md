@@ -43,11 +43,11 @@ pip install chi-drm
  ```python
 import chi
  ```
- 
+
  ### Tutorials
 
  Tutorials and more detailed explanations on how to use chi can be found in the [documentation's getting started](https://chi.readthedocs.io/en/latest/getting_started/index.html) section.
- 
+
 ## Citation
 
 If you use this software in your work, please cite it using the following metadata:
@@ -70,9 +70,11 @@ year = {2021}
 ```
 
 ## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+There are lots of ways how you can contribute to Chi's development, and you are welcome to join in!
+For example, you can report problems or make feature requests on the [issues](https://github.com/DavAug/chi/issues) pages.
 
-Please make sure to update tests as appropriate.
+Similarly, if you would like to contribute documentation or code you can create and issue, and then provide a pull request for review.
+To facilitate contributions, we have written extensive [contribution guidelines](https://github.com/DavAug/chi/blob/main/CONTRIBUTING.md) to help you navigate the code.
 
 ## License
 [BSD-3-Clause](https://opensource.org/licenses/BSD-3-Clause)
