@@ -1,4 +1,5 @@
 .. _SBML: https://sbml.org/
+.. _Myokit: http://myokit.org/
 
 .. currentmodule:: chi
 
@@ -6,29 +7,42 @@
 The mechanistic model
 *********************
 
-In chi, mechanistic model is an umbrella term for time
+In Chi, mechanistic model is an umbrella term for time
 series models describing the dynamics of treatment responses. In general, these models do
 not have to be of a *mechanistic* nature, but in most cases they will have at least
 a mechanistic element to them.
 Popular mechanistic models include for example PKPD models, PBPK models and
 QSP models which are based on mechanistic descriptions of the treatment response.
 
-Mechanistic models can be implemented in chi in two ways: 1. using SBML_ files
+Mechanistic models can be implemented in Chi in two ways: 1. using SBML_ files
 (recommended); and 2. using the :class:`chi.MechanisticModel` interface.
-The :class:`chi.MechanisticModel` way has, perhaps, the
+The :class:`chi.MechanisticModel` interface has, perhaps, the
 lower entry barrier, as it just involves implementing models
-in any Python code you fancy, while the SBML way requires you to learn a small
-amount of potentially unfamiliar SBML syntax. But in the long run, SBML will
-make life easier for you as, in chi, it will automate differentiation,
-sensitivities and dose administration. Below
-we will show how we can use either of those ways to implement a 1-compartment
-PK model.
+using any preferred Python code. This brings an enourmous amount of flexibility
+and, for simple models, gets your model implemented fast. However, it has the
+drawback that sensitivities of the model parameters and
+mechanisms to administer dosing regimens have to implemented manually. It also
+limits the ability to share models.
+
+In comparison, using SBML files to implement your models requires a small
+amount of potentially unfamiliar SBML syntax, and therefore may initially take
+a little longer to get started. However, for complex models, SBML
+simplifies the model implementation and reduces the risk for implementation
+errors. In Chi, SBML will also automate differentiation, the evaluation of parameter
+sensitivities, and the implementation of dose administrations. Another benefit
+of SBML files is that they are programming language-agnostic, meaning that SBML
+files are supported by many simulation softwares facilitating the sharing and
+reimplementation of models without forcing the continued use of Chi. We therefore
+recommend using SBML files to implement your models.
+
+Below we will show how we can use either of those implementation strategies to
+implement a 1-compartment PK model.
 
 **Use case: 1-compartment PK model:**
 
-A 1-compartment PK model describes the absorption, distribution, metabolism and
-elimination of a drug semi-mechanistically using a simple differential equation
-of the form
+A 1-compartment PK model is a semi-mechanistic description of the absorption,
+distribution, metabolism and elimination of a drug using a simple differential
+equation of the form
 
 .. math::
     \frac{\mathrm{d}a}{\mathrm{d}t} = -k_e\, a,
@@ -39,6 +53,248 @@ where :math:`a` is the drug amount in the compartment, :math:`t` is the time,
 :math:`k_e` is the elimination rate of the drug, :math:`c` is the drug
 concentration, :math:`v` is the volume of the compartment and :math:`a_0` is
 the initial drug amount.
+
+Defining mechanistic models using the MechanisticModel interface
+****************************************************************
+
+The simplest way to implement mechanistic models in Chi is to use the
+:class:`chi.MechanisticModel` interface. The :class:`MechanisticModel` is a
+base class for mechanistic models with a small number of mandatory methods that
+you need to implement in order to be able to use your implementation with all
+of Chi's functionality. The base class takes the following form
+(methods that don't have to be implemented are omitted):
+
+.. code-block:: python
+
+    class MechanisticModel(object):
+        def simulate(self, parameters, times):
+            """
+            Returns the numerical solution of the model outputs for the
+            specified parameters and times.
+
+            The model outputs are returned as a 2 dimensional NumPy array of shape
+            ``(n_outputs, n_times)``.
+
+            :param parameters: An array-like object with values for the model
+                parameters.
+            :type parameters: list, numpy.ndarray
+            :param times: An array-like object with time points at which the output
+                values are returned.
+            :type times: list, numpy.ndarray
+
+            :rtype: np.ndarray of shape (n_outputs, n_times)
+            """
+            raise NotImplementedError
+
+        def has_sensitivities(self):
+            """
+            Returns a boolean indicating whether sensitivities have been enabled.
+            """
+            raise NotImplementedError
+
+        def n_outputs(self):
+            """
+            Returns the number of output dimensions.
+            """
+            raise NotImplementedError
+
+        def n_parameters(self):
+            """
+            Returns the number of parameters in the model.
+            """
+            raise NotImplementedError
+
+        def outputs(self):
+            """
+            Returns the output names of the model.
+            """
+            raise NotImplementedError
+
+        def parameters(self):
+            """
+            Returns the parameter names of the model.
+            """
+            raise NotImplementedError
+
+For full details of the base class, we refer to the API reference:
+:class:`chi.MechanisticModel`.
+
+The main method of the mechanistic model is the :meth:`MechanisticModel.simulate`
+method, implementing the simulation of the model. The other methods are
+used for book-keeping and for enabling the computation of sensitivities. In
+this example, we will not implement the sensitivities, so we can start
+the model implementation by setting the return of the
+:meth:`MechanisticModel.has_sensitivities` method to ``False``
+
+.. code-block:: python
+
+    class OneCompPKModel(chi.MechanisticModel):
+        def __init__(self):
+            super().__init__()
+
+        def has_sensitivities(self):
+            # Model does not implement sensitivities, so output of this method
+            # is always False
+            return False
+
+In the above code block, we define a new class called ``OneCompPKModel`` which will
+implement the 1-compartment PK model. In the first line, the class
+inherits from the :class:`chi.MechanisticModel` base class. In the next two
+lines, we use ``super().__init__()`` to initialise properties of the the base
+class. If you are not familiar with inheritance in Python, you can use these
+three lines as a default setup of your model implementation. The remainder of
+the code block implments the :meth:`MechanisticModel.has_sensitivities` method
+by setting its return
+to ``False``, indicating to other classes and functions in Chi
+that the model does not implement sensitivities. This is a necessary method of
+:class:`chi.MechanisticModel` in Chi, because some optimisation and inference
+algorithms require sensitivites, and setting the output to ``False`` will
+indicate to those algorithms that they cannot be used with this model.
+
+The other methods, besides the :meth:`MechanisticModel.simulate`, are used for
+book-keeping and define the number of outputs of the model, the number of
+parameters of the model and their names. In this case the 1-compartment PK
+model has only 1 output, the concentration of the drug in the central
+compartment. We can therefore continue the implementation of the model by setting
+the return of :meth:`MechanisticModel.n_outputs` to ``1`` and the return of
+:meth:`MechanisticModel.outputs` to ``['Drug concentration']``
+
+.. code-block:: python
+
+    class OneCompPKModel(chi.MechanisticModel):
+        def __init__(self):
+            super().__init__()
+
+        def has_sensitivities(self):
+            # Model does not implement sensitivities, so output of this method
+            # is always False
+            return False
+
+        def n_outputs(self):
+            return 1
+
+        def outputs(self):
+            return ['Drug concentration']
+
+Those two methods communicate to other classes and functions in Chi that the
+model has only one output, the drug concentration. Note that the return of
+:meth:`MechanisticModel.outputs` is a list of strings in order to facilitate
+returning the names of mutliple outputs, in which case the return would take
+the form ``['Output name 1', 'Output name 2', ..., 'Output name n']``.
+
+The remaining book-keeping methods return the number of parameters and
+the names of the parameters, :meth:`MechanisticModel.n_parameters` and
+:meth:`MechanisticModel.parameters`. A 1-compartment PK model has three model
+parameters: 1. the initial drug amount, :math:`a_0`; 2. the elimination rate,
+:math:`k_e`: and 3. the volume of distribution, :math:`v`. We can, thus,
+implement the methods by setting the return of
+:meth:`MechanisticModel.n_parameters` to ``3`` and the return of
+:meth:`MechanisticModel.parameters` to
+``['Initial amount', 'Elimination rate', 'Volume of distribution']``.
+
+.. code-block:: python
+
+    class OneCompPKModel(chi.MechanisticModel):
+        def __init__(self):
+            super().__init__()
+
+        def has_sensitivities(self):
+            # Model does not implement sensitivities, so output of this method
+            # is always False
+            return False
+
+        def n_outputs(self):
+            return 1
+
+        def outputs(self):
+            return ['Drug concentration']
+
+        def n_parameters(self):
+            return 3
+
+        def parameters(self):
+            return ['Initial amount', 'Elimination rate', 'Volume of distribution']
+
+This leaves only :meth:`MechanisticModel.simulate` to implement. The
+:meth:`MechanisticModel.simulate` is the heart of the mechanistic model, taking
+the parameter values and the evaluation time points of the simulation as inputs
+and returning the simulated model outputs. How you find the simulated
+model outputs is in the :meth:`MechanisticModel` interface up to you!
+
+In thise case, the 1-compartment PK model is simple
+enough so that we can find and implement the analytical solution to the
+differential equation directly. Solving the differential equation shows that
+the 1-compartment PK model yields an exponential decay of the drug
+concentration in the central compartment
+
+.. math::
+    c(t) = \frac{a_0}{v}\, \mathrm{e}^{-k_e t}.
+
+We can implement this exponential decay using numpy as follows
+
+.. literalinclude:: code/2_mechanistic_model_1.py
+    :lines: 2-36
+
+The inputs to the :meth:`MechanisticModel.simulate` method are the values of
+the model parameters and the time points for the model evaluation. As defined
+by the base class, the parameter values, ``parameters``, have to take the form
+of a list or an np.ndarray of length ``n_parameters``. These parameter values
+are deconstructed in the first line of the method and assigned to the model
+parameters. The time point input, ``times``, also has to take the form of a list or
+an np.ndarray, but can be of any length, ``n_times``. In the second line of the method,
+we use ``np.array(times)`` to convert the ``times`` input to an np.ndarray to enable the
+computation of the drug concentration at all time points in parallel using numpy's vectorised operations.
+The next line implements the model solution and calculates the drug
+concentration for all time points in ``times``. Finally, the last two lines of
+the method make sure that the output of the method adheres to the format defined
+by the interface, :class:`chi.MechanisticModel`, reshaping the simulation result
+to an np.ndarray of shape ``(n_outputs, n_times)`` by first instantiating an
+empty array of shape ``(self.n_outputs(), len(times))``, i.e. ``(1, len(times))``,
+and then populating the array with the simulated concentration values.
+
+This completes the implementation of the 1-compartment PK model and we can start
+to model the pharmacokinetics of drugs. For example, we can simulate the time course
+of the drug concentration following a bolus dose of 10 drug amount units
+
+.. literalinclude:: code/2_mechanistic_model_1.py
+    :lines: 41-68
+
+.. raw:: html
+   :file: images/2_mechanistic_model_1.html
+
+As expected, the drug concentration decays exponentially with the rate defined
+by the elimination rate, starting from an initial value of 5, defined by the
+initial drug amount and the volume of distribution (:math:`10 / 2`).
+
+Strengths & limitations
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The above implementation of the 1-compartment PK model can now be used together
+with other classes and functions in Chi to simulate drug concentrations and to
+infer parameter values from measurements. However, to get access to all of
+Chi's features additional methods need to be implemented, including methods
+mirroring :class:`PKPDModel.set_administration` and
+:class:`PKPDModel.set_dosing_regimen` in order to facilitate dose
+administrations that go beyond bolus doses at the start of the simulation.
+Below, we provide an overview of the strengths and limitations of using the
+:class:`chi.MechanisticModel` interface
+
+**Strengths**
+
+- Simple models can be implemented quickly.
+- The interface is extremely flexible and allows for the use of any preferred Python code.
+- Only knowledge of Python is required to implement the model.
+
+**Limitations**
+
+- No support for the implementation of complex models.
+- No automated implementation of output names and parameter names.
+- No automated implementation of changing model outputs.
+- No automated support of renaming model outputs and model parameters.
+- No automated implementation of dose administrations.
+- No automated implementation of sensitivities.
+- Sharing of models is limited to the use of Chi.
+
 
 Defining mechanistic models using SBML files
 ********************************************
@@ -52,7 +308,7 @@ detail of why SBML is a great choice to implement your models, let us implement
 our first SBML model to see how it works in practice.
 
 Setting up a template
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 The first thing to note about SBML is that mechanistic models are not defined
 in your Python scripts directly, but instead are defined in SBML files external
@@ -78,12 +334,12 @@ an SBML file. The remaining two lines begin the model definition.
 
 You can see
 that the model tag has an ``id`` property with the value ``"template"``.
-This id is not really used by chi, but myokit uses it internally to name models,
+This id is not really used by chi, but Myokit_ uses it internally to name models,
 and we can use this in this tutorial for debugging / making sure that the model
 is implemented as expected. To this end, let us instantiate
 a model from the SBML file using the code below
 
-.. literalinclude:: code/2_mechanistic_model_1.py
+.. literalinclude:: code/2_mechanistic_model_2.py
     :lines: 18-27
 
 In this example, we instantiate the model using :class:`chi.PKPDModel` from
@@ -91,18 +347,18 @@ the SBML file. The first two lines define the absolute path to the SBML file
 by first getting the absolute path of the Python script and then pointing to
 the SBML file in the same directory as the script. The last line prints the
 name of the ``_model`` property of the :class:`chi.PKPDModel` instance, which
-is the compiled ``myokit`` model. If everything works correctly, executing this
+is the compiled Myokit_ model. If everything works correctly, executing this
 script should print the name of the model to the terminal, i.e. ``template``.
 
 .. note::
     We do not recommend accessing the ``_model`` property in your scripts
     directly when you are modelling treatment responses (as indicated by the
-    leading ``_``, the myokit model is supposed to be a private property of
+    leading ``_``, the Myokit_ model is supposed to be a private property of
     :class:`chi.PKPDModel`), but for debugging SBML files it can be useful to
     investigate ``_model`` directly.
 
 Implementing the model
-----------------------
+^^^^^^^^^^^^^^^^^^^^^^
 
 With this template in place, we can now implement our model. Let us
 start by first sketching out the two blocks of definitions that we need for
@@ -163,10 +419,10 @@ model and printing the compiled model back to us. To this end, let us
 copy-paste the above model definition into an XML file with the name
 ``one_compartment_pk_model.xml`` and execute the below script
 
-.. literalinclude:: code/2_mechanistic_model_1.py
+.. literalinclude:: code/2_mechanistic_model_2.py
     :lines: 31-40
 
-Here, we are using the ``code()`` method of the ``myokit`` model to print
+Here, we are using the ``code()`` method of the Myokit_ model to print
 the model specification back to us. If the implementation is correct, you
 should see a print out like this
 
@@ -226,7 +482,7 @@ PK model to life
 
 Before explaining the syntax in more detail, let us first see how the addition of
 the rate rule has changed our model implementation. Executing the above Python
-script again, now yields a model print our that looks like this
+script again, now yields a model print out that looks like this
 
 .. code-block:: python
 
@@ -243,7 +499,7 @@ script again, now yields a model print our that looks like this
         in [1]
     volume = 1
 
-We can see that in comparision to our previous model print out two things have happened:
+We can see that in comparison to our previous model print out two things have happened:
 1. a new section with title ``# Initial values`` has appeared; and 2. the expression
 of the ``drug_amount`` variable has changed. This is because rate rules promote (constant)
 parameters to variables whose dynamics are now defined by ordinary differential equations.
@@ -317,9 +573,9 @@ are labelled by ``<ci></ci>``. This labelling is used in SBML to indicate whethe
 parameters definitions need to be looked up in the list of parameters.
 
 We can now move on and complete the implementation of our model by adding the
-assignment rule for the drug concentration, which related the drug concentration
+assignment rule for the drug concentration, which relates the drug concentration
 to the drug amount, :math:`c = \frac{a}{v}`. Fortunately, at this point you have
-already learned almost all the necessary SBML syntax to this. The only
+already learned almost all the necessary SBML syntax to do this. The only
 difference is that assignment rules are indicated with ``assignmentRule`` tags
 instead of the rate rule tag
 
@@ -362,7 +618,7 @@ instead of the rate rule tag
       </model>
     </sbml>
 
-Executing our Python script again we obtain an updated model print out
+Executing our Python script again, we obtain an updated model print out
 
 .. code-block:: python
 
@@ -384,15 +640,15 @@ the expression for the drug concentration to a differential equation. Instead
 it simply assigned the drug concentration to be equal to the drug amount divided
 by the volume at all times.
 
-This completes the implementation of the one-compartment PK model, and we can start
+This completes the implementation of the one-compartment PK model and we can start
 to model the pharmacokinetics of drugs. For example, we can simulate the time course
 of the drug concentration following a bolus dose of 10 drug amount units
 
-.. literalinclude:: code/2_mechanistic_model_1.py
+.. literalinclude:: code/2_mechanistic_model_2.py
     :lines: 44-78
 
 .. raw:: html
-   :file: images/2_mechanistic_model_1.html
+   :file: images/2_mechanistic_model_2.html
 
 As expected, the drug concentration decays exponentially with the rate defined
 by the elimination rate, starting from an initial value of 5, defined by the
@@ -421,7 +677,7 @@ implementing large mechanistic models, such as PBPK models and QSP models.
 
 We
 will not go into further detail about these elements of SBML in this tutorial.
-However, for illsutrative purposes we will show a version of the 1-compartment
+However, for illustrative purposes we will show a version of the 1-compartment
 PK model implementation which includes compartments, rate equations and units
 
 .. code-block:: xml
@@ -483,27 +739,200 @@ PK model implementation which includes compartments, rate equations and units
 
 For a complete description of SBML, we refer to the SBML documentation: https://sbml.org/.
 
+Setting dosing regimens
+^^^^^^^^^^^^^^^^^^^^^^^
+
+In Chi, models implemented using SBML files have a simple two-step interface to
+simulate treatment responses for different dosing strategies. The first
+step is to specify the route of administration using
+:meth:`PKPDModel.set_administration`. Once this step is completed, the dosing
+regimen can be scheduled using :meth:`PKPDModel.set_dosing_regimen`.
+
+The :meth:`PKPDModel.set_administration` method defines the drug amount
+variable of the model that gets elevated when dosages are administered. In our
+1-compartment PK model from above, there is of course only one drug amount
+variable in the model and this flexibility seems unnecessary, however for more
+complicated models specifying drug amount
+variables in different compartments can be used to emulate different
+routes of administration. To facilitate this flexibility of the route of
+administration the :meth:`PKPDModel.set_administration` method has one mandatory input parameter
+and two optional input parameters. The mandatory input parameter, ``compartment``,
+specifies the
+compartment of the drug amount variable, the other two input parameters specify
+the name of the drug amount
+variable, ``amount_var``, (default is ``amount_var='drug_amount'``) and whether the administration is
+direct, ``direct``, (default is ``direct=True``). If ``direct`` is set to ``False`` the drug is administered
+to the drug amount variable through a dose copmartment.
+
+Let us first illustrate the direct aministration. In our above example,
+``one_compartment_pk_model.xml``, we used rules to define our model and did not
+specify any compartments. In this case, Myokit_ assigns all variables to a global
+compartment called ``global``. We can therefore administer doses directly to
+the drug amount variable by setting the compartment input to ``'global'``
+
+
+.. literalinclude:: code/2_mechanistic_model_2.py
+    :lines: 86
+
+To see what happens to the model when we set an administration, we can use
+``print(model._model.code())`` to print the model.
+
+.. code-block:: python
+
+    [[model]]
+    name: one_compartment_pk_model
+    # Initial values
+    global.drug_amount = 1
+
+    [global]
+    dose_rate = 0 bind pace
+    dot(drug_amount) = -1 * elimination_rate * drug_amount + dose_rate
+    drug_concentration = drug_amount / volume
+    elimination_rate = 1
+    time = 0 bind time
+        in [1]
+    volume = 1
+
+We can see that two things have happened: 1. a ``dose_rate`` variable has been added
+to the model; and 2. the dose rate variable has been added to the right hand
+side of the ``drug_amount`` rate equation. The ``dose_rate`` will be set by the
+dosing regimen and implements the administration of dosages.
+
+We can now simulate the drug concentration for different dosing regimens. For
+example, assuming the dose amount is in units of mg and the time is in units of
+days, we may want to administer a dose of 2 mg every day, or a dose of 4 mg
+every 2 days, or administer a total dose of 2 mg every day with an infusion
+that lasts for 12 hours.
+
+.. literalinclude:: code/2_mechanistic_model_2.py
+    :lines: 91-131
+
+.. raw:: html
+   :file: images/2_mechanistic_model_3.html
+
+For full details of which dosing regimens are possible, we refer to API
+documentation, :meth:`PKPD.set_dosing_regimen`.
+
+For completeness, let us administer the same dosing regimens indirectly to the
+drug amount variable.
+
+.. literalinclude:: code/2_mechanistic_model_2.py
+    :lines: 138-187
+
+.. raw:: html
+   :file: images/2_mechanistic_model_4.html
+
+We can see that relative to the direct administration two things have happened:
+1. Somehow the number of parameters have changed from 3 parameters to 5 parameters (see line 10 in the code block);
+and 2. the peaks of the drug concentrations appear to be rounded off in the figure.
+
+To understand this, let us again investigate the Myokit_ model using
+``print(model._model.code())``, and see how the route of administration has
+changed the model
+
+.. code-block:: python
+
+    [[model]]
+    name: one_compartment_pk_model
+    # Initial values
+    global.drug_amount = 1
+    dose.drug_amount   = 0
+
+    [dose]
+    absorption_rate = 1
+        in [1]
+    dot(drug_amount) = -absorption_rate * drug_amount + global.dose_rate
+
+    [global]
+    dose_rate = 0 bind pace
+    dot(drug_amount) = -1 * elimination_rate * drug_amount + dose.absorption_rate * dose.drug_amount
+    drug_concentration = drug_amount / volume
+    elimination_rate = 1
+    time = 0 bind time
+        in [1]
+    volume = 1
+
+We can see that the indirect administration makes changes to the model that are
+conceptually similar to the direct administration, but instead of adding the
+``dose_rate`` variable directly to the right hand side of the ``drug_amount``
+rate equation in the ``global`` compartment, it is added to the rate equation
+of a ``drug_amount`` variable in a new ``dose`` compartment. From this ``dose``
+compartment the drug transitions to the ``global`` compartment at a constant rate --
+the ``absorption_rate``.
+
+These changes of the model explain the shaving off of the drug concentration
+peaks: the drug is first adminstered to the dose compartment and then transitions
+at a reduced rate to the observed compartment. It also explains why the number of
+model parameters increases from 3 to 5: indirect administrations add the initial
+value of the ``dose`` compartment ``drug_amount`` variable and the ``absorption_rate``
+parameter to the model.
+
 .. note::
-    Mathematical expressions in MathML can be nested to be able to implement
-    more complex expressions. For example, the MathML equivalent of
-    :math:`a + b / c` is
+    Whenever you are in doubt about the order of the parameters, use
+    :meth:`PKPDModel.parameters` to look up their order.
 
-    .. code-block:: xml
+Calculating sensitivities
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-        <math xmlns="http://www.w3.org/1998/Math/MathML">
-          <apply>
-            <plus/>
-            <ci> a </ci>
-            <apply>
-              <divide/>
-              <ci> b </ci>
-              <ci> c </ci>
-            </apply>
-          </apply>
-        </math>
+In Chi, models implemented using SBML files also have a simple interface to
+simulate the sensitivities of model parameters. The simulation of sensitivities
+can be enabled using the :meth:`PKPDModel.enable_sensitivities` method which
+modifies the output of :meth:`PKPDModel.simulate`. If sensitivities are enabled,
+:meth:`PKPDModel.simulate` returns a tuple of numpy arrays instead of just a
+single numpy array. The first numpy array is the simulated model output, as
+before. The second numpy array contains the sensitivities of the
+model outputs for each model parameter at all simulated time points and
+is of shape ``(n_times, n_outputs, n_parameters)``.
 
-    where the second ``<apply></apply>`` bracket implements the fraction
-    :math:`b / c`.
+To see the simulation of sensitivities in action, we use again our 1-compartment
+PK model example from above as a use case, ``'one_compartment_pk_model.xml'``, and simulate
+the model output and its sensitivities for daily dose administrations of 2 mg.
+For simplicity, we choose to visualise the sensitivities only for the initial
+drug amount in the ``global`` compartment and the elimination rate.
+
+.. literalinclude:: code/2_mechanistic_model_2.py
+    :lines: 203-251
+
+.. raw:: html
+   :file: images/2_mechanistic_model_5.html
+
+In the code block, you can see that we select the sensitivities by
+1. indexing the relevant time
+points in the first axis (in this case, we select all simulated time points with
+``:``), 2. indexing the relevant output in the second axis, and 3. indexing
+the relevant parameter in the third axis. The order of the parameters is
+consistent across all methods of the :class:`PKPDModel` and can be looked up
+using :meth:`PKPDModel.parameters`.
+
+In the figure, the sensitivities show that the influence of the initial drug
+amount on the drug concentration decays exponentially over time, as indicated
+by the decreasing magnitude of its sensitivity. The more intitial drug amount
+is available, the larger the drug concentration is for early times of the
+simulation. However,
+drug concentration levels at later times will not be affected by elevated initial
+drug amounts. This aligns with our
+understanding of the model, as we know that the model clears drug amounts at an
+exponential rate from the system. The initial drug amount can therefore only
+influence the drug concentration at early times.
+
+We can similarly understand
+the sensitivity with respect to the elimination rate. The figure shows that
+the elimination rate has no influence on the drug concentration at :math:`t=0`.
+Only for :math:`t>0`, the elimination rate begins to affect the drug
+concentration level. This is because for early times, the drug concentration
+value is dominiated by the initial drug amount. As the influence of the
+initial drug amount on the drug concentration diminishes, the influence of the
+elimination rate increases. Note that the sensitivity with respect to the
+elimination rate is negative, in contrast to the positive sensitivity with
+respect to the initial drug amount. As a result, larger elimination rates
+negatively impact drug conentration levels.
+
+This concludes the tutorial on mechanistic models in Chi. For the full
+documentation of mechanistic models, we refer to the API reference
+below.
+
+Reference to MechanisticModel API
+*********************************
 
 .. autosummary::
 

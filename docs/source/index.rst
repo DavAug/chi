@@ -8,7 +8,7 @@
 
 .. toctree::
     :hidden:
-    :maxdepth: 1
+    :maxdepth: 2
 
     getting_started/index.rst
     api/index.rst

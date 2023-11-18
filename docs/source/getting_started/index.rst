@@ -13,7 +13,7 @@ non-linear mixed effects models / hierarchical models.
 .. toctree::
     :numbered:
     :caption: Table of Contents
-    :maxdepth: 1
+    :maxdepth: 2
 
     quick_overview
     mechanistic_model

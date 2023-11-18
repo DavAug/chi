@@ -1,58 +1,48 @@
-import argparse
-
-
-# Set up argument parsing, so plotting and exports can be disabled for
-# testing.
-parser = argparse.ArgumentParser(
-    description='Run example scripts for chi docs.',
-)
-parser.add_argument(
-    '--test',
-    action='store_true',
-    help='Run testing version of script which ignores plotting.',)
-
-# Parse!
-args = parser.parse_args()
-
-# 1
-import os
-
-import chi
-
-
-directory = os.path.dirname(__file__)
-filename = os.path.join(directory, 'template.xml')
-model = chi.PKPDModel(sbml_file=filename)
-
-print(model._model.name())
-
-
-# 2
-import os
-
-import chi
-
-
-directory = os.path.dirname(__file__)
-filename = os.path.join(directory, 'one_compartment_pk_model.xml')
-model = chi.PKPDModel(sbml_file=filename)
-
-print(model._model.code())
-print(model.parameters())
-
-# 3
-import os
-
+#1
 import chi
 import numpy as np
+
+
+class OneCompPKModel(chi.MechanisticModel):
+    def __init__(self):
+        super().__init__()
+
+    def simulate(self, parameters, times):
+        a0, ke, v = parameters
+        times = np.array(times)
+
+        c = a0 / v * np.exp(-ke * times)
+
+        output = np.empty(shape=(self.n_outputs(), len(times)))
+        output[0] = c
+
+        return output
+
+    def has_sensitivities(self):
+        # Model does not implement sensitivities, so output of this method
+        # is always False
+        return False
+
+    def n_outputs(self):
+        return 1
+
+    def outputs(self):
+        return ['Drug concentration']
+
+    def n_parameters(self):
+        return 3
+
+    def parameters(self):
+        return ['Initial amount', 'Elimination rate', 'Volume of distribution']
+
+
+import os
+# 2
 import plotly.graph_objects as go
 
 
 # Define model
-directory = os.path.dirname(__file__)
-filename = os.path.join(directory, 'one_compartment_pk_model.xml')
-model = chi.PKPDModel(sbml_file=filename)
-model.set_outputs(['global.drug_concentration'])
+model = OneCompPKModel()
 
 # Run simulation
 times = np.linspace(start=0, stop=10, num=200)
