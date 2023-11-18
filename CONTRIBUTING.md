@@ -45,8 +45,8 @@ You now have everything you need to start making changes!
 To install Chi with all developer options, use:
 
 ```
-$ git clone https://github.com/pints-team/pints.git
-$ cd pints
+$ git clone git@github.com:DavAug/chi.git
+$ cd chi
 $ pip install -e .[docs]
 ```
 
