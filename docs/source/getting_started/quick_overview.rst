@@ -6,11 +6,11 @@
 Quick overview
 **************
 
-The quick overview displays some of chi's main features to help you decide
-whether chi is the right software for you. The running example for this
+The quick overview displays some of Chi's main features to help you decide
+whether Chi is the right software for you. The running example for this
 overview will be a 1-compartment pharmacokinetic model (any other deterministic
 time series model would have been an equally good choice, but the 1-compartment
-pharmacokinetic model happens to be predefined in chi's model library;
+pharmacokinetic model happens to be predefined in Chi's model library;
 :class:`chi.library.ModelLibrary`). The model is defined by an ordinary
 differential equation for the drug amount and an algebraic equation for the
 drug concentration
@@ -29,7 +29,7 @@ units for simplicity).
 Simulating a mechanistic model
 ******************************
 
-Using the 1-compartment pharmacokinetic model from chi's model library,
+Using the 1-compartment pharmacokinetic model from Chi's model library,
 simulation of the model simply involves specifying the set of model parameters
 :math:`\psi = (a_0, v, k_e)` and the time points of interest.
 
@@ -49,7 +49,7 @@ The simulation results are of shape ``(n_outputs, n_times)`` which in this case
 is ``(1, 5)`` because we simuated the drug concentration for 5 different time
 points.
 For details on how to implement your own :class:`chi.MechanisticModel` and
-many other details concerning mechanistic models in chi, we refer to
+many other details concerning mechanistic models in Chi, we refer to
 section :doc:`mechanistic_model`.
 
 Visualisation of the simulation
@@ -72,7 +72,7 @@ compartment in intervals of 0.5
 Simulation of measurements
 **************************
 
-Measurements are in chi modelled using a :class:`chi.ErrorModel` on top of the
+Measurements are in Chi modelled using a :class:`chi.ErrorModel` on top of the
 :class:`chi.MechanisticModel` . Formally this takes the form of
 
 .. math::
@@ -96,7 +96,7 @@ aestetic reasons)
    :file: images/1_simulation_2.html
 
 For details on how to implement a :class:`chi.ErrorModel` and
-many other details concerning error models in chi, we refer to section
+many other details concerning error models in Chi, we refer to section
 :doc:`error_model`.
 
 
@@ -104,13 +104,13 @@ Inference of model parameters
 *****************************
 
 While the simulation of mechanistic model outputs and measurements is an
-interesting feature of chi in its own right, the inference of model parameters
+interesting feature of Chi in its own right, the inference of model parameters
 from real-world measurements is arguably even more interesting. In this
 overview, we will use the simulated measurements from above to infer model
 parameters, but in practice the simulated measurements may be straightforwardly
 replaced by real-world measurements.
 
-Inference in chi leverages the fact that the mechanistic model and the
+Inference in Chi leverages the fact that the mechanistic model and the
 error model define a distribution for the modelled measurements :math:`y`.
 In the case of a Gaussian error model, as in the previous example,
 the distribution of the measurements is (yet again) a Gaussian distribution
@@ -129,7 +129,7 @@ parameter values for the measurements
     \log p(\mathcal{D} | \psi , \sigma) =
         \sum _{j=1}^n \log p(y_j | \psi , \sigma , t_j).
 
-In chi the log-likelihood of model parameters can be defined using
+In Chi the log-likelihood of model parameters can be defined using
 :class:`chi.LogLikelihood`. A :class:`chi.LogLikelihood` defines the
 distribution of the measurements using a :class:`chi.MechanisticModel` and a
 :class:`chi.ErrorModel` , and couples the
@@ -151,7 +151,7 @@ different parameter values can now be evaluated using the
 We can see that the data-generating parameter values have a larger
 log-likelihood than the made-up parameter values (which should intuitively make
 sense). For details on how to define a :class:`chi.LogLikelihood` and
-many other details concerning log-likelihoods in chi, we refer to section
+many other details concerning log-likelihoods in Chi, we refer to section
 :doc:`log_likelihood`.
 
 Maximum likelihood estimation
@@ -166,7 +166,7 @@ a.k.a. maximum likelihood estimation
         \mathop{\text{arg}\,\text{max}}_{\psi, \sigma}
         \log p(\mathcal{D} | \psi , \sigma).
 
-In chi the maximum likelihood estimates of the model parameters can be found
+In Chi the maximum likelihood estimates of the model parameters can be found
 using any of the standard Python optimisation libraries such as scipy.optimize.
 We will use Pints_ and its implementation of the Covariance Matrix
 Adaption-Evolution Strategy (CMA-ES) optimisation algorithm,
@@ -222,7 +222,7 @@ capture the most about the data-generating process within the limitations of
 the model approximation. Here, the maximum likelihood estimates can analogously
 differ substantially from the sought after data-generating parameters.
 
-In chi the uncertainty of parameter estimates can be estimated using Bayesian
+In Chi the uncertainty of parameter estimates can be estimated using Bayesian
 inference. In Bayesian inference Bayes' rule is used to define a distribution
 of likely parameter values conditional on the measurements, a.k.a. the
 posterior parameter distribution
@@ -238,7 +238,7 @@ above and :math:`\log p(\psi , \sigma )` is the log-prior distribution of the
 model parameters. The prior distribution of the model parameters is a
 modelling choice and captures prior knowlegde about the model parameters.
 
-In chi the log-posterior can be defined using :class:`chi.LogPosterior` which
+In Chi the log-posterior can be defined using :class:`chi.LogPosterior` which
 is instantiated with a :class:`chi.LogLikelihood` and a :class:`pints.LogPrior`.
 For the sake of this overview, we will use uniform priors that constrain the
 parameters to values between 0 and 20. In practice, informative priors are
@@ -256,7 +256,7 @@ to the :class:`chi.LogLikelihood` using :meth:`chi.LogPosterior.__call__`
     -8.096007012665059
 
 For details on how to define a :class:`chi.LogPosterior` and
-many other details concerning log-posteriors in chi, we refer to section
+many other details concerning log-posteriors in Chi, we refer to section
 :doc:`log_posterior`.
 
 While the :class:`chi.LogPosterior` allows us to evaluate the log-posterior
@@ -280,14 +280,14 @@ parameters.
 .. raw:: html
    :file: images/1_simulation_5.html
 
-For details on how to infer posterior distributions in chi and
+For details on how to infer posterior distributions in Chi and
 many other details on MCMC sampling, we refer to section
 :doc:`mcmc_sampling`.
 
 Simulating a population model
 *****************************
 
-Above we have seen how chi may be used to infer model parameters from
+Above we have seen how Chi may be used to infer model parameters from
 measurements. To this end, we assumed that measurements originate
 from a data-generating process that is approximated by a mechanistic model,
 an associated error model and a set of data-generating parameters.
@@ -389,7 +389,7 @@ where :math:`\delta (x)` is Dirac's delta distribution which has non-zero
 probability only for :math:`x=0`. In this example, this ensures that all
 patients have the same initial drug amount :math:`a_0 = \theta _{a_0}`, the
 same compartment volume :math:`v = \theta _{v}` and the same measurement noise
-:math:`\sigma = \theta _{\sigma}`. In chi delta distributions
+:math:`\sigma = \theta _{\sigma}`. In Chi delta distributions
 can be implemented with a :class:`chi.PooledModel`. The distribution of the
 elimination rate in the population, :math:`p(k_e | \theta _{k_e})`, is a
 modelling choice. The simplest, sensible choice for
@@ -412,7 +412,7 @@ over time)
 The resulting model has 5 population parameters
 :math:`\theta = (\theta _{a_0}, \theta _{v}, \mu _{k_e}, \sigma _{k_e}, \theta _{\sigma})`.
 
-In chi we can define this population model from instances of
+In Chi we can define this population model from instances of
 :class:`chi.PooledModel` and :class:`chi.LogNormalModel` using
 :class:`chi.ComposedPopulationModel`. From the population model we can then
 simulate the distribution of the individual parameters in the population via
@@ -447,7 +447,7 @@ patients from above.
    :file: images/1_simulation_8.html
 
 For details on how to implement a :class:`chi.PopulationModel` and
-many other details concerning population models in chi, we refer to
+many other details concerning population models in Chi, we refer to
 section :doc:`population_model`.
 
 Hierarchical inference
@@ -483,7 +483,7 @@ log-likelihood of the bottom-level parameters to describe the
 observations; and 2. a
 contribution from the log-likelihood of the population parameters to describe
 the distribution of the bottom-level parameters.
-In chi a hierarchical log-likelihood may be
+In Chi a hierarchical log-likelihood may be
 defined using :class:`chi.HierarchicalLogLikelihood` with a list of
 bottom-level :class:`chi.LogLikelihood` instances and a
 :class:`chi.PopulationModel`.
@@ -528,7 +528,7 @@ distribution of likely parameters. This will not remove the biases entirely, but
 make sure that the data-generating parameters are captured by the posterior
 distribution (as long as the prior choice is appropriate).
 
-In chi we can define a hierarchical log-posterior
+In Chi we can define a hierarchical log-posterior
 using :class:`chi.HierarchicalLogPosterior` which takes a
 :class:`chi.HierarchicalLogLikelihood` and a :class:`chi.LogPrior` as inputs.
 The posterior distribution can then be inferred using e.g. MCMC sampling, just
@@ -560,10 +560,10 @@ Note that in this case the posteriors of :math:`\mu _{k_e}` and
 patients are not informative enough to substantially influence the posterior
 distribution.
 
-This concludes the quick overview of chi. You now know how to use chi to
+This concludes the quick overview of chi. You now know how to use Chi to
 simulate mechanistic model outputs, measurements and population models. You
 also know how to use chi to infer model parameters using maximum likelihood
-estimation or Bayesian inference, and you know how to use chi to do
+estimation or Bayesian inference, and you know how to use Chi to do
 hierarchical inference. There are a few things that the quick overview has not
 touched on. The two most interesting things
 being: 1. the :class:`chi.ProblemModellingController` which is a convenience
@@ -572,4 +572,4 @@ measurement times and dosing regimens vary across individuals; 2. the
 :class:`CovariatePopulationModel` which allows you to define population models
 where some of the inter-individual is explained by covariates.
 
-We hope you enjoyed this overview and have fun working with chi!
+We hope you enjoyed this overview and have fun working with Chi!
