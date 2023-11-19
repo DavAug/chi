@@ -96,8 +96,8 @@ aestetic reasons)
    :file: images/1_simulation_2.html
 
 For details on how to implement a :class:`chi.ErrorModel` and
-many other details concerning error models in Chi, we refer to section
-:doc:`error_model`.
+many other details concerning error models in Chi, we refer to the API
+reference :doc:`../api/error_models`.
 
 
 Inference of model parameters
@@ -151,8 +151,8 @@ different parameter values can now be evaluated using the
 We can see that the data-generating parameter values have a larger
 log-likelihood than the made-up parameter values (which should intuitively make
 sense). For details on how to define a :class:`chi.LogLikelihood` and
-many other details concerning log-likelihoods in Chi, we refer to section
-:doc:`log_likelihood`.
+many other details concerning log-likelihoods in Chi, we refer to the API
+reference :doc:`../api/log_pdfs`.
 
 Maximum likelihood estimation
 -----------------------------
@@ -256,8 +256,8 @@ to the :class:`chi.LogLikelihood` using :meth:`chi.LogPosterior.__call__`
     -8.096007012665059
 
 For details on how to define a :class:`chi.LogPosterior` and
-many other details concerning log-posteriors in Chi, we refer to section
-:doc:`log_posterior`.
+many other details concerning log-posteriors in Chi, the API
+reference :doc:`../api/log_pdfs`.
 
 While the :class:`chi.LogPosterior` allows us to evaluate the log-posterior
 up to the constant term for different parameter values it does not yet tell us
@@ -282,7 +282,7 @@ parameters.
 
 For details on how to infer posterior distributions in Chi and
 many other details on MCMC sampling, we refer to section
-:doc:`mcmc_sampling`.
+:doc:`fitting_models_to_data`.
 
 Simulating a population model
 *****************************
@@ -447,8 +447,8 @@ patients from above.
    :file: images/1_simulation_8.html
 
 For details on how to implement a :class:`chi.PopulationModel` and
-many other details concerning population models in Chi, we refer to
-section :doc:`population_model`.
+many other details concerning population models in Chi, the API
+reference :doc:`../api/population_models`.
 
 Hierarchical inference
 **********************
@@ -567,7 +567,7 @@ estimation or Bayesian inference, and you know how to use Chi to do
 hierarchical inference. There are a few things that the quick overview has not
 touched on. The two most interesting things
 being: 1. the :class:`chi.ProblemModellingController` which is a convenience
-class that helps you to build your models more easiliy, especially when
+class that helps you to build your models more easily, especially when
 measurement times and dosing regimens vary across individuals; 2. the
 :class:`CovariatePopulationModel` which allows you to define population models
 where some of the inter-individual is explained by covariates.

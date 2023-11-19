@@ -1,8 +1,8 @@
 .. currentmodule:: chi
 
-********************
-The population model
-********************
+**************************************
+Modelling inter-individual variability
+**************************************
 
 This site is still under construction. In the mean time, we encourage you to
 have a look at the detailed API documentation

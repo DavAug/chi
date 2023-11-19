@@ -9,8 +9,8 @@ Error Models
 Error models in chi_ model the deviations between experimental
 observations and the :class:`MechanisticModel` predictions.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`ConstantAndMultiplicativeGaussianErrorModel`
 - :class:`GaussianErrorModel`

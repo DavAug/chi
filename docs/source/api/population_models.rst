@@ -9,8 +9,8 @@ Population Models
 Population models in chi_ can be used to model the variation
 of mechanistic model parameters or error model parameters across individuals.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`ComposedPopulationModel`
 - :class:`CovariatePopulationModel`

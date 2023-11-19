@@ -15,8 +15,8 @@ to easily explore different optimisation or sampling settings, e.g. using differ
 methods, fixing some parameters, or applying different transformations to the
 search space.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`OptimisationController`
 - :class:`SamplingController`

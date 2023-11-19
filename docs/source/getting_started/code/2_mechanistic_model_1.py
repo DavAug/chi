@@ -19,8 +19,8 @@ class OneCompPKModel(chi.MechanisticModel):
         return output
 
     def has_sensitivities(self):
-        # Model does not implement sensitivities, so output of this method
-        # is always False
+        # We will not implement sensitivities in this part of the tutorial, so
+        # the output of this method is always False
         return False
 
     def n_outputs(self):
@@ -53,7 +53,7 @@ parameters = [
 ]
 simulation = model.simulate(parameters=parameters, times=times)[0]
 
-# Plot drug concentation
+# Plot drug concentration
 fig = go.Figure()
 fig.add_trace(go.Scatter(
     x=times,

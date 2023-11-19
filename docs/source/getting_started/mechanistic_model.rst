@@ -133,8 +133,8 @@ the model implementation by setting the return of the
             super().__init__()
 
         def has_sensitivities(self):
-            # Model does not implement sensitivities, so output of this method
-            # is always False
+            # We will not implement sensitivities in this part of the tutorial, so
+            # the output of this method is always False
             return False
 
 In the above code block, we define a new class called ``OneCompPKModel`` which will
@@ -166,8 +166,8 @@ the return of :meth:`MechanisticModel.n_outputs` to ``1`` and the return of
             super().__init__()
 
         def has_sensitivities(self):
-            # Model does not implement sensitivities, so output of this method
-            # is always False
+            # We will not implement sensitivities in this part of the tutorial, so
+            # the output of this method is always False
             return False
 
         def n_outputs(self):
@@ -199,8 +199,8 @@ implement the methods by setting the return of
             super().__init__()
 
         def has_sensitivities(self):
-            # Model does not implement sensitivities, so output of this method
-            # is always False
+            # We will not implement sensitivities in this part of the tutorial, so
+            # the output of this method is always False
             return False
 
         def n_outputs(self):
@@ -667,13 +667,15 @@ initial drug amount and the volume of distribution (:math:`10 / 2`).
     with :meth:`chi.PKPDModel.outputs`. The outputs of the model can be changed
     using :meth:`chi.PKPDModel.set_outputs`
 
-SBML in chi has many more functionalities than those outlined in this tutorial,
+SBML in Chi has many more functionalities than those outlined in this tutorial,
 including the definition of units for parameters and variables, the definition of
 compartments, and the definition of reaction equations. While being clear about
 units is of utmost importance across all applications of treatment response
-modelling, the ability to define compartments and rate equations in order to
-incrementally implement a model in modular blocks is particularly useful when
-implementing large mechanistic models, such as PBPK models and QSP models.
+modelling, the ability to define compartments and rate equations is
+particularly useful when implementing large mechanistic models,
+such as PBPK models and QSP models, because it allows you to
+incrementally implement a model in modular blocks, focussing on one reaction at
+a time.
 
 We
 will not go into further detail about these elements of SBML in this tutorial.

@@ -17,8 +17,5 @@ non-linear mixed effects models / hierarchical models.
 
     quick_overview
     mechanistic_model
-    error_model
-    log_likelihood
-    log_posterior
-    mcmc_sampling
-    population_model
+    fitting_models_to_data
+    modelling_IIV

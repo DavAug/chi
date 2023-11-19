@@ -1,8 +1,8 @@
 .. currentmodule:: chi
 
-***************
-The error model
-***************
+**********************************
+Fitting mechanistic models to data
+**********************************
 
 This site is still under construction. In the mean time, we encourage you to
 have a look at the detailed API documentation
@@ -15,3 +15,6 @@ have a look at the detailed API documentation
     chi.MultiplicativeGaussianErrorModel
     chi.ConstantAndMultiplicativeGaussianErrorModel
     chi.ReducedErrorModel
+    chi.LogLikelihood
+    chi.LogPosterior
+    chi.SamplingController
