@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model id="one_compartment_pk_model" timeUnits="day">
+
+    <listOfUnitDefinitions>
+      <unitDefinition id="day">
+        <listOfUnits>
+          <unit kind="second" exponent="1" scale="0" multiplier="86400"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="per_day">
+        <listOfUnits>
+          <unit kind="second" exponent="-1" scale="0" multiplier="86400"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="mg">
+        <listOfUnits>
+          <unit kind="gram" exponent="1" scale="-3" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+
+    <listOfCompartments>
+      <compartment id="central" name="central" size="1" units="liter"/>
+      <compartment id="peripheral" name="peripheral" size="1" units="liter"/>
+    </listOfCompartments>
+
+    <listOfSpecies>
+      <species id="drug" name="drug" compartment="central" initialAmount="0" hasSubstanceUnits="false" substanceUnits="mg"/>
+      <species id="drug_peripheral" name="drug" compartment="peripheral" initialAmount="0" hasSubstanceUnits="false" substanceUnits="mg"/>
+    </listOfSpecies>
+
+    <listOfParameters>
+      <parameter id="elimination_rate" value="1" constant="true" units="per_day"/>
+      <parameter id="transition_rate_c2p" value="1" constant="true" units="per_day"/>
+      <parameter id="transition_rate_p2c" value="1" constant="true" units="per_day"/>
+    </listOfParameters>
+
+    <listOfReactions>
+      <reaction id="central_reaction" name="central_reaction" reversible="false" fast="false">
+        <listOfReactants>
+          <speciesReference species="drug"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> central </ci>
+              <ci> elimination_rate </ci>
+              <ci> drug </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+
+      <reaction id="transition_central_to_peripheral" name="transition_central_to_peripheral" reversible="false" fast="false">
+        <listOfReactants>
+          <speciesReference species="drug"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="drug_peripheral"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> central </ci>
+              <ci> transition_rate_c2p </ci>
+              <ci> drug </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+
+      <reaction id="transition_peripheral_to_central" name="transition_peripheral_to_central" reversible="false" fast="false">
+        <listOfReactants>
+          <speciesReference species="drug_peripheral"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="drug"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> peripheral </ci>
+              <ci> transition_rate_p2c </ci>
+              <ci> drug_peripheral </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+
+    </listOfReactions>
+
+  </model>
+</sbml>
