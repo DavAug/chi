@@ -21,6 +21,7 @@ import chi
 import numpy as np
 import plotly.graph_objects as go
 
+
 # Implement the model
 directory = os.path.dirname(__file__)
 filename = os.path.join(directory, 'one_compartment_pk_model.xml')
@@ -72,6 +73,32 @@ times = [0.5, 1, 1.5, 2, 2.5, 3]
 df = model.sample(
     parameters=parameters, times=times, seed=1, include_regimen=True)
 
-# Save data
+# Save data (Only do this once, because I added some units changed names)
+# directory = os.path.dirname(__file__)
+# df.to_csv(directory + '/dataset_1.csv', index=False)
+
+
+# 2
+import pandas as pd
+
+
+# Import data
+directory = os.path.dirname(__file__)
+data = pd.read_csv(directory + '/dataset_1.csv')
+
+# Plot data
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=data.Time,
+    y=data.Value,
+    mode='markers',
+))
+fig.update_layout(
+    xaxis_title='Time in day',
+    yaxis_title='Drug concentration in ng/mL',
+    template='plotly_white'
+)
+fig.show()
+
 directory = os.path.dirname(os.path.dirname(__file__))
-df.to_csv(directory + '/data/3_fitting_models_1.csv', index=False)
+fig.write_html(directory + '/images/3_fitting_models_2.html')
