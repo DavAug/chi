@@ -84,41 +84,9 @@ fig = make_subplots(
 
 # Plot traces and histogram of parameter
 fig.add_trace(
-    go.Scatter(
-        name='Run 1',
-        x=np.arange(1, n_iterations+1),
-        y=samples['dose.absorption_rate'].values[0],
-        mode='lines',
-        line_color=qualitative.Plotly[2],
-    ),
-    row=1,
-    col=1
-)
-fig.add_trace(
-    go.Scatter(
-        name='Run 2',
-        x=np.arange(1, n_iterations+1),
-        y=samples['dose.absorption_rate'].values[1],
-        mode='lines',
-        line_color=qualitative.Plotly[1],
-    ),
-    row=1,
-    col=1
-)
-fig.add_trace(
-    go.Scatter(
-        name='Run 3',
-        x=np.arange(1, n_iterations+1),
-        y=samples['dose.absorption_rate'].values[2],
-        mode='lines',
-        line_color=qualitative.Plotly[0],
-    ),
-    row=1,
-    col=1
-)
-fig.add_trace(
     go.Histogram(
         name='Posterior samples',
+        legendgroup='Group 1',
         x=samples['dose.absorption_rate'].values[:, n_iterations//2::(n_iterations//2)//1000].flatten(),
         histnorm='probability density',
         showlegend=True,
@@ -126,49 +94,50 @@ fig.add_trace(
     marker_color=qualitative.Plotly[4],
     ),
     row=1,
+    col=1
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 1',
+        legendgroup='Group 2',
+        x=np.arange(1, n_iterations+1),
+        y=samples['dose.absorption_rate'].values[0],
+        mode='lines',
+        line_color=qualitative.Plotly[2],
+    ),
+    row=1,
+    col=2
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 2',
+        legendgroup='Group 3',
+        x=np.arange(1, n_iterations+1),
+        y=samples['dose.absorption_rate'].values[1],
+        mode='lines',
+        line_color=qualitative.Plotly[1],
+    ),
+    row=1,
+    col=2
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 3',
+        legendgroup='Group 4',
+        x=np.arange(1, n_iterations+1),
+        y=samples['dose.absorption_rate'].values[2],
+        mode='lines',
+        line_color=qualitative.Plotly[0],
+    ),
+    row=1,
     col=2
 )
 
 # Plot traces and histogram of parameter
 fig.add_trace(
-    go.Scatter(
-        name='Run 1',
-        x=np.arange(1, n_iterations+1),
-        y=samples['global.elimination_rate'].values[0],
-        mode='lines',
-        line_color=qualitative.Plotly[2],
-        showlegend=False
-    ),
-    row=2,
-    col=1
-)
-fig.add_trace(
-    go.Scatter(
-        name='Run 2',
-        x=np.arange(1, n_iterations+1),
-        y=samples['global.elimination_rate'].values[1],
-        mode='lines',
-        line_color=qualitative.Plotly[1],
-        showlegend=False
-    ),
-    row=2,
-    col=1
-)
-fig.add_trace(
-    go.Scatter(
-        name='Run 3',
-        x=np.arange(1, n_iterations+1),
-        y=samples['global.elimination_rate'].values[2],
-        mode='lines',
-        line_color=qualitative.Plotly[0],
-        showlegend=False
-    ),
-    row=2,
-    col=1
-)
-fig.add_trace(
     go.Histogram(
         name='Posterior samples',
+        legendgroup='Group 1',
         x=samples['global.elimination_rate'].values[:, n_iterations//2::(n_iterations//2)//1000].flatten(),
         histnorm='probability density',
         showlegend=False,
@@ -176,49 +145,53 @@ fig.add_trace(
     marker_color=qualitative.Plotly[4],
     ),
     row=2,
+    col=1
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 1',
+        legendgroup='Group 2',
+        x=np.arange(1, n_iterations+1),
+        y=samples['global.elimination_rate'].values[0],
+        mode='lines',
+        line_color=qualitative.Plotly[2],
+        showlegend=False
+    ),
+    row=2,
+    col=2
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 2',
+        legendgroup='Group 3',
+        x=np.arange(1, n_iterations+1),
+        y=samples['global.elimination_rate'].values[1],
+        mode='lines',
+        line_color=qualitative.Plotly[1],
+        showlegend=False
+    ),
+    row=2,
+    col=2
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 3',
+        legendgroup='Group 4',
+        x=np.arange(1, n_iterations+1),
+        y=samples['global.elimination_rate'].values[2],
+        mode='lines',
+        line_color=qualitative.Plotly[0],
+        showlegend=False
+    ),
+    row=2,
     col=2
 )
 
 # Plot traces and histogram of parameter
 fig.add_trace(
-    go.Scatter(
-        name='Run 1',
-        x=np.arange(1, n_iterations+1),
-        y=samples['global.volume'].values[0],
-        mode='lines',
-        line_color=qualitative.Plotly[2],
-        showlegend=False
-    ),
-    row=3,
-    col=1
-)
-fig.add_trace(
-    go.Scatter(
-        name='Run 2',
-        x=np.arange(1, n_iterations+1),
-        y=samples['global.volume'].values[1],
-        mode='lines',
-        line_color=qualitative.Plotly[1],
-        showlegend=False
-    ),
-    row=3,
-    col=1
-)
-fig.add_trace(
-    go.Scatter(
-        name='Run 3',
-        x=np.arange(1, n_iterations+1),
-        y=samples['global.volume'].values[2],
-        mode='lines',
-        line_color=qualitative.Plotly[0],
-        showlegend=False
-    ),
-    row=3,
-    col=1
-)
-fig.add_trace(
     go.Histogram(
         name='Posterior samples',
+        legendgroup='Group 1',
         x=samples['global.volume'].values[:, n_iterations//2::(n_iterations//2)//1000].flatten(),
         histnorm='probability density',
         showlegend=False,
@@ -226,13 +199,66 @@ fig.add_trace(
     marker_color=qualitative.Plotly[4],
     ),
     row=3,
+    col=1
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 1',
+        legendgroup='Group 2',
+        x=np.arange(1, n_iterations+1),
+        y=samples['global.volume'].values[0],
+        mode='lines',
+        line_color=qualitative.Plotly[2],
+        showlegend=False
+    ),
+    row=3,
+    col=2
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 2',
+        legendgroup='Group 3',
+        x=np.arange(1, n_iterations+1),
+        y=samples['global.volume'].values[1],
+        mode='lines',
+        line_color=qualitative.Plotly[1],
+        showlegend=False
+    ),
+    row=3,
+    col=2
+)
+fig.add_trace(
+    go.Scatter(
+        name='Run 3',
+        legendgroup='Group 4',
+        x=np.arange(1, n_iterations+1),
+        y=samples['global.volume'].values[2],
+        mode='lines',
+        line_color=qualitative.Plotly[0],
+        showlegend=False
+    ),
+    row=3,
     col=2
 )
 
 # Plot traces and histogram of parameter
 fig.add_trace(
+    go.Histogram(
+        name='Posterior samples',
+        legendgroup='Group 1',
+        x=samples['Sigma log'].values[:, n_iterations//2::(n_iterations//2)//1000].flatten(),
+        histnorm='probability density',
+        showlegend=False,
+        xbins=dict(size=0.02),
+    marker_color=qualitative.Plotly[4],
+    ),
+    row=4,
+    col=1
+)
+fig.add_trace(
     go.Scatter(
         name='Run 1',
+        legendgroup='Group 2',
         x=np.arange(1, n_iterations+1),
         y=samples['Sigma log'].values[0],
         mode='lines',
@@ -240,11 +266,12 @@ fig.add_trace(
         showlegend=False
     ),
     row=4,
-    col=1
+    col=2
 )
 fig.add_trace(
     go.Scatter(
         name='Run 2',
+        legendgroup='Group 3',
         x=np.arange(1, n_iterations+1),
         y=samples['Sigma log'].values[1],
         mode='lines',
@@ -252,28 +279,17 @@ fig.add_trace(
         showlegend=False
     ),
     row=4,
-    col=1
+    col=2
 )
 fig.add_trace(
     go.Scatter(
         name='Run 3',
+        legendgroup='Group 4',
         x=np.arange(1, n_iterations+1),
         y=samples['Sigma log'].values[2],
         mode='lines',
         line_color=qualitative.Plotly[0],
         showlegend=False
-    ),
-    row=4,
-    col=1
-)
-fig.add_trace(
-    go.Histogram(
-        name='Posterior samples',
-        x=samples['Sigma log'].values[:, n_iterations//2::(n_iterations//2)//1000].flatten(),
-        histnorm='probability density',
-        showlegend=False,
-        xbins=dict(size=0.02),
-    marker_color=qualitative.Plotly[4],
     ),
     row=4,
     col=2
@@ -287,13 +303,14 @@ pdf_values = np.exp([
 fig.add_trace(
     go.Scatter(
         name='Prior distribution',
+        legendgroup='Group 5',
         x=parameter_values,
         y=pdf_values,
         mode='lines',
         line_color='black',
     ),
     row=1,
-    col=2
+    col=1
 )
 
 parameter_values = np.linspace(0, 12, num=200)
@@ -303,6 +320,7 @@ pdf_values = np.exp([
 fig.add_trace(
     go.Scatter(
         name='Prior distribution',
+        legendgroup='Group 5',
         x=parameter_values,
         y=pdf_values,
         mode='lines',
@@ -310,7 +328,7 @@ fig.add_trace(
         showlegend=False
     ),
     row=2,
-    col=2
+    col=1
 )
 
 parameter_values = np.linspace(0, 12, num=200)
@@ -320,6 +338,7 @@ pdf_values = np.exp([
 fig.add_trace(
     go.Scatter(
         name='Prior distribution',
+        legendgroup='Group 5',
         x=parameter_values,
         y=pdf_values,
         mode='lines',
@@ -327,7 +346,7 @@ fig.add_trace(
         showlegend=False
     ),
     row=3,
-    col=2
+    col=1
 )
 
 parameter_values = np.linspace(0, 0.6, num=200)
@@ -337,6 +356,7 @@ pdf_values = np.exp([
 fig.add_trace(
     go.Scatter(
         name='Prior distribution',
+        legendgroup='Group 5',
         x=parameter_values,
         y=pdf_values,
         mode='lines',
@@ -344,23 +364,23 @@ fig.add_trace(
         showlegend=False
     ),
     row=4,
-    col=2
+    col=1
 )
 
 fig.update_layout(
-    yaxis_title='k_a',
-    xaxis2_title='k_a',
-    yaxis2_title='p',
-    yaxis3_title='k_e',
-    xaxis4_title='k_e',
-    yaxis4_title='p',
-    yaxis5_title='v',
-    xaxis6_title='v',
-    yaxis6_title='p',
-    xaxis7_title='Number of iterations',
-    yaxis7_title='sigma',
-    xaxis8_title='sigma',
-    yaxis8_title='p',
+    xaxis_title='k_a',
+    yaxis_title='p',
+    yaxis2_title='k_a',
+    xaxis3_title='k_e',
+    yaxis3_title='p',
+    yaxis4_title='k_e',
+    xaxis5_title='v',
+    yaxis5_title='p',
+    yaxis6_title='v',
+    xaxis7_title='sigma',
+    yaxis7_title='p',
+    xaxis8_title='Number of iterations',
+    yaxis8_title='sigma',
     template='plotly_white',
     legend=dict(
         orientation="h",
@@ -375,3 +395,116 @@ fig.show()
 
 directory = os.path.dirname(os.path.dirname(__file__))
 fig.write_html(directory + '/images/3_fitting_models_3.html')
+
+
+# 6
+fig = go.Figure()
+
+# Plot histograms
+fig.add_trace(
+    go.Histogram(
+        name='Run 1',
+        x=samples['dose.absorption_rate'].values[0, ::n_iterations//1000],
+        histnorm='probability density',
+        showlegend=True,
+        xbins=dict(size=0.5),
+    marker_color=qualitative.Plotly[2],
+    )
+)
+fig.add_trace(
+    go.Histogram(
+        name='Run 2',
+        x=samples['dose.absorption_rate'].values[1, ::n_iterations//1000],
+        histnorm='probability density',
+        showlegend=True,
+        xbins=dict(size=0.5),
+    marker_color=qualitative.Plotly[1],
+    )
+)
+fig.add_trace(
+    go.Histogram(
+        name='Run 3',
+        x=samples['dose.absorption_rate'].values[2, ::n_iterations//1000],
+        histnorm='probability density',
+        showlegend=True,
+        xbins=dict(size=0.5),
+    marker_color=qualitative.Plotly[0],
+    )
+)
+
+fig.update_layout(
+    template='plotly_white',
+    xaxis_title='Absorption rate in 1/day',
+    yaxis_title='Probability density',
+    barmode='overlay'
+)
+fig.update_traces(opacity=0.75)
+fig.show()
+
+directory = os.path.dirname(os.path.dirname(__file__))
+fig.write_html(directory + '/images/3_fitting_models_4.html')
+
+
+# 7
+fig = go.Figure()
+
+# Plot histograms
+fig.add_trace(
+    go.Histogram(
+        name='Run 1',
+        x=samples['dose.absorption_rate'].values[0, n_iterations//2::(n_iterations//2)//1000],
+        histnorm='probability density',
+        showlegend=True,
+        xbins=dict(size=0.5),
+    marker_color=qualitative.Plotly[2],
+    )
+)
+fig.add_trace(
+    go.Histogram(
+        name='Run 2',
+        x=samples['dose.absorption_rate'].values[1, n_iterations//2::n_iterations//1000],
+        histnorm='probability density',
+        showlegend=True,
+        xbins=dict(size=0.5),
+    marker_color=qualitative.Plotly[1],
+    )
+)
+fig.add_trace(
+    go.Histogram(
+        name='Run 3',
+        x=samples['dose.absorption_rate'].values[2, n_iterations//2::n_iterations//1000],
+        histnorm='probability density',
+        showlegend=True,
+        xbins=dict(size=0.5),
+    marker_color=qualitative.Plotly[0],
+    )
+)
+
+fig.update_layout(
+    template='plotly_white',
+    xaxis_title='Absorption rate in 1/day',
+    yaxis_title='Probability density',
+    barmode='overlay'
+)
+fig.update_traces(opacity=0.75)
+fig.show()
+
+directory = os.path.dirname(os.path.dirname(__file__))
+fig.write_html(directory + '/images/3_fitting_models_5.html')
+
+
+# 8
+import arviz as az
+
+
+# Summary for all samples
+summary1 = az.summary(samples)
+print(summary1)
+
+# Summary for the samples post warmup
+summary2 = az.summary(samples.sel(draw=slice(n_iterations//2, n_iterations)))
+print(summary2)
+
+directory = os.path.dirname(__file__)
+summary1.to_csv(directory + '/3_fitting_models_summary_1.csv')
+summary2.to_csv(directory + '/3_fitting_models_summary_2.csv')
