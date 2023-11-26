@@ -265,7 +265,7 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
         else:
             try:
                 ids = self._posterior.individual
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 # Posterior only contains information about one individual.
                 # Hack to make this work
                 individual = 'some value'
