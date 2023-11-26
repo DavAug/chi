@@ -12,8 +12,8 @@ generate synthetic measurements.
 Each predictive model consists of a :class:`MechanisticModel` and an
 :class:`ErrorModel`.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`PAMPredictiveModel`
 - :class:`PopulationPredictiveModel`

@@ -14,8 +14,8 @@ from
 are used to describe the variability within a subpopulation, while covariate
 models are used to describe the cross-subpopulation variability.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`LinearCovariateModel`
 

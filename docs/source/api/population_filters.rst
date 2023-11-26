@@ -8,8 +8,8 @@ Population Filters
 
 Population filters in chi_ can be used for population filter inference.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`ComposedPopulationFilter`
 - :class:`GaussianFilter`

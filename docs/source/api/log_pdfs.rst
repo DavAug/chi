@@ -10,8 +10,8 @@ Log-PDFs
 Log-PDFs in chi_ extend the log-pdfs provided in pints_ for the purpose of
 PKPD modelling.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`HierarchicalLogLikelihood`
 - :class:`HierarchicalLogPosterior`

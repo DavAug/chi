@@ -13,8 +13,8 @@ individuals
 separately or as a population, the :class:`ProblemModellingController`
 has been implemented.
 
-Functional classes
-------------------
+Classes
+-------
 
 - :class:`ProblemModellingController`
 

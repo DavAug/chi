@@ -153,6 +153,9 @@ def doctest_example_code():
         + '/docs/source/getting_started/code'
     scripts = os.listdir(script_dir)
     for script in scripts:
+        if script[-3:] != '.py':
+            # Makes sure that this only executes python scripts
+            continue
         script = script_dir + '/' + script
         p = subprocess.Popen([
             'python',

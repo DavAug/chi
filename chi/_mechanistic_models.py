@@ -504,8 +504,9 @@ class SBMLModel(MechanisticModel):
             values are returned.
         :type times: list, numpy.ndarray
 
-        :rtype: np.ndarray of shape (n_outputs, n_times) or
-            (n_times, n_outputs, n_parameters)
+        :rtype: np.ndarray of shape (n_outputs, n_times) or a Tuple of two
+            np.ndarray, the first of shape (n_outputs, n_times) and the second
+            of shape (n_times, n_outputs, n_parameters)
         """
         # Reset simulation
         self._simulator.reset()
@@ -622,7 +623,8 @@ class PKPDModel(SBMLModel):
         # Set initial value to 0 and unit to unit of drug amount over unit of
         # time
         dose_rate.set_rhs(0)
-        dose_rate.set_unit(drug_amount.unit() / self.time_unit())
+        if drug_amount.unit():
+            dose_rate.set_unit(drug_amount.unit() / self.time_unit())
 
         # Add the dose rate to the rhs of the drug amount variable
         rhs = drug_amount.rhs()

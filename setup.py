@@ -9,7 +9,7 @@ with open('README.md') as f:
 setup(
     # Module name
     name='chi-drm',
-    version='0.2.3',
+    version='0.2.4',
     description='Package to model dose response dynamics',
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -41,8 +41,9 @@ setup(
     ],
     extras_require={
         'docs': [
-            'furo',
+            'sphinx-rtd-theme>=1.3',
             'sphinx>=1.5, !=1.7.3',     # For doc generation
+            'sphinx-copybutton>=0.5.2'
         ],
         'notebooks': [
             'jupyter==1.0.0',
