@@ -16,7 +16,7 @@ the time course of drug concentration levels following repeated dose
 adminstrations
 
 .. literalinclude:: code/3_fitting_models_1.py
-    :lines: 18-52
+    :lines: 112-146
 
 .. raw:: html
    :file: images/3_fitting_models_1.html
@@ -48,7 +48,7 @@ If we download the file and save it in the same directory as the Python script,
 we can visualise the measurements by executing the below script
 
 .. literalinclude:: code/3_fitting_models_1.py
-    :lines: 82-101
+    :lines: 176-195
 
 .. raw:: html
    :file: images/3_fitting_models_2.html
@@ -228,7 +228,7 @@ In the below code block, we illustrate this workflow for the above drug
 concentration dataset, Dataset_1_.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 27-64
+    :lines: 651-688
 
 The first four blocks in the code define the individual components of the
 log-posterior: the mechanistic model, the error model, the data, and the prior
@@ -285,7 +285,7 @@ defined posterior distribution of the 1-compartment PK
 model.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 68-74
+    :lines: 692-698
 
 In the code block, we use an MCMC algorithm implemented in Pints_, called
 ``pints.HaarioBardenetACMC``. For technical reasons that we will discuss below,
@@ -411,7 +411,7 @@ we find that the histograms actually look quite different. For illustrative purp
 we focus on the absorption rate in the code block.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 401-442
+    :lines: 1025-1066
 
 We select the samples of the absorption rate from the ``xarray.Dataset`` using
 the name of the parameter in the mechanistic model,
@@ -497,7 +497,7 @@ from the three chains, this time using only the samples from the second half of
 each run.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 449-490
+    :lines: 1073-1114
 
 .. raw:: html
    :file: images/3_fitting_models_5.html
@@ -514,7 +514,7 @@ block, we first estimate the values for all MCMC samples, and then estimate
 the values only for the samples post warm-up.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 497-506
+    :lines: 1121-1130
 
 The return of ``az.summary`` is a ``pandas.DataFrame``, containing the estimated
 values, as illustrated below
@@ -544,7 +544,7 @@ value of :math:`1`. As a result, :math:`\hat{R}` estimates of :math:`1` indicate
 convergence, while estimate :math:`>1` indicate that the runs have not yet fully converged.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 77-374
+    :lines: 701-1018
 
 Assessing convergence: Summary
 ******************************
@@ -566,7 +566,7 @@ posterior distributions, which we can extract from the summary dataframes presen
 in Section 3.3.2.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 514-553
+    :lines: 1138-1177
 
 .. raw:: html
    :file: images/3_fitting_models_6.html
@@ -603,7 +603,7 @@ To this end, we sample measurements repeatedly from :math:`p(y | \mathcal{D}, r,
 and estimate the mean and some of its percentiles at each time point.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 560-582
+    :lines: 1184-1206
 
 .. raw:: html
    :file: images/3_fitting_models_7.html
@@ -654,10 +654,10 @@ each other, especially when predictions are made for future times or for previou
 unexplored dosing regimens.
 
 .. literalinclude:: code/3_fitting_models_2.py
-    :lines: 584-632
+    :lines: 1208-1256
 
-This concludes this tutorial. If you have any feedback to improve or would like
-to report any typos, mistakes or bugs, please do reach out to us, for example
+This concludes this tutorial. If you have any feedback or suggestions for
+improvement, or would like to report any typos, mistakes or bugs, please do reach out to us, for example
 by creating an Issue_. We are looking
 forward to hearing from you!
 
