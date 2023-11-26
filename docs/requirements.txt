@@ -2,3 +2,4 @@
 kaleido
 sphinx>=1.5, !=1.7.3
 sphinx-rtd-theme
+sphinx-copybutton
