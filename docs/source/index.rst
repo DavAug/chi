@@ -39,7 +39,8 @@ This page provides tutorials to illustrate some of Chi's functionality, and a de
 Install instructions
 --------------------
 
-Installing Chi requires two steps: 1. installation of a c-library called sundials; and 2. installation of chi.
+Chi can be installed in two steps (one step if you are using windows):
+1. installation of a c-library called sundials; and 2. installation of chi.
 
 Step 1: Installation of sundials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +62,7 @@ You can install sundials on your computer by entering the below commands in your
 
     brew install sundials
 
-- On Windows, sundials does not need to be installed manually. Myokit will install sundials automatically.
+- On Windows, sundials does not need to be installed manually. Chi will install sundials automatically.
 
 Step 2: Installation of Chi
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
