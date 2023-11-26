@@ -1,5 +1,6 @@
 .. _SBML: https://sbml.org/
 .. _Myokit: http://myokit.org/
+.. _Issue: https://github.com/DavAug/chi/issues
 
 .. currentmodule:: chi
 
@@ -929,9 +930,10 @@ elimination rate is negative, in contrast to the positive sensitivity with
 respect to the initial drug amount. As a result, larger elimination rates
 negatively impact drug conentration levels.
 
-This concludes the tutorial on mechanistic models in Chi. For the full
-documentation of mechanistic models, we refer to the API reference
-below.
+This concludes this tutorial. If you have any feedback to improve or would like
+to report any typos, mistakes or bugs, please do reach out to us, for example
+by creating an Issue_. We are looking
+forward to hearing from you!
 
 Reference to MechanisticModel API
 *********************************

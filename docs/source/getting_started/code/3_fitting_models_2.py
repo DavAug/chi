@@ -508,3 +508,128 @@ print(summary2)
 directory = os.path.dirname(__file__)
 summary1.to_csv(directory + '/3_fitting_models_summary_1.csv')
 summary2.to_csv(directory + '/3_fitting_models_summary_2.csv')
+
+
+# 9
+# Fix model parameters
+model = chi.ReducedMechanisticModel(mechanistic_model=model)
+model.fix_parameters(name_value_dict={
+    'dose.drug_amount': 0,
+    'global.drug_amount': 0,
+})
+
+# Set dosing regimen
+dosing_regimen = problem.get_dosing_regimens()['1']
+model.set_dosing_regimen(dosing_regimen)
+
+# Extract model parameters from summary
+parameters = [
+    summary2['mean'].loc[parameter] for parameter in model.parameters()
+]
+
+# Simulate result
+times = np.linspace(0.2, 3, 200)
+simulation = model.simulate(parameters=parameters, times=times)[0]
+
+# Plot results
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=times,
+    y=simulation,
+    mode='lines',
+    name='Fit'
+))
+fig.add_trace(go.Scatter(
+    x=data.Time,
+    y=data.Value,
+    mode='markers',
+    name='Measurements'
+))
+fig.update_layout(
+    xaxis_title='Time',
+    yaxis_title='Drug concentration',
+    template='plotly_white'
+)
+fig.show()
+
+directory = os.path.dirname(os.path.dirname(__file__))
+fig.write_html(directory + '/images/3_fitting_models_6.html')
+
+
+# 10
+# Define posterior predictive distribution
+predictive_model = problem.get_predictive_model()
+samples = samples.sel(draw=slice(n_iterations//2, n_iterations))
+posterior_model = chi.PosteriorPredictiveModel(
+    predictive_model=predictive_model, posterior_samples=samples)
+
+# Approximate distribution using sampling
+n_samples = 1000
+conc_samples = posterior_model.sample(
+    times=times, n_samples=n_samples, seed=1)
+
+# Reshape samples, so we can calculate mean and percentiles at the different
+# time points
+reshaped_samples = np.empty(shape=(n_samples, len(times)))
+for sample_idx, sample_id in enumerate(conc_samples.ID.unique()):
+    reshaped_samples[
+        sample_idx] = conc_samples[conc_samples.ID == sample_id].Value.values
+
+# Calculate mean, 5th and 95th percentile of the distribution at each time
+# point
+means = np.mean(reshaped_samples, axis=0)
+lower = np.percentile(reshaped_samples, q=5, axis=0)
+upper = np.percentile(reshaped_samples, q=95, axis=0)
+
+# Plot results
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=times,
+    y=simulation,
+    mode='lines',
+    name='Fit: mean parameters'
+))
+fig.add_trace(go.Scatter(
+    x=data.Time,
+    y=data.Value,
+    mode='markers',
+    name='Measurements'
+))
+fig.add_trace(go.Scatter(
+    x=times,
+    y=means,
+    mode='lines',
+    name='Fit: mean posterior pred. distr.',
+    line=dict(color='black')
+))
+fig.add_trace(go.Scatter(
+    x=times,
+    y=lower,
+    mode='lines',
+    name='Fit: 5th-95th perc. posterior pred. distr.',
+    line=dict(color='black', dash='dash')
+))
+fig.add_trace(go.Scatter(
+    x=times,
+    y=upper,
+    mode='lines',
+    name='Fit: 5th-95th perc. posterior pred. distr.',
+    line=dict(color='black', dash='dash'),
+    showlegend=False
+))
+fig.update_layout(
+    xaxis_title='Time',
+    yaxis_title='Drug concentration',
+    template='plotly_white',
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ),
+)
+fig.show()
+
+directory = os.path.dirname(os.path.dirname(__file__))
+fig.write_html(directory + '/images/3_fitting_models_7.html')

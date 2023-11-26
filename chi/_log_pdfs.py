@@ -25,14 +25,14 @@ class HierarchicalLogLikelihood(object):
 
     .. math::
         \log p(\mathcal{D}, \Psi | \theta ) =
-            \sum _{ij} \log p(y_{ij} | \psi _{i} , t_{ij})
+            \sum _{i} \log p(\mathcal{D}_i | \psi _{i})
             + \sum _{i} \log p(\psi _{i}| \theta),
 
     where the first term is the sum over the log-likelihoods and the second
     term is the log-likelihood of the population model parameters.
-    :math:`\mathcal{D}=\{ (y_{ij}, t_{ij})\}` is the
-    data, where :math:`(y_{ij}, t_{ij})` is the :math:`j^{\mathrm{th}}`
-    measurement of log-likelihood :math:`i`. :math:`\Psi = \{ \psi_i\}`
+    :math:`\mathcal{D}=\{ \mathcal{D}_i\}` is the
+    data, where :math:`\mathcal{D}_i) = \{(y_{ij}, t_{ij})\}` denotes the
+    measurement from log-likelihood :math:`i`. :math:`\Psi = \{ \psi_i\}`
     denotes the parameters across the individual log-likelihoods.
 
     :param log_likelihoods: A list of log-likelihoods which are
@@ -645,7 +645,7 @@ class LogLikelihood(pints.LogPDF):
     defined by ``observations`` and ``times``
 
     .. math::
-        p(\psi | \mathcal{D}) = \sum _{j=1}
+        p(\mathcal{D} | \psi) = \sum _{j=1}
         \log p(y_j | \psi, t_j),
 
     where :math:`\mathcal{D} = \{(y_j , t_j)\}` denotes the measurements.
@@ -1157,9 +1157,9 @@ class LogPosterior(pints.LogPDF):
     an instance of a :class:`pints.LogPrior` of the same dimensionality
     as parameters in the log-likelihood.
 
-    Formally the log-posterior is given by the sum of the input log-likelihood
-    :math:`L(\psi | x^{\text{obs}})` and the input log-prior
-    :math:`\log p(\psi )` up to an additive constant
+    Formally the log-posterior is given by the sum of the log-likelihood,
+    :math:`\log p(\mathcal{D} | \psi)`, and the log-prior,
+    :math:`\log p(\psi )`, up to an additive constant
 
     .. math::
         \log p(\psi | \mathcal{D}) =
@@ -1167,7 +1167,7 @@ class LogPosterior(pints.LogPDF):
 
     where :math:`\psi` are the parameters of the log-likelihood and
     :math:`\mathcal{D}` are the observed data. The additive constant
-    is the normalisation of the log-posterior and is in general not known.
+    is the normalisation of the log-posterior and is in general unknown.
 
     Extends :class:`pints.LogPDF`.
 

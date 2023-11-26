@@ -263,7 +263,14 @@ class PosteriorPredictiveModel(AveragedPredictiveModel):
             individual = None
         # Check individual for individual predictive model
         else:
-            ids = self._posterior.individual
+            try:
+                ids = self._posterior.individual
+            except AttributeError:
+                # Posterior only contains information about one individual.
+                # Hack to make this work
+                individual = 'some value'
+                ids = ['some value']
+
             # Get default individual
             if individual is None:
                 individual = str(ids.data[0])
