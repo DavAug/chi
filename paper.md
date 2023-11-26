@@ -20,11 +20,13 @@ bibliography: paper.bib
 
 # Summary
 
-[Chi](https://chi.readthedocs.io/en/latest/index.html) is an easy-to-use, open source Python package for the modelling of pharmacokinetics & pharmacodynamics (PKPD). We provide two flexible interfaces to implement PKPD models: 1. an SBML interface, which implements PKPD models based on SBML file specifications [@hucka:2003]; and 2. a general purpose interface that allows users to implement their own, custom PKPD models using Python code. PKPD models instantiated from SBML files automatically implement the administration of custom dosing regimens and the evaluation of parameter sensitivities [@clerx2016myokit]. We also provide a simple framework to extend PKPD models to nonlinear mixed effects (NLME) models, making the simulation of inter-individual variability of treatment responses possible.
+[Chi](https://chi.readthedocs.io) is an easy-to-use, open source Python package for the modelling of pharmacokinetics & pharmacodynamics (PKPD). We provide two flexible interfaces to implement PKPD models: 1. an SBML interface, which implements PKPD models based on SBML file specifications [@hucka:2003]; and 2. a general purpose interface that allows users to implement their own, custom PKPD models using Python code. PKPD models instantiated from SBML files automatically implement the administration of custom dosing regimens and the evaluation of parameter sensitivities [@clerx2016myokit]. We also provide a simple framework to extend PKPD models to nonlinear mixed effects (NLME) models, making the simulation of inter-individual variability of treatment responses possible.
 
-In [Chi](https://chi.readthedocs.io/en/latest/index.html), model parameters can be estimated from data using Bayesian inference. We provide a simple interface to estimate posterior distributions of PKPD model parameters and NLME model parameters. [Chi](https://chi.readthedocs.io/en/latest/index.html) also implements filter inference, a novel inference approach which makes the estimation of NLME model parameters from snapshot time series data possible [@Augustin:2023].
+In [Chi](https://chi.readthedocs.io), model parameters can be estimated from data using Bayesian inference. We provide a simple interface to estimate posterior distributions of PKPD model parameters and NLME model parameters. [Chi](https://chi.readthedocs.io) also implements filter inference, a novel inference approach which makes the estimation of NLME model parameters from snapshot time series data possible [@Augustin:2023].
 
-For the sampling from posterior distributions, [Chi](https://chi.readthedocs.io/en/latest/index.html) uses Markov chain Monte Carlo (MCMC) algorithms implemented in the Python package [PINTS](https://pints.readthedocs.io/en/stable/) [@Clerx:2019].
+For the sampling from posterior distributions, [Chi](https://chi.readthedocs.io) uses Markov chain Monte Carlo (MCMC) algorithms implemented in the Python package [PINTS](https://pints.readthedocs.io/en/stable/) [@Clerx:2019].
+
+Documentation, tutorials and install instructions are available at https://chi.readthedocs.io.
 
 # Statement of need
 
