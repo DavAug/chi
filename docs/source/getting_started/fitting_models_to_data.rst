@@ -557,8 +557,8 @@ Assessing convergence: Summary
 
 For more details, please refer to the previous section.
 
-Comparing model fits to the data
-********************************
+Comparing model fits to data
+****************************
 
 Let us conclude this tutorial by comparing our model fit to the drug concentration
 measurements. The simplest way to do this is to just focus on the means of the
@@ -661,6 +661,9 @@ to report any typos, mistakes or bugs, please do reach out to us, for example
 by creating an Issue_. We are looking
 forward to hearing from you!
 
+Reference to ErrorModel, LogPDF and PredictiveModel API
+*******************************************************
+
 .. autosummary::
 
     chi.ErrorModel
@@ -671,4 +674,7 @@ forward to hearing from you!
     chi.ReducedErrorModel
     chi.LogLikelihood
     chi.LogPosterior
+    chi.ProblemModellingController
     chi.SamplingController
+    chi.PredictiveModel
+    chi.PosteriorPredictiveModel

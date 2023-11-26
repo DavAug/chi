@@ -18,4 +18,3 @@ non-linear mixed effects models / hierarchical models.
     quick_overview
     mechanistic_model
     fitting_models_to_data
-    modelling_IIV
