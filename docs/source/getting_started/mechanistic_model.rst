@@ -234,7 +234,7 @@ concentration in the central compartment
 We can implement this exponential decay using numpy as follows
 
 .. literalinclude:: code/2_mechanistic_model_1.py
-    :lines: 2-36
+    :lines: 96-130
 
 The inputs to the :meth:`MechanisticModel.simulate` method are the values of
 the model parameters and the time points for the model evaluation. As defined
@@ -258,7 +258,7 @@ to model the pharmacokinetics of drugs. For example, we can simulate the time co
 of the drug concentration following a bolus dose of 10 drug amount units
 
 .. literalinclude:: code/2_mechanistic_model_1.py
-    :lines: 41-68
+    :lines: 135-162
 
 .. raw:: html
    :file: images/2_mechanistic_model_1.html
@@ -341,7 +341,7 @@ is implemented as expected. To this end, let us instantiate
 a model from the SBML file using the code below
 
 .. literalinclude:: code/2_mechanistic_model_2.py
-    :lines: 18-27
+    :lines: 261-270
 
 In this example, we instantiate the model using :class:`chi.PKPDModel` from
 the SBML file. The first two lines define the absolute path to the SBML file
@@ -421,7 +421,7 @@ copy-paste the above model definition into an XML file with the name
 ``one_compartment_pk_model.xml`` and execute the below script
 
 .. literalinclude:: code/2_mechanistic_model_2.py
-    :lines: 31-40
+    :lines: 274-283
 
 Here, we are using the ``code()`` method of the Myokit_ model to print
 the model specification back to us. If the implementation is correct, you
@@ -646,7 +646,7 @@ to model the pharmacokinetics of drugs. For example, we can simulate the time co
 of the drug concentration following a bolus dose of 10 drug amount units
 
 .. literalinclude:: code/2_mechanistic_model_2.py
-    :lines: 44-78
+    :lines: 287-321
 
 .. raw:: html
    :file: images/2_mechanistic_model_2.html
@@ -775,7 +775,7 @@ the drug amount variable by setting the compartment input to ``'global'``
 
 
 .. literalinclude:: code/2_mechanistic_model_2.py
-    :lines: 86
+    :lines: 329
 
 To see what happens to the model when we set an administration, we can use
 ``print(model._model.code())`` to print the model.
@@ -808,7 +808,7 @@ every 2 days, or administer a total dose of 2 mg every day with an infusion
 that lasts for 12 hours.
 
 .. literalinclude:: code/2_mechanistic_model_2.py
-    :lines: 91-131
+    :lines: 334-374
 
 .. raw:: html
    :file: images/2_mechanistic_model_3.html
@@ -820,7 +820,7 @@ For completeness, let us administer the same dosing regimens indirectly to the
 drug amount variable.
 
 .. literalinclude:: code/2_mechanistic_model_2.py
-    :lines: 138-187
+    :lines: 381-430
 
 .. raw:: html
    :file: images/2_mechanistic_model_4.html
@@ -894,7 +894,7 @@ For simplicity, we choose to visualise the sensitivities only for the initial
 drug amount in the ``global`` compartment and the elimination rate.
 
 .. literalinclude:: code/2_mechanistic_model_2.py
-    :lines: 203-251
+    :lines: 446-494
 
 .. raw:: html
    :file: images/2_mechanistic_model_5.html
