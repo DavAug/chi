@@ -1,6 +1,6 @@
 .. currentmodule:: chi
 
-.. _Dataset_1 : https://github.com/DavAug/chi/blob/main/docs/source/getting_started/data/dataset_1.csv
+.. _Dataset_1 : https://github.com/DavAug/chi/blob/main/docs/source/getting_started/code/dataset_1.csv
 .. _Pints: https://github.com/pints-team/pints
 .. _ArViz: https://python.arviz.org/en/stable/
 .. _Issue: https://github.com/DavAug/chi/issues
@@ -10,10 +10,10 @@ Fitting mechanistic models to data
 **********************************
 
 In the previous tutorial, :doc:`mechanistic_model`, we have seen how we can
-implement and simulate treatment response models in Chi. For example, using the same
-1-compartment PK model from before, ``one_compartment_pk_model.xml``, we can simulate
+implement and simulate treatment response models in Chi. For example, we can simulate
 the time course of drug concentration levels following repeated dose
-adminstrations
+adminstrations as follows, using the same
+1-compartment PK model as before
 
 .. literalinclude:: code/3_fitting_models_1.py
     :lines: 112-146
@@ -21,28 +21,27 @@ adminstrations
 .. raw:: html
    :file: images/3_fitting_models_1.html
 
-This ability to simulate treatment response is pretty cool in its own right,
+This ability to simulate treatment responses is pretty cool in its own right,
 but, at this point, our model has little to do with
-real treatment responses. If our goal is to describe *real* treatment
+real treatment responses. Assuming that our goal is to describe *real* treatment
 responses, we need to somehow connect our model to reality.
 
 The most common approach to relate models to real treatment responses is to
 compare the model predictions to measurements. Below, we have prepared an example
 dataset with drug concentration measurements. These drug concentrations were
 measured after repeatedly adminstering 2 mg of a drug every 24 hours.
-You can download the dataset from the following link, if you would like to
-follow this tutorial: Dataset_1_.
+You can download the dataset from the following link: Dataset_1_.
 
 .. csv-table:: Drug concentration measurements
    :file: code/dataset_1.csv
    :widths: 4, 12, 12, 12, 12, 12, 12, 12, 12
    :header-rows: 1
 
-The dataset contains one column that identifies the measured individual (``ID``),
-two columns that specify the time of a measurement or a dose administration
-(``Time`` and ``Time unit``), three columns that specify the measured values
+The dataset contains one column that identifies measured individuals (``ID``),
+two columns that specify measurement times and dose administration times
+(``Time`` and ``Time unit``), three columns that specify measured values
 (``Observable``, ``Value``, ``Observable unit``), and three columns that specify
-the dose administrations (``Dose``, ``Duration``, ``Dose unit``).
+dose administrations (``Dose``, ``Duration``, ``Dose unit``).
 
 If we download the file and save it in the same directory as the Python script,
 we can visualise the measurements by executing the below script
@@ -62,30 +61,30 @@ model does not provide an accurate description of the measured treatment
 response.
 
 To find a better description of the treatment response, we have two options:
-1. we can try to find parameters values that make the model output describe the
-measurements more closely; or 2. we can define a new mechanistic model and see
+1. we can try to find parameter values that improves the proximity of the
+model output to the measurements; or 2. we can define a new mechanistic model and see
 whether this new model is able to describe the measurements better. This tutorial
-will be about how we can find better model parameters.
+will be about the former and detail how we can find better model parameters.
 
 Estimating model parameters from data: Background
 *************************************************
 
-Before we can try to find parameter values that most closely describe the treatment response
-measurements, we first need to agree on what we mean by
+Before we can try to find parameter values that describe the observed
+treatment response most closely, we first need to agree on what we mean by
 "*most closely*" for the relationship between the mechanistic model output and the measurements.
-The most naive way to define this notion of closeness is to use the distance
+An intuitive way to define this notion of closeness is to use the distance
 between the measurements and the model output,
 i.e. the difference between the measured values and the
-simulated values. If we used
-the distance to define closeness, the model parameters that would most closely
+simulated values. Then the model parameters that most closely
 describe the measurements would be those parameter values that make the mechanistic
-model output perfectly match the measurements, leading to a distances of 0 ng/mL
-at all measured time points. However, as outlined in Sections 1.3 and 1.4 of the
+model output perfectly match the measurements, resulting in distances of 0 ng/mL
+between the model output and the measurements at all measured time points.
+However, as outlined in Sections 1.3 and 1.4 of the
 :doc:`quick_overview`, measurements of treatment responses are imprecise and
 noisy, and will therefore not perfectly represent the treatment response dynamics.
-Consequently, if we were to match the model outputs to measurements,
-we would actually end up with an inaccurate description of the treatment response
-because we would be paying too much attention to the measurement noise.
+Consequently, if we were to match the model outputs to measurements perfectly,
+we would end up with an inaccurate description of the treatment response
+as our model would be paying too much attention to the measurement noise.
 
 One way to improve our notion of closeness is to incorporate the measurement
 process into our computational model of the treatment response, thereby
@@ -100,7 +99,7 @@ For simulation, this distribution can be used to sample measurement values and
 imitate the measurement process of real treatment responses, see
 Section 1.3 in the :doc:`quick_overview` for an example. For parameter estimation,
 the distribution can be used to quantify the likelihood with which the observed
-measurements would have been produced by our model of the measurement process,
+measurements had been generated by our model,
 see Section 1.4 in the :doc:`quick_overview`.
 
 To account for measurement noise during the parameter estimation, we therefore
@@ -109,8 +108,8 @@ using likelihoods. Formally, the measurement process can be described by
 distributions of measurement values of the form :math:`p(y | \psi, t, r)`, where :math:`y`
 denotes the measurement value, :math:`\psi` denotes the model parameters,
 :math:`t` denotes the time, and :math:`r` denotes the dosing
-regimen. The likelihood of a single measurement :math:`((t_1, y_1), r)` is then
-simply given by the value of the probability density evaluated at the measurement,
+regimen. The likelihood of a single measurement :math:`((t_1, y_1), r)` is
+given by the value of the probability density evaluated at the measurement,
 :math:`p(y_1 | \psi, t_1, r)`. This value depends on the chosen set of model
 parameters, :math:`\psi`. The model parameters with the maximum likelihood are
 the parameter values that most closely describe the measurements.
@@ -189,7 +188,7 @@ distribution is derived from the likelihood using Bayes' rule
 
 where :math:`p(\psi)` denotes the prior distribution of the model parameters.
 The prior distribution can be used to quantify our belief of likely parameter
-values for the model prior to the parameter estimation.
+values for the model before the parameter estimation.
 
 Defining the log-posterior
 **************************
@@ -212,7 +211,7 @@ response measurements, :math:`((t_1, y_1), (t_2, y_2), \ldots, (t_n, y_n))`,
 but that they also depend on the administered dosing regimen, :math:`r`.
 This can make it tedious to define log-posteriors,
 especially when you are inferring parameters across measurements of multiple
-individuals with difference dosing regimens.
+individuals with different dosing regimens.
 
 To simplify the process of constructing a :class:`LogPosterior`, we have
 implemented the :class:`chi.ProblemModellingController`.
@@ -242,7 +241,7 @@ results towards feasible areas of the parameter space. In this
 case, we have little prior knowledge about feasible parameter ranges, so we
 choose relatively uninformative prior
 distributions (below will be an illustration of the prior distribution).
-Note that we seem to be specifying marginal prior distributions only for
+Note that we seem to be specifying marginal prior distributions for only
 4 of the 6 model parameters. This is because we fix the values of the initial drug
 amounts to ``0`` prior to the inference
 in the lines below, reflecting our knowledge that the subject had no prior
@@ -326,7 +325,7 @@ For the ``pints.HaarioBardenetACMC`` the target is ``0.23``.
 When the three runs of the algorithm terminate, the generated samples are returned in
 form of an ``xarray.Dataset``.
 We can visualise the samples using the code
-block documented at the end of this section (we move the code block to the end,
+block documented at the end of this section (we move the code block to the end
 to avoid disrupting the flow of the tutorial with less relevant code snippets).
 
 .. raw:: html
@@ -339,9 +338,9 @@ The first row shows the
 samples of the absorption rate, the second row shows the samples of the elimination
 rate, the third row shows the samples of the volume of distribution, and the
 fourth row shows the samples of the scale parameter of the error model, sigma.
-The right column of the figure shows the
-samples drawn at each iteration of the
-MCMC algorithm runs. The samples from the different runs are illustrated in different
+The right column of the figure shows the same
+samples, this time visualised over the iterations at which they were drawn.
+The samples from the different runs are illustrated in different
 colours: run 1 (green); run 2 (red); run 3 (blue).
 
 The posterior distribution
@@ -362,7 +361,7 @@ rates above 1.5 1/day or below 0.25 1/day as extremely unlikely for the
 model of the treatment response. This in in stark contrast to the relatively wide
 range of model parameters that we deemed feasible prior to the inference
 (see black line). However, the measurements are not conclusive enough
-to reduce the distribution of feasible parameters to a single value. Similarly,
+to reduce the distribution of feasible elimination rates to a single value. Similarly,
 for the volume of distribution (row 3) and the error scale parameter
 (row 4), the measurements lead to substaintial updates relative to the
 prior distribution.
@@ -386,22 +385,22 @@ Assessing convergence
 
 Similar to most numerical inference
 algorithms, MCMC algorithms have practical
-limitations, making a particular algorithm not equally well suited to all inference problems.
+limitations, making them not equally well suited to all inference problems.
 Some MCMC algorithms are, for example, only well suited to estimate model
 parameters when the total number of parameters is small, while other MCMC algorithms only
-work when the curvature of the posterior surface is not too extreme. While
-understanding the limitations of each MCMC algorithm requires looking into the
-algorithmic details, there is a simple way of testing the suitability of an
-algorithm that does not require knowing about its details: the :math:`\hat{R}` metric.
-We will motivate and provide an intuitive explanation of this test in this tutorial,
-but will not go into the technical details.
+work when the curvature of the posterior surface is not too extreme.
+One way to test the suitability of an MCMC algorithm for a particular inference
+problem is the use of the :math:`\hat{R}` metric.
+We will motivate the metric below and provide an intuitive explanation.
+Technical details are left to interested readers to explore on their own.
 
 Let us begin this section by revisiting the right column in the figure above. The column
 shows the samples from the three MCMC algorithm runs at each
 iteration. For early iterations of the algorithm,
 the samples from the MCMC runs look quite distinct -- each run appears to sample
-from a different area of the parameter space. In contrast, for later iterations
-the MCMC runs seem to converge and sample from the same area of the parameter space. Intuitively,
+from a different area of the parameter space. In contrast,
+the MCMC runs seem to converge and sample from the same area of the parameter space
+at later iterations. Intuitively,
 it does not really make sense for the samples from the MCMC runs to look different
 -- after all, we use the same MCMC algorithm to sample from the same posterior distribution.
 The histogram over the samples *should* therefore be identical within the limits of
@@ -430,13 +429,18 @@ above as the histogram over the MCMC samples across the runs. But also, how can 
 makes sense for the three histograms to differ when the
 posterior distribution is the same? -- It does not, and in fact, it tells us that the three histograms in the figure above do not represent the posterior
 distribution. Although, we did not disclose it until now, the orange
-distribution is only based on the second half of each MCMC run!
-All MCMC algorithms have a common limitation which we can see in the right column of the
-figure presented earlier: they generate samples
-from the posterior distribution using the latest sample as a starting point.
-For some MCMC algorithms the internal sampling strategy is advanced enough to
-sufficiently decorrelate the sample from this initial starting point, but for
-many MCMC algorithms the initial starting point substantially influences the sampled value. That
+distribution, respresenting the posterior distribution, is only based on the
+second half of each MCMC run!
+
+So why is it crucial that we only choose the second half of each MCMC run,
+and is the particular choice of the *second* half important? The answer comes
+back to a common limitation of all MCMC algorithm which we can see in the right
+column of the figure presented earlier: MCMC algorithms generate samples
+from the posterior distribution conditional on the latest generated sample.
+For some MCMC algorithms, this conditioning has little influences on sequential samples
+because the internal sampling strategy is advanced enough to
+sufficiently decorrelate subsequent samples. But for
+many MCMC algorithms the conditioned sample substantially influences the sampled value. That
 means that if the last samples of two MCMC runs are far away from each other, the following
 samples of the runs will also differ substantially from each other, see for example
 the first 5000 iterations of the elimination rate in the second row of the figure
@@ -444,8 +448,9 @@ in the previous section.
 
 At the start of an MCMC run, there is no "last sampled" parameter value,
 and we have to manually provide a starting point to the MCMC algorithm.
-To reduce the number of manual steps in Chi, the :class:`chi.SamplingController`
-automatically samples starting points from the prior distribution.
+The :class:`chi.SamplingController`
+automatically samples these starting points from the prior distribution, to
+reduce the number of manual steps during the inference in Chi.
 This means that the above runs of the MCMC algorithm start from three
 different positions in parameter space. These starting points have little
 to do with the posterior distribution, and are potentially far away from the area of
@@ -465,8 +470,8 @@ the runs do not converge, the MCMC algorithm either needs more iterations to con
 is not suited for the inference problem, in which case the MCMC samples cannot
 be expected to represent the posterior distribution. If the runs do converge,
 we can be confident that the inference results are correct (although there is always
-a chance for edge cases where this method may fail to identify the
-limitations of the algorithm).
+a chance for edge cases where this convergence test fails to identify the
+limitations of an algorithm).
 
 So, starting multiple MCMC runs from different locations in parameter space is
 a good idea to gain confidence in the inference results. We recommend running the
@@ -483,15 +488,17 @@ it may not be very relevant for our inference problem. Randomly sampling from th
 prior distribution therefore provides a good tradeoff between well dispersed
 and not too extreme starting points.
 
-In conclusion, the initial iterations of the MCMC runs are very usefull to establish the
-validity of the inference results. At the same time, they have little to do
+In conclusion, the initial iterations of the MCMC runs can be used to establish the
+validity of the inference results when the starting points of different runs are sufficiently
+dispersed. At the same time, these initial samples have little to do
 with the posterior distribution, as outlined above.
-It is therefore common practice to discard these early samples
-as "warm-up" of the sampling algorithm. To this end, the earlier presented
+It is therefore common practice to exclude these early samples
+from the inference result. To identify which samples should be discarded, and which
+should be included in the result, the earlier presented
 "trace plot", visualising the samples of the different runs at each iteration
-is extremely useful. We can see, for example, that somewhere around the 8000s iteration the
-three runs of the MCMC algorithm converge. For this use case, we therefore choose the 10,000s iteration
-as the cut-off for the warm-up (2000 extra iteration for good measure).
+can be useful. We can see, for example, that somewhere around the 8000s iteration the
+three runs of the MCMC algorithm converge. We therefore choose the 10,000s iteration
+as the cut-off for the "warm-up" (2000 extra iteration for good measure).
 Below, we plot the histogram over the samples
 from the three chains, this time using only the samples from the second half of
 each run.

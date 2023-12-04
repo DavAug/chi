@@ -39,7 +39,7 @@ This page provides tutorials to illustrate some of Chi's functionality, and a de
 Install instructions
 --------------------
 
-Chi can be installed in two steps (one step if you are using windows):
+Chi can be installed in two steps (one step if you are using Windows):
 1. installation of a c-library called sundials; and 2. installation of chi.
 
 Step 1: Installation of sundials

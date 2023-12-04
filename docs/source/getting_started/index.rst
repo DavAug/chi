@@ -4,8 +4,8 @@ Getting started
 
 .. currentmodule:: chi
 
-This part of the documentation gets you started using Chi. Each section will
-give a brief introduction into the modelling framework and show examples of
+This part of the documentation gets you started with using Chi. Each section
+gives a brief introduction into the modelling framework and shows examples of
 how to implement models in Chi. The covered topics include **simulation** and
 **inference** of e.g. ODE models, PKPD models with drug administration and
 non-linear mixed effects models / hierarchical models.
