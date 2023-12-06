@@ -29,7 +29,7 @@ The main features of Chi are
 - Inference of model parameters in a structured population from measurements, clinical factors, and/or genetic factors (classical or Bayesian).
 - Dosing regimen optimisation and model-informed precision dosing (MIPD).
 
-This page provides tutorials to illustrate some of Chi's functionality, and a detailed API documentation as a complete reference to all of chi's functions and classes.
+This page provides tutorials to illustrate some of Chi's functionality, and a detailed API documentation as a complete reference to all of Chi's functions and classes.
 
 .. note::
     Chi is being continuously developed and improved.
@@ -40,29 +40,29 @@ Install instructions
 --------------------
 
 Chi can be installed in two steps (one step if you are using Windows):
-1. installation of a c-library called sundials; and 2. installation of chi.
+1. installation of a c-library called sundials; and 2. installation of Chi.
 
 Step 1: Installation of sundials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Chi uses the open source Python package Myokit_ to solve ordinary differential equations
 and compute their sensitivities efficiently. Myokit_ does this using a c-library called sundials.
-You can install sundials on your computer by entering the below commands in your terminal:
+You can install Sundials on your computer by entering the below commands in your terminal:
 
-- On Ubuntu, you can execute the below command to install sundials using ``apt-get``:
+- On Ubuntu, you can execute the below command to install Sundials using ``apt-get``:
 
 .. code-block:: bash
 
     apt-get install libsundials-dev
 
 
-- On MacOs, you can execute the below command to install sundials using ``brew``:
+- On MacOs, you can execute the below command to install Sundials using ``brew``:
 
 .. code-block:: bash
 
     brew install sundials
 
-- On Windows, sundials does not need to be installed manually. Chi will install sundials automatically.
+- On Windows, Sundials does not need to be installed manually. Chi will install Sundials automatically.
 
 Step 2: Installation of Chi
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,8 +73,8 @@ Chi is distributed with PiPy which means that you can pip install Chi with
 
     pip install chi-drm
 
-If you haven't installed sundials at this point, you will likely get some messages from ``myokit`` complaining
-that it cannot find sundials on your machine. In that case, please go back to step 1.
+If you haven't installed Sundials at this point, you will likely get some messages from ``myokit`` complaining
+that it cannot find Sundials on your machine. In that case, please go back to step 1.
 
 Note that you need to install ``chi-drm``, and not ``chi``, to install this package.
 This has the simple reason that the name ``chi`` was already taken in PiPy when we wanted to

@@ -32,8 +32,8 @@ simplifies the model implementation and reduces the risk for implementation
 errors. In Chi, SBML will also automate differentiation, the evaluation of parameter
 sensitivities, and the implementation of dose administrations. Another benefit
 of SBML files is that they are programming language-agnostic, meaning that SBML
-files are supported by many simulation softwares facilitating the sharing and
-reimplementation of models without forcing the continued use of Chi. We therefore
+files are supported by a host of simulation softwares which facilitates the sharing and
+the reimplementation of models without forcing the continued use of Chi. We therefore
 recommend using SBML files to implement your models.
 
 Below we will show how we can use either of those implementation strategies to
@@ -50,9 +50,9 @@ equation of the form
     \quad c = \frac{a}{v},
     \quad a(t=0) = a_0,
 
-where :math:`a` is the drug amount in the compartment, :math:`t` is the time,
-:math:`k_e` is the elimination rate of the drug, :math:`c` is the drug
-concentration, :math:`v` is the volume of the compartment and :math:`a_0` is
+:math:`a` denotes the drug amount in the compartment, :math:`t` denotes the time,
+:math:`k_e` denotes the elimination rate of the drug, :math:`c` denotes the drug
+concentration, :math:`v` denotes the volume of the compartment, and :math:`a_0` denotes
 the initial drug amount.
 
 Defining mechanistic models using the MechanisticModel interface
@@ -314,7 +314,7 @@ Setting up a template
 The first thing to note about SBML is that mechanistic models are not defined
 in your Python scripts directly, but instead are defined in SBML files external
 to your code (this makes the programming language-agnostic sharing of models possible).
-These SBML files have a minimal biolerplate of five lines
+These SBML files have a minimal boilerplate of five lines
 
 .. code-block:: xml
 
@@ -328,14 +328,14 @@ These SBML files have a minimal biolerplate of five lines
     </sbml>
 
 Create a new file called ``template.xml`` and copy-paste the above lines in there.
-For all future models you will implement, you can use these lines as a starting point.
+For all future models, you can use these lines as a starting point.
 The first line specifies the XML version and the encoding, while the second and last line
 in the file specify the XML namespace. This namespace is what makes an XML file
 an SBML file. The remaining two lines begin the model definition.
 
 You can see
 that the model tag has an ``id`` property with the value ``"template"``.
-This id is not really used by chi, but Myokit_ uses it internally to name models,
+This ID is not really used by Chi, but Myokit_ uses it internally to name models,
 and we can use this in this tutorial for debugging / making sure that the model
 is implemented as expected. To this end, let us instantiate
 a model from the SBML file using the code below
@@ -534,7 +534,7 @@ the ``listOfRules`` that point to the relevant parameter in the ``listOfParamete
 This promotes the parameter to a variable that can change over time. The right
 hand side of the differential equation is defined inside the ``math`` tags which
 point to the MathML XML namespace which is used in SBML to define mathematical
-expression.
+expressions.
 
 In MathML, mathematical expressions are encapsulated by the ``<apply></apply>``
 tags followed by a tag that indicates the mathetical operation and the relevant
@@ -571,7 +571,7 @@ drug amount is defined by the product of the constant ``-1``,
 the ``elimination_rate`` parameter, and the ``drug_amount`` variable. Note that
 constants are labelled by ``<cn></cn>`` tags, while parameters / variables
 are labelled by ``<ci></ci>``. This labelling is used in SBML to indicate whether
-parameters definitions need to be looked up in the list of parameters.
+parameter definitions need to be looked up in the list of parameters.
 
 We can now move on and complete the implementation of our model by adding the
 assignment rule for the drug concentration, which relates the drug concentration
@@ -659,7 +659,7 @@ initial drug amount and the volume of distribution (:math:`10 / 2`).
     The order of the parameter values when simulating the model follows a
     simple pattern: the initial values of state variables come first, followed
     by the values of constant parameters. If multiple initial values or parameters
-    exist, they are order alphabetically. However, to simplify keeping track of
+    exist, they are order alphabetically. To facilitate keeping track of
     the order of parameters, the model implements a ``parameters()`` method,
     :meth:`chi.PKPDModel.parameters`, which returns the parameter names of the
     model.
