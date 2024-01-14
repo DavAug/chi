@@ -24,7 +24,7 @@ bibliography: paper.bib
 
 In [Chi](https://chi.readthedocs.io), model parameters can be estimated from data using Bayesian inference. We provide a simple interface to estimate posterior distributions of model parameters from single-patient data or from population data. The package also implements filter inference, a novel inference approach which makes the estimation of NLME model parameters from snapshot time series data possible [@Augustin:2023]. In the context of model-informed precision dosing, [Chi](https://chi.readthedocs.io) may also be used to optimise dosing regimens in order to target a desired treatment response.
 
-For the sampling from posterior distributions, [Chi](https://chi.readthedocs.io) uses Markov chain Monte Carlo (MCMC) algorithms implemented in the Python package [PINTS](https://pints.readthedocs.io/en/stable/) [@Clerx:2019]. For the optimisation of dosing regimens, different optimisers can be used, including optimisers implemented in SciPy or in [PINTS](https://pints.readthedocs.io/en/stable/) [@2020SciPy-NMeth,@Clerx:2019].
+For the sampling from posterior distributions, [Chi](https://chi.readthedocs.io) uses Markov chain Monte Carlo (MCMC) algorithms implemented in the Python package [PINTS](https://pints.readthedocs.io/en/stable/) [@Clerx:2019]. For the optimisation of dosing regimens, different optimisers can be used, including optimisers implemented in SciPy or in [PINTS](https://pints.readthedocs.io/en/stable/) [@2020SciPy-NMeth; @Clerx:2019].
 
 Documentation, tutorials and install instructions are available at https://chi.readthedocs.io.
 
