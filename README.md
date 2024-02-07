@@ -52,20 +52,25 @@ import chi
 
 If you use this software in your work, please cite it using the following metadata:
 
-#### APA
+#### Citation string
 ```
-Augustin, D. (2021). Chi - An open source python package for treatment response modelling (Version 0.1.0) [Computer software]. https://github.com/DavAug/chi
+Augustin, D., (2024). Chi: A Python package for treatment response modelling. Journal of Open Source Software, 9(94), 5925, https://doi.org/10.21105/joss.05925
 ```
 
 #### BibTeX
 ```
-@software{Augustin_Chi_-_An_2021,
-author = {Augustin, David},
-month = {12},
-title = {{Chi - An open source python package for treatment response modelling}},
-url = {https://github.com/DavAug/chi},
-version = {0.1.0},
-year = {2021}
+@article{
+    Augustin2024, 
+    doi = {10.21105/joss.05925}, 
+    url = {https://doi.org/10.21105/joss.05925}, 
+    year = {2024}, 
+    publisher = {The Open Journal}, 
+    volume = {9}, 
+    number = {94}, 
+    pages = {5925}, 
+    author = {David Augustin}, 
+    title = {Chi: A Python package for treatment response modelling}, 
+    journal = {Journal of Open Source Software} 
 }
 ```
 
