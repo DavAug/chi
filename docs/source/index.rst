@@ -95,3 +95,33 @@ The API documentation can be found `here <https://chi.readthedocs.io/en/latest/a
     Note that the package is distributed in PiPy under the name ``chi-drm``
     while in your python scripts you can import the package under the name
     ``chi``.
+
+Citing & giving credit
+----------------------
+
+Chi is open source and free to use, and we hope that you will find it useful! To help us to continue developing & maintaining the software,
+please cite our software in your work
+
+Citation string
+^^^^^^^^^^^^^^^
+.. code-block:: text
+
+    Augustin, D., (2024). Chi: A Python package for treatment response modelling. Journal of Open Source Software, 9(94), 5925, https://doi.org/10.21105/joss.05925
+
+BibTeX
+^^^^^^
+.. code-block:: text
+
+    @article{
+        Augustin2024,
+        doi = {10.21105/joss.05925},
+        url = {https://doi.org/10.21105/joss.05925},
+        year = {2024},
+        publisher = {The Open Journal},
+        volume = {9},
+        number = {94},
+        pages = {5925},
+        author = {David Augustin},
+        title = {Chi: A Python package for treatment response modelling},
+        journal = {Journal of Open Source Software}
+    }
