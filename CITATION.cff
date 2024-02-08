@@ -1,10 +1,16 @@
-cff-version: 0.1.0
+cff-version: 1.0.0
 message: "If you use this software, please cite it as below."
 authors:
 - family-names: "Augustin"
   given-names: "David"
   orcid: "https://orcid.org/0000-0002-4885-1088"
-title: "Chi - An open source python package for treatment response modelling"
-version: 0.1.0
-date-released: 2021-12-08
-url: "https://github.com/DavAug/chi"
+title: "Chi: A Python package for treatment response modelling"
+version: 1.0.0
+year: 2024
+url: "https://doi.org/10.21105/joss.05925"
+doi: "10.21105/joss.05925"
+publisher: "The Open Journal"
+journal: "Journal of Open Source Software"
+volume: 9
+number: 94
+pages: 5925
