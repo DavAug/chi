@@ -8,8 +8,7 @@
 
 ## About
 
-**Chi** is an open source Python package hosted on GitHub,
-which can be used to model dose response dynamics.
+**Chi** is an open source Python package for pharmacokinetic and pharmacodynamic (PKPD) modelling.
 
 All features of the software are described in detail in the
 [full API documentation](https://chi.readthedocs.io/en/latest/).
