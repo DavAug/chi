@@ -9,7 +9,7 @@ with open('README.md') as f:
 setup(
     # Module name
     name='chi-drm',
-    version='1.0.0',
+    version='1.0.1',
     description='Package to model dose response dynamics',
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -36,8 +36,9 @@ setup(
         'pandas>=0.24',
         'pints>=0.4',
         'plotly>=4.8.1',
+        'scipy<=1.12',  # 07/2024 - ArviZ seems to not yet keep up with SciPy
         'tqdm>=4.46.1',
-        'xarray>=0.19'
+        'xarray>=0.19',
     ],
     extras_require={
         'docs': [
