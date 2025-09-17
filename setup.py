@@ -32,7 +32,7 @@ setup(
     install_requires=[
         'arviz>=0.17',
         'myokit>=1.34',
-        'numpy>=1.17',
+        'numpy>=1.17, <2.0',  # 09/25 - Pints has not yet upgraded to NumPy 2.0
         'pandas>=0.24',
         'pints>=0.4',
         'plotly>=4.8.1',
