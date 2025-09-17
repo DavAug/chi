@@ -30,13 +30,13 @@ setup(
 
     # List of dependencies
     install_requires=[
-        'arviz>=0.11',
+        'arviz>=0.17',
         'myokit>=1.34',
         'numpy>=1.17',
         'pandas>=0.24',
         'pints>=0.4',
         'plotly>=4.8.1',
-        'scipy<=1.12',  # 07/2024 - ArviZ seems to not yet keep up with SciPy
+        'scipy>=1.11',  # 07/2024 - ArviZ seems to not yet keep up with SciPy
         'tqdm>=4.46.1',
         'xarray>=0.19',
     ],
