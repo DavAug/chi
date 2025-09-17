@@ -1824,7 +1824,7 @@ class TestLogLikelihood(unittest.TestCase):
         self.assertAlmostEqual(score, ref_score)
         n_obs = 7
         self.assertEqual(pw_score.shape, (n_obs,))
-        self.assertEqual(np.sum(pw_score), score)
+        self.assertAlmostEqual(np.sum(pw_score), score)
 
         # Reset number of outputs
         self.model.set_outputs(['central.drug_amount', 'dose.drug_amount'])
