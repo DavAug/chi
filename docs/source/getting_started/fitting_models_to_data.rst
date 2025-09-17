@@ -712,15 +712,15 @@ Reference to ErrorModel, LogPDF and PredictiveModel API
 
 .. autosummary::
 
-    chi.ErrorModel
-    chi.GaussianErrorModel
-    chi.LogNormalErrorModel
-    chi.MultiplicativeGaussianErrorModel
-    chi.ConstantAndMultiplicativeGaussianErrorModel
-    chi.ReducedErrorModel
-    chi.LogLikelihood
-    chi.LogPosterior
-    chi.ProblemModellingController
-    chi.SamplingController
-    chi.PredictiveModel
-    chi.PosteriorPredictiveModel
+    ErrorModel
+    GaussianErrorModel
+    LogNormalErrorModel
+    MultiplicativeGaussianErrorModel
+    ConstantAndMultiplicativeGaussianErrorModel
+    ReducedErrorModel
+    LogLikelihood
+    LogPosterior
+    ProblemModellingController
+    SamplingController
+    PredictiveModel
+    PosteriorPredictiveModel
