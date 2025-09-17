@@ -17,13 +17,12 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
           python-version: 3.13
-          architecture: 'x64'
 
       - name: install sundials (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
