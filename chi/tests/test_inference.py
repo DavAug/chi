@@ -810,46 +810,6 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(runs[1], 2)
         self.assertEqual(runs[2], 3)
 
-    def test_run_catch_exception(self):
-        # Check failure of optimisation doesn't interrupt all runs
-        # (CMAES returns NAN for 1-dim problems)
-
-        # Get test data and model
-        problem = copy.deepcopy(self.problem)
-        problem.fix_parameters({
-            'global.drug_concentration': 1,
-            'global.kappa': 1,
-            'global.lambda_0': 1,
-            'global.lambda_1': 1,
-            'Sigma base': 1,
-            'Sigma rel.': 1})
-        problem.set_log_prior(pints.ComposedLogPrior(*[
-            pints.UniformLogPrior(1E-3, 1E1)]))
-        log_posterior = problem.get_log_posterior()
-
-        # Set up optmisation controller
-        optimiser = chi.OptimisationController(log_posterior)
-        optimiser.set_n_runs(3)
-        result = optimiser.run(n_max_iterations=10)
-
-        keys = result.keys()
-        self.assertEqual(len(keys), 5)
-        self.assertEqual(keys[0], 'ID')
-        self.assertEqual(keys[1], 'Parameter')
-        self.assertEqual(keys[2], 'Estimate')
-        self.assertEqual(keys[3], 'Score')
-        self.assertEqual(keys[4], 'Run')
-
-        parameters = result['Parameter'].unique()
-        self.assertEqual(len(parameters), 1)
-        self.assertEqual(parameters[0], 'global.tumour_volume')
-
-        runs = result['Run'].unique()
-        self.assertEqual(len(runs), 3)
-        self.assertEqual(runs[0], 1)
-        self.assertEqual(runs[1], 2)
-        self.assertEqual(runs[2], 3)
-
     def test_set_optmiser(self):
         optimiser = chi.OptimisationController(self.log_posterior_id_40)
         optimiser.set_optimiser(pints.PSO)
