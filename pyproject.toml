@@ -4,18 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chi-drm"
-version = "1.0.2"
+version = "1.0.3"
 description = "A python package to model dose response dynamics."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 license = { file = "LICENSE.md" }
 authors = [
     { name = "David Augustin", email = "david.augustin@cervify.com" },
 ]
-keywords = ["python", "packaging", "example"]
+keywords = ["python", "pkpd", "mipd", "pharmacokinetics", "pharmacodynamics", "dose-response", "modelling", "simulation"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD 3-clause license",
     "Operating System :: OS Independent",
 ]
 
