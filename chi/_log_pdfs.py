@@ -818,7 +818,7 @@ class LogLikelihood(pints.LogPDF):
                 'An error occured while solving the mechanistic model: \n'
                 + str(e) + '.\n A score of -infinity is returned.',
                 RuntimeWarning)
-            return -np.infty
+            return -np.inf
 
         # Remember only error parameters
         parameters = parameters[self._n_mechanistic_params:]
@@ -993,7 +993,7 @@ class LogLikelihood(pints.LogPDF):
                 + str(e) + '.\n A score of -infinity is returned.',
                 RuntimeWarning)
             n_parameters = len(parameters)
-            return -np.infty, np.full(shape=n_parameters, fill_value=np.infty)
+            return -np.inf, np.full(shape=n_parameters, fill_value=np.inf)
 
         # Remember only error parameters
         parameters = parameters[self._n_mechanistic_params:]
@@ -1606,7 +1606,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                     'An error occured while solving the mechanistic model: \n'
                     + str(e) + '.\n A score of -infinity is returned.',
                     RuntimeWarning)
-                return -np.infty
+                return -np.inf
 
         # Add noise to simulate measurements
         if self._error_on_log_scale:
@@ -1832,7 +1832,7 @@ class PopulationFilterLogPosterior(HierarchicalLogPosterior):
                     'An error occured while solving the mechanistic model: \n'
                     + str(e) + '.\n A score of -infinity is returned.',
                     RuntimeWarning)
-                return -np.infty, sensitivities[:self._n_parameters]
+                return -np.inf, sensitivities[:self._n_parameters]
 
         # Add noise to simulate measurements
         if self._error_on_log_scale:

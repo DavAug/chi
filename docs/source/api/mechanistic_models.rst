@@ -9,14 +9,14 @@ Mechanistic Models
 Mechanistic models in chi refer to any deterministic model that describes the
 evolution of quantities of interest in time. In systems biology
 such models are often inspired by biological mechanisms, which is why we go
-with the name :class:`chi.MechanisticModel`. :class:`chi.MechanisticModel` by
+with the name :class:`MechanisticModel`. :class:`MechanisticModel` by
 no means have to be mechanism-based though, but may be any function of time
 that you may deem interesting.
 
 Chi provides two ways to specify mechanistic models: 1. you can use the
-:class:`chi.MechanisticModel` base class an implement its methods yourself;
+:class:`MechanisticModel` base class an implement its methods yourself;
 2. you can specify the mechanistic model using the System Biology Markup
-Language (SBML_) and instantiate the model using :class:`chi.SBMLModel`.
+Language (SBML_) and instantiate the model using :class:`SBMLModel`.
 For detailed examples how either of those can be done, we refer to the Getting
 started.
 

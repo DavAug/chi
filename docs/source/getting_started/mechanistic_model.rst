@@ -940,7 +940,7 @@ Reference to MechanisticModel API
 
 .. autosummary::
 
-    chi.MechanisticModel
-    chi.SBMLModel
-    chi.PKPDModel
-    chi.ReducedMechanisticModel
+    MechanisticModel
+    SBMLModel
+    PKPDModel
+    ReducedMechanisticModel

@@ -17,12 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v1
 
-      - name: set up Python 3.8
+      - name: set up Python 3.13
         uses: actions/setup-python@v1
         with:
-          python-version: 3.8
+          python-version: 3.13
           architecture: x64
-      
+
       - name: install sundials
         run: |
           sudo apt-get update
