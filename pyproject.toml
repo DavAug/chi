@@ -6,9 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "chi-drm"
 version = "1.0.2"
 description = "A python package to model dose response dynamics."
-readme = { file = "README.md" }
+readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "LICENSE.md" }
+license = "LICENSE.md"
 authors = [
     { name = "David Augustin", email = "david.augustin@cervify.com" },
 ]
