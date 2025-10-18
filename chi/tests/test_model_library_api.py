@@ -38,6 +38,15 @@ class TestModelLibrary(unittest.TestCase):
         model = self.model_library.one_compartment_pk_model()
         self.assertIsInstance(model, chi.PKPDModel)
 
+    def test_existence_one_compartment_pk_model_clearance(self):
+        model = self.model_library.one_compartment_pk_model(
+            elimination_rate=False)
+        self.assertIsInstance(model, chi.PKPDModel)
+
+    def test_existence_two_compartment_pk_model(self):
+        model = self.model_library.two_compartment_pk_model()
+        self.assertIsInstance(model, chi.PKPDModel)
+
 
 class TestErlotinibTumourGrowthInhibitionModel(unittest.TestCase):
     """

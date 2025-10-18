@@ -40,7 +40,7 @@ class ModelLibrary(object):
 
         return chi.PKPDModel(self._path + file_name)
 
-    def one_compartment_pk_model(self):
+    def one_compartment_pk_model(self, elimination_rate=True):
         r"""
         Returns an instantiation of a 1-compartment PK model.
 
@@ -62,9 +62,46 @@ class ModelLibrary(object):
         The drug may be either directly administered to :math:`A` or indirectly
         through a dosing compartment.
 
+        :param bool elimination_rate: If True, the model uses the elimination
+            rate :math:`k_e` as a parameter. If False, the model uses the
+            clearance :math:`CL` as a parameter, which is related to the
+            elimination rate by :math:`CL = k_e V`.
+
         :rtype: chi.PKPDModel
         """
-        file_name = 'pk_one_comp.xml'
+        file_name = 'pk_one_comp_clearance.xml'
+        if elimination_rate:
+            file_name = 'pk_one_comp.xml'
+        model = chi.PKPDModel(self._path + file_name)
+        model.set_outputs(['central.drug_concentration'])
+
+        return model
+
+    def two_compartment_pk_model(self):
+        r"""
+        Returns an instantiation of a 2-compartment PK model.
+
+        In this model the distribution of the drug is modelled by twp
+        compartments: 1. the central compartment; and 2. the peripheral
+        compartment. The drug transtions between the two compartments at the
+        inter-compartment clearance rate :math:`q` and is eliminated from the
+        central compartment at the clearance rate :math:`k_{cl}`.
+
+        .. math ::
+            \frac{\text{d}a_c}{\text{d}t} = -k_{cl} c_c - q c_c + q c_p
+            \quad \frac{\text{d}a_p}{\text{d}t} = q c_c - q c_p,
+
+        where :math:`a_c` denotes the drug amount in the central compartment
+        and :math:`a_p` the drug amount in the peripheral compartment. The
+        concentrations :math:`c_c` and :math:`c_p` are given by
+        :math:`c_c = \frac{a_c}{v_c}` and :math:`c_p = \frac{a_p}{v_p}`, where
+        :math:`v_c` and :math:`v_p` denote the effective volumes of
+        distribution of the drug in the compartments. `k_{cl}` and `q` denote
+        the clearance and inter-compartment clearance rates, respectively.
+
+        :rtype: chi.PKPDModel
+        """
+        file_name = 'pk_two_comp_clearance.xml'
         model = chi.PKPDModel(self._path + file_name)
         model.set_outputs(['central.drug_concentration'])
 
