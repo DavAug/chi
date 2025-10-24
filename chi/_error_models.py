@@ -8,6 +8,7 @@
 import copy
 
 import numpy as np
+import scipy.stats as stats
 
 
 class ErrorModel(object):
@@ -880,8 +881,7 @@ class LogNormalErrorModel(ErrorModel):
 
     .. math::
         y(t, \psi , \sigma _{\mathrm{log}}) =
-        \bar{y} \, \mathrm{e}^{
-            \mu _{\mathrm{log}} + \sigma _{\mathrm{log}} \varepsilon },
+        \bar{y} \, \mathrm{e}^{\sigma _{\mathrm{log}} \varepsilon },
 
     where :math:`\bar{y}(t, \psi )` is the mechanistic
     model output with parameters :math:`\psi`, and :math:`\varepsilon` is a
@@ -891,14 +891,9 @@ class LogNormalErrorModel(ErrorModel):
         \varepsilon \sim \mathcal{N}(0, 1).
 
     Here, :math:`\sigma _{\mathrm{log}}` is the standard deviation of
-    :math:`\log y` and
-    :math:`\mu _{\mathrm{log}} := -\sigma _{\mathrm{log}} ^2 / 2` is chosen
-    such that the expected measured value is equal to the model output
+    :math:`\log y`.
 
-    .. math::
-        \mathbb{E}[y] = \bar{y}.
-
-    As a result, this model assumes that the measured values
+    The model assumes that the measured values
     :math:`y^{\text{obs}}` are realisations of the random variable
     :math:`y`.
 
@@ -909,47 +904,84 @@ class LogNormalErrorModel(ErrorModel):
         p(y | \psi , \sigma _{\mathrm{log}} , t) =
         \frac{1}{\sqrt{2\pi} \sigma _{\mathrm{log}} y}
         \exp{\left(-\frac{
-            \left(\log y - \log \bar{y} + \sigma _{\mathrm{log}}^2/2\right) ^2}
+            \left(\log y - \log \bar{y}\right) ^2}
         {2\sigma _{\mathrm{log}}^2 } \right)}.
 
+    If the lower level of quantification (LLQ) is specified, measurements below
+    the LLQ are treated as uncertain, and it is assumed that any value between
+    0 and the LLQ could have been the true measurement. In this case, the
+    likelihood contribution of a measurement below the LLQ is given by the
+    cumulative distribution function evaluated at the LLQ divided by the range
+    of possible values (i.e., the LLQ).
+
     Extends :class:`ErrorModel`.
+
+    :param float tolerance: A non-negative float value added to the model output
+        to avoid issues with log(0) during likelihood evaluation.
+        0 is default.
     """
 
-    def __init__(self):
+    def __init__(self, tolerance=0, llq=0):
         super(LogNormalErrorModel, self).__init__()
 
         # Set defaults
         self._parameter_names = ['Sigma log']
         self._n_parameters = 1
 
-    @staticmethod
+        tolerance = float(tolerance)
+        if tolerance < 0:
+            raise ValueError('Tolerance must be non-negative.')
+        self._tolerance = tolerance
+
+        llq = float(llq)
+        self._llq = 0
+        if llq > 0:
+            self._llq = llq
+        if llq < 0:
+            raise ValueError(
+                'Lower level of quantification must be non-negative.')
+
     def _compute_log_likelihood(
-            parameters, model_output, observations):  # pragma: no cover
+            self, parameters, model_output, observations):  # pragma: no cover
         """
         Calculates the log-likelihood using numba speed up.
         """
         # Get parameters
         sigma = parameters[0]
 
+        # Shift model output by tolerance to avoid log(0)
+        if self._tolerance > 0:
+            model_output = model_output + self._tolerance
+
         if (sigma <= 0) or np.any(model_output <= 0):
             # sigma is strictly positive
             return -np.inf
 
+        # If LLQ is specified, split observations into those below and above
+        # LLQ
+        if self._llq > 0:
+            mask = observations <= self._llq
+            observations = observations[~mask]
+
+            out_below_llq = model_output[mask]
+            model_output = model_output[~mask]
+            n_obs_below_llq = len(out_below_llq)
+
         # Compute log-likelihood
-        n_obs = len(model_output)
-        log_likelihood = \
-            - n_obs * (np.log(2 * np.pi) / 2 + np.log(sigma)) \
-            - np.sum(np.log(observations)) \
-            - np.sum((
-                np.log(model_output) - sigma**2 / 2
-                - np.log(observations)
-            )**2) / sigma**2 / 2
+        log_likelihood = np.sum(stats.lognorm.logpdf(
+            x=observations, s=sigma, scale=model_output))
+
+        if (self._llq > 0) and (n_obs_below_llq > 0):
+            # Compute log-likelihood contributions for observations below LLQ
+            n = len(out_below_llq)
+            log_likelihood += np.sum(np.log(
+                stats.lognorm.cdf(x=self._llq, s=sigma, scale=out_below_llq)
+            )) - n * np.log(self._llq)
 
         return log_likelihood
 
-    @staticmethod
     def _compute_pointwise_ll(
-            parameters, model_output, observations):  # pragma: no cover
+            self, parameters, model_output, observations):  # pragma: no cover
         """
         Calculates the pointwise log-lieklihood using numba speed up.
 
@@ -958,25 +990,41 @@ class LogNormalErrorModel(ErrorModel):
         # Get parameters
         sigma = parameters[0]
 
+        # Shift model output by tolerance to avoid log(0)
+        if self._tolerance > 0:
+            model_output = model_output + self._tolerance
+
         if (sigma <= 0) or np.any(model_output <= 0):
             # sigma is strictly positive
             n_obs = len(model_output)
             return np.full(n_obs, -np.inf)
 
-        # Compute log-likelihood
-        pointwise_ll = \
-            - (np.log(2 * np.pi) / 2 + np.log(sigma)) \
-            - np.log(observations) \
-            - (
-                np.log(model_output) - sigma**2 / 2
-                - np.log(observations)
-            )**2 / sigma**2 / 2
+        # If LLQ is specified, split observations into those below and above
+        # LLQ
+        pointwise_ll = np.full(len(observations), -np.inf)
+        mask = np.zeros(len(observations), dtype=bool)
+        if self._llq > 0:
+            mask = observations <= self._llq
+            observations = observations[~mask]
+
+            out_below_llq = model_output[mask]
+            model_output = model_output[~mask]
+            n_obs_below_llq = len(out_below_llq)
+
+        # Compute log-likelihood for observations above LLQ
+        pointwise_ll[~mask] = stats.lognorm.logpdf(
+            x=observations, s=sigma, scale=model_output)
+
+        if (self._llq > 0) and (n_obs_below_llq > 0):
+            # Compute log-likelihood contributions for observations below LLQ
+            pointwise_ll[mask] = np.log(
+                stats.lognorm.cdf(x=self._llq, s=sigma, scale=out_below_llq)
+            ) - np.log(self._llq)
 
         return pointwise_ll
 
-    @staticmethod
     def _compute_sensitivities(
-            parameters, model_output, model_sensitivities,
+            self, parameters, model_output, model_sensitivities,
             observations):  # pragma: no cover
         """
         Calculates the log-lieklihood and its sensitivities using numba
@@ -990,32 +1038,58 @@ class LogNormalErrorModel(ErrorModel):
         # Get parameters
         sigma = parameters[0]
 
+        # Shift model output by tolerance to avoid log(0)
+        if self._tolerance > 0:
+            model_output = model_output + self._tolerance
+
         if (sigma <= 0) or np.any(model_output <= 0):
             # sigma is strictly positive
             n_parameters = model_sensitivities.shape[1] + 1
             return -np.inf, np.full(n_parameters, np.inf)
 
-        # Compute "error" and squared "error"
-        # (Analogous to error for Gaussian model, but not really error here)
-        error = np.log(observations) - np.log(model_output) + sigma**2 / 2
+        # If LLQ is specified, split observations into those below and above
+        # LLQ
+        n_obs_below_llq = 0
+        if self._llq > 0:
+            mask = observations <= self._llq
+            mask = mask[:, 0]  # To preserve dimensions of masked arrays
+            observations = observations[~mask]
+            out_below_llq = model_output[mask]
+            model_output = model_output[~mask]
+            sens_below_llq = model_sensitivities[mask]
+            model_sensitivities = model_sensitivities[~mask]
+            n_obs_below_llq = len(out_below_llq)
+
+        # Compute log-likelihood and sensitivities for observations above LLQ
+        log_likelihood = np.sum(stats.lognorm.logpdf(
+            x=observations, s=sigma, scale=model_output))
+
+        error = np.log(observations) - np.log(model_output)
         summed_squared_error = np.sum(error**2, axis=0)
-
-        # Compute log-likelihood
-        n_obs = len(model_output)
-        log_likelihood = \
-            - n_obs * (np.log(2 * np.pi) / 2 + np.log(sigma)) \
-            - np.sum(np.log(observations)) \
-            - summed_squared_error / sigma**2 / 2
-        log_likelihood = log_likelihood[0]
-
-        # Compute sensitivities
         dpsi = \
             np.sum(error / model_output * model_sensitivities, axis=0) \
             / sigma**2
-        dsigma = \
-            - np.sum(error) / sigma \
-            + summed_squared_error / sigma**3 \
-            - n_obs / sigma
+        dsigma = summed_squared_error / sigma**3 - len(observations) / sigma
+
+        if (self._llq > 0) and (n_obs_below_llq > 0):
+            # Compute log-likelihood contributions for observations below LLQ
+            pw_log_cdf = np.log(
+                stats.lognorm.cdf(x=self._llq, s=sigma, scale=out_below_llq)
+            )
+            log_likelihood += \
+                np.sum(pw_log_cdf) - n_obs_below_llq * np.log(self._llq)
+
+            # - N(x | mu, sigma) * sens / CDF(x | mu, sigma) / mu
+            dpsi += -np.sum(
+                stats.lognorm.pdf(x=self._llq, s=sigma, scale=out_below_llq) \
+                / pw_log_cdf / out_below_llq * sens_below_llq * self._llq,
+            axis=0)
+            dsigma += -np.sum(
+                stats.lognorm.pdf(x=self._llq, s=sigma, scale=out_below_llq) \
+                * (np.log(self._llq) - np.log(out_below_llq)) \
+                / pw_log_cdf / sigma * self._llq,
+            axis=0)
+
         sensitivities = np.concatenate((dpsi, dsigma))
 
         return log_likelihood, sensitivities
@@ -1192,12 +1266,11 @@ class LogNormalErrorModel(ErrorModel):
 
         # Get parameters
         sigma_log = parameters[0]
-        mean_log = -sigma_log**2 / 2
 
         # Sample from Gaussian distributions
         rng = np.random.default_rng(seed=seed)
         samples = rng.lognormal(
-            mean=mean_log, sigma=sigma_log, size=sample_shape)
+            mean=0, sigma=sigma_log, size=sample_shape)
 
         # Construct final samples
         model_output = np.expand_dims(model_output, axis=1)

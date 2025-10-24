@@ -690,13 +690,13 @@ class TestLogNormalErrorModel(unittest.TestCase):
         # Tests :meth:`compute_log_likelihood` and
         # :meth:`compute_pointwise_ll`
 
-        # Test case I: If log X - log X^m = - sigma^2/2,
+        # Test case I: If log X - log X^m = 0
         # the score reduces to
         # -np.log(2pi)/2 - np.log(sigma) - np.log(X)
 
         # Test case I.1:
         parameters = [0.5]
-        model_output = [1 * np.exp(parameters[0]**2 / 2)] * 10
+        model_output = [1] * 10
         observations = [1] * 10
         ref_score = \
             -5 * np.log(2 * np.pi) - 10 * (np.log(0.5) + np.log(1))
@@ -712,7 +712,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
 
         # Test case I.2:
         parameters = [0.5]
-        model_output = [10 * np.exp(parameters[0]**2 / 2)] * 6
+        model_output = [10] * 6
         observations = [10] * 6
         ref_score = \
             -3 * np.log(2 * np.pi) - 6 * (np.log(0.5) + np.log(10))
@@ -727,7 +727,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
         self.assertAlmostEqual(np.sum(pw_score), score)
 
         # Test case II: If sigma = 1, the score reduces to
-        # -np.log(2pi)/2 - log X - (log X - log X^m - 1/2)^2 / 2
+        # -np.log(2pi)/2 - log X - (log X - log X^m)^2 / 2
 
         # Test case II.1:
         parameters = [1]
@@ -735,7 +735,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
         observations = [2] * 10
         ref_score = \
             -5 * np.log(2 * np.pi) - 10 * np.log(2) \
-            - 10 * (np.log(1) - np.log(2) - 1 / 2)**2 / 2
+            - 10 * (np.log(1) - np.log(2))**2 / 2
 
         pw_score = self.error_model.compute_pointwise_ll(
             parameters, model_output, observations)
@@ -752,7 +752,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
         observations = [10] * 10
         ref_score = \
             -5 * np.log(2 * np.pi) - 10 * np.log(10) \
-            - 10 * (np.log(1) - np.log(10) - 1 / 2)**2 / 2
+            - 10 * (np.log(1) - np.log(10))**2 / 2
 
         pw_score = self.error_model.compute_pointwise_ll(
             parameters, model_output, observations)
@@ -810,6 +810,87 @@ class TestLogNormalErrorModel(unittest.TestCase):
         self.assertEqual(pw_score.shape, (10,))
         self.assertAlmostEqual(np.sum(pw_score), score)
 
+        # Test case IV.1: Obs > LLQ
+        parameters = [0.5]
+        model_output = [2.1] * 10
+        observations = [1.1] * 10
+
+        ref_score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        error_model = chi.LogNormalErrorModel(llq=1)
+        pw_score = error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertEqual(score, ref_score)
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+        # Test case IV.2 Obs < LLQ, then ll < ll_ref
+        error_model = chi.LogNormalErrorModel(llq=1.5)
+        pw_score = error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertLess(score, ref_score)
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+        # Test case IV.3 Obs below LLQ, then larger LLQ should have lower LL
+        error_model = chi.LogNormalErrorModel(llq=1.5)
+        score1 = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        error_model = chi.LogNormalErrorModel(llq=2)
+        score2 = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertLess(score1, score2)
+
+        # Test case IV.4 Obs above model output, but obs below LLQ, then
+        # LL with LLQ should be higher than ref LL
+        model_output = [1.1] * 10
+        observations = [2.1] * 10
+        ref_score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        error_model = chi.LogNormalErrorModel(llq=2.5)
+        score = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertGreater(score, ref_score)
+
+        # Test case IV.5 Obs below LLQ, then model with more probability mass
+        # below LLQ should have higher LL
+        observations = [2.1] * 10
+
+        model_output = [1.1] * 10
+        score1 = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        model_output = [0.5] * 10
+        score2 = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertLess(score1, score2)
+
+        # Test likelihood with some measurements below LLQ and some above
+        model_output = [2.1] * 10
+        observations = [1.1] * 5 + [3.0] * 5
+        ref_score = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        error_model = chi.LogNormalErrorModel(llq=2.5)
+        pw_score = error_model.compute_pointwise_ll(
+            parameters, model_output, observations)
+        score = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        self.assertLess(score, ref_score)
+        self.assertAlmostEqual(np.sum(pw_score), score)
+
+
     def test_compute_log_likelihood_bad_input(self):
         # Model output and observations don't match
         parameters = [1]
@@ -823,7 +904,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
                 parameters, model_output, observations)
 
     def test_compute_sensitivities(self):
-        # Test case I: If If log X - log X^m = - sigma^2/2,
+        # Test case I: If If log X - log X^m = 0,
         # the scores reduce to
         # L = -np.log(2pi)/2 - np.log(sigma) - np.log(X)
         # dL/dpsi = 0
@@ -831,7 +912,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
 
         # Test case I.1:
         parameters = [0.5]
-        model_output = [1 * np.exp(parameters[0]**2 / 2)] * 10
+        model_output = [1] * 10
         observations = [1] * 10
         sens = np.array([[1] * 10, [2] * 10]).T
         ref_score = \
@@ -851,7 +932,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
 
         # Test case I.2:
         parameters = [0.5]
-        model_output = [10 * np.exp(parameters[0]**2 / 2)] * 10
+        model_output = [10] * 10
         observations = [10] * 10
         sens = np.array([[1] * 10, [2] * 10]).T
         ref_score = \
@@ -870,7 +951,7 @@ class TestLogNormalErrorModel(unittest.TestCase):
         self.assertAlmostEqual(sens[2], ref_dsigma_base)
 
         # Test case II: If sigma = 1, the scores reduce to
-        # L = -np.log(2pi)/2 - log X - (log X - log X^m + 1 / 2) / 2
+        # L = -np.log(2pi)/2 - log X - (log X - log X^m) / 2
         # dL/dpsi = error * dx/dpsi
         # dL/dsigma_base = - 1 + error^2
 
@@ -881,12 +962,11 @@ class TestLogNormalErrorModel(unittest.TestCase):
         sens = np.array([[1] * 10, [2] * 10]).T
         ref_score = \
             - 5 * np.log(2 * np.pi) - 10 * np.log(2) \
-            - 10 * (np.log(1) - np.log(2) - 1 / 2)**2 / 2
-        ref_dpsi_0 = 10 * (np.log(2) - np.log(1) + 1 / 2) / 1 * 1
-        ref_dpsi_1 = 10 * (np.log(2) - np.log(1) + 1 / 2) / 1 * 2
+            - 10 * (np.log(1) - np.log(2))**2 / 2
+        ref_dpsi_0 = 10 * (np.log(2) - np.log(1)) / 1 * 1
+        ref_dpsi_1 = 10 * (np.log(2) - np.log(1)) / 1 * 2
         ref_dsigma_base = \
-            -10 + 10 * (np.log(1) - np.log(2) - 1 / 2)**2 \
-            - 10 * (np.log(2) - np.log(1) + 1 / 2)
+            -10 + 10 * (np.log(1) - np.log(2))**2
 
         score, sens = self.error_model.compute_sensitivities(
             parameters, model_output, sens, observations)
@@ -904,12 +984,11 @@ class TestLogNormalErrorModel(unittest.TestCase):
         sens = np.array([[1] * 10, [2] * 10]).T
         ref_score = \
             - 5 * np.log(2 * np.pi) - 10 * np.log(10) \
-            - 10 * (np.log(1) - np.log(10) - 1 / 2)**2 / 2
-        ref_dpsi_0 = 10 * (np.log(10) - np.log(1) + 1 / 2) / 1 * 1
-        ref_dpsi_1 = 10 * (np.log(10) - np.log(1) + 1 / 2) / 1 * 2
+            - 10 * (np.log(1) - np.log(10))**2 / 2
+        ref_dpsi_0 = 10 * (np.log(10) - np.log(1)) / 1 * 1
+        ref_dpsi_1 = 10 * (np.log(10) - np.log(1)) / 1 * 2
         ref_dsigma_base = \
-            -10 + 10 * (np.log(1) - np.log(10) - 1 / 2)**2 \
-            - 10 * (np.log(10) - np.log(1) + 1 / 2)
+            -10 + 10 * (np.log(1) - np.log(10))**2
 
         score, sens = self.error_model.compute_sensitivities(
             parameters, model_output, sens, observations)
@@ -919,6 +998,42 @@ class TestLogNormalErrorModel(unittest.TestCase):
         self.assertAlmostEqual(sens[0], ref_dpsi_0)
         self.assertAlmostEqual(sens[1], ref_dpsi_1)
         self.assertAlmostEqual(sens[2], ref_dsigma_base)
+
+        # Test case IV.1: Obs > LLQ
+        parameters = [0.5]
+        model_output = [2.1] * 10
+        observations = [1.1] * 10
+        sens = np.array([[1] * 10, [2] * 10]).T
+
+        ref_score, ref_sens = self.error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
+
+        error_model = chi.LogNormalErrorModel(llq=1)
+        score, sens = error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
+
+        self.assertAlmostEqual(score, ref_score)
+        self.assertEqual(len(sens), 3)
+        self.assertAlmostEqual(sens[0], ref_sens[0])
+        self.assertAlmostEqual(sens[1], ref_sens[1])
+        self.assertAlmostEqual(sens[2], ref_sens[2])
+
+        # Test case IV.2: Obs < LLQ, but mu far away, so ll ~ ll_ref
+        parameters = [0.1]
+        observations = [0.1] * 10
+        model_output = [4] * 10
+        ref_score1 = self.error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+
+        error_model = chi.LogNormalErrorModel(llq=0.1)
+        ref_score2 = error_model.compute_log_likelihood(
+            parameters, model_output, observations)
+        sens = np.array([[1] * 10, [2] * 10]).T
+        score, sens = error_model.compute_sensitivities(
+            parameters, model_output, sens, observations)
+
+        self.assertAlmostEqual(score, ref_score1)
+        self.assertAlmostEqual(score, ref_score2)
 
     def test_compute_sensitivities_bad_input(self):
         # Model output and sensitivities don't match
