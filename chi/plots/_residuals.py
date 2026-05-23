@@ -94,11 +94,11 @@ class ResidualPlot(plots.SingleFigure):
 
             if show_residuals is True:
                 # Compute residuals of observations from mean predictions
-                observations -= mean_predictions
+                observations = observations - mean_predictions
 
             if show_relative is True:
                 # Normalise observations by mean predictions
-                observations /= mean_predictions
+                observations = observations / mean_predictions
 
             # Plot mean predictions versus observations
             color = colors[index % n_colors]

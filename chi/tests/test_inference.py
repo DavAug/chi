@@ -783,7 +783,7 @@ class TestOptimisationController(unittest.TestCase):
         self.assertEqual(ids[5], str(self.ids[5]))
         self.assertEqual(ids[6], str(self.ids[6]))
         self.assertEqual(ids[7], str(self.ids[7]))
-        self.assertIsNone(ids[8])
+        self.assertTrue(np.isnan(ids[8]).all())
 
         parameters = result['Parameter'].unique()
         self.assertEqual(len(parameters), 16)
