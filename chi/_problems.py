@@ -324,7 +324,7 @@ class ProblemModellingController(object):
             for idn, _id in enumerate(self._ids):
                 mask = temp[self._id_key] == _id
                 covariates[idn, idc] = \
-                    temp.loc[mask, self._value_key].dropna().values
+                    temp.loc[mask, self._value_key].dropna().values.squeeze()
 
         return covariates
 
